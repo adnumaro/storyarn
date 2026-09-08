@@ -79,7 +79,7 @@ defmodule Storyarn.Ideation.Groups.Execution.Mutation do
          true <- Enum.map(sources, & &1.idea_id) == attrs.idea_ids,
          {:ok, _} <- Memberships.validate(access.session_id, id, attrs.idea_ids) do
       updated = group |> change(deleted_at: nil, version: group.version + 1) |> Repo.update!()
-      members = Memberships.replace(updated, access.user_id, sources, deletion.sources)
+      members = Memberships.replace(updated, access.user_id, sources, pinned: deletion.sources)
       record(updated, access.user_id, "restore", key, fingerprint, members)
     else
       {:error, _} = error -> error
@@ -114,7 +114,7 @@ defmodule Storyarn.Ideation.Groups.Execution.Mutation do
 
   defp update_members(group, actor_id, %{idea_ids: ids}) do
     with {:ok, sources} <- Memberships.validate(group.session_id, group.id, ids),
-         do: {:ok, Memberships.replace(group, actor_id, sources)}
+         do: {:ok, Memberships.replace(group, actor_id, sources, retain_hidden: ids != [])}
   end
 
   defp update_members(group, _, _), do: {:ok, Memberships.current(group.id)}

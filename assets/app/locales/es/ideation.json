@@ -80,7 +80,7 @@
       "stale_reveal": "Las revisiones seleccionadas ya no son elegibles. Cierra este diálogo y revisa una nueva selección.",
       "session_creation_unknown": "Se interrumpió la conexión al crear la sesión. Comprueba la lista y recarga antes de crear otra.",
       "invalid_canvas": "La posición no es válida.",
-      "stale_canvas": "Algunas notas se movieron en otra sesión. Actualiza e intenta mover el grupo de nuevo.",
+      "stale_canvas": "Otra persona ha movido esta nota. Se ha actualizado su posición.",
       "save_before_connect": "Escribe algo y espera a que se guarde la nota antes de conectarla.",
       "session_private": "El facilitador controla la revelación de esta sesión.",
       "stale_deletion": "Esta eliminación ha cambiado. Actualiza el tablero antes de volver a intentarlo.",
@@ -110,7 +110,11 @@
       "already_grouped": "Una nota seleccionada ya pertenece a un grupo. Sácala de ese grupo primero.",
       "private_mode": "Los grupos están disponibles al salir del modo privado.",
       "invalid_group": "Selecciona al menos dos notas compartidas para crear un grupo.",
-      "group_sync_pending": "El guardado del grupo está tardando más de lo previsto. Tu borrador se conserva. Actualiza o vuelve a intentarlo."
+      "group_sync_pending": "El guardado del grupo está tardando más de lo previsto. Tu borrador se conserva. Actualiza o vuelve a intentarlo.",
+      "stale_group_canvas": "Algunas notas se movieron en otra sesión. Actualiza e intenta mover el grupo de nuevo.",
+      "invalid_group_members": "Algunas notas seleccionadas ya no están compartidas o disponibles. Actualiza y vuelve a elegirlas.",
+      "group_limit_reached": "Esta sesión ha alcanzado el máximo de grupos. Elimina un grupo antes de crear otro.",
+      "idempotency_conflict": "Esta solicitud ya se usó para un cambio distinto. Actualiza y vuelve a intentarlo."
     },
     "saveStatus": {
       "saved": "Guardado",

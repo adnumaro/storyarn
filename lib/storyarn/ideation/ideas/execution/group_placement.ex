@@ -1,10 +1,11 @@
 defmodule Storyarn.Ideation.Ideas.Execution.GroupPlacement do
   @moduledoc false
-  import Ecto.Changeset, only: [change: 2]
+  import Ecto.Query
 
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Queries.GroupSources
   alias Storyarn.Ideation.Ideas.Rules.Canvas
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 
   # Groups owns the outer transaction and already holds the shared session lock.
@@ -15,7 +16,8 @@ defmodule Storyarn.Ideation.Ideas.Execution.GroupPlacement do
 
       with :ok <- validate_versions(sources, versions),
            {:ok, placements} <- placements(sources, dx, dy) do
-        Enum.each(placements, &persist_placement/1)
+        now = %{TimeHelpers.now() | microsecond: {0, 6}}
+        Enum.each(placements, &persist_placement(&1, now))
 
         :ok
       end
@@ -24,13 +26,20 @@ defmodule Storyarn.Ideation.Ideas.Execution.GroupPlacement do
     end
   end
 
-  defp persist_placement({id, canvas}) do
-    idea = Repo.get!(Idea, id)
-
-    updated =
-      Map.merge(idea.canvas, Map.put(canvas, "version", Map.get(idea.canvas, "version", 0) + 1))
-
-    idea |> change(canvas: Map.delete(updated, "request_key")) |> Repo.update!()
+  # Only geometry changes. Merging in SQL avoids loading and decrypting every
+  # member's text for a placement-only write; the last single-note receipt is
+  # superseded by the group movement.
+  defp persist_placement({id, canvas}, now) do
+    {1, _} =
+      Repo.update_all(
+        from(i in Idea,
+          where: i.id == ^id,
+          update: [
+            set: [canvas: fragment("(? || ?) - 'request_key'", i.canvas, type(^canvas, :map)), updated_at: ^now]
+          ]
+        ),
+        []
+      )
   end
 
   defp validate_versions(sources, versions) do
@@ -46,8 +55,12 @@ defmodule Storyarn.Ideation.Ideas.Execution.GroupPlacement do
         |> Map.put("y", Map.get(source.canvas, "y", 0) + dy)
 
       case Canvas.normalize(attrs) do
-        {:ok, canvas} -> {:cont, {:ok, [{source.idea_id, canvas} | result]}}
-        error -> {:halt, error}
+        {:ok, canvas} ->
+          version = Map.get(source.canvas, "version", 0) + 1
+          {:cont, {:ok, [{source.idea_id, Map.put(canvas, "version", version)} | result]}}
+
+        error ->
+          {:halt, error}
       end
     end)
   end

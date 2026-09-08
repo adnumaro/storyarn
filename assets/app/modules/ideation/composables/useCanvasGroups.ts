@@ -10,6 +10,11 @@ interface GroupChanges {
   canvas?: Point;
 }
 type History = ReturnType<typeof useCanvasHistory>;
+type Acknowledged = "applied" | "unconfirmed" | "cancelled";
+/** A rejected member placement is reported with group copy, not single-note copy. */
+function groupCode(code: string) {
+  return code === "stale_canvas" ? "stale_group_canvas" : code;
+}
 function previousChanges(group: IdeaGroup, changes: GroupChanges): GroupChanges {
   const previous: GroupChanges = {};
   if (changes.title !== undefined) previous.title = group.title ?? "";
@@ -76,21 +81,21 @@ export function useCanvasGroups(
     selected.value = null;
   }
   function applied(result: IdeaGroup, at: { epoch: string; sessionId: number | undefined }) {
-    return new Promise<boolean>((resolve) => {
-      const complete = (value: boolean) => {
+    return new Promise<Acknowledged>((resolve) => {
+      const complete = (value: Acknowledged) => {
         stop();
         clearTimeout(timeout);
         pending.delete(cancel);
         resolve(value);
       };
-      const cancel = () => complete(false);
+      const cancel = () => complete("cancelled");
       const check = () => {
         if (board().epoch !== at.epoch || board().session?.id !== at.sessionId || !allowed.value)
-          return complete(false);
-        if (board().error) return complete(false);
+          return complete("cancelled");
+        if (board().error) return complete("cancelled");
         const current = find(result.id);
         if (result.deleted_at ? !current : current && current.version >= result.version)
-          complete(true);
+          complete("applied");
       };
       // LiveVue can mutate nested fields without replacing the array.
       const stop = watch(
@@ -98,10 +103,12 @@ export function useCanvasGroups(
         check,
         { deep: true, flush: "post" },
       );
+      // The server committed the write; only its projection is late. Resync
+      // instead of reporting a failure the user would retry.
       const timeout = setTimeout(() => {
         notify("group_sync_pending");
         void request("sync_board", {});
-        complete(false);
+        complete("unconfirmed");
       }, 12_000);
       pending.add(cancel);
       check();
@@ -119,12 +126,13 @@ export function useCanvasGroups(
     const reply = await request<IdeaGroup>(event, { ...payload, request_key: key });
     if (reply.status !== "ok") {
       if (reply.status !== "error" || reply.code !== "offline") retryKeys.delete(fingerprint);
-      notify(reply.status === "error" ? reply.code : "stale_group");
+      notify(reply.status === "error" ? groupCode(reply.code) : "stale_group");
       return null;
     }
-    if (!(await applied(reply.value, at))) return null;
+    const acknowledged = await applied(reply.value, at);
+    if (acknowledged === "cancelled") return null;
     retryKeys.delete(fingerprint);
-    notify(null);
+    if (acknowledged === "applied") notify(null);
     return snapshot(reply.value);
   }
   function updateCommand(

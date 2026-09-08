@@ -34,7 +34,8 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       unique_numbers?(rows["session_revisions"], "session_id") and
       unique_numbers?(rows["rounds"], "session_id") and one_active_round?(rows["rounds"]) and
       length(rows["timers"]) == length(Enum.uniq_by(rows["timers"], & &1["session_id"])) and
-      unique_numbers?(rows["group_revisions"], "group_id") and GroupState.unique?(rows)
+      unique_numbers?(rows["group_revisions"], "group_id") and GroupState.unique?(rows) and
+      GroupState.within_limits?(rows)
   end
 
   defp valid_row?(row, collection, index) do

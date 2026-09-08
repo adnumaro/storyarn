@@ -57,6 +57,7 @@ Empty membership may retain synthesis as an independent canvas container. Detach
 and reattaching may restore its anchor without moving sources; populated group moves
 remain atomic. Reattachment preserves the most recent retained source pin for the
 same group and note, including undo after the note receives a newer revision.
+Changing visible members keeps the membership of a deleted note; separating removes all.
 
 Every write uses current project editor access, the open session contribution lock,
 an optimistic group version and a UUID request identity. Private mode hides group

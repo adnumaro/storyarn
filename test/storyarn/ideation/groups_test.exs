@@ -7,6 +7,7 @@ defmodule Storyarn.Ideation.GroupsTest do
   alias Storyarn.Ideation.Groups.Group
   alias Storyarn.Ideation.Groups.Membership
   alias Storyarn.Ideation.Groups.Revision
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   setup do
     ctx = ideation_fixture()
@@ -35,6 +36,15 @@ defmodule Storyarn.Ideation.GroupsTest do
   defp create_group_fixture(ctx, extra \\ %{}) do
     {:ok, group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs(ctx, extra))
     group
+  end
+
+  defp active_members(group) do
+    Repo.all(
+      from m in Membership,
+        where: m.group_id == ^group.id and is_nil(m.removed_at),
+        order_by: m.idea_id,
+        select: m.idea_id
+    )
   end
 
   defp edit_group(ctx, group, changes, actor \\ nil) do
@@ -160,7 +170,8 @@ defmodule Storyarn.Ideation.GroupsTest do
     assert {:ok, group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, request)
     assert {:ok, later} = edit_group(ctx, group, %{title: "Latest"})
     assert later.version == 2
-    assert {:error, :stale_group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, request)
+    assert {:ok, replayed} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, request)
+    assert replayed.id == group.id and replayed.version == 2 and replayed.title == "Latest"
     assert Repo.aggregate(Revision, :count) == 2
 
     assert {:error, :idempotency_conflict} =
@@ -276,6 +287,103 @@ defmodule Storyarn.Ideation.GroupsTest do
              Ideation.restore_group(ctx.author, ctx.project.id, ctx.session.id, group.id, 2, restore)
 
     assert Repo.get!(Group, group.id).deleted_at
+  end
+
+  test "a retried creation becomes stale only once its group is deleted", ctx do
+    request = attrs(ctx)
+    assert {:ok, group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, request)
+
+    assert {:ok, _} =
+             Ideation.delete_group(ctx.peer, ctx.project.id, ctx.session.id, group.id, 1, Ecto.UUID.generate())
+
+    assert {:error, :stale_group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, request)
+    assert Repo.aggregate(Group, :count) == 1
+  end
+
+  test "changing visible members keeps a deleted note's membership until the group separates", ctx do
+    third = shared(ctx, 660, ctx.peer)
+    group = create_group_fixture(ctx)
+    assert {:ok, deleted} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.first.id, 1)
+    assert {:ok, [visible]} = Ideation.list_groups(ctx.peer, ctx.project.id, ctx.session.id)
+    assert visible.idea_ids == [ctx.second.id]
+
+    assert {:ok, updated} = edit_group(ctx, visible, %{idea_ids: [ctx.second.id, third.id]}, ctx.peer)
+    assert updated.idea_ids == [ctx.second.id, third.id]
+    assert active_members(group) == Enum.sort([ctx.first.id, ctx.second.id, third.id])
+    assert Repo.get_by!(Revision, group_id: group.id, number: 2).idea_ids == active_members(group)
+
+    assert {:ok, _} =
+             Ideation.restore_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.first.id,
+               deleted.revision,
+               deleted.deleted_at
+             )
+
+    assert {:ok, [restored]} = Ideation.list_groups(ctx.peer, ctx.project.id, ctx.session.id)
+    assert restored.idea_ids == Enum.sort([ctx.first.id, ctx.second.id, third.id])
+    assert {:ok, separated} = edit_group(ctx, restored, %{idea_ids: []})
+    assert separated.idea_ids == []
+    assert active_members(group) == []
+  end
+
+  test "moving a synthesis-only group repositions the container without touching notes", ctx do
+    group = create_group_fixture(ctx)
+    assert {:ok, standalone} = edit_group(ctx, group, %{idea_ids: []})
+    move = %{request_key: Ecto.UUID.generate(), x: 900, y: 120, member_versions: []}
+
+    assert {:ok, moved} =
+             Ideation.move_group(ctx.peer, ctx.project.id, ctx.session.id, group.id, standalone.version, move)
+
+    assert moved.canvas == %{"x" => 900, "y" => 120, "width" => 650, "height" => 450}
+    assert moved.idea_ids == []
+    assert {:ok, first} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.first.id)
+    assert first.canvas["x"] == 20
+  end
+
+  test "restoring a deletion after a source note was deleted requires the surviving sources", ctx do
+    group = create_group_fixture(ctx)
+
+    assert {:ok, deleted} =
+             Ideation.delete_group(ctx.author, ctx.project.id, ctx.session.id, group.id, 1, Ecto.UUID.generate())
+
+    assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.first.id, 1)
+    restore = %{request_key: Ecto.UUID.generate(), deleted_at: deleted.deleted_at, idea_ids: group.idea_ids}
+
+    assert {:error, :stale_group} =
+             Ideation.restore_group(ctx.author, ctx.project.id, ctx.session.id, group.id, 2, restore)
+
+    assert {:ok, restored} =
+             Ideation.restore_group(ctx.author, ctx.project.id, ctx.session.id, group.id, 2, %{
+               restore
+               | idea_ids: [ctx.second.id]
+             })
+
+    assert restored.idea_ids == [ctx.second.id]
+    assert Enum.map(restored.members, & &1.source_revision) == [1]
+  end
+
+  test "a session stops at 500 live groups and refuses to read beyond that", ctx do
+    now = %{TimeHelpers.now() | microsecond: {0, 6}}
+
+    row = %{
+      session_id: ctx.session.id,
+      canvas: %{"x" => 0, "y" => 0, "width" => 600, "height" => 400},
+      inserted_at: now,
+      updated_at: now
+    }
+
+    Repo.insert_all(Group, List.duplicate(row, 500))
+
+    assert {:error, :group_limit_reached} =
+             Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs(ctx))
+
+    assert {:ok, groups} = Ideation.list_groups(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert length(groups) == 500
+    Repo.insert_all(Group, [row])
+    assert {:error, :group_limit_reached} = Ideation.list_groups(ctx.viewer, ctx.project.id, ctx.session.id)
   end
 
   test "notifications contain only invalidation and are emitted only after a successful commit", ctx do

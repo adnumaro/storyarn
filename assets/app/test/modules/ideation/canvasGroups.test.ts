@@ -209,22 +209,33 @@ describe("acknowledged group operations", () => {
     expect(history.canUndo.value).toBe(false);
     expect(history.canRedo.value).toBe(true);
   });
-  it("bounds a missing projection wait and retains the request key for retry", async () => {
+  it("treats a late projection as committed, keeps the sync notice and resyncs", async () => {
     vi.useFakeTimers();
-    const { groups, history, requests, error } = setup();
+    const { groups, history, requests, request, error } = setup();
     const first = groups.save(40, { title: "Delayed", synthesis: "" }, 1);
     await nextTick();
     requests[0].resolve({ status: "ok", value: ideaGroup({ title: "Delayed", version: 2 }) });
     await vi.advanceTimersByTimeAsync(12_000);
-    expect(await first).toBe(false);
+    expect(await first).toBe(true);
     expect(history.busy.value).toBe(false);
-    expect(error).toHaveBeenCalledWith("group_sync_pending");
-    const retry = groups.save(40, { title: "Delayed", synthesis: "" }, 1);
+    expect(history.canUndo.value).toBe(true);
+    expect(error).toHaveBeenLastCalledWith("group_sync_pending");
+    expect(request).toHaveBeenCalledWith("sync_board", {});
+    const next = groups.save(40, { title: "Delayed again", synthesis: "" }, 1);
     await nextTick();
     const writes = requests.filter((request) => request.event === "update_group");
-    expect(writes[1].payload.request_key).toBe(writes[0].payload.request_key);
+    expect(writes[1].payload.request_key).not.toBe(writes[0].payload.request_key);
     writes[1].resolve({ status: "error", code: "offline" });
-    await retry;
+    await next;
+  });
+  it("reports a rejected member placement with group copy", async () => {
+    const { groups, requests, error } = setup();
+    const moving = groups.move(40, { x: 50, y: -44 });
+    await flushPromises();
+    expect(requests[0].event).toBe("move_group");
+    requests[0].resolve({ status: "error", code: "stale_canvas" });
+    await moving;
+    expect(error).toHaveBeenCalledWith("stale_group_canvas");
   });
   it("cancels a pending projection wait on navigation and does not add stale history", async () => {
     const { current, groups, history, requests } = setup();

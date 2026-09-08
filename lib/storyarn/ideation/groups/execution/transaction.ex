@@ -63,6 +63,11 @@ defmodule Storyarn.Ideation.Groups.Execution.Transaction do
     end
   end
 
+  # A retried creation is satisfied by the group it already created, even after
+  # later edits by any editor; only its deletion makes the receipt stale.
+  defp replay_current(group, %{operation: "create"}, _attrs),
+    do: if(is_nil(group.deleted_at), do: :ok, else: {:error, :stale_group})
+
   defp replay_current(group, receipt, _attrs) when group.version != receipt.number, do: {:error, :stale_group}
 
   defp replay_current(group, %{operation: "move"}, attrs) do

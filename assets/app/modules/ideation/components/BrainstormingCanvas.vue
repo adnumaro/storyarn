@@ -124,37 +124,36 @@ const noteHeights = ref(new Map<number, number>());
 const groupAnchors = ref(new Map<number, Point>());
 const groupHeights = ref(new Map<number, number>());
 const openSyntheses = ref(new Set<number>());
-const layouts = computed(() =>
-  groups.value.map((group) => {
+const layouts = computed(() => {
+  // Loaded note geometry is shared by every frame; only unseen members differ.
+  const visibleIds = notes.map((note) => note.id);
+  const loaded: MemberGeometry[] = notes.map((note) => ({
+    id: note.id,
+    canvas: { ...note.canvas, ...position(note) },
+    height: noteHeights.value.get(note.id),
+  }));
+  return groups.value.map((group) => {
     const anchor = groupAnchors.value.get(group.id);
     const projected = {
       ...group,
       synthesis: group.synthesis || (openSyntheses.value.has(group.id) ? " " : null),
       canvas: { ...group.canvas, ...anchor },
     };
-    const geometry: MemberGeometry[] = notes.map((note) => ({
-      id: note.id,
-      canvas: { ...note.canvas, ...position(note) },
-      height: noteHeights.value.get(note.id),
-    }));
-    for (const member of group.members)
-      if (!notes.some((note) => note.id === member.idea_id))
-        geometry.push({
-          id: member.idea_id,
-          canvas: member.canvas,
-          height: noteHeights.value.get(member.idea_id),
-        });
-    const frame = groupBounds(projected, geometry, groupHeights.value.get(group.id));
+    const unseen = group.members
+      .filter((member) => !visibleIds.includes(member.idea_id))
+      .map((member) => ({
+        id: member.idea_id,
+        canvas: member.canvas,
+        height: noteHeights.value.get(member.idea_id),
+      }));
+    const geometry = unseen.length ? [...loaded, ...unseen] : loaded;
     return {
       group,
-      visibility: groupVisibility(
-        group,
-        notes.map((note) => note.id),
-      ),
-      bounds: frame,
+      visibility: groupVisibility(group, visibleIds),
+      bounds: groupBounds(projected, geometry, groupHeights.value.get(group.id)),
     };
-  }),
-);
+  });
+});
 let noteObserver: ResizeObserver | undefined;
 function measureNotes() {
   noteObserver?.disconnect();
@@ -305,6 +304,11 @@ function groupPointer(event: PointerEvent, group: IdeaGroup, move: boolean) {
     beginDrag(event, null, []);
     return;
   }
+  if (groupNudge) {
+    // A keyboard movement is still settling; commit it before any pointer work.
+    void flushGroupNudge();
+    return;
+  }
   if (historyState.busy) return;
   selectGroup(group.id);
   focus();
@@ -326,13 +330,7 @@ function beginGroupDrag(event: PointerEvent, group: IdeaGroup) {
     pointer: event.pointerId,
     id: null,
     groupId: group.id,
-    groupVersions: {
-      version: group.version,
-      member_versions: group.members.map((member) => ({
-        id: member.idea_id,
-        version: member.canvas.version ?? 0,
-      })),
-    },
+    groupVersions: groupVersions(group),
     start: { x: event.clientX, y: event.clientY },
     origin: { ...group.canvas },
     notes: notes
@@ -468,17 +466,8 @@ function nudge(event: KeyboardEvent) {
   const step = event.shiftKey ? 20 : 2;
   if (selectedGroupId.value !== null) {
     const group = groups.value.find((group) => group.id === selectedGroupId.value);
-    if (
-      group &&
-      !groupVisibility(
-        group,
-        notes.map((note) => note.id),
-      ).partial
-    )
-      void moveGroup(group.id, {
-        x: group.canvas.x + direction.x * step,
-        y: group.canvas.y + direction.y * step,
-      });
+    const visibleIds = notes.map((note) => note.id);
+    if (group && !groupVisibility(group, visibleIds).partial) nudgeGroup(group, direction, step);
     return;
   }
   emit(
@@ -493,6 +482,66 @@ function nudge(event: KeyboardEvent) {
         };
       }),
   );
+}
+interface GroupNudge {
+  id: number;
+  origin: Point;
+  delta: Point;
+  versions: GroupVersions;
+  notes: Array<{ id: number; origin: Point }>;
+  timer: ReturnType<typeof setTimeout> | undefined;
+}
+const NUDGE_SETTLE_MS = 160;
+let groupNudge: GroupNudge | null = null;
+function groupVersions(group: IdeaGroup): GroupVersions {
+  return {
+    version: group.version,
+    member_versions: group.members.map((member) => ({
+      id: member.idea_id,
+      version: member.canvas.version ?? 0,
+    })),
+  };
+}
+// Consecutive arrow presses become one movement, one write and one history
+// step, moving the frame and its notes immediately like a drag does.
+function nudgeGroup(group: IdeaGroup, direction: Point, step: number) {
+  if (groupNudge && groupNudge.id !== group.id) void flushGroupNudge();
+  groupNudge ??= {
+    id: group.id,
+    origin: { x: group.canvas.x, y: group.canvas.y },
+    delta: { x: 0, y: 0 },
+    versions: groupVersions(group),
+    notes: notes
+      .filter((note) => group.idea_ids.includes(note.id))
+      .map((note) => ({ id: note.id, origin: position(note) })),
+    timer: undefined,
+  };
+  const nudge = groupNudge;
+  clearTimeout(nudge.timer);
+  nudge.delta = { x: nudge.delta.x + direction.x * step, y: nudge.delta.y + direction.y * step };
+  groupAnchors.value.set(nudge.id, {
+    x: nudge.origin.x + nudge.delta.x,
+    y: nudge.origin.y + nudge.delta.y,
+  });
+  for (const note of nudge.notes)
+    positions.value.set(note.id, {
+      x: note.origin.x + nudge.delta.x,
+      y: note.origin.y + nudge.delta.y,
+    });
+  nudge.timer = setTimeout(() => void flushGroupNudge(), NUDGE_SETTLE_MS);
+}
+async function flushGroupNudge() {
+  const nudge = groupNudge;
+  groupNudge = null;
+  if (!nudge) return;
+  clearTimeout(nudge.timer);
+  await moveGroup(
+    nudge.id,
+    { x: nudge.origin.x + nudge.delta.x, y: nudge.origin.y + nudge.delta.y },
+    nudge.versions,
+  );
+  for (const note of nudge.notes) positions.value.delete(note.id);
+  groupAnchors.value.delete(nudge.id);
 }
 function keydown(event: KeyboardEvent) {
   if (event.defaultPrevented) return;
@@ -660,7 +709,11 @@ watch(
     measureNotes();
   },
 );
-onUnmounted(() => noteObserver?.disconnect());
+onUnmounted(() => {
+  noteObserver?.disconnect();
+  clearTimeout(groupNudge?.timer);
+  groupNudge = null;
+});
 </script>
 <template>
   <div

@@ -33,6 +33,17 @@ defmodule Storyarn.Ideation.Recovery.GroupState do
       unique_by?(receipts, &{&1["session_id"], &1["actor_id"], &1["request_key"]})
   end
 
+  # Ordinary writers stop at 500 live groups per session and the board reader
+  # refuses more, so a capsule beyond that would restore an unreadable board.
+  @max_live_groups 500
+
+  def within_limits?(rows) do
+    rows["groups"]
+    |> Enum.filter(&is_nil(&1["deleted_at"]))
+    |> Enum.frequencies_by(& &1["session_id"])
+    |> Enum.all?(fn {_session_id, count} -> count <= @max_live_groups end)
+  end
+
   def consistent?(rows) do
     revisions = Map.new(rows["group_revisions"], &{{&1["group_id"], &1["number"]}, &1})
     memberships = Enum.group_by(rows["group_memberships"], & &1["group_id"])

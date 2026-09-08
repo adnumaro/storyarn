@@ -26,10 +26,12 @@ defmodule Storyarn.Ideation.Groups.Execution.Memberships do
     end
   end
 
-  def replace(group, actor_id, sources, pinned \\ %{}) do
+  def replace(group, actor_id, sources, opts \\ []) do
+    pinned = Keyword.get(opts, :pinned, %{})
     previous = current(group.id)
     ids = Enum.map(sources, & &1.idea_id)
-    removed = for member <- previous, member.idea_id not in ids, do: member.id
+    hidden = if Keyword.get(opts, :retain_hidden, false), do: hidden_ids(group.session_id, previous), else: []
+    removed = for member <- previous, member.idea_id not in ids and member.idea_id not in hidden, do: member.id
 
     Repo.update_all(from(m in Membership, where: m.id in ^removed),
       set: [removed_at: %{TimeHelpers.now() | microsecond: {0, 6}}]
@@ -63,6 +65,13 @@ defmodule Storyarn.Ideation.Groups.Execution.Memberships do
     )
     |> Repo.all()
     |> Map.new()
+  end
+
+  # A deleted note keeps its membership out of sight. Changing the visible
+  # members must not drop it silently, so the note rejoins the group on restore.
+  defp hidden_ids(session_id, members) do
+    ids = Enum.map(members, & &1.idea_id)
+    ids -- Enum.map(Ideas.group_sources(session_id, ids), & &1.idea_id)
   end
 
   def remove(group_id) do

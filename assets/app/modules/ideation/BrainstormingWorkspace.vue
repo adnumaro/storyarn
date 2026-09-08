@@ -129,20 +129,21 @@ const groups = useCanvasGroups(
     return true;
   },
 );
+function groupingProblem(ids: number[], sources: ReturnType<typeof selectedNotes>) {
+  if (sources.some((note) => groups.groups.value.some((group) => group.idea_ids.includes(note.id))))
+    return "already_grouped";
+  const shared = sources.every((note) => note.id > 0 && note.visibility === "shared");
+  return sources.length >= 2 && sources.length === ids.length && shared ? null : "invalid_group";
+}
 async function createGroup(ids = selectedIds.value) {
   if (!groups.allowed.value || history.busy.value) return;
   const sources = selectedNotes(ids);
-  if (
-    sources.length < 2 ||
-    sources.length !== ids.length ||
-    sources.some(
-      (note) =>
-        note.id < 0 ||
-        note.visibility !== "shared" ||
-        groups.groups.value.some((group) => group.idea_ids.includes(note.id)),
-    )
-  )
+  const problem = groupingProblem(ids, sources);
+  if (problem) {
+    // The toolbar disables its button; the keyboard shortcut still needs an answer.
+    if (ids.length) failure.value = problem;
     return;
+  }
   finish();
   const x = Math.min(...sources.map((note) => notePosition(note).x)) - 28;
   const y = Math.min(...sources.map((note) => notePosition(note).y)) - 64;

@@ -9,6 +9,7 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
   alias Storyarn.Ideation.Groups.Membership
   alias Storyarn.Ideation.Groups.Revision
   alias Storyarn.Ideation.Recovery.Capsule
+  alias Storyarn.Ideation.Recovery.GraphValidation
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Platform.Vault
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
@@ -228,6 +229,41 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
     assert {:ok, [group]} = Ideation.list_groups(ctx.owner, ctx.project.id, ctx.session.id)
     assert group.id == ctx.group.id
   end
+
+  test "a session capsule stops at 500 live groups", ctx do
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+    [group] = data["rows"]["groups"]
+    [revision] = data["rows"]["group_revisions"]
+
+    padded = fn count ->
+      groups = for i <- 1..count, do: %{group | "id" => 900_000 + i, "recovery_identity" => identity()}
+
+      revisions =
+        for i <- 1..count do
+          %{
+            revision
+            | "id" => 900_000 + i,
+              "group_id" => 900_000 + i,
+              "recovery_identity" => identity(),
+              "request_key" => identity(),
+              "idea_ids" => [],
+              "sources" => %{}
+          }
+        end
+
+      data
+      |> update_in(["rows", "groups"], &(&1 ++ groups))
+      |> update_in(["rows", "group_revisions"], &(&1 ++ revisions))
+    end
+
+    assert GraphValidation.valid?(padded.(499)["rows"])
+    refute GraphValidation.valid?(padded.(500)["rows"])
+    assert {:error, :invalid_ideation_recovery} = restore_result(ctx, authenticate(padded.(500)))
+    assert {:ok, [only]} = Ideation.list_groups(ctx.owner, ctx.project.id, ctx.session.id)
+    assert only.id == ctx.group.id
+  end
+
+  defp identity, do: Base.encode64(:crypto.strong_rand_bytes(16))
 
   defp group_attrs(ids) do
     %{

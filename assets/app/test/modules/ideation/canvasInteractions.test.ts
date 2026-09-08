@@ -364,6 +364,34 @@ describe("canvas keyboard and selection", () => {
     expect(wrapper.emitted("remove")).toBeUndefined();
     expect(wrapper.find("#group-delete-40").exists()).toBe(true);
   });
+  it("merges consecutive arrow presses on a group into one movement", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowRight");
+    key(wrapper, "ArrowRight", { shiftKey: true });
+    key(wrapper, "ArrowDown");
+    await nextTick();
+    expect(move).not.toHaveBeenCalled();
+    expect(wrapper.get("#canvas-group-40").attributes("style")).toContain("translate(4px, -42px)");
+    await vi.advanceTimersByTimeAsync(200);
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledWith(
+      40,
+      { x: 4, y: -42 },
+      {
+        version: 1,
+        member_versions: [
+          { id: 10, version: 1 },
+          { id: 11, version: 1 },
+        ],
+      },
+    );
+    vi.useRealTimers();
+  });
   it("does not drag, nudge or ungroup unseen members through a filter", async () => {
     const move = vi.fn();
     const wrapper = canvas({

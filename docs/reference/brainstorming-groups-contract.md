@@ -31,10 +31,15 @@ active. Read access follows current project membership; writes additionally
 require editing access and an open session. Closing new contributions alone
 does not disable organizing existing material.
 
-Membership pins the source's published revision at the time it joins. Group
-revision records retain the actor, title, synthesis and source references.
-Removing or deleting a source does not erase its internal provenance. Current
-canvas projections omit deleted notes and never include private source text.
+Membership pins the source's published revision when the note first joins. A
+note that rejoins the same group, through undo or a deliberate re-add, keeps the
+most recent pin retained for that group even if the note has newer revisions.
+Group revision records retain the actor, title, synthesis and source
+references. Removing or deleting a source does not erase its internal
+provenance. A deleted note keeps its membership while the group's visible
+members change, so restoring the note returns it to its group; separating a
+group removes every membership. Current canvas projections omit deleted notes
+and never include private source text.
 There is no public API to browse group revision records.
 
 ## Concurrency and collaboration
@@ -56,6 +61,10 @@ refresh remounts the canvas at the same session/epoch and drops selection,
 drafts and local undo. The adapter is checked against the upstream source hash,
 applies in development, production and Vitest, and must be reviewed or removed
 when upgrading LiveVue. It does not modify the installed dependency on disk.
+Its effect is application-wide: every `v-inject` component in every layout keeps
+its client state when the layout re-renders, not only the brainstorming canvas.
+A retried creation is answered by the group it already created for as long as
+that group exists.
 
 The participant's existing ephemeral canvas history owns undo/redo. An inverse
 operation must pass current authorization, group version and member placement

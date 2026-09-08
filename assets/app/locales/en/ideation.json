@@ -80,7 +80,7 @@
       "stale_reveal": "The selected revisions are no longer eligible. Close this dialog and review a new selection.",
       "session_creation_unknown": "The connection was interrupted while creating the session. Check the session list and reload before creating another.",
       "invalid_canvas": "This canvas position is invalid.",
-      "stale_canvas": "Some notes moved elsewhere. Refresh and try moving the group again.",
+      "stale_canvas": "Someone else moved this note. Its position has been refreshed.",
       "save_before_connect": "Write something and let the note save before connecting it.",
       "session_private": "The facilitator controls this session’s reveal.",
       "stale_deletion": "This deletion has changed. Refresh the board before trying again.",
@@ -110,7 +110,11 @@
       "already_grouped": "A selected note already belongs to a group. Remove it from that group first.",
       "private_mode": "Groups are available when private mode is off.",
       "invalid_group": "Choose at least two shared notes to create a group.",
-      "group_sync_pending": "The group save is taking longer than expected. Your draft is kept. Refresh or try again."
+      "group_sync_pending": "The group save is taking longer than expected. Your draft is kept. Refresh or try again.",
+      "stale_group_canvas": "Some notes moved elsewhere. Refresh and try moving the group again.",
+      "invalid_group_members": "Some selected notes are no longer shared or available. Refresh and choose the notes again.",
+      "group_limit_reached": "This session has reached the maximum number of groups. Delete a group before creating another.",
+      "idempotency_conflict": "This request was already used for a different change. Refresh and try again."
     },
     "saveStatus": {
       "saved": "Saved",
