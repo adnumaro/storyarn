@@ -60,6 +60,14 @@ describe("canvas note native undo", () => {
     expect(editor.commands.undo()).toBe(true);
     expect(editor.getHTML()).toBe("<p>Start</p>");
   });
+  it("toggling edit mode reports no change and records no undo step", async () => {
+    const { wrapper, editor } = await note();
+    expect(editor.can().undo()).toBe(false);
+    await wrapper.setProps({ editing: false });
+    await wrapper.setProps({ editing: true });
+    expect(wrapper.emitted("change")).toBeUndefined();
+    expect(editor.can().undo()).toBe(false);
+  });
   it("does not make an incoming server document into an undoable local edit", async () => {
     const { wrapper, editor } = await note();
     expect(editor.can().undo()).toBe(false);

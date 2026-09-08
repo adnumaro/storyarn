@@ -62,7 +62,9 @@ async function focus() {
 watch(
   () => editing,
   (value) => {
-    editor.value?.setEditable(value);
+    // TipTap emits `update` from setEditable by default, which would report a
+    // phantom change (autosave + undo entry) on every open/close.
+    editor.value?.setEditable(value, false);
     if (value) void focus();
   },
 );

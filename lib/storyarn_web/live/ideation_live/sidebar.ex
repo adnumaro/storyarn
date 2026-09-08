@@ -87,6 +87,9 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
     {:noreply, push_event(socket, "brainstorming_reset", %{reason: "project_restored", epoch: socket.assigns.epoch})}
   end
 
+  def handle_info({:open_created_session, id}, socket),
+    do: {:noreply, push_navigate(socket, to: "#{socket.assigns.base_url}/#{id}")}
+
   def handle_info(_, socket), do: {:noreply, socket}
 
   defp write(socket, event, params) do
@@ -105,8 +108,13 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
 
   defp session_params(_, params), do: params
 
-  defp navigate_created(socket, "create_session", {:ok, %{id: id}}),
-    do: push_navigate(socket, to: "#{socket.assigns.base_url}/#{id}")
+  # A sticky child cannot reply and navigate in the same event: LiveView replaces
+  # the reply with the redirect and the client resolves `null`, leaving the
+  # sidebar pending forever. Acknowledge first; the navigation follows.
+  defp navigate_created(socket, "create_session", {:ok, %{id: id}}) do
+    send(self(), {:open_created_session, id})
+    socket
+  end
 
   defp navigate_created(socket, _, _), do: socket
 

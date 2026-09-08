@@ -26,7 +26,8 @@ export function useBoardConnection(board: () => Board, reset: (reason: string) =
             return;
           }
           online.value = true;
-          resolve(raw as unknown as Reply<T>);
+          // LiveView resolves a push that carried no reply (e.g. a redirect) as null.
+          resolve((raw ?? { status: "error", code: "unavailable" }) as unknown as Reply<T>);
         },
         () => {
           online.value = false;

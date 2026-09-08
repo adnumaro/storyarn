@@ -26,6 +26,7 @@ import { useCanvasNotes, type RemovedNote } from "./composables/useCanvasNotes";
 import { useCanvasHistory, type CanvasCommand } from "./composables/useCanvasHistory";
 import { readNotes, writeNotes, type NoteCopy } from "./lib/clipboard";
 import { useBoardText } from "./composables/useBoardText";
+import { sameBody } from "./lib/paste";
 import { notePosition } from "./lib/placement";
 import type { Point } from "./composables/useCanvasViewport";
 import type { Board, Idea, IdeaContent, CanvasPlacement } from "./types";
@@ -104,7 +105,7 @@ function finish() {
     before &&
     before.revision > 0 &&
     after &&
-    before.body !== after.body &&
+    !sameBody(before.body, after.body) &&
     after.body.replace(/<[^>]*>/g, "").trim()
   ) {
     history.push(contentCommand(id, { body: before.body }, { body: after.body }));
@@ -159,7 +160,11 @@ function contentCommand(
     const note = notes.find(id);
     if (
       !note ||
-      Object.entries(expected).some(([key, value]) => note[key as keyof IdeaContent] !== value)
+      Object.entries(expected).some(([key, value]) =>
+        key === "body"
+          ? !sameBody(note.body, String(value))
+          : note[key as keyof IdeaContent] !== value,
+      )
     )
       return false;
     notes.open(note);

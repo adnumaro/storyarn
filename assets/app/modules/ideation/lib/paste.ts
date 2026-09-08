@@ -35,3 +35,10 @@ export function pasteContent(html: string): string {
   }
   return template.innerHTML;
 }
+
+/** The server re-serializes bodies (`"` → `&quot;`, `<br>` → `<br/>`, `&nbsp;` →
+ * U+00A0), so raw strings differ while the document is identical. Compare
+ * through the browser's own serialization instead. */
+export function sameBody(a: string, b: string): boolean {
+  return a === b || pasteContent(a) === pasteContent(b);
+}

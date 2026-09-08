@@ -246,6 +246,17 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert {:noreply, ^next} = Board.handle_async({:board, make_ref()}, {:ok, {:ok, %{}}}, next)
   end
 
+  test "creating a session from the sidebar acknowledges the request before navigating", ctx do
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx))
+    sidebar = find_live_child(view, "sidebar-brainstorming-#{ctx.project.id}")
+    epoch = LiveVue.Test.get_vue(sidebar, name: "live/ideation/BoardSidebar").props["board"]["epoch"]
+    render_hook(sidebar, "create_session", %{epoch: epoch, session_id: nil})
+    assert_reply(sidebar, %{status: "ok", value: %{id: id}})
+    # The sticky child navigates the whole page, which the test proxy reports on the root view.
+    assert_redirect(view, board_path(ctx, id))
+    assert {:ok, %{title: "Untitled session"}} = Ideation.get_session(ctx.author, ctx.project.id, id)
+  end
+
   defp board_path(ctx, id \\ nil) do
     base = ~p"/workspaces/#{ctx.project.workspace.slug}/projects/#{ctx.project.slug}/brainstorming"
     if id, do: "#{base}/#{id}", else: base

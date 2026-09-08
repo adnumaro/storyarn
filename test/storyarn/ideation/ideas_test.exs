@@ -102,6 +102,19 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert idea.body == "<p>Safe <b>text</b></p>"
   end
 
+  test "keeps the space between adjacent inline marks and normalizes it idempotently", ctx do
+    idea = idea_fixture(ctx, %{body: "<p><strong>bold</strong> <em>and</em>\t\t<u>more</u> plain\uE000</p>"})
+    assert idea.body == "<p><strong>bold</strong> <em>and</em> <u>more</u> plain</p>"
+
+    assert {:ok, %{revision: 1}} =
+             Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, 1, edit_attrs(%{body: idea.body}))
+
+    for body <- ["<p> </p>", "<p>\t</p>", "<p><strong> </strong></p>"] do
+      assert {:error, %Ecto.Changeset{valid?: false}} =
+               Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{body: body}))
+    end
+  end
+
   test "updates preserve immutable revisions and reject blank input on existing content", ctx do
     idea = idea_fixture(ctx)
 

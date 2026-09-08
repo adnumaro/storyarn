@@ -6,6 +6,10 @@ defmodule Storyarn.Ideation.Ideas.Rules.Content do
 
   @tags ~w(p br em strong b i u s span ul ol li blockquote code pre sub sup del h2 h3)
   @max_bytes 64_000
+  # The mochiweb tokenizer behind Floki and HtmlSanitizer drops whitespace-only
+  # text nodes, so "<strong>a</strong> <em>b</em>" would be stored as "ab".
+  # A private-use character survives both parsers and is restored in the tree.
+  @inline_space "\uE000"
 
   def validate_title(changeset) do
     case fetch_change(changeset, :title) do
@@ -34,13 +38,31 @@ defmodule Storyarn.Ideation.Ideas.Rules.Content do
 
   defp normalize_body(changeset, body) do
     with true <- String.valid?(body),
-         {:ok, tree} <- Floki.parse_fragment(HtmlSanitizer.sanitize_html(body)),
+         {:ok, parsed} <- Floki.parse_fragment(HtmlSanitizer.sanitize_html(protect_inline_spaces(body))),
+         tree = restore_inline_spaces(parsed),
          true <- supported?(tree, 0),
          false <- tree |> Floki.text() |> String.replace("\u00a0", " ") |> String.trim() == "" do
       put_change(changeset, :body, tree |> strip_attributes() |> Floki.raw_html())
     else
       _ -> add_error(changeset, :body, "must contain text with supported formatting and no attachments")
     end
+  end
+
+  # Input never legitimately contains the private-use marker; drop it so it
+  # cannot forge a separator. Only spaces/tabs between tags are protected: a
+  # newline between blocks carries no text and keeps being discarded.
+  defp protect_inline_spaces(body) do
+    body
+    |> String.replace(@inline_space, "")
+    |> String.replace(~r/>[ \t]+</, ">#{@inline_space}<")
+  end
+
+  defp restore_inline_spaces(nodes) do
+    Enum.map(nodes, fn
+      {tag, attrs, children} -> {tag, attrs, restore_inline_spaces(children)}
+      text when is_binary(text) -> String.replace(text, @inline_space, " ")
+      other -> other
+    end)
   end
 
   defp supported?(_nodes, depth) when depth > 16, do: false

@@ -50,7 +50,7 @@ watch(
 );
 watch(
   () => readonly,
-  (next) => editor.value?.setEditable(!next),
+  (next) => editor.value?.setEditable(!next, false),
 );
 </script>
 
