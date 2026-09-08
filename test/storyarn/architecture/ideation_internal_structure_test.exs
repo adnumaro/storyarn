@@ -33,6 +33,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
     assert Path.wildcard("#{@root}/sessions/entities/*.ex") == [
              "#{@root}/sessions/entities/configuration.ex",
              "#{@root}/sessions/entities/revision.ex",
+             "#{@root}/sessions/entities/round.ex",
              "#{@root}/sessions/entities/session.ex"
            ]
   end
@@ -96,6 +97,11 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       archive_session: 4,
       assign_session_responsibilities: 5,
       create_session: 3,
+      create_round: 5,
+      start_round: 5,
+      close_round: 5,
+      list_rounds: 3,
+      list_rounds: 4,
       get_session: 3,
       list_session_revisions: 3,
       list_session_revisions: 4,
@@ -115,6 +121,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       delete_idea: 5,
       restore_idea: 6,
       count_ideas: 3,
+      count_ideas: 4,
       create_idea: 4,
       get_idea: 4,
       get_idea_reveal: 4,
@@ -141,7 +148,14 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
     assert Storyarn.Ideation.Sessions.__info__(:functions) ==
              Enum.sort(
                expected ++
-                 [lock_for_contribution: 3, set_canvas_mode_locked: 3, notify_canvas_mode: 2, canvas_settings_query: 0]
+                 [
+                   lock_for_contribution: 3,
+                   set_canvas_mode_locked: 3,
+                   notify_canvas_mode: 2,
+                   canvas_settings_query: 0,
+                   select_contribution_round: 2,
+                   validate_round_filter: 2
+                 ]
              )
   end
 
@@ -149,6 +163,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
     schemas = %{
       "sessions" => Storyarn.Ideation.Sessions.Session,
       "session_revisions" => Storyarn.Ideation.Sessions.Revision,
+      "rounds" => Storyarn.Ideation.Sessions.Round,
       "ideas" => Storyarn.Ideation.Ideas.Idea,
       "revisions" => Storyarn.Ideation.Ideas.Revision,
       "edits" => Storyarn.Ideation.Ideas.Edit,

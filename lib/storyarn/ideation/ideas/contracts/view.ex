@@ -10,6 +10,8 @@ defmodule Storyarn.Ideation.Ideas.View do
       canvas: idea.canvas |> Map.delete("request_key") |> Map.put("links", visible_links),
       id: idea.id,
       session_id: idea.session_id,
+      round_id: idea.round_id,
+      late_contribution: idea.late_contribution,
       author_id: idea.author_id,
       author_kind: idea.author_kind,
       title: revision.title,

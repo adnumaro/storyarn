@@ -21,6 +21,7 @@ import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
 import SessionDialog from "./components/SessionDialog.vue";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
+import RoundFilter from "./components/RoundFilter.vue";
 import { useBoardConnection } from "./composables/useBoardConnection";
 import { useCanvasNotes, type RemovedNote } from "./composables/useCanvasNotes";
 import { useCanvasHistory, type CanvasCommand } from "./composables/useCanvasHistory";
@@ -29,7 +30,13 @@ import { useBoardText } from "./composables/useBoardText";
 import { sameBody } from "./lib/paste";
 import { notePosition } from "./lib/placement";
 import type { Point } from "./composables/useCanvasViewport";
-import type { Board, Idea, IdeaContent, CanvasPlacement } from "./types";
+import type {
+  Board,
+  Idea,
+  IdeaContent,
+  CanvasPlacement,
+  RoundFilter as RoundSelection,
+} from "./types";
 const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
 const { t, error, options, member } = useBoardText();
 const selectedIds = ref<number[]>([]);
@@ -41,6 +48,17 @@ const failure = ref<string | null>(null),
   resetNotice = ref(false),
   starting = ref(false);
 const state = ref("active");
+const roundFilter = ref<RoundSelection>(board.round_filter);
+const filteringRound = ref(false);
+const requestedRoundBefore = ref<number | null | undefined>(undefined);
+let oldestLoadedIdeaId: number | null = null;
+let filterGeneration = 0;
+let cancelHistoryPreparation: (() => void) | undefined;
+const rounds = computed(() => {
+  const entries = new Map(board.rounds.map((round) => [round.id, round]));
+  if (board.active_round) entries.set(board.active_round.id, board.active_round);
+  return [...entries.values()].sort((a, b) => b.number - a.number);
+});
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
 const notes = useCanvasNotes(
@@ -59,7 +77,16 @@ const draft = computed(() =>
   selected.value !== null ? notes.drafts.drafts.get(selected.value) : undefined,
 );
 const visible = computed(() =>
-  notes.notes.value.filter((n) => state.value === "all" || n.state === state.value),
+  notes.notes.value
+    .filter(
+      (n) =>
+        (state.value === "all" || n.state === state.value) &&
+        (roundFilter.value === "all" || n.round_id === roundFilter.value),
+    )
+    .map((note) => ({
+      ...note,
+      round_number: rounds.value.find((round) => round.id === note.round_id)?.number,
+    })),
 );
 const statuses = computed(() =>
   Object.fromEntries([...notes.drafts.drafts.values()].map((d) => [d.idea.id, d.status])),
@@ -77,10 +104,18 @@ const history = useCanvasHistory(
     failure.value = online.value ? "undo_unavailable" : "offline";
   },
   () => !online.value,
+  prepareHistory,
 );
 let editingBefore: Idea | undefined;
 let headerEvent: number | undefined;
 function reset(reason: string) {
+  oldestLoadedIdeaId = null;
+  rememberLoadedIdeas();
+  cancelHistoryPreparation?.();
+  filterGeneration++;
+  filteringRound.value = false;
+  requestedRoundBefore.value = undefined;
+  roundFilter.value = board.round_filter;
   notes.reset(reason !== "access_changed");
   selectedIds.value = [];
   editing.value = null;
@@ -178,9 +213,94 @@ function contentCommand(
   }
   return { undo: () => apply(after, before), redo: () => apply(before, after) };
 }
+async function filterRound(value: RoundSelection, keepLocalView = false, beforeId?: number | null) {
+  finish();
+  failure.value = null;
+  const started = ++filterGeneration;
+  roundFilter.value = value;
+  requestedRoundBefore.value = beforeId;
+  filteringRound.value = true;
+  const reply = await request("filter_round", {
+    round_id: value,
+    ...(beforeId === undefined ? {} : { before_id: beforeId }),
+  });
+  if (started !== filterGeneration) return;
+  if (reply.status !== "ok") {
+    filteringRound.value = false;
+    if (!keepLocalView) roundFilter.value = board.round_filter;
+    failure.value = reply.status === "error" ? reply.code : "unavailable";
+  } else if (roundFilterReady()) filteringRound.value = false;
+}
+function roundFilterReady() {
+  return (
+    board.round_filter === roundFilter.value &&
+    (requestedRoundBefore.value === undefined || board.idea_before === requestedRoundBefore.value)
+  );
+}
+function historyRangeLoaded() {
+  if (oldestLoadedIdeaId === null || board.ideas_next === null) return true;
+  if (board.idea_before !== null && board.idea_before <= oldestLoadedIdeaId) return true;
+  return board.ideas.some((idea) => idea.id <= oldestLoadedIdeaId!);
+}
+function prepareHistory(): Promise<boolean> {
+  if (
+    roundFilter.value === "all" &&
+    board.round_filter === "all" &&
+    !filteringRound.value &&
+    !board.loading &&
+    historyRangeLoaded()
+  )
+    return Promise.resolve(true);
+  const at = context();
+  const expected = filterGeneration + 1;
+  return new Promise((resolve) => {
+    const complete = (ready: boolean) => {
+      stop();
+      cancelHistoryPreparation = undefined;
+      resolve(ready);
+    };
+    const check = () => {
+      const latest = context();
+      const valid =
+        expected === filterGeneration &&
+        at.epoch === latest.epoch &&
+        at.session_id === latest.session_id;
+      if (!valid || !online.value || failure.value || board.error) complete(false);
+      else if (roundFilterReady() && !board.loading && !filteringRound.value) complete(true);
+    };
+    const stop = watch(
+      () => [
+        board.round_filter,
+        board.idea_before,
+        board.loading,
+        filteringRound.value,
+        roundFilter.value,
+        board.error,
+        board.epoch,
+        board.session?.id,
+        failure.value,
+        online.value,
+      ],
+      check,
+      { flush: "post" },
+    );
+    cancelHistoryPreparation = () => complete(false);
+    void filterRound("all", true, oldestLoadedIdeaId);
+    check();
+  });
+}
+function refresh() {
+  failure.value = null;
+  if (roundFilter.value !== board.round_filter) void filterRound(roundFilter.value, true);
+  else sync();
+}
+function showNewContributions() {
+  if (roundFilter.value !== "all") void filterRound("all", true);
+}
 function add(point: Point) {
   if (!writable.value || history.busy.value) return;
   finish();
+  showNewContributions();
   const id = notes.add(point, current.value?.canvas?.color);
   history.push(presenceCommand(id, true));
   selectedIds.value = [id];
@@ -328,6 +448,7 @@ function cut(event: ClipboardEvent, ids: number[]) {
 async function insert(copies: NoteCopy[], point: Point) {
   if (!writable.value || history.busy.value || !copies.length) return;
   finish();
+  showNewContributions();
   const at = context();
   const valid = () => at.epoch === board.epoch && at.session_id === board.session?.id;
   const minX = Math.min(...copies.map((note) => note.canvas.x ?? 0));
@@ -415,6 +536,9 @@ watch(
     reset("navigation");
     state.value = "active";
     list.value = false;
+    filterGeneration++;
+    roundFilter.value = board.round_filter;
+    filteringRound.value = false;
   },
   { immediate: true },
 );
@@ -425,6 +549,7 @@ watch(
       editing.value = null;
       editingBefore = undefined;
       settings.value = false;
+      cancelHistoryPreparation?.();
       history.clear();
       selectedIds.value = selectedIds.value.filter((id) => notes.find(id));
     }
@@ -433,10 +558,28 @@ watch(
 watch(
   () => board.session?.configuration.private_mode,
   () => {
+    cancelHistoryPreparation?.();
     history.clear();
     if (current.value && current.value.author_id !== board.current_user_id) select(null);
   },
 );
+function rememberLoadedIdeas() {
+  for (const idea of board.ideas) {
+    if (oldestLoadedIdeaId === null || idea.id < oldestLoadedIdeaId) oldestLoadedIdeaId = idea.id;
+  }
+}
+watch(() => board.ideas, rememberLoadedIdeas, { immediate: true });
+watch([() => board.round_filter, () => board.idea_before], ([value]) => {
+  if (!filteringRound.value || roundFilterReady()) {
+    roundFilter.value = value;
+    filteringRound.value = false;
+  }
+});
+watch(visible, (notes) => {
+  const ids = new Set(notes.map((note) => note.id));
+  const next = selectedIds.value.filter((id) => ids.has(id));
+  if (next.length !== selectedIds.value.length) select(next);
+});
 const live = useLive();
 onMounted(() => {
   headerEvent = live.handleEvent("board_action", (payload) => {
@@ -445,6 +588,7 @@ onMounted(() => {
   });
 });
 onUnmounted(() => {
+  cancelHistoryPreparation?.();
   if (headerEvent !== undefined) live.removeHandleEvent(headerEvent);
 });
 </script>
@@ -461,15 +605,7 @@ onUnmounted(() => {
       class="z-40 flex items-center justify-between gap-3 border-b bg-destructive/10 px-4 py-2 text-xs"
     >
       <span>{{ error(board.error || failure || "offline") }}</span
-      ><Button
-        variant="ghost"
-        size="sm"
-        @click="
-          failure = null;
-          sync();
-        "
-        >{{ t("ideation.refresh") }}</Button
-      >
+      ><Button variant="ghost" size="sm" @click="refresh">{{ t("ideation.refresh") }}</Button>
     </div>
     <details
       v-if="resetNotice && notes.drafts.recovered.value.length"
@@ -555,6 +691,13 @@ onUnmounted(() => {
         @list="list = true"
       >
         <template #session>
+          <RoundFilter
+            v-if="rounds.length && !list"
+            :rounds="rounds"
+            :value="roundFilter"
+            :pending="filteringRound"
+            @change="filterRound"
+          />
           <Popover
             ><PopoverTrigger class="toolbar-btn gap-2">{{ t(`ideation.${state}`) }}</PopoverTrigger
             ><PopoverContent class="w-56 p-3"
@@ -691,6 +834,12 @@ onUnmounted(() => {
               v-model="state"
               :label="t('ideation.state')"
               :options="options(['active', 'parked', 'discarded', 'all'])"
+            /><RoundFilter
+              v-if="rounds.length"
+              :rounds="rounds"
+              :value="roundFilter"
+              :pending="filteringRound"
+              @change="filterRound"
             /><Button
               v-if="writable"
               size="sm"
@@ -716,6 +865,17 @@ onUnmounted(() => {
                 <p class="mt-2 text-xs text-muted-foreground">
                   {{ member(note.author_id, board.members) }} ·
                   {{ t(`ideation.${note.state}`) }}
+                  <span v-if="note.round_id">
+                    ·
+                    {{
+                      rounds.find((round) => round.id === note.round_id)
+                        ? t("ideation.rounds.number", {
+                            number: rounds.find((round) => round.id === note.round_id)!.number,
+                          })
+                        : t("ideation.rounds.assigned")
+                    }}</span
+                  >
+                  <span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span>
                 </p>
               </div>
             </button>

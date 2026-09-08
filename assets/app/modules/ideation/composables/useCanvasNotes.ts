@@ -36,6 +36,7 @@ export function useCanvasNotes(
   context: () => BoardContext,
   replaceSelection: (from: number, to: number) => void,
 ) {
+  const activeRoundId = computed(() => board().active_round?.id ?? null);
   const canWrite = () => board().can_edit && board().session?.status === "open";
   const drafts = useIdeaDrafts(request, context, canWrite);
   const newNotes = reactive(new Map<number, NewNote>());
@@ -81,6 +82,7 @@ export function useCanvasNotes(
     point: CanvasPlacement & Point,
     color = "yellow",
     seed?: Partial<IdeaContent>,
+    roundId: number | null = activeRoundId.value,
   ): number {
     const id = nextId--;
     const initial: Partial<IdeaContent> = seed ?? {
@@ -89,6 +91,8 @@ export function useCanvasNotes(
     };
     const idea: Idea = {
       id,
+      round_id: roundId,
+      late_contribution: false,
       session_id: board().session!.id,
       author_id: board().current_user_id,
       author_kind: "human",
@@ -142,6 +146,7 @@ export function useCanvasNotes(
       "create_idea",
       {
         request_key: entry.key,
+        round_id: snapshot.round_id,
         title: snapshot.title,
         body: snapshot.body,
         configuration_version: entry.version,
@@ -330,6 +335,7 @@ export function useCanvasNotes(
       { x: previous.canvas?.x ?? 0, y: previous.canvas?.y ?? 0, ...previous.canvas },
       previous.canvas?.color,
       previous,
+      previous.round_id,
     );
     aliases.set(deletion.id, id);
     return id;

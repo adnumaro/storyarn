@@ -22,7 +22,7 @@ import CanvasCursors from "./CanvasCursors.vue";
 import { useCanvasViewport, type Point } from "../composables/useCanvasViewport";
 import { useBoardText } from "../composables/useBoardText";
 import { notePosition } from "../lib/placement";
-import type { BoardContext, Idea, Member } from "../types";
+import type { BoardContext, CanvasIdea, Idea, Member } from "../types";
 interface HistoryState {
   canUndo: boolean;
   canRedo: boolean;
@@ -40,7 +40,7 @@ const {
   context,
   historyState,
 } = defineProps<{
-  notes: Idea[];
+  notes: CanvasIdea[];
   selectedIds: number[];
   noteKey: (id: number) => string;
   historyState: HistoryState;
@@ -459,6 +459,7 @@ onMounted(async () => {
       >
         <CanvasNote
           :note="note"
+          :round-number="note.round_number"
           :body="note.body"
           :editing="editingId === note.id"
           :selected="selectedIds.includes(note.id)"

@@ -3,7 +3,7 @@ import { nextTick, ref } from "vue";
 import { withSetup } from "../../setup";
 import { useCanvasNotes } from "@modules/ideation/composables/useCanvasNotes";
 import type { Reply, Request } from "@modules/ideation/types";
-import { idea, board } from "./fixtures";
+import { idea, board, round } from "./fixtures";
 
 function setup() {
   vi.useFakeTimers();
@@ -334,6 +334,82 @@ describe("canvas acknowledged undo primitives", () => {
     result.reset();
     expect(result.drafts.recovered.value).toEqual([]);
     expect(result.newNotes.size).toBe(0);
+    app.unmount();
+  });
+});
+
+describe("round contribution provenance", () => {
+  it("keeps the round where writing began when the first save happens after another round starts", async () => {
+    const { result, app, current, request, replies } = setup();
+    current.value = { ...current.value, active_round: round() };
+    const local = result.add({ x: 10, y: 20 });
+    result.change(local, "<p>Started in round one</p>");
+    current.value = { ...current.value, active_round: round({ id: 21, number: 2 }) };
+    const saving = result.save(local);
+    expect(request.mock.calls[0][1]).toMatchObject({ round_id: 20 });
+    replies[0]({ status: "ok", value: idea({ id: 44, round_id: 20, late_contribution: true }) });
+    await saving;
+    expect(result.find(local)).toMatchObject({ round_id: 20, late_contribution: true });
+    app.unmount();
+  });
+
+  it("retries uncertain creation with the same round and content after the active round changes", async () => {
+    const { result, app, current, request, replies } = setup();
+    current.value = { ...current.value, active_round: round() };
+    const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Initial</p>" });
+    const saving = result.save(local);
+    replies[0]({ status: "error", code: "offline" });
+    await saving;
+    current.value = { ...current.value, active_round: round({ id: 21, number: 2 }) };
+    result.change(local, "<p>More text</p>");
+    const retry = result.save(local);
+    expect(request.mock.calls[1]).toEqual(request.mock.calls[0]);
+    expect(request.mock.calls[1][1]).toMatchObject({ round_id: 20, body: "<p>Initial</p>" });
+    replies[1]({ status: "ok", value: idea({ id: 44, body: "<p>Initial</p>", round_id: 20 }) });
+    await retry;
+    expect(result.find(local)).toMatchObject({ body: "<p>More text</p>", round_id: 20 });
+    app.unmount();
+  });
+
+  it("keeps notes begun without a round unassigned when a round starts before autosave", async () => {
+    const { result, app, current, request, replies } = setup();
+    const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Open exploration</p>" });
+    current.value = { ...current.value, active_round: round() };
+    const saving = result.save(local);
+    expect(request.mock.calls[0][1]).toMatchObject({ round_id: null });
+    replies[0]({ status: "ok", value: idea({ id: 44 }) });
+    await saving;
+    app.unmount();
+  });
+
+  it("restores a locally deleted note to its original round while a copy starts in the current round", async () => {
+    const { result, app, current } = setup();
+    current.value = { ...current.value, active_round: round() };
+    const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Keep provenance</p>" });
+    const deletion = await result.remove(local);
+    current.value = { ...current.value, active_round: round({ id: 21, number: 2 }) };
+    const restored = await result.restore(deletion!);
+    expect(result.find(restored!)?.round_id).toBe(20);
+    const copy = result.add({ x: 40, y: 50 }, "mint", deletion!.idea);
+    expect(result.find(copy)?.round_id).toBe(21);
+    app.unmount();
+  });
+
+  it("preserves unsaved text and unfinished notes while filtering through previous rounds", async () => {
+    const { result, app, current } = setup();
+    result.open(result.find(10)!);
+    result.change(10, "<p>Draft kept</p>");
+    const local = result.add({ x: 40, y: 50 }, "mint", { body: "<p>Unsubmitted note</p>" });
+    current.value = { ...current.value, ideas: [], round_filter: 20, active_round: round() };
+    await nextTick();
+    expect(result.drafts.drafts.get(10)?.content.body).toBe("<p>Draft kept</p>");
+    expect(result.newNotes.get(local)?.idea).toMatchObject({
+      body: "<p>Unsubmitted note</p>",
+      round_id: null,
+    });
+    current.value = { ...current.value, ideas: [idea()], round_filter: "all" };
+    await nextTick();
+    expect(result.find(10)?.body).toBe("<p>Draft kept</p>");
     app.unmount();
   });
 });

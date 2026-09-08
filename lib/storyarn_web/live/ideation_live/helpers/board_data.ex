@@ -2,6 +2,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
   @moduledoc false
   alias Storyarn.Ideation
   alias Storyarn.Projects
+  alias StoryarnWeb.IdeationLive.Helpers.RoundData
 
   @page_size 50
   @empty_counts %{active: 0, parked: 0, discarded: 0}
@@ -46,6 +47,10 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       ideas_next: nil,
       idea_before: nil,
       counts: @empty_counts,
+      rounds: [],
+      rounds_next: nil,
+      active_round: nil,
+      round_filter: :all,
       can_edit: false,
       can_manage: false,
       is_owner: false,
@@ -92,38 +97,56 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
   end
 
   defp read_ideas(scope, project_id, current, filters) do
-    with {:ok, ideas, next} <- read_idea_pages(scope, project_id, current.id, filters.idea_before, nil, []),
-         {:ok, counts} <- Ideation.count_ideas(scope, project_id, current.id) do
+    round_id = Map.get(filters, :round_id, :all)
+    through = Map.get(filters, :round_before)
+    opts = [round_id: round_id, state: :all, limit: @page_size]
+
+    with {:ok, ideas, next} <- read_idea_pages(scope, project_id, current.id, filters.idea_before, opts, []),
+         {:ok, counts} <- Ideation.count_ideas(scope, project_id, current.id, round_id: round_id),
+         {:ok, rounds} <- RoundData.load(scope, project_id, current.id, through, ideas, round_id) do
       {:ok,
-       %{
+       Map.merge(rounds, %{
          session: session(current, scope.user.id, false, false),
          session_missing: false,
          ideas: Enum.map(ideas, &idea/1),
          ideas_next: next,
          idea_before: filters.idea_before,
+         round_filter: round_id,
          counts: counts
-       }}
+       })}
     end
   end
 
   # Loading another page extends the canvas. Every refresh rereads the entire
   # displayed range through authorized projections, so stale cached private
   # snippets cannot survive membership changes or a project restore.
-  defp read_idea_pages(scope, project_id, session_id, through, before_id, accumulated) do
-    with {:ok, page} <-
-           Ideation.list_ideas(scope, project_id, session_id, state: :all, before_id: before_id, limit: @page_size) do
+  defp read_idea_pages(scope, project_id, session_id, through, opts, accumulated) do
+    with {:ok, page} <- Ideation.list_ideas(scope, project_id, session_id, opts) do
       next = next_cursor(page)
       ideas = accumulated ++ page
 
       if through && next && next >= through do
-        read_idea_pages(scope, project_id, session_id, through, next, ideas)
+        read_idea_pages(scope, project_id, session_id, through, Keyword.put(opts, :before_id, next), ideas)
       else
         {:ok, ideas, next}
       end
     end
   end
 
-  defp content_keys, do: [:session, :session_missing, :ideas, :ideas_next, :idea_before, :counts]
+  defp content_keys,
+    do: [
+      :session,
+      :session_missing,
+      :ideas,
+      :ideas_next,
+      :idea_before,
+      :counts,
+      :rounds,
+      :rounds_next,
+      :active_round,
+      :round_filter
+    ]
+
   defp next_cursor(rows) when length(rows) == @page_size, do: List.last(rows).id
   defp next_cursor(_), do: nil
 end

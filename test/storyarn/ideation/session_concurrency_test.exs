@@ -186,6 +186,100 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
     end)
   end
 
+  test "competing round starts commit one active round and one session revision", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      {:ok, _} = Ideation.create_round(ctx.scope, ctx.project.id, ctx.session.id, 1, %{})
+      {:ok, session} = Ideation.create_round(ctx.scope, ctx.project.id, ctx.session.id, 2, %{})
+      {:ok, rounds} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id)
+      parent = self()
+
+      tasks =
+        for round <- rounds do
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              send(parent, {:round_ready, self()})
+
+              receive do
+                :start -> Ideation.start_round(ctx.scope, ctx.project.id, ctx.session.id, round.id, session.revision)
+              after
+                @timeout -> flunk("round start was not released")
+              end
+            end)
+          end)
+        end
+
+      try do
+        for _task <- tasks, do: assert_receive({:round_ready, _pid}, @timeout)
+        Enum.each(tasks, &send(&1.pid, :start))
+        results = Task.await_many(tasks, @timeout)
+        assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+        assert Enum.count(results, &(&1 == {:error, :stale_revision})) == 1
+        assert {:ok, [_one]} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id, status: :active)
+        assert {:ok, %{revision: 4}} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
+      after
+        Enum.each(tasks, &Task.shutdown(&1, :brutal_kill))
+      end
+    end)
+  end
+
+  test "a contribution waiting for a committed round close is saved against that round as late", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      {:ok, _} = Ideation.create_round(ctx.scope, ctx.project.id, ctx.session.id, 1, %{})
+      {:ok, [round]} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id)
+      {:ok, _} = Ideation.start_round(ctx.scope, ctx.project.id, ctx.session.id, round.id, 2)
+      parent = self()
+
+      closer =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            Repo.transact(fn ->
+              {:ok, session} = Ideation.close_round(ctx.scope, ctx.project.id, ctx.session.id, round.id, 3)
+              send(parent, :round_closed_uncommitted)
+
+              receive do
+                :commit -> {:ok, session}
+              after
+                @timeout -> flunk("round close was not committed")
+              end
+            end)
+          end)
+        end)
+
+      try do
+        assert_receive :round_closed_uncommitted, @timeout
+
+        writer =
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              [[pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+              send(parent, {:round_contribution_waiting, pid})
+
+              Ideation.create_idea(ctx.scope, ctx.project.id, ctx.session.id, %{
+                request_key: Ecto.UUID.generate(),
+                configuration_version: 1,
+                round_id: round.id,
+                body: "Late arrival"
+              })
+            end)
+          end)
+
+        try do
+          assert_receive {:round_contribution_waiting, pid}, @timeout
+          assert_waiting_on_lock(pid, 200)
+          send(closer.pid, :commit)
+          assert {:ok, _} = Task.await(closer, @timeout)
+          assert {:ok, idea} = Task.await(writer, @timeout)
+          assert idea.round_id == round.id
+          assert idea.late_contribution
+        after
+          Task.shutdown(writer, :brutal_kill)
+        end
+      after
+        Task.shutdown(closer, :brutal_kill)
+      end
+    end)
+  end
+
   defp assert_waiting_on_lock(_pid, 0), do: flunk("edit did not wait for the permission transaction")
 
   defp assert_waiting_on_lock(pid, attempts) do

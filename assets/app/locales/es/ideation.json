@@ -86,7 +86,13 @@
       "stale_deletion": "Esta eliminación ha cambiado. Actualiza el tablero antes de volver a intentarlo.",
       "undo_unavailable": "Esta acción ya no está disponible porque la nota ha cambiado. Puedes seguir deshaciendo acciones anteriores.",
       "selection_too_large": "La selección es demasiado grande. Selecciona menos notas e inténtalo de nuevo.",
-      "session_not_replaced": "Esta sesión no ha sido reemplazada y no necesita recuperarse. Actualiza la lista de sesiones."
+      "session_not_replaced": "Esta sesión no ha sido reemplazada y no necesita recuperarse. Actualiza la lista de sesiones.",
+      "round_already_active": "Ya hay una ronda en curso. Ciérrala antes de iniciar otra.",
+      "round_not_active": "Esta ronda ya no está en curso. Revisa la ronda actual.",
+      "invalid_round": "Esta ronda no está disponible. Actualiza el tablero y revisa sus rondas.",
+      "round_not_started": "Esta ronda no ha comenzado. Iníciala antes de aportar notas.",
+      "round_closed": "Esta ronda está cerrada. Prepara otra ronda para continuar.",
+      "round_not_found": "Esta ronda ya no está disponible. Actualiza el tablero."
     },
     "saveStatus": {
       "saved": "Guardado",
@@ -142,6 +148,27 @@
       "redo": "Rehacer",
       "undoHelp": "Deshacer · ⌘/Ctrl+Z",
       "redoHelp": "Rehacer · ⇧⌘/Ctrl+Z"
+    },
+    "rounds": {
+      "title": "Rondas",
+      "controls": "Gestionar y consultar rondas",
+      "number": "Ronda {number}",
+      "help": "Explorad una pregunta cada vez. Cerrar una ronda permite seguir editando y conserva la visibilidad de las notas.",
+      "empty": "Aún no hay rondas. Podéis seguir explorando libremente o preparar una ronda.",
+      "prompt": "Pregunta o contexto (opcional)",
+      "promptPlaceholder": "¿Qué exploramos a continuación?",
+      "prepare": "Preparar ronda",
+      "start": "Iniciar ronda",
+      "close": "Cerrar ronda",
+      "planned": "Preparada",
+      "active": "En curso",
+      "closed": "Cerrada",
+      "earlier": "Ver rondas anteriores",
+      "filter": "Filtrar notas por ronda",
+      "all": "Todas las rondas",
+      "none": "Sin ronda",
+      "assigned": "Contribución de ronda",
+      "late": "Añadida tras el cierre"
     }
   }
 }
