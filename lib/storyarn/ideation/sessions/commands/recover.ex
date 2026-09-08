@@ -30,8 +30,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
              session
              |> change(deleted_at: nil, status: :archived, archived_at: TimeHelpers.now(), revision: revision + 1)
              |> Repo.update() do
-        additions = if timer, do: %{"timer" => TimerMutation.snapshot(timer)}, else: %{}
-        Mutation.record(recovered, access.user_id, :recovered, additions)
+        Mutation.record(recovered, access.user_id, :recovered, timer_snapshot(timer))
       else
         nil -> {:error, :not_found}
         false -> {:error, :unauthorized}
@@ -44,4 +43,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
   end
 
   def run(_, _, _, _), do: {:error, :invalid_revision}
+
+  defp timer_snapshot(nil), do: %{}
+  defp timer_snapshot(timer), do: %{"timer" => TimerMutation.snapshot(timer)}
 end
