@@ -1,0 +1,32 @@
+lib/storyarn/ideation/sessions/commands/cancel_timer.ex
+  s_5af6a6d0a150f1::t_bdd7411d30371b 24
+lib/storyarn/ideation/sessions/commands/expire_timer.ex
+  s_5af6a6d0a150f1::t_bdd7411d30371b 71
+docs/reference/brainstorming-timer-contract.md
+  s_5af6a6d0a150f1::t_9479c9fac4249d 56-59
+lib/storyarn/ideation/sessions/execution/archive_timer.ex
+  s_5af6a6d0a150f1::t_bdd7411d30371b 18
+test/storyarn/ideation/timers_test.exs
+  s_5af6a6d0a150f1::t_70e3ff87b8ccc1 99-127
+  s_5af6a6d0a150f1::t_64c47ba9d33d9b 7,13,17,128-142,395-426
+  s_5af6a6d0a150f1::t_5010c795e63e39 427-428
+lib/storyarn/ideation/sessions/execution/timer_mutation.ex
+  s_5af6a6d0a150f1::t_bdd7411d30371b 35-38,42-45
+  s_5af6a6d0a150f1::t_deff0f3b66de11 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a016e411c40b7540edace245fd3e13db37e4c41d",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
