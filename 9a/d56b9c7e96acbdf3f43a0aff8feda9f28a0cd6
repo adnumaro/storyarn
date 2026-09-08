@@ -1,0 +1,27 @@
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_865ec50f67bad5::t_6060a33f6fcb0a 121-122
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_865ec50f67bad5::t_8d172d4038b569 273,278-284,316,318-319,460-463,465,517-520,545-547,552-559,731,733-735
+assets/app/modules/ideation/composables/useCanvasGroups.ts
+  s_865ec50f67bad5::t_0fd42c82e8023d 57,85,90-91,99-101,103,111-112,116-117
+assets/app/test/modules/ideation/canvasGroups.test.ts
+  s_865ec50f67bad5::t_b981649347e319 214,230-233
+assets/app/test/modules/ideation/canvasInteractions.test.ts
+  s_865ec50f67bad5::t_c53073b075d32e 49,394-456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9ad56b9c7e96acbdf3f43a0aff8feda9f28a0cd6",
+  "prompts": {},
+  "sessions": {
+    "s_865ec50f67bad5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a175978-450f-4e9a-9d93-a33004368740",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
