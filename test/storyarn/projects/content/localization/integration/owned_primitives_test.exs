@@ -17,7 +17,9 @@ defmodule Storyarn.Projects.LocalizationOwnedPrimitivesTest do
     assert LocalizationRuntimeKey.valid_dialogue_id?("dialogue_123")
     assert LocalizationRuntimeKey.valid_response_id?("response-123")
     refute LocalizationRuntimeKey.valid_dialogue_id?("dialogue.123")
-    assert_raise ArgumentError, fn -> LocalizationRuntimeKey.qualified_block_ref!("hero", nil) end
+    # Exercise the runtime guard with an input rejected by the type checker.
+    qualified_block_ref = Function.capture(LocalizationRuntimeKey, :qualified_block_ref!, 2)
+    assert_raise ArgumentError, fn -> qualified_block_ref.("hero", nil) end
   end
 
   test "source contract preserves response-field and localizable-source semantics" do

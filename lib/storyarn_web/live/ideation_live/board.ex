@@ -493,8 +493,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
     end
   end
 
-  defp read_result_socket(socket, _), do: socket
-
   defp load_now(socket) do
     %{current_scope: scope, project: project, session_id: id, filters: filters} = socket.assigns
     accept_read(socket, {:ok, BoardData.load(scope, project.id, id, filters)})

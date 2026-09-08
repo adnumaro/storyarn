@@ -136,8 +136,6 @@ defmodule Storyarn.Scenes.FlowRuntime.Slide do
     end
   end
 
-  defp parse_speaker_id(_), do: nil
-
   defp speaker_initials(nil), do: "?"
 
   defp speaker_initials(name) when is_binary(name) do

@@ -1011,7 +1011,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp import_review_failure(reason) when reason in [:not_found, :import_not_ready, :stale_import_review], do: "stale"
 
   defp import_review_failure(:unauthorized), do: "unauthorized"
-  defp import_review_failure(:ownership_invariant_violation), do: "ownership_invariant_violation"
   defp import_review_failure(_reason), do: "unavailable"
 
   defp apply_prepare_result(socket, {:ok, attempt, preview}), do: assign_import_attempt(socket, attempt, preview)

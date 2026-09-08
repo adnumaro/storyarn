@@ -5,7 +5,7 @@ defmodule Storyarn.MixProject do
     [
       app: :storyarn,
       version: "0.1.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.20",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
@@ -111,8 +111,8 @@ defmodule Storyarn.MixProject do
       {:mdex, "~> 0.4"},
 
       # Code quality & security
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.15.0", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_unused, "~> 0.4", only: :dev, runtime: false},
       {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
@@ -120,7 +120,7 @@ defmodule Storyarn.MixProject do
       # Testing utilities
       {:ex_machina, "~> 2.8", only: :test},
       {:mox, "~> 1.2", only: :test},
-      {:faker, "~> 0.18", only: :test},
+      {:faker, "~> 0.19", only: :test},
       # E2E testing with Playwright
       {:phoenix_test, "~> 0.4", only: :test, runtime: false},
       {:phoenix_test_playwright, "~> 0.10", only: :test, runtime: false}
@@ -148,7 +148,8 @@ defmodule Storyarn.MixProject do
         "phx.digest"
       ],
       precommit: [
-        "compile --warning-as-errors",
+        # Gettext recompiles in this VM; defer consolidation to that pass.
+        "compile --warnings-as-errors --no-consolidate-protocols",
         "deps.unlock --unused",
         "format",
         # The suite can only compare `.po` against `.pot`; both are derived, so a

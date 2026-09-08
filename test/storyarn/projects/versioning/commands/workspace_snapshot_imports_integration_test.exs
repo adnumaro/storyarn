@@ -2,6 +2,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
   use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
+  import ExUnit.CaptureLog
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
@@ -35,6 +36,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
   alias Storyarn.Scenes
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ImportProjectSnapshotWorker
+  alias StoryarnTest.Projects.ThrowingSnapshotArchiveReader
 
   defmodule DirectUploadStorage do
     @moduledoc false
@@ -104,6 +106,23 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
       })
 
     %{user: user, scope: scope, workspace: workspace, project: project}
+  end
+
+  test "direct request sanitizes and logs archive reader throws without raising", context do
+    log =
+      capture_log(fn ->
+        assert {:error, :snapshot_import_unavailable} =
+                 WorkspaceSnapshotImports.request(
+                   context.scope,
+                   context.workspace,
+                   "ignored.zip",
+                   %{original_filename: "snapshot.zip"},
+                   archive_reader: ThrowingSnapshotArchiveReader
+                 )
+      end)
+
+    assert log =~ "Workspace snapshot import admission failed error={:throw, :archive_preflight_failed}"
+    refute log =~ "must not be logged"
   end
 
   test "quota rejection is synchronous and creates no operation, job, reservation or notification", context do

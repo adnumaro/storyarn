@@ -140,9 +140,6 @@ defmodule Storyarn.AI.PersonalConsents do
            consent.id == route.provider_configuration["personal_consent_id"] ||
              {:error, :consent_revoked} do
       {:ok, integration}
-    else
-      false -> {:error, :consent_revoked}
-      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -268,8 +265,6 @@ defmodule Storyarn.AI.PersonalConsents do
       {:error, :consent_revoked}
     end
   end
-
-  defp validate_route_configuration(_configuration, _integration, _task, _provider_config), do: {:error, :consent_revoked}
 
   defp route_configuration_valid?(configuration, integration, task, provider_config) do
     Enum.all?([

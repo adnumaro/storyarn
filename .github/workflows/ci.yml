@@ -8,8 +8,8 @@ on:
 
 env:
   MIX_ENV: test
-  ELIXIR_VERSION: "1.19"
-  OTP_VERSION: "28"
+  ELIXIR_VERSION: "1.20.4"
+  OTP_VERSION: "29.0.6"
   NODE_VERSION: "24"
 
 jobs:
@@ -43,20 +43,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ github.job }}-
-            ${{ runner.os }}-mix-
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ github.job }}-
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-
-            ${{ runner.os }}-build-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Install Elixir dependencies
         run: mix deps.get
@@ -149,20 +149,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ github.job }}-
-            ${{ runner.os }}-mix-
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ github.job }}-
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-
-            ${{ runner.os }}-build-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Install Elixir dependencies
         run: mix deps.get
@@ -230,18 +230,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-
-            ${{ runner.os }}-build-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Install Elixir dependencies
         run: mix deps.get
@@ -374,18 +374,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-
-            ${{ runner.os }}-build-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Install dependencies
         run: mix deps.get

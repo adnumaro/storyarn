@@ -337,8 +337,6 @@ defmodule Storyarn.Projects.FlowInstruction do
     is_binary(value) and value != ""
   end
 
-  defp has_value?(_), do: false
-
   defp maybe_clear_on_value_type_change(assignment, "value_type", "literal") do
     Map.put(assignment, "value_sheet", nil)
   end

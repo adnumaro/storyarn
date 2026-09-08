@@ -148,7 +148,7 @@ defmodule Storyarn.Projects.Exports.ExportOptions do
       "false" -> false
       "1" -> true
       "0" -> false
-      val -> !!val
+      _value -> true
     end
   end
 

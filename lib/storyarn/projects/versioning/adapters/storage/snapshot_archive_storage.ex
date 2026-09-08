@@ -1359,8 +1359,6 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
   defp classify_stage_claim(_inserted, %SnapshotObjectPublicationClaim{}, _digest, _now),
     do: {:error, :snapshot_object_namespace_inventory_conflict}
 
-  defp classify_stage_claim(_inserted, nil, _digest, _now), do: {:error, :snapshot_object_stage_claim_missing}
-
   defp acquire_publication_claim(staged, on_progress) do
     now = TimeHelpers.now()
 

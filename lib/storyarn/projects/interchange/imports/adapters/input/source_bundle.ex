@@ -316,9 +316,9 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
       else: {:error, :invalid_archive}
   end
 
-  defp take_central_metadata(rest, metadata) do
-    <<_name::binary-size(metadata.name_length), extra::binary-size(metadata.extra_length),
-      _comment::binary-size(metadata.comment_length), remaining::binary>> = rest
+  defp take_central_metadata(rest, %{name_length: name_length, extra_length: extra_length, comment_length: comment_length}) do
+    <<_name::binary-size(^name_length), extra::binary-size(^extra_length), _comment::binary-size(^comment_length),
+      remaining::binary>> = rest
 
     {:ok, extra, remaining}
   end
@@ -336,7 +336,7 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
          <<field_id::little-unsigned-integer-size(16), field_size::little-unsigned-integer-size(16), rest::binary>>
        )
        when field_size <= byte_size(rest) do
-    <<_field::binary-size(field_size), remaining::binary>> = rest
+    <<_field::binary-size(^field_size), remaining::binary>> = rest
 
     if field_id == 0x0001,
       do: {:error, :invalid_archive},

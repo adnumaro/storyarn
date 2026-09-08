@@ -927,8 +927,6 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
     |> update_entity_snapshots(&scrub_snapshot_storage_surfaces/1)
   end
 
-  defp scrub_storage_metadata(value), do: value
-
   defp scrub_snapshot_storage_surfaces(snapshot) when is_map(snapshot) do
     snapshot
     |> scrub_asset_metadata_field()
@@ -1020,8 +1018,6 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
       reject_entity_snapshot_storage_metadata(project)
     end
   end
-
-  defp reject_storage_metadata(_project), do: {:error, :invalid_project_object}
 
   defp reject_project_root_storage_metadata(nil), do: :ok
 

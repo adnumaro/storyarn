@@ -450,8 +450,6 @@ defmodule Storyarn.AI.PersonalPreferences do
     }
   end
 
-  defp overview_preference_status(_preference, nil, _policy_allowed?, _data), do: :workspace_access_limited
-
   defp overview_preference_status(_preference, _role, false, _data), do: :workspace_policy_denied
 
   defp overview_preference_status(preference, _role, true, data) do

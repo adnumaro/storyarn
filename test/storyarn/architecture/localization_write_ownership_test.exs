@@ -437,10 +437,6 @@ defmodule Storyarn.Architecture.LocalizationWriteOwnershipTest do
     ) and source =~ "Postgres.set_positions("
   end
 
-  defp declared_writer_effect?(writer, schema_modules) do
-    writer.path |> File.read!() |> project_languages_mutation?(schema_modules)
-  end
-
   defp assert_exact_writer_functions!(writer, schema_modules) do
     assert_valid_function_contracts!(writer.functions)
 

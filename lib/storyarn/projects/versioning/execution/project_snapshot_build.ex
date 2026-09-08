@@ -164,7 +164,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   defp capture_stop_reason_code(:throw), do: "uncaught_throw"
   defp capture_stop_reason_code(:exit), do: "uncaught_exit"
   defp capture_stop_reason_code(:error), do: "uncaught_error"
-  defp capture_stop_reason_code(_kind), do: "unexpected_capture_stop"
 
   defp materialize_capture_for_snapshot(%ProjectSnapshot{lifecycle_state: state}, _job_id)
        when state in ["ready", "failed", "cancelled", "deleting"], do: {:ok, :terminal}
@@ -2321,7 +2320,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     case settle_cancelled_reservation(snapshot, reason) do
       {:ok, :released} -> mark_cancelled(snapshot.id, snapshot.lifecycle_generation, attempt, max_attempts)
       {:ok, :committed} -> retry_or_discard(:snapshot_build_cancelled_after_publish, attempt, max_attempts)
-      {:ok, :active_unowned} -> retry_unsettled(snapshot, reason, attempt, max_attempts)
       {:error, _settlement_reason} -> retry_unsettled(snapshot, reason, attempt, max_attempts)
     end
   end

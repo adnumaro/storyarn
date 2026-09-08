@@ -166,12 +166,8 @@ defmodule Storyarn.Localization.Translation.Execution.BatchTranslationJob do
   end
 
   defp cancel_inactive_target(run) do
-    run
-    |> RunCommands.cancel()
-    |> case do
-      {:ok, _cancelled} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
+    {:ok, _cancelled} = RunCommands.cancel(run)
+    :ok
   end
 
   defp run_counts(run) do

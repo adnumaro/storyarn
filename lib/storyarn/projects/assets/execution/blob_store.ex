@@ -908,5 +908,4 @@ defmodule Storyarn.Projects.Assets.BlobStore do
 
   defp safe_error(reason) when is_atom(reason), do: reason
   defp safe_error({reason, _details}) when is_atom(reason), do: reason
-  defp safe_error(_reason), do: :unexpected_error
 end

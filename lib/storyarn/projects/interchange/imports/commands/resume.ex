@@ -200,8 +200,6 @@ defmodule Storyarn.Projects.Imports.Resume do
     })
   end
 
-  defp report_resume_failure(_attempt, _result), do: :ok
-
   defp finish_resumed_import(
          _resume_context,
          %ProjectImportAttempt{status: "ready", plan_storage_key: storage_key},

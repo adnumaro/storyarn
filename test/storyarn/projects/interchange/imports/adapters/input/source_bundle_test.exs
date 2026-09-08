@@ -476,20 +476,20 @@ defmodule Storyarn.Projects.Imports.SourceBundleTest do
   defp put_eocd_field(binary, field_offset, field_size, replacement) do
     {eocd_offset, 4} = eocd_match(binary)
     offset = eocd_offset + field_offset
-    <<prefix::binary-size(offset), _old::binary-size(field_size), suffix::binary>> = binary
+    <<prefix::binary-size(^offset), _old::binary-size(^field_size), suffix::binary>> = binary
     prefix <> replacement <> suffix
   end
 
   defp insert_before_eocd(binary, data) do
     {eocd_offset, 4} = eocd_match(binary)
-    <<prefix::binary-size(eocd_offset), suffix::binary>> = binary
+    <<prefix::binary-size(^eocd_offset), suffix::binary>> = binary
     prefix <> data <> suffix
   end
 
   defp add_central_directory_signature(binary, signature) do
     {eocd_offset, 4} = eocd_match(binary)
 
-    <<_prefix::binary-size(eocd_offset + 12), directory_size::little-unsigned-integer-size(32), _rest::binary>> =
+    <<_prefix::binary-size(^eocd_offset + 12), directory_size::little-unsigned-integer-size(32), _rest::binary>> =
       binary
 
     record =

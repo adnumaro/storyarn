@@ -530,8 +530,6 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
       else: {:error, :invalid_bundle_asset_filename}
   end
 
-  defp validate_portable_descriptor_filename(_filename), do: {:error, :invalid_bundle_asset_filename}
-
   defp valid_storage_segment?(segment) do
     is_binary(segment) and segment not in ["", ".", ".."] and
       not String.contains?(segment, "/") and Storage.canonical_key?(segment)
@@ -730,8 +728,6 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
       {:error, {:workspace_not_found, workspace_id}}
     end
   end
-
-  defp validate_workspace_exists(workspace_id), do: {:error, {:invalid_workspace_id, workspace_id}}
 
   defp validate_source_project_scope(%{source_user_id: source_user_id, verify_workspace_id: workspace_id}) do
     case WorkspaceAccess.authorize(%{user: Repo.get!(User, source_user_id)}, workspace_id, :create_project) do

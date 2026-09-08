@@ -221,8 +221,6 @@ defmodule Storyarn.Projects.Imports.ConflictResolution do
       (column["is_constant"] != true or type in @constant_table_variable_types)
   end
 
-  defp table_variable_column?(_column), do: false
-
   defp contract_sheet_shortcut({sheet_shortcut, _variable_name}), do: sheet_shortcut
 
   defp contract_sheet_shortcut({:table, sheet_shortcut, _table_name}), do: sheet_shortcut

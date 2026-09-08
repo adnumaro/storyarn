@@ -75,8 +75,6 @@ defmodule Storyarn.Localization.Exchange.Rules.Csv do
   @spec strip_html(String.t() | nil) :: String.t()
   def strip_html(text), do: Storyarn.Platform.Shared.HtmlUtils.strip_html(text)
 
-  defp escape(nil), do: ""
-
   defp escape(text) do
     if String.contains?(text, [",", "\"", "\n"]) do
       "\"" <> String.replace(text, "\"", "\"\"") <> "\""

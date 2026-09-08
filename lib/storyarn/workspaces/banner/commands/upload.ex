@@ -65,9 +65,6 @@ defmodule Storyarn.Workspaces.Banner.Commands.Upload do
 
       {:error, cleanup_reason} ->
         defer_failed_cleanup(key, reason, cleanup_reason, opts)
-
-      result ->
-        defer_failed_cleanup(key, reason, {:unexpected_result, result}, opts)
     end
   end
 
@@ -78,14 +75,6 @@ defmodule Storyarn.Workspaces.Banner.Commands.Upload do
 
       {:error, cleanup_reason} ->
         defer_failed_cleanup(key, {:workspace_banner_storage_failed, reason}, cleanup_reason, opts)
-
-      result ->
-        defer_failed_cleanup(
-          key,
-          {:workspace_banner_storage_failed, reason},
-          {:unexpected_result, result},
-          opts
-        )
     end
   end
 

@@ -1,5 +1,9 @@
 # Storyarn
 
+Requires Elixir 1.20 or later in the 1.x series. Development, CI and the production
+image use Elixir 1.20.4 on Erlang/OTP 29.0.6. Install the project versions with
+`mise install` (or `asdf install`); `.tool-versions` pins both runtimes.
+
 To start your Phoenix server:
 
 - Run `mix setup` to install and setup dependencies
