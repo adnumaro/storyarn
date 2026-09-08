@@ -1,0 +1,65 @@
+assets/app/test/modules/ideation/timerControls.test.ts
+  s_5af6a6d0a150f1::t_06365203588153 5,46,67,333-343,347-348,357-367,376-388,398-407,417-423
+  s_5af6a6d0a150f1::t_e63f43fd2ca59c 13,55-57,65-66,68-73,75-77,87-98,118-132,201-210,227-233,235,241-242,245-247,271
+  s_5af6a6d0a150f1::t_b91ee4ab80a804 58-59,78-86,99-117,133-135,153-157,248-252,344-346,368-375,389-397,408-416
+  s_5af6a6d0a150f1::t_e9ad1d4ee29bd3 3,19,45,47-54,60-64,74,136-152,158-159
+  s_5af6a6d0a150f1::t_0a7627cb6d3762 349-356
+  s_5af6a6d0a150f1::t_bd04791b11d579 253
+lib/storyarn/ideation/sessions/commands/recover.ex
+  s_5af6a6d0a150f1::t_1b07afd50a7fff 8-9,11,28,33-34,43
+assets/app/modules/ideation/composables/useSessionTimer.ts
+  s_5af6a6d0a150f1::t_9042d22bf73d15 54-68
+test/storyarn/ideation/timer_delivery_test.exs
+  s_5af6a6d0a150f1::t_a8c638e6fe880d 1-14
+test/e2e/workspaces/projects/ideation/timer_test.exs
+  s_5af6a6d0a150f1::t_45cef263de5ff6 18-26,43-45,76-82,91-103
+  s_5af6a6d0a150f1::t_f89b1a83e7569e 4
+  s_5af6a6d0a150f1::t_80750b27492617 17
+test/storyarn/ideation/timer_recovery_test.exs
+  s_5af6a6d0a150f1::t_ec4ba225e2dace 76,79
+  s_5af6a6d0a150f1::t_a26f750e84243f 73-75,77-78,80-128
+assets/app/test/modules/ideation/sessionTimer.test.ts
+  s_5af6a6d0a150f1::t_976e99bde9fdc4 7,35-101
+lib/storyarn_web/live/ideation_live/board.ex
+  s_5af6a6d0a150f1::t_9042d22bf73d15 57
+assets/app/modules/ideation/TimerControls.vue
+  s_5af6a6d0a150f1::t_334976d7d04dc3 82-83,89,99-104,107
+  s_5af6a6d0a150f1::t_cd7f27b36b9e0f 2,26-38,64-71,81,84,87-88,90,93-94,108-109,113-123,126-130,152,179,207,245,253-255,261
+  s_5af6a6d0a150f1::t_794a068a46dcc7 110-112,124-125,164-175,222,246-250,256-260
+  s_5af6a6d0a150f1::t_49db137ce3883d 85-86,105-106
+  s_5af6a6d0a150f1::t_76e48a9d0a7120 153-163
+test/storyarn_web/live/ideation_live/board_test.exs
+  s_5af6a6d0a150f1::t_9042d22bf73d15 439-442
+assets/app/locales/en/ideation.json
+  s_5af6a6d0a150f1::t_a8c638e6fe880d 104
+assets/app/test/modules/ideation/workspaceEditing.test.ts
+  s_5af6a6d0a150f1::t_a8c638e6fe880d 52-61
+lib/storyarn_web/live/ideation_live/handlers/timer_handlers.ex
+  s_5af6a6d0a150f1::t_9042d22bf73d15 9
+assets/app/locales/es/ideation.json
+  s_5af6a6d0a150f1::t_a8c638e6fe880d 107-108
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_5af6a6d0a150f1::t_a8c638e6fe880d 650,655
+docs/reference/brainstorming-timer-contract.md
+  s_5af6a6d0a150f1::t_095937e6c993bf 15-16,74-77
+lib/storyarn/ideation/sessions/execution/timer_delivery.ex
+  s_5af6a6d0a150f1::t_a8c638e6fe880d 14
+test/storyarn_web/live/ideation_live/timer_board_test.exs
+  s_5af6a6d0a150f1::t_9042d22bf73d15 34,52-56,80-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a8bce450dec7f6d44d1c8083fde6b78ff9bc6240",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
