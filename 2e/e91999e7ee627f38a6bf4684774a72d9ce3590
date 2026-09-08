@@ -1,0 +1,27 @@
+CLAUDE.md
+  s_865ec50f67bad5::t_90ea275e48573b 7
+lib/storyarn/public/blog/post.ex
+  s_865ec50f67bad5::t_f981c89dfacfc0 11-12
+lib/storyarn/public/docs/guide.ex
+  s_865ec50f67bad5::t_302c7fcf4eb6ce 14-15
+mix.exs
+  s_865ec50f67bad5::t_51d6a08fb1a597 62-63,66,81,105,108-110
+mix.lock
+  s_865ec50f67bad5::t_be6b7b3a5da679 2,13-14,16,19,23,37,40,42,46,48,50,52,54,56,62,64-65,68,70-71,75,77-79,84,86,88-89,95,99,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2ee91999e7ee627f38a6bf4684774a72d9ce3590",
+  "prompts": {},
+  "sessions": {
+    "s_865ec50f67bad5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a175978-450f-4e9a-9d93-a33004368740",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
