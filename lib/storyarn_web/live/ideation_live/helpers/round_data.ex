@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.IdeationLive.Helpers.RoundData do
   @moduledoc false
   alias Storyarn.Ideation
+  alias StoryarnWeb.IdeationLive.Helpers.TimerData
 
   @page_size 50
 
@@ -12,12 +13,13 @@ defmodule StoryarnWeb.IdeationLive.Helpers.RoundData do
       limit: @page_size
     ]
 
-    with {:ok, context} <- Ideation.get_round_context(scope, project_id, session_id, opts) do
+    with {:ok, context} <- Ideation.get_canvas_context(scope, project_id, session_id, opts) do
       {:ok,
        %{
          rounds: Enum.map(context.rounds, &round_view/1),
          rounds_next: context.rounds_next,
-         active_round: if(context.active_round, do: round_view(context.active_round))
+         active_round: if(context.active_round, do: round_view(context.active_round)),
+         timer: TimerData.project(context.timer)
        }}
     end
   end

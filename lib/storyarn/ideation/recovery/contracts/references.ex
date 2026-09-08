@@ -1,6 +1,7 @@
 defmodule Storyarn.Ideation.Recovery.References do
   @moduledoc false
   alias Storyarn.Ideation.Recovery.Inventory
+  alias Storyarn.Ideation.Recovery.TimerState
 
   def rewrite(row, collection, project_id, actors, maps) do
     row =
@@ -29,6 +30,8 @@ defmodule Storyarn.Ideation.Recovery.References do
     canvas = Map.update(row.canvas, "links", [], &Enum.map(&1, fn id -> lookup(maps, "ideas", id) end))
     %{row | canvas: canvas}
   end
+
+  defp rewrite_payload(row, "timers", _, _), do: TimerState.restore(row)
 
   defp rewrite_payload(row, "session_revisions", actors, _) do
     snapshot =

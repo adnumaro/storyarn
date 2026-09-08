@@ -152,7 +152,11 @@ config :storyarn, Oban,
     # Invitation workers are introduced together with this queue. Older nodes
     # do not poll it, so a rolling deploy cannot claim an unknown worker module.
     # Ten preserves the former upper bound when these jobs used `:default`.
-    invitation_delivery: 10
+    invitation_delivery: 10,
+    # Deadline accuracy belongs to the event-driven timer runtime. This new
+    # queue provides durable delivery if a post-commit wakeup is lost, without
+    # lowering the shared staging interval or polling an idle timer table.
+    ideation_timers: 1
   ],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},

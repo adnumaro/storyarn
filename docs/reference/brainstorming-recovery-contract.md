@@ -4,7 +4,7 @@
 >
 > Last reviewed: 2026-09-08
 >
-> Scope: ENG-129, ENG-136 and the sessions/ideas slice of ENG-147
+> Scope: ENG-129, ENG-136, ENG-137 and the sessions/ideas slice of ENG-147
 
 ## Ownership and permissions
 
@@ -53,13 +53,16 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **2**; version **1** inventories are still accepted
-and normalized with no rounds and unassigned, non-late contributions.
+The inner inventory is version **3**. Version **2** inventories normalize to no
+timer and open contributions. Version **1** additionally normalizes to no rounds
+and unassigned, non-late contributions.
 The inventory covers:
 
 - Open, archived and previously replaced sessions, their independent
   configuration, responsibilities and complete session revision history.
-- Planned, active and closed rounds, their prompts and lifecycle timestamps.
+- Planned, active, closed and cancelled rounds, their prompts and lifecycle timestamps.
+- Shared timer state, remaining duration, deadline, actor, expiry options and
+  outcome, plus the session contribution gate.
 - Every idea, current creative state, authorship, publication consent,
   configuration version, source idea/revision and immutable creation-request
   source identity, immutable round membership and late-contribution flag.
@@ -103,7 +106,7 @@ reconstitution transaction. The architecture ratchet restricts these ports to
 exact Project capture, validation, materialization and verification callers;
 ordinary Web code cannot use them as a draft-reading API.
 
-Each persisted session, round, idea, revision, receipt, reveal and publication carries
+Each persisted session, round, timer, idea, revision, receipt, reveal and publication carries
 an immutable recovery UUID. Restore compares complete session generations using
 those identities and content, independent of database IDs and replacement time.
 An identical generation already present in the destination is reused; a distinct
@@ -119,6 +122,12 @@ multiple active rounds, invalid lifecycle timestamps and impossible late-note
 flags before any replacement. Round actions in session revisions carry the
 stable round number and its metadata, not database IDs. Restoring an active
 round restores that state without starting a timer or revealing any contribution.
+
+Running timers restore paused with a new version and no deadline, retaining the
+last persisted remaining duration. Restoring cannot trigger an old timer job or
+automatically reveal notes. Explicit resume rechecks current authority and
+configuration. Capture remains independent of elapsed wall-clock time, preserving
+stable canonical digests. See the [timer contract](brainstorming-timer-contract.md).
 
 Captured actor IDs resolve only through authenticated account recovery UUIDs.
 There is no fallback to numeric ID, email, project owner, facilitator or a

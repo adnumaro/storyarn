@@ -3,6 +3,8 @@ defmodule Storyarn.Ideation.Sessions.Adapters.ProjectAccess do
 
   alias Storyarn.Projects
 
+  defdelegate lock_background_write(project_id), to: Projects
+
   def eligible_delegate?(scope, project_id, user_id) do
     case Projects.check_editor_candidate_locked(scope, project_id, user_id) do
       {:ok, eligible?} -> eligible?

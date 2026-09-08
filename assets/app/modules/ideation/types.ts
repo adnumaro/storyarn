@@ -63,6 +63,7 @@ export interface Session {
   status: "open" | "archived";
   revision: number;
   configuration_version: number;
+  contributions_open: boolean;
   facilitator_id: number | null;
   decision_owner_id: number | null;
   deleted_at: string | null;
@@ -94,6 +95,23 @@ export interface Round {
   inserted_at: string;
   updated_at: string;
 }
+export interface SessionTimer {
+  id: number;
+  version: number;
+  status: "running" | "paused" | "elapsed" | "cancelled";
+  deadline_at: string | null;
+  remaining_seconds: number;
+  duration_seconds: number;
+  reveal_on_expiry: boolean;
+  close_contributions_on_expiry: boolean;
+  outcome:
+    | "completed"
+    | "skipped_authorization"
+    | "skipped_configuration"
+    | "skipped_session"
+    | null;
+  server_now: string;
+}
 export type RoundFilter = "all" | null | number;
 export interface Board {
   epoch: string;
@@ -105,6 +123,7 @@ export interface Board {
   session_status: "open" | "archived" | "replaced";
   session: Session | null;
   session_missing: boolean;
+  timer: SessionTimer | null;
   rounds: Round[];
   rounds_next: number | null;
   active_round: Round | null;

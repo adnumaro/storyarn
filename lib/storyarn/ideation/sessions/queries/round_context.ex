@@ -10,12 +10,16 @@ defmodule Storyarn.Ideation.Sessions.Queries.RoundContext do
   defguardp valid_id(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807
 
   def run(scope, project_id, session_id, opts) do
-    with {:ok, session} <- Get.run(scope, project_id, session_id),
-         {:ok, limit, through_id, round_ids, selected_id} <- options(opts) do
-      {history, next} = pages(session.id, limit, through_id, nil, [])
-      active = active_round(session.id, history, next)
+    with {:ok, session} <- Get.run(scope, project_id, session_id), do: for_session(session.id, opts)
+  end
+
+  # Internal read composition: callers authorize the session before entering.
+  def for_session(session_id, opts) do
+    with {:ok, limit, through_id, round_ids, selected_id} <- options(opts) do
+      {history, next} = pages(session_id, limit, through_id, nil, [])
+      active = active_round(session_id, history, next)
       loaded = history ++ List.wrap(active)
-      referenced = referenced_rounds(session.id, round_ids ++ List.wrap(selected_id), loaded)
+      referenced = referenced_rounds(session_id, round_ids ++ List.wrap(selected_id), loaded)
       rounds = Enum.uniq_by(loaded ++ referenced, & &1.id)
 
       if is_nil(selected_id) or Enum.any?(rounds, &(&1.id == selected_id)) do

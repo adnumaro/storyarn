@@ -14,6 +14,7 @@ const {
   selected,
   author,
   roundNumber,
+  canCreate = true,
   status = "saved",
 } = defineProps<{
   note: Idea;
@@ -22,6 +23,7 @@ const {
   selected: boolean;
   author: string;
   roundNumber?: number;
+  canCreate?: boolean;
   status?: string;
 }>();
 const emit = defineEmits<{ change: [body: string]; finish: []; quickCreate: [] }>();
@@ -49,7 +51,7 @@ const editor = useEditor({
       }
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.stopPropagation();
-        emit("quickCreate");
+        if (canCreate) emit("quickCreate");
         return true;
       }
       return false;

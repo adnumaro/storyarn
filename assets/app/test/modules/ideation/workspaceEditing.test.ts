@@ -8,7 +8,7 @@ import type { Board, Idea } from "@modules/ideation/types";
 
 const Canvas = defineComponent({
   name: "BrainstormingCanvas",
-  props: ["notes", "editingId", "writable", "historyState", "cursorEnabled", "selectedIds"],
+  props: ["notes", "editingId", "permissions", "historyState", "cursorEnabled", "selectedIds"],
   setup(_props, { expose }) {
     expose({ focus: vi.fn() });
     return () => h("div");
@@ -49,6 +49,50 @@ afterEach(() => {
 });
 
 describe("workspace editing transitions", () => {
+  it("keeps an in-progress edit when contributions close and blocks add, duplicate and paste", async () => {
+    const { current, canvas, live } = workspace();
+    canvas.vm.$emit("edit", 10);
+    canvas.vm.$emit("change", 10, "<p>Keep writing this note</p>");
+    await wrapper.setProps({
+      board: { ...current, session: { ...current.session!, contributions_open: false } },
+    });
+    expect(canvas.props("editingId")).toBe(10);
+    expect(canvas.props("permissions").edit).toBe(true);
+    expect(canvas.props("permissions").create).toBe(false);
+    expect(canvas.props("notes")[0].body).toBe("<p>Keep writing this note</p>");
+    canvas.vm.$emit("add", { x: 10, y: 20 });
+    canvas.vm.$emit("duplicate", [10]);
+    canvas.vm.$emit("paste", new Event("paste"), { x: 10, y: 20 });
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(2);
+    expect(vi.mocked(live.pushEvent).mock.calls.some(([event]) => event === "create_idea")).toBe(
+      false,
+    );
+    expect(wrapper.find("#brainstorming-contributions-closed").exists()).toBe(true);
+  });
+
+  it("can remove and restore an existing note while contributions are closed", async () => {
+    const current = board();
+    const { canvas, live } = workspace((body) => body, {
+      session: { ...current.session!, contributions_open: false },
+    });
+    vi.mocked(live.pushEvent).mockImplementation((event, _payload, callback) => {
+      if (event === "delete_idea")
+        callback?.({
+          status: "ok",
+          value: { id: 10, revision: 1, deleted_at: "2026-09-08T10:00:00Z" },
+        });
+      if (event === "restore_idea") callback?.({ status: "ok", value: idea() });
+    });
+    canvas.vm.$emit("remove", [10]);
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(1);
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(2);
+    expect(canvas.props("historyState").canRedo).toBe(true);
+  });
+
   it("closes editing when edit permission is revoked and keeps the unsaved note readable", async () => {
     const { current, canvas, save } = workspace();
     canvas.vm.$emit("edit", 10);
@@ -58,7 +102,7 @@ describe("workspace editing transitions", () => {
     await wrapper.setProps({ board: { ...current, can_edit: false } });
     await vi.advanceTimersByTimeAsync(1_000);
     expect(canvas.props("editingId")).toBeNull();
-    expect(canvas.props("writable")).toBe(false);
+    expect(canvas.props("permissions").edit).toBe(false);
     expect(canvas.props("notes")[0].body).toBe("<p>Keep my draft</p>");
     expect(canvas.props("historyState").canUndo).toBe(false);
     expect(save).not.toHaveBeenCalled();

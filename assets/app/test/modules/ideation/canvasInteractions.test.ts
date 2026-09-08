@@ -30,7 +30,7 @@ function canvas(props = {}) {
       notes: [idea({ canvas: { x: 10, y: 20 } }), idea({ id: 11, canvas: { x: 400, y: 50 } })],
       selectedIds: [10],
       editingId: null,
-      writable: true,
+      permissions: { edit: true, create: true },
       noteKey: (id: number) => String(id),
       historyState: { canUndo: true, canRedo: true, busy: false },
       members: [],
@@ -72,6 +72,28 @@ async function pointer(target: Element, type: string, options: PointerEventInit 
   await nextTick();
 }
 describe("canvas keyboard and selection", () => {
+  it("blocks new-note gestures and clipboard insertion when contributions close while preserving existing-note shortcuts", async () => {
+    const wrapper = canvas({ permissions: { edit: true, create: false } });
+    key(wrapper, "n");
+    key(wrapper, "d", { metaKey: true });
+    copyEvent(wrapper, "paste");
+    await wrapper.trigger("dblclick");
+    expect(wrapper.emitted("add")).toBeUndefined();
+    expect(wrapper.emitted("duplicate")).toBeUndefined();
+    expect(wrapper.emitted("paste")).toBeUndefined();
+    expect(wrapper.find("#new-brainstorming-idea").exists()).toBe(false);
+    key(wrapper, "Delete");
+    key(wrapper, "z", { metaKey: true });
+    key(wrapper, "z", { metaKey: true, shiftKey: true });
+    copyEvent(wrapper, "copy");
+    expect(wrapper.emitted("remove")).toEqual([[[10]]]);
+    expect(wrapper.emitted("undo")).toHaveLength(1);
+    expect(wrapper.emitted("redo")).toHaveLength(1);
+    expect(wrapper.emitted("copy")).toHaveLength(1);
+    await wrapper.get('[data-test-note="10"]').trigger("dblclick");
+    expect(wrapper.emitted("edit")).toEqual([[10]]);
+  });
+
   it("dispatches destructive and duplicate shortcuts for the visible selection only", () => {
     const wrapper = canvas({ selectedIds: [10, 11, 999] });
     expect(key(wrapper, "Delete").defaultPrevented).toBe(true);
@@ -147,7 +169,7 @@ describe("canvas keyboard and selection", () => {
       expect(wrapper.emitted(event)).toBeUndefined();
     expect(wrapper.get("#brainstorming-undo").attributes("disabled")).toBeDefined();
     await wrapper.setProps({
-      writable: false,
+      permissions: { edit: false, create: false },
       historyState: { canUndo: true, canRedo: true, busy: false },
     });
     key(wrapper, "d", { metaKey: true });

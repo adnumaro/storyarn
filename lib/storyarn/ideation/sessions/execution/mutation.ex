@@ -48,6 +48,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.Mutation do
       "facilitator_id" => session.facilitator_id,
       "decision_owner_id" => session.decision_owner_id,
       "configuration_version" => session.configuration_version,
+      "contributions_open" => session.contributions_open,
       "configuration" => Ecto.embedded_dump(session.configuration, :json)
     }
 

@@ -59,7 +59,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
   end
 
   defp insert(access, key, fingerprint, attrs) do
-    with {:ok, policy} <- Policy.contribution_policy(access, attrs),
+    with :ok <- contributions_open(access),
+         {:ok, policy} <- Policy.contribution_policy(access, attrs),
          {:ok, selected_round} <- selected_round(attrs),
          {:ok, round} <- Sessions.select_contribution_round(access, selected_round),
          {:ok, canvas} <- initial_canvas(Input.get(attrs, :canvas)),
@@ -93,6 +94,9 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
       Transaction.success(View.idea(idea, revision, access.user_id), audiences)
     end
   end
+
+  defp contributions_open(%{contributions_open: true}), do: :ok
+  defp contributions_open(_access), do: {:error, :contributions_closed}
 
   defp initial_canvas(nil), do: {:ok, %{}}
   defp initial_canvas(attrs), do: Canvas.normalize(attrs)

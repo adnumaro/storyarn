@@ -243,7 +243,10 @@ defmodule Storyarn.Ideation.RecoveryTest do
   end
 
   test "authenticated capsules reject malformed timestamps before replacing current data", ctx do
-    assert {:ok, _} = Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{})
+    assert {:ok, session} =
+             Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{})
+
+    assert {:ok, _} = Ideation.start_timer(ctx.facilitator, ctx.project.id, session.id, session.revision, %{seconds: 60})
     idea = idea_fixture(ctx, %{visibility: :shared})
 
     assert {:ok, _} =
@@ -261,7 +264,16 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
     for {collection, _, _, fields} <- Inventory.tables(),
         field <- fields,
-        field in [:inserted_at, :updated_at, :archived_at, :deleted_at, :completed_at, :started_at, :closed_at] do
+        field in [
+          :inserted_at,
+          :updated_at,
+          :archived_at,
+          :deleted_at,
+          :completed_at,
+          :started_at,
+          :closed_at,
+          :deadline_at
+        ] do
       assert [_ | _] = data["rows"][collection]
       key = Atom.to_string(field)
 

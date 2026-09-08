@@ -20,6 +20,7 @@ defmodule Storyarn.Ideation.Sessions.Session do
     field :archived_at, :utc_datetime
     field :revision, :integer, default: 1
     field :configuration_version, :integer, default: 1
+    field :contributions_open, :boolean, default: true
     embeds_one :configuration, Configuration, on_replace: :update, defaults_to_struct: true
 
     timestamps(type: :utc_datetime_usec)

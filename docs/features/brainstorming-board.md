@@ -161,3 +161,13 @@ materialization is added here.
 - [Miro private mode](https://help.miro.com/hc/en-us/articles/9794413310482-Private-mode)
 - [FigJam sticky notes](https://help.figma.com/hc/en-us/articles/1500004414322-Sticky-notes-in-FigJam)
 - [Scapple overview](https://www.literatureandlatte.com/scapple/overview)
+
+## Independent countdown
+
+The existing header includes a shared timer. Managers can choose a duration,
+pause, resume, add time or cancel. Everyone sees the same countdown. Finishing
+only notifies by default; ending private mode and closing new contributions are
+separate opt-in actions. Closing new contributions preserves edits and undo on
+existing notes, and a manager can reopen them. Rounds and timers never control
+each other automatically. See the
+[timer contract](../reference/brainstorming-timer-contract.md).

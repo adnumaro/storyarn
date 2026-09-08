@@ -27,6 +27,51 @@ defmodule Storyarn.Ideation do
   @spec get_round_context(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, map()} | {:error, term()}
   defdelegate get_round_context(scope, project_id, session_id, opts \\ []), to: Sessions
 
+  @doc "Reads round context and the session timer after one current access check."
+  @spec get_canvas_context(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, map()} | {:error, term()}
+  defdelegate get_canvas_context(scope, project_id, session_id, opts \\ []), to: Sessions
+
+  @doc "Reads the current shared timer for an authorized session participant."
+  @spec get_timer(map(), pos_integer(), pos_integer()) :: {:ok, struct() | nil} | {:error, term()}
+  defdelegate get_timer(scope, project_id, session_id), to: Sessions
+
+  @doc "Starts an independent timer with explicitly selected expiry actions."
+  @spec start_timer(map(), pos_integer(), pos_integer(), pos_integer(), map()) :: {:ok, struct()} | {:error, term()}
+  defdelegate start_timer(scope, project_id, session_id, revision, attrs), to: Sessions
+
+  @doc "Pauses the current timer and invalidates its previous deadline."
+  @spec pause_timer(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate pause_timer(scope, project_id, session_id, revision, timer_version), to: Sessions
+
+  @doc "Resumes a paused timer after reauthorizing its selected actions."
+  @spec resume_timer(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate resume_timer(scope, project_id, session_id, revision, timer_version), to: Sessions
+
+  @doc "Adds time while fencing any expiration scheduled for the previous version."
+  @spec extend_timer(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate extend_timer(scope, project_id, session_id, revision, timer_version, seconds), to: Sessions
+
+  @doc "Cancels a timer without applying its expiry actions."
+  @spec cancel_timer(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate cancel_timer(scope, project_id, session_id, revision, timer_version), to: Sessions
+
+  @doc "Controls admission of new notes while preserving edits to existing contributions."
+  @spec set_contributions_open(map(), pos_integer(), pos_integer(), pos_integer(), boolean()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate set_contributions_open(scope, project_id, session_id, revision, open), to: Sessions
+
+  @doc false
+  @spec expire_timer(pos_integer(), pos_integer()) :: {:ok, map()} | {:error, term()}
+  defdelegate expire_timer(timer_id, version), to: Sessions
+
+  @doc false
+  @spec timer_runtime_child_specs() :: [Supervisor.child_spec()]
+  defdelegate timer_runtime_child_specs(), to: Sessions
+
   @doc "Prepares an optional round without starting a timer or changing session visibility."
   @spec create_round(map(), pos_integer(), pos_integer(), pos_integer(), map()) :: {:ok, struct()} | {:error, term()}
   defdelegate create_round(scope, project_id, session_id, revision, attrs), to: Sessions

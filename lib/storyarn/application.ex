@@ -40,6 +40,7 @@ defmodule Storyarn.Application do
       [
         {Oban, Application.fetch_env!(:storyarn, Oban)}
       ] ++
+      Storyarn.Ideation.timer_runtime_child_specs() ++
       Storyarn.Platform.Adapters.Oban.OperationalMetrics.child_specs(operational_metrics_config) ++
       Storyarn.Projects.project_snapshot_reconciliation_metrics_child_specs(operational_metrics_config) ++
       [

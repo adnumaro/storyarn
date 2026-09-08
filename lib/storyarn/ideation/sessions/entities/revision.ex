@@ -20,7 +20,15 @@ defmodule Storyarn.Ideation.Sessions.Revision do
         :round_updated,
         :round_cancelled,
         :round_started,
-        :round_closed
+        :round_closed,
+        :timer_started,
+        :timer_paused,
+        :timer_resumed,
+        :timer_extended,
+        :timer_cancelled,
+        :timer_elapsed,
+        :contributions_opened,
+        :contributions_closed
       ]
 
     field :snapshot, :map

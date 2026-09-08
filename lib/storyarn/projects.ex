@@ -849,6 +849,18 @@ defmodule Storyarn.Projects do
   defdelegate authorize_locked(scope, project_id, action), to: Access
 
   @doc """
+  Serializes durable background bookkeeping with project snapshot capture and restore.
+
+  Requires the caller's transaction and acquires a shared project row lock before
+  any consumer-owned aggregate lock. Includes soft-deleted projects so omitted
+  work can finish consistently. This grants no access or action authorization:
+  the consumer must independently revalidate its actor before applying effects.
+  """
+  @spec lock_background_write(integer()) ::
+          :ok | {:error, :not_found | :background_write_transaction_required}
+  defdelegate lock_background_write(project_id), to: Access
+
+  @doc """
   Checks a candidate's current project editing rights for a caller-owned assignment.
 
   Requires the real actor's current editing access and an existing transaction.

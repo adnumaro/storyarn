@@ -8,6 +8,7 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
   alias Storyarn.Ideation
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -276,6 +277,133 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
         end
       after
         Task.shutdown(closer, :brutal_kill)
+      end
+    end)
+  end
+
+  test "competing timer expirations publish and close contributions exactly once", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      {:ok, _} = Ideation.set_private_mode(ctx.scope, ctx.project.id, ctx.session.id, 1, true)
+
+      {:ok, idea} =
+        Ideation.create_canvas_idea(ctx.scope, ctx.project.id, ctx.session.id, %{
+          request_key: Ecto.UUID.generate(),
+          body: "Only one publication"
+        })
+
+      {:ok, _} =
+        Ideation.start_timer(ctx.scope, ctx.project.id, ctx.session.id, 2, %{
+          seconds: 60,
+          reveal_on_expiry: true,
+          close_contributions_on_expiry: true
+        })
+
+      {:ok, timer} = Ideation.get_timer(ctx.scope, ctx.project.id, ctx.session.id)
+      now = %{TimeHelpers.now() | microsecond: {0, 6}}
+      timer |> Ecto.Changeset.change(deadline_at: DateTime.add(now, -1, :second)) |> Repo.update!()
+      parent = self()
+
+      tasks =
+        for _ <- 1..2 do
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              send(parent, {:timer_ready, self()})
+
+              receive do
+                :expire -> Ideation.expire_timer(timer.id, timer.version)
+              after
+                @timeout -> flunk("timer expiration was not released")
+              end
+            end)
+          end)
+        end
+
+      try do
+        for _ <- tasks, do: assert_receive({:timer_ready, _}, @timeout)
+        Enum.each(tasks, &send(&1.pid, :expire))
+        results = Task.await_many(tasks, @timeout)
+        assert Enum.count(results, &match?({:ok, %{outcome: :completed}}, &1)) == 1
+        assert Enum.count(results, &match?({:ok, %{outcome: :stale}}, &1)) == 1
+        assert {:ok, session} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
+        assert session.revision == 5
+        refute session.configuration.private_mode
+        refute session.contributions_open
+        assert {:ok, published} = Ideation.get_idea(ctx.owner_scope, ctx.project.id, ctx.session.id, idea.id)
+        assert published.published_revision == 1
+
+        assert Repo.aggregate(from(r in Storyarn.Ideation.Ideas.Reveal, where: r.session_id == ^ctx.session.id), :count) ==
+                 1
+      after
+        Enum.each(tasks, &Task.shutdown(&1, :brutal_kill))
+        args = %{"timer_id" => timer.id, "version" => timer.version}
+
+        Repo.delete_all(
+          from j in Oban.Job, where: j.args == ^args and j.worker == "Storyarn.Workers.ExpireIdeationTimerWorker"
+        )
+      end
+    end)
+  end
+
+  test "expiry without an actor waits for the project snapshot boundary before recording completion", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      {:ok, _} = Ideation.start_timer(ctx.scope, ctx.project.id, ctx.session.id, 1, %{seconds: 60})
+      {:ok, timer} = Ideation.get_timer(ctx.scope, ctx.project.id, ctx.session.id)
+      now = %{TimeHelpers.now() | microsecond: {0, 6}}
+      timer |> Ecto.Changeset.change(deadline_at: DateTime.add(now, -1, :second), actor_id: nil) |> Repo.update!()
+      parent = self()
+
+      capture =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            Repo.transact(fn ->
+              Repo.one!(from p in Project, where: p.id == ^ctx.project.id, lock: "FOR UPDATE")
+              send(parent, :timer_snapshot_locked)
+
+              receive do
+                :capture ->
+                  assert {:ok, capsule} = Ideation.capture_recovery(ctx.project.id)
+                  assert {:ok, data} = Storyarn.Ideation.Recovery.Capsule.open(capsule)
+                  assert [%{"status" => "running", "version" => 1}] = data["rows"]["timers"]
+                  assert [%{"revision" => 2}] = data["rows"]["sessions"]
+                  {:ok, :captured}
+              after
+                @timeout -> flunk("snapshot was not released")
+              end
+            end)
+          end)
+        end)
+
+      try do
+        assert_receive :timer_snapshot_locked, @timeout
+
+        expiry =
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              [[pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+              send(parent, {:timer_expiry_waiting, pid})
+              Ideation.expire_timer(timer.id, timer.version)
+            end)
+          end)
+
+        try do
+          assert_receive {:timer_expiry_waiting, pid}, @timeout
+          assert_waiting_on_lock(pid, 200)
+          send(capture.pid, :capture)
+          assert {:ok, :captured} = Task.await(capture, @timeout)
+          assert {:ok, %{outcome: :skipped_authorization}} = Task.await(expiry, @timeout)
+          assert {:ok, elapsed} = Ideation.get_timer(ctx.scope, ctx.project.id, ctx.session.id)
+          assert elapsed.status == :elapsed
+          assert elapsed.version == 2
+        after
+          Task.shutdown(expiry, :brutal_kill)
+        end
+      after
+        Task.shutdown(capture, :brutal_kill)
+        args = %{"timer_id" => timer.id, "version" => timer.version}
+
+        Repo.delete_all(
+          from j in Oban.Job, where: j.args == ^args and j.worker == "Storyarn.Workers.ExpireIdeationTimerWorker"
+        )
       end
     end)
   end
