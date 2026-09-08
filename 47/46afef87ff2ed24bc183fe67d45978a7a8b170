@@ -1,0 +1,23 @@
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_a0ba1cfd95dcb5 139,149
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_c0cf7dd7ab425e 139,149
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_3db286d7d3ae7e 139,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4746afef87ff2ed24bc183fe67d45978a7a8b170",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
