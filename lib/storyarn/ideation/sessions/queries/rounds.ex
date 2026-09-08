@@ -11,7 +11,7 @@ defmodule Storyarn.Ideation.Sessions.Queries.Rounds do
     with true <- Keyword.keyword?(opts),
          {:ok, session} <- Get.run(scope, project_id, session_id),
          {:ok, limit, before_id} <- Page.options(opts),
-         status when status in [:all, :planned, :active, :closed] <- Keyword.get(opts, :status, :all),
+         status when status in [:all, :planned, :active, :closed, :cancelled] <- Keyword.get(opts, :status, :all),
          {:ok, ids} <- ids(Keyword.get(opts, :ids, :all)) do
       query = from r in Round, where: r.session_id == ^session.id, order_by: [desc: r.id], limit: ^limit
       query = if status == :all, do: query, else: where(query, [r], r.status == ^status)

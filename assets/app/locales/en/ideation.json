@@ -92,7 +92,8 @@
       "invalid_round": "This round is unavailable. Refresh the board and review its rounds.",
       "round_not_started": "This round has not started. Start it before contributing notes.",
       "round_closed": "This round is closed. Prepare another round to continue.",
-      "round_not_found": "This round is no longer available. Refresh the board."
+      "round_not_found": "This round is no longer available. Refresh the board.",
+      "round_not_planned": "Only a prepared round can be changed or cancelled. Review the current round."
     },
     "saveStatus": {
       "saved": "Saved",
@@ -168,7 +169,17 @@
       "all": "All rounds",
       "none": "Without a round",
       "assigned": "Round contribution",
-      "late": "Added after closing"
+      "late": "Added after closing",
+      "edit": "Edit question",
+      "save": "Save question",
+      "cancelRound": "Cancel round",
+      "cancelled": "Cancelled",
+      "context": "Current round question",
+      "promptChanged": "The session changed while you were editing. Compare the current question with your draft before replacing it.",
+      "currentPrompt": "Current question",
+      "noPrompt": "No question",
+      "replacePrompt": "Use my question",
+      "loadingPrompt": "Loading the current question…"
     }
   }
 }

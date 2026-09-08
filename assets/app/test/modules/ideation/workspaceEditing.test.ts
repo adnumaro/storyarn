@@ -26,6 +26,7 @@ function workspace(serialize = (body: string) => body, overrides: Partial<Board>
       callback?.({
         status: "ok",
         value: idea({
+          ...current.ideas.find((note) => note.id === payload!.idea_id),
           ...payload,
           body: serialize(String(payload!.body)),
           id: payload!.idea_id,
@@ -195,6 +196,95 @@ describe("workspace round filters", () => {
       "save_idea",
       expect.objectContaining({ body: "<p>Original text</p>" }),
       expect.any(Function),
+    );
+  });
+
+  it.each([20, null] as const)(
+    "keeps round filter %s during visible text undo and redo, including refreshes",
+    async (roundId) => {
+      const { canvas, live, save, current } = workspace((body) => body, {
+        rounds: [round()],
+        round_filter: roundId,
+        ideas: [idea({ round_id: roundId })],
+      });
+      canvas.vm.$emit("edit", 10);
+      canvas.vm.$emit("change", 10, "<p>Visible edit</p>");
+      canvas.vm.$emit("finish");
+      await flushPromises();
+      await wrapper.setProps({ board: { ...current, loading: true } });
+      save.mockClear();
+      canvas.vm.$emit("undo");
+      await flushPromises();
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ idea_id: 10, body: "<p>Original text</p>" }),
+      );
+      expect(canvas.props("historyState").canRedo).toBe(true);
+      canvas.vm.$emit("redo");
+      await flushPromises();
+      expect(save).toHaveBeenLastCalledWith(
+        expect.objectContaining({ idea_id: 10, body: "<p>Visible edit</p>" }),
+      );
+      expect(vi.mocked(live.pushEvent).mock.calls.some(([event]) => event === "filter_round")).toBe(
+        false,
+      );
+      expect(canvas.props("notes")).toHaveLength(1);
+    },
+  );
+
+  it("restores a removed note in the current round without clearing the filter", async () => {
+    const { canvas, live } = workspace((body) => body, {
+      rounds: [round()],
+      round_filter: 20,
+      ideas: [idea({ round_id: 20 })],
+    });
+    const send = vi.mocked(live.pushEvent).getMockImplementation()!;
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (event === "delete_idea")
+        callback?.({
+          status: "ok",
+          value: { id: 10, revision: 1, deleted_at: "2026-09-08T10:00:00Z" },
+        });
+      else if (event === "restore_idea")
+        callback?.({ status: "ok", value: idea({ round_id: 20 }) });
+      else send(event, payload, callback);
+    });
+    canvas.vm.$emit("remove", [10]);
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(0);
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(1);
+    canvas.vm.$emit("redo");
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(0);
+    expect(vi.mocked(live.pushEvent).mock.calls.some(([event]) => event === "filter_round")).toBe(
+      false,
+    );
+  });
+
+  it("keeps the round filter when undoing a visible multi-note move", async () => {
+    const { canvas, live } = workspace((body) => body, {
+      rounds: [round()],
+      round_filter: 20,
+      ideas: [idea({ round_id: 20 }), idea({ id: 11, round_id: 20 })],
+    });
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (event === "move_idea")
+        callback?.({
+          status: "ok",
+          value: { x: payload!.x, y: payload!.y, version: Number(payload!.version) + 1 },
+        });
+    });
+    canvas.vm.$emit("move", [
+      { id: 10, point: { x: 45, y: 60 } },
+      { id: 11, point: { x: 60, y: 75 } },
+    ]);
+    await flushPromises();
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("historyState").canRedo).toBe(true);
+    expect(vi.mocked(live.pushEvent).mock.calls.some(([event]) => event === "filter_round")).toBe(
+      false,
     );
   });
 

@@ -1,6 +1,12 @@
 import { computed, ref, shallowRef } from "vue";
 
+export interface CanvasTarget {
+  id: number;
+  restoring?: { roundId: number | null };
+}
+
 export interface CanvasCommand {
+  targets: (undo: boolean) => CanvasTarget[];
   undo: () => Promise<boolean>;
   redo: () => Promise<boolean>;
 }
@@ -11,7 +17,7 @@ export interface CanvasCommand {
 export function useCanvasHistory(
   onError: () => void,
   shouldRetry = () => false,
-  prepare?: () => Promise<boolean>,
+  prepare?: (targets: CanvasTarget[]) => Promise<boolean>,
 ) {
   const past = shallowRef<CanvasCommand[]>([]);
   const future = shallowRef<CanvasCommand[]>([]);
@@ -42,7 +48,8 @@ export function useCanvasHistory(
     if (!command || busy.value) return;
     const started = generation;
     const result = await run(async () => {
-      if (prepare && (!(await prepare()) || started !== generation)) return undefined;
+      if (prepare && (!(await prepare(command.targets(undo))) || started !== generation))
+        return undefined;
       return undo ? command.undo() : command.redo();
     });
     if (result === undefined) return;

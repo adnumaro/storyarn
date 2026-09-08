@@ -55,11 +55,16 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     assert Repo.get!(Idea, early.id).round_id == first.id
   end
 
-  test "planned, foreign and malformed rounds cannot accept a contribution", ctx do
+  test "planned, cancelled, foreign and malformed rounds cannot accept a contribution", ctx do
     assert {:ok, _} = Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{})
     assert {:ok, [planned]} = Ideation.list_rounds(ctx.author, ctx.project.id, ctx.session.id)
 
     assert {:error, :round_not_started} =
+             Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{round_id: planned.id}))
+
+    assert {:ok, _} = Ideation.cancel_round(ctx.facilitator, ctx.project.id, ctx.session.id, planned.id, 2)
+
+    assert {:error, :round_cancelled} =
              Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{round_id: planned.id}))
 
     assert {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})

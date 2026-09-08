@@ -9,7 +9,7 @@ defmodule Storyarn.Ideation.Sessions.Round do
     field :session_id, :id
     field :number, :integer
     field :prompt, :string
-    field :status, Ecto.Enum, values: [:planned, :active, :closed], default: :planned
+    field :status, Ecto.Enum, values: [:planned, :active, :closed, :cancelled], default: :planned
     field :started_at, :utc_datetime_usec
     field :closed_at, :utc_datetime_usec
     timestamps(type: :utc_datetime_usec)

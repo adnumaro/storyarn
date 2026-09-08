@@ -90,6 +90,65 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert restore(ctx, capsule) == maps
   end
 
+  test "edited and cancelled planned rounds survive recovery with their audit and cannot accept notes", ctx do
+    {ctx, planned} = add_round(ctx, "Typo")
+
+    assert {:ok, updated} =
+             Ideation.update_round(ctx.facilitator, ctx.project.id, ctx.session.id, planned.id, ctx.session.revision, %{
+               prompt: "Corrected question"
+             })
+
+    assert {:ok, cancelled} =
+             Ideation.cancel_round(ctx.owner, ctx.project.id, ctx.session.id, planned.id, updated.revision)
+
+    ctx = %{ctx | session: cancelled}
+    capsule = capture(ctx)
+    assert {:ok, data} = Capsule.open(capsule)
+    assert data["version"] == 2
+    assert [saved] = data["rows"]["rounds"]
+    assert saved["status"] == "cancelled"
+    assert saved["started_at"] == nil
+    assert saved["closed_at"] == nil
+    Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    assert {:ok, [round]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, session_id)
+    assert round.id == maps["rounds"][planned.id]
+    assert round.recovery_identity == planned.recovery_identity
+    assert round.status == :cancelled
+    assert round.prompt == "Corrected question"
+    assert round.started_at == nil
+    assert round.closed_at == nil
+
+    assert {:ok, [cancel_revision, update_revision, _prepared, _original]} =
+             Ideation.list_session_revisions(ctx.viewer, ctx.project.id, session_id)
+
+    assert cancel_revision.action == :round_cancelled
+    assert update_revision.action == :round_updated
+    assert update_revision.snapshot["round"]["prompt"] == "Corrected question"
+
+    assert {:error, :round_cancelled} =
+             Ideation.create_idea(ctx.author, ctx.project.id, session_id, idea_attrs(%{round_id: round.id}))
+
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+    assert restore(ctx, capsule) == maps
+
+    for mutation <- [
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], "2026-09-08T12:00:00.000000") end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "closed_at"], "2026-09-08T12:00:00.000000") end,
+          fn data -> put_in(data, ["rows", "session_revisions", Access.at(2), "snapshot", "round", "number"], -1) end,
+          fn data ->
+            put_in(
+              data,
+              ["rows", "session_revisions", Access.at(3), "snapshot", "round", "started_at"],
+              "2026-09-08T12:00:00.000000"
+            )
+          end
+        ] do
+      assert {:error, :ideation_recovery_capture_failed} = Capsule.seal(mutation.(data))
+    end
+  end
+
   test "authenticated invalid round graphs fail before changing the project", ctx do
     {ctx, first} = add_round(ctx, "First")
     ctx = start_round(ctx, first)
@@ -104,6 +163,9 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "session_id"], -1) end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], "not-a-date") end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], nil) end,
+      fn data ->
+        update_in(data, ["rows", "rounds", Access.at(0)], &Map.merge(&1, %{"status" => "cancelled", "started_at" => nil}))
+      end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "prompt"], String.duplicate("é", 1500)) end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(1), "number"], first.number) end,
       fn data ->

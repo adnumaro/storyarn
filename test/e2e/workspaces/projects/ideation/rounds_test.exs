@@ -39,6 +39,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> assert_has("#brainstorming-round-#{round.id}[data-status=active]")
       |> assert_has("#brainstorming-active-round", text: "Round 1")
       |> click("#brainstorming-rounds-trigger")
+      |> assert_has("#brainstorming-round-context", text: "What does the antagonist want?")
       |> press("#brainstorming-canvas", "n")
       |> type("[contenteditable=true]", "The antagonist wants to return a stolen memory.")
       |> assert_has("[data-note-id]:not([data-note-id^='-'])", text: "The antagonist wants to return a stolen memory.")
@@ -61,6 +62,40 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     |> assert_has("#canvas-note-#{existing.id}:not([data-round-id])")
     |> assert_has("#canvas-note-#{contribution.id}[data-round-id='#{round.id}']")
     |> assert_has(".canvas-note", count: 2)
+  end
+
+  test "correct or cancel a prepared question without starting a round", %{conn: conn} do
+    ctx = ideation_fixture()
+    {:ok, _} = Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{prompt: "A typo"})
+    {:ok, [round]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
+    prompt = "#brainstorming-round-edit-prompt-#{round.id}"
+
+    browser =
+      conn
+      |> authenticate(ctx.facilitator.user)
+      |> visit(board_path(ctx))
+      |> assert_has("#brainstorming-canvas")
+      |> click("#brainstorming-rounds-trigger")
+      |> click("#brainstorming-round-edit-#{round.id}")
+      |> press(prompt, "ControlOrMeta+a")
+      |> type(prompt, "Which promise changes the story?")
+      |> click("#brainstorming-round-save-#{round.id}")
+      |> assert_has("#brainstorming-round-#{round.id}", text: "Which promise changes the story?")
+      |> click("#brainstorming-round-cancel-#{round.id}:not([disabled])")
+      |> assert_has("#brainstorming-round-#{round.id}[data-status=cancelled]")
+      |> refute_has("#brainstorming-round-start-#{round.id}")
+      |> refute_has("#brainstorming-round-edit-#{round.id}")
+      |> refute_has("#brainstorming-active-round")
+
+    assert {:ok, [cancelled]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert cancelled.prompt == "Which promise changes the story?"
+    assert cancelled.status == :cancelled
+    assert cancelled.started_at == nil
+    assert cancelled.closed_at == nil
+
+    browser
+    |> click("#brainstorming-rounds-trigger")
+    |> assert_has("#brainstorming-canvas")
   end
 
   test "a round closes in both browsers while private notes remain private and editable", %{conn: conn} = test_context do

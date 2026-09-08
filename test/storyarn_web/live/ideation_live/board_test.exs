@@ -479,7 +479,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     round = active_round(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
 
-    for event <- ["create_round", "start_round", "close_round"] do
+    for event <- ["create_round", "update_round", "cancel_round", "start_round", "close_round"] do
       render_hook(view, event, payload(view, %{revision: 3, round_id: round.id}))
       assert_reply(view, %{status: "error", code: "unauthorized"})
     end
@@ -493,6 +493,33 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     render_hook(readonly, "close_round", payload(readonly, %{revision: 3, round_id: round.id}))
     assert_reply(readonly, %{status: "error", code: "unauthorized"})
     assert data(readonly)["active_round"]["id"] == round.id
+  end
+
+  test "prepared questions can be corrected and cancelled in every participant's context", ctx do
+    {:ok, _} = Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{prompt: "A typo"})
+    {:ok, [round]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, manager, _} = live(log_in_user(ctx.conn, ctx.facilitator.user), board_path(ctx, ctx.session.id))
+    {:ok, peer, _} = live(log_in_user(build_conn(), ctx.peer.user), board_path(ctx, ctx.session.id))
+    epoch = data(peer)["epoch"]
+
+    render_hook(manager, "update_round", payload(manager, %{revision: "2", round_id: "#{round.id}", prompt: "Corrected"}))
+    assert_reply(manager, %{status: "ok"})
+    assert_board_eventually(manager, fn board -> assert board["session"]["revision"] == 3 end)
+    assert_board_eventually(peer, fn board -> assert [%{"prompt" => "Corrected"}] = board["rounds"] end)
+
+    render_hook(manager, "cancel_round", payload(manager, %{revision: 3, round_id: round.id}))
+    assert_reply(manager, %{status: "ok"})
+
+    assert_board_eventually(peer, fn board ->
+      assert [%{"status" => "cancelled", "prompt" => "Corrected"}] = board["rounds"]
+      assert board["epoch"] == epoch
+      assert board["can_edit"]
+      assert board["active_round"] == nil
+    end)
+
+    assert_board_eventually(manager, fn board -> assert board["session"]["revision"] == 4 end)
+    render_hook(manager, "start_round", payload(manager, %{revision: 4, round_id: round.id}))
+    assert_reply(manager, %{status: "error", code: "round_cancelled"})
   end
 
   test "creation preserves explicit no-round while omitted round uses active and malformed IDs fail", ctx do

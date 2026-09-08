@@ -22,9 +22,14 @@ import SessionDialog from "./components/SessionDialog.vue";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
 import RoundFilter from "./components/RoundFilter.vue";
+import RoundContext from "./components/RoundContext.vue";
 import { useBoardConnection } from "./composables/useBoardConnection";
 import { useCanvasNotes, type RemovedNote } from "./composables/useCanvasNotes";
-import { useCanvasHistory, type CanvasCommand } from "./composables/useCanvasHistory";
+import {
+  useCanvasHistory,
+  type CanvasCommand,
+  type CanvasTarget,
+} from "./composables/useCanvasHistory";
 import { readNotes, writeNotes, type NoteCopy } from "./lib/clipboard";
 import { useBoardText } from "./composables/useBoardText";
 import { sameBody } from "./lib/paste";
@@ -186,7 +191,18 @@ function presenceCommand(
     select(id);
     return true;
   }
-  return initiallyCreated ? { undo: hide, redo: show } : { undo: show, redo: hide };
+  const targets = (undo: boolean): CanvasTarget[] => {
+    const restoring = initiallyCreated !== undo ? removed?.idea : undefined;
+    return [
+      {
+        id: notes.resolveId(id),
+        ...(restoring ? { restoring: { roundId: restoring.round_id } } : {}),
+      },
+    ];
+  };
+  return initiallyCreated
+    ? { targets, undo: hide, redo: show }
+    : { targets, undo: show, redo: hide };
 }
 function contentCommand(
   id: number,
@@ -211,7 +227,11 @@ function contentCommand(
     if (saved) select(note.id);
     return saved;
   }
-  return { undo: () => apply(after, before), redo: () => apply(before, after) };
+  return {
+    targets: () => [{ id: notes.resolveId(id) }],
+    undo: () => apply(after, before),
+    redo: () => apply(before, after),
+  };
 }
 async function filterRound(value: RoundSelection, keepLocalView = false, beforeId?: number | null) {
   finish();
@@ -242,7 +262,17 @@ function historyRangeLoaded() {
   if (board.idea_before !== null && board.idea_before <= oldestLoadedIdeaId) return true;
   return board.ideas.some((idea) => idea.id <= oldestLoadedIdeaId!);
 }
-function prepareHistory(): Promise<boolean> {
+function prepareHistory(targets: CanvasTarget[]): Promise<boolean> {
+  const available = targets.every((target) => {
+    const note = notes.find(target.id);
+    if (!note && !target.restoring) return false;
+    const roundId = note ? note.round_id : target.restoring!.roundId;
+    return roundFilter.value === "all" || roundId === roundFilter.value;
+  });
+  // Current targets can be used directly, even during a background refresh.
+  // A removed note retains enough local context to be restored in this view.
+  if (available && !filteringRound.value && roundFilter.value === board.round_filter)
+    return Promise.resolve(true);
   if (
     roundFilter.value === "all" &&
     board.round_filter === "all" &&
@@ -338,12 +368,20 @@ function placementCommand(
       ([key, value]) => saved?.[key as keyof CanvasPlacement] === value,
     );
   }
-  return { undo: () => apply(after, before), redo: () => apply(before, after) };
+  return {
+    targets: () => [{ id: notes.resolveId(id) }],
+    undo: () => apply(after, before),
+    redo: () => apply(before, after),
+  };
 }
 function group(commands: CanvasCommand[]): CanvasCommand {
   // Track completed members so retrying an interrupted batch never repeats them.
   let applied = commands.length;
   return {
+    targets: (undo) =>
+      (undo ? commands.slice(0, applied) : commands.slice(applied)).flatMap((command) =>
+        command.targets(undo),
+      ),
     undo: async () => {
       while (applied > 0) {
         if (!(await commands[applied - 1].undo())) return false;
@@ -655,7 +693,8 @@ onUnmounted(() => {
         ></template
       >
     </DashboardContent>
-    <div v-else class="relative min-h-0 flex-1">
+    <RoundContext v-if="board.active_round?.prompt" :round="board.active_round" />
+    <div v-if="board.session" class="relative min-h-0 flex-1">
       <BrainstormingCanvas
         v-show="!list"
         ref="canvas"

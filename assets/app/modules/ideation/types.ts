@@ -88,7 +88,7 @@ export interface Round {
   session_id: number;
   number: number;
   prompt: string | null;
-  status: "planned" | "active" | "closed";
+  status: "planned" | "active" | "closed" | "cancelled";
   started_at: string | null;
   closed_at: string | null;
   inserted_at: string;

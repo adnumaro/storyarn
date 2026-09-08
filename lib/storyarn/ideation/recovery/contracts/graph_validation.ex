@@ -109,7 +109,8 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       round_timing?(row)
   end
 
-  defp round_timing?(%{"status" => "planned", "started_at" => nil, "closed_at" => nil}), do: true
+  defp round_timing?(%{"status" => status, "started_at" => nil, "closed_at" => nil})
+       when status in ["planned", "cancelled"], do: true
 
   defp round_timing?(%{"status" => "active", "started_at" => started, "closed_at" => nil}), do: valid_time?(started)
 
@@ -133,7 +134,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   end
 
   defp round_snapshot?(%{"action" => action, "snapshot" => snapshot} = row, index)
-       when action in ~w(round_created round_started round_closed) do
+       when action in ~w(round_created round_updated round_cancelled round_started round_closed) do
     round = snapshot["round"]
 
     is_map(round) and round_metadata?(round) and

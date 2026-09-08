@@ -74,9 +74,13 @@ but cannot write.
 
 The Rounds control in the existing header lets the facilitator prepare a round
 with an optional question, start it, close it and consult previous rounds.
+Prepared questions can be edited or cancelled before starting. Cancelled rounds
+remain in the round history, without becoming active or accepting notes.
 Participants can read that context without managing the session. The canvas
 remains the working surface throughout; no round or timer is required to create
 notes. Only one round can be active at a time.
+The current question also appears above the canvas; longer questions can be
+expanded in place without opening the round controls.
 
 The round filter changes which notes are shown, independently of the active
 round. It offers all rounds, notes without a round, and each loaded round.
@@ -90,6 +94,11 @@ round. Closing does not publish, discard or freeze notes. Editing existing notes
 preserves their provenance, and undoing an unsaved deletion restores the original
 round. Switching filters retains drafts and local undo state. Existing connections
 can relate readable notes across rounds.
+
+Undo and redo preserve the current view when their notes belong to that view,
+including restoring a deleted note. When a target is hidden or outside the loaded
+range, the canvas loads all rounds through the previously displayed range before
+acting. Failed or interrupted reads preserve the pending undo entry.
 
 The [round contract](../reference/brainstorming-rounds-contract.md) defines
 concurrency, authorization and snapshot compatibility.

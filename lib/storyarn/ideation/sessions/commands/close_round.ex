@@ -15,7 +15,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.CloseRound do
   end
 
   defp close(session, _access, %{status: :closed}), do: {:ok, session}
-  defp close(_session, _access, %{status: :planned}), do: {:error, :round_not_active}
+  defp close(_session, _access, %{status: status}) when status in [:planned, :cancelled], do: {:error, :round_not_active}
 
   defp close(session, access, round) do
     with {:ok, closed} <-

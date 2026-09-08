@@ -11,14 +11,18 @@ function pending() {
   return { promise, resolve, reject };
 }
 function command() {
-  return { undo: vi.fn(async () => true), redo: vi.fn(async () => true) };
+  return { targets: () => [], undo: vi.fn(async () => true), redo: vi.fn(async () => true) };
 }
 
 describe("canvas local command history", () => {
   it("moves commands between stacks only after the server acknowledgement", async () => {
     const history = useCanvasHistory(vi.fn());
     const undo = pending();
-    const action = { undo: vi.fn(() => undo.promise), redo: vi.fn(async () => true) };
+    const action = {
+      targets: () => [],
+      undo: vi.fn(() => undo.promise),
+      redo: vi.fn(async () => true),
+    };
     history.push(action);
     const undoing = history.undo();
     expect(history.busy.value).toBe(true);
@@ -100,12 +104,16 @@ describe("canvas local command history", () => {
     const history = useCanvasHistory(error);
     const old = pending();
     const fresh = pending();
-    history.push({ undo: () => old.promise, redo: async () => true });
+    history.push({ targets: () => [], undo: () => old.promise, redo: async () => true });
     const oldUndo = history.undo();
     history.clear();
     expect(history.canUndo.value).toBe(false);
     expect(history.canRedo.value).toBe(false);
-    const newAction = { undo: vi.fn(() => fresh.promise), redo: async () => true };
+    const newAction = {
+      targets: () => [],
+      undo: vi.fn(() => fresh.promise),
+      redo: async () => true,
+    };
     history.push(newAction);
     const freshUndo = history.undo();
     old.resolve(true);
@@ -124,7 +132,7 @@ describe("canvas local command history", () => {
     const error = vi.fn();
     const history = useCanvasHistory(error);
     const old = pending();
-    history.push({ undo: () => old.promise, redo: async () => true });
+    history.push({ targets: () => [], undo: () => old.promise, redo: async () => true });
     const undoing = history.undo();
     history.clear();
     old.reject(new Error("old session failed"));
@@ -159,5 +167,20 @@ describe("canvas local command history", () => {
     first.resolve(true);
     expect(await running).toBeUndefined();
     expect(history.busy.value).toBe(false);
+  });
+  it("resolves command targets for each direction at the moment of execution", async () => {
+    const prepare = vi.fn(async () => true);
+    const history = useCanvasHistory(vi.fn(), () => false, prepare);
+    let id = -1;
+    const action = {
+      ...command(),
+      targets: (undo: boolean) => [{ id, ...(undo ? {} : { restoring: { roundId: 20 } }) }],
+    };
+    history.push(action);
+    id = 42;
+    await history.undo();
+    expect(prepare).toHaveBeenLastCalledWith([{ id: 42 }]);
+    await history.redo();
+    expect(prepare).toHaveBeenLastCalledWith([{ id: 42, restoring: { roundId: 20 } }]);
   });
 });

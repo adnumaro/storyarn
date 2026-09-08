@@ -17,6 +17,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.StartRound do
 
   defp start(session, _access, %{status: :active}), do: {:ok, session}
   defp start(_session, _access, %{status: :closed}), do: {:error, :round_closed}
+  defp start(_session, _access, %{status: :cancelled}), do: {:error, :round_cancelled}
 
   defp start(session, access, round) do
     if Repo.exists?(from r in Round, where: r.session_id == ^session.id and r.status == :active) do

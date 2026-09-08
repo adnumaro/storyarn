@@ -13,6 +13,16 @@ defmodule StoryarnWeb.IdeationLive.Handlers.RoundHandlers do
   defp execute("create_round", scope, project_id, session_id, revision, params),
     do: Ideation.create_round(scope, project_id, session_id, revision, Params.fields(params, [:prompt]))
 
+  defp execute("update_round", scope, project_id, session_id, revision, params) do
+    with {:ok, id} <- Params.positive(params["round_id"]),
+         do: Ideation.update_round(scope, project_id, session_id, id, revision, Params.fields(params, [:prompt]))
+  end
+
+  defp execute("cancel_round", scope, project_id, session_id, revision, params) do
+    with {:ok, id} <- Params.positive(params["round_id"]),
+         do: Ideation.cancel_round(scope, project_id, session_id, id, revision)
+  end
+
   defp execute("start_round", scope, project_id, session_id, revision, params) do
     with {:ok, id} <- Params.positive(params["round_id"]),
          do: Ideation.start_round(scope, project_id, session_id, id, revision)

@@ -39,9 +39,17 @@ function choose(value: string) {
     <SelectContent>
       <SelectItem value="all">{{ t("ideation.rounds.all") }}</SelectItem>
       <SelectItem value="none">{{ t("ideation.rounds.none") }}</SelectItem>
-      <SelectItem v-for="round in rounds" :key="round.id" :value="String(round.id)">{{
-        t("ideation.rounds.number", { number: round.number })
-      }}</SelectItem>
+      <SelectItem
+        v-for="round in rounds.filter(
+          (entry) => entry.status !== 'cancelled' || entry.id === value,
+        )"
+        :key="round.id"
+        :value="String(round.id)"
+        >{{ t("ideation.rounds.number", { number: round.number })
+        }}<span v-if="round.status === 'cancelled'">
+          · {{ t("ideation.rounds.cancelled") }}</span
+        ></SelectItem
+      >
     </SelectContent>
   </Select>
 </template>

@@ -17,6 +17,8 @@ defmodule Storyarn.Ideation.Sessions.Revision do
         :reopened,
         :recovered,
         :round_created,
+        :round_updated,
+        :round_cancelled,
         :round_started,
         :round_closed
       ]

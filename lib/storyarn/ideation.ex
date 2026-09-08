@@ -23,9 +23,23 @@ defmodule Storyarn.Ideation do
   @spec list_rounds(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
   defdelegate list_rounds(scope, project_id, session_id, opts \\ []), to: Sessions
 
+  @doc "Reads a round history range and its active and referenced context after one access check."
+  @spec get_round_context(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, map()} | {:error, term()}
+  defdelegate get_round_context(scope, project_id, session_id, opts \\ []), to: Sessions
+
   @doc "Prepares an optional round without starting a timer or changing session visibility."
   @spec create_round(map(), pos_integer(), pos_integer(), pos_integer(), map()) :: {:ok, struct()} | {:error, term()}
   defdelegate create_round(scope, project_id, session_id, revision, attrs), to: Sessions
+
+  @doc "Edits a prepared round's question after checking current facilitator authority and session revision."
+  @spec update_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), map()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate update_round(scope, project_id, session_id, round_id, revision, attrs), to: Sessions
+
+  @doc "Cancels a prepared round while retaining its session record and recovery provenance."
+  @spec cancel_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate cancel_round(scope, project_id, session_id, round_id, revision), to: Sessions
 
   @doc "Starts a prepared round after checking facilitator authority and the current session revision."
   @spec start_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::

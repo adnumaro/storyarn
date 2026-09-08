@@ -34,6 +34,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundContribution do
 
   defp contribution(nil), do: {:ok, %{round_id: nil, late_contribution: false}}
   defp contribution(%{status: :planned}), do: {:error, :round_not_started}
+  defp contribution(%{status: :cancelled}), do: {:error, :round_cancelled}
 
   defp contribution(round), do: {:ok, %{round_id: round.id, late_contribution: round.status == :closed}}
 end

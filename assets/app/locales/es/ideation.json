@@ -92,7 +92,8 @@
       "invalid_round": "Esta ronda no está disponible. Actualiza el tablero y revisa sus rondas.",
       "round_not_started": "Esta ronda no ha comenzado. Iníciala antes de aportar notas.",
       "round_closed": "Esta ronda está cerrada. Prepara otra ronda para continuar.",
-      "round_not_found": "Esta ronda ya no está disponible. Actualiza el tablero."
+      "round_not_found": "Esta ronda ya no está disponible. Actualiza el tablero.",
+      "round_not_planned": "Sólo puedes editar o cancelar una ronda preparada. Revisa el estado actual de la ronda."
     },
     "saveStatus": {
       "saved": "Guardado",
@@ -168,7 +169,17 @@
       "all": "Todas las rondas",
       "none": "Sin ronda",
       "assigned": "Contribución de ronda",
-      "late": "Añadida tras el cierre"
+      "late": "Añadida tras el cierre",
+      "edit": "Editar pregunta",
+      "save": "Guardar pregunta",
+      "cancelRound": "Cancelar ronda",
+      "cancelled": "Cancelada",
+      "context": "Pregunta de la ronda actual",
+      "promptChanged": "La sesión ha cambiado mientras editabas. Compara la pregunta actual con tu borrador antes de reemplazarla.",
+      "currentPrompt": "Pregunta actual",
+      "noPrompt": "Sin pregunta",
+      "replacePrompt": "Usar mi pregunta",
+      "loadingPrompt": "Cargando la pregunta actual…"
     }
   }
 }
