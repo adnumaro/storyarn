@@ -53,6 +53,10 @@ invalidate older scheduled messages. Resume renews the initiating actor and
 configuration after current authorization; extension does not silently renew
 an actor or policy that has changed since the timer was started.
 
+A backward server-clock correction cannot increase saved remaining time beyond
+the configured duration or put a completion timestamp before its start. Pausing,
+extending and completing remain valid for persistence and snapshot capture.
+
 Expiry rechecks the persisted version and deadline under the session lifecycle
 lock, then current actor access, managerial responsibility and configuration.
 If authority or configuration changed, it records a skipped outcome and performs

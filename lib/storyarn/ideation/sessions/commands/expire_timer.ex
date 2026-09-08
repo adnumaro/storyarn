@@ -68,7 +68,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
              status: :elapsed,
              deadline_at: nil,
              remaining_seconds: 0,
-             completed_at: TimerMutation.now(),
+             completed_at: TimerMutation.completion_time(timer),
              expiry_outcome: outcome
            )
            |> Repo.update(),

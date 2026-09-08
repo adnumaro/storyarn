@@ -32,9 +32,17 @@ defmodule Storyarn.Ideation.Sessions.Execution.TimerMutation do
 
   def active(_), do: {:error, :timer_not_running}
 
-  def remaining(%{status: :running, deadline_at: deadline}), do: max(DateTime.diff(deadline, now(), :second), 0)
+  def remaining(%{status: :running, deadline_at: deadline, duration_seconds: duration}) do
+    deadline |> DateTime.diff(now(), :second) |> max(0) |> min(duration)
+  end
+
   def remaining(timer), do: timer.remaining_seconds
   def now, do: %{TimeHelpers.now() | microsecond: {0, 6}}
+
+  def completion_time(timer) do
+    current = now()
+    if DateTime.before?(current, timer.started_at), do: timer.started_at, else: current
+  end
 
   def reveal_allowed(%{configuration: %{private_mode: false}}, true), do: {:error, :timer_reveal_requires_private}
   def reveal_allowed(_, _), do: :ok

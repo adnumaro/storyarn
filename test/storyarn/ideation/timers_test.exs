@@ -4,14 +4,17 @@ defmodule Storyarn.Ideation.TimersTest do
   use Storyarn.DataCase, async: false
 
   import Ecto.Changeset
+  import Ecto.Query
   import Storyarn.IdeationFixtures
 
   alias Storyarn.Ideation
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Reveal
+  alias Storyarn.Ideation.Recovery.Capsule
   alias Storyarn.Ideation.Sessions.Timer
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
+  alias Storyarn.Projects.Project
 
   setup do
     ideation_fixture()
@@ -91,6 +94,50 @@ defmodule Storyarn.Ideation.TimersTest do
     assert replacement.started_at
     assert replacement.completed_at == nil
     assert Repo.aggregate(Timer, :count) == 1
+  end
+
+  @tag :timer_clock_regression
+  test "pausing after a backward clock adjustment cannot exceed the programmed duration", ctx do
+    timer = start(ctx, %{seconds: 60})
+
+    # Persist the same deadline-to-now gap a clock moving back one minute creates.
+    timer |> change(deadline_at: DateTime.add(now(), 120, :second)) |> Repo.update!()
+
+    assert {:ok, _} = Ideation.pause_timer(ctx.owner, ctx.project.id, ctx.session.id, 2, timer.version)
+    paused = timer(ctx)
+    assert paused.status == :paused
+    assert paused.duration_seconds == 60
+    assert paused.remaining_seconds == 60
+    assert paused.deadline_at == nil
+  end
+
+  @tag :timer_clock_regression
+  test "extending after a backward clock adjustment preserves the timer duration bound", ctx do
+    timer = start(ctx, %{seconds: 60})
+    timer |> change(deadline_at: DateTime.add(now(), 120, :second)) |> Repo.update!()
+
+    assert {:ok, _} = Ideation.extend_timer(ctx.owner, ctx.project.id, ctx.session.id, 2, timer.version, 30)
+    extended = timer(ctx)
+    assert extended.status == :running
+    assert extended.duration_seconds == 90
+    assert extended.remaining_seconds == 90
+    assert DateTime.diff(extended.deadline_at, now(), :second) in 1..90
+    assert extended.version == timer.version + 1
+  end
+
+  @tag :timer_clock_regression
+  test "cancellation after a backward clock adjustment remains recoverable", ctx do
+    assert_terminal_clock_recovery(ctx, :cancel)
+  end
+
+  @tag :timer_clock_regression
+  test "archiving after a backward clock adjustment remains recoverable", ctx do
+    assert_terminal_clock_recovery(ctx, :archive)
+  end
+
+  @tag :timer_clock_regression
+  test "expiry after rescheduling across a backward clock adjustment remains recoverable", ctx do
+    assert_terminal_clock_recovery(ctx, :expire)
   end
 
   test "timer controls authorize managers with current session and timer versions", ctx do
@@ -343,6 +390,40 @@ defmodule Storyarn.Ideation.TimersTest do
     assert current(ctx).contributions_open
     assert {:error, :not_found} = Ideation.get_idea(ctx.viewer, ctx.project.id, ctx.session.id, idea.id)
     assert Repo.aggregate(Reveal, :count) == 0
+  end
+
+  defp assert_terminal_clock_recovery(ctx, action) do
+    timer = start(ctx, %{seconds: 60})
+    original_start = DateTime.add(now(), 60, :second)
+
+    timer
+    |> change(started_at: original_start, deadline_at: DateTime.add(now(), 120, :second))
+    |> Repo.update!()
+
+    case action do
+      :cancel ->
+        assert {:ok, _} = Ideation.cancel_timer(ctx.owner, ctx.project.id, ctx.session.id, 2, timer.version)
+
+      :archive ->
+        assert {:ok, _} = Ideation.archive_session(ctx.owner, ctx.project.id, ctx.session.id, 2)
+
+      :expire ->
+        # A timer resumed or extended after the clock moved back can become due
+        # before its original start timestamp in wall-clock coordinates.
+        due(timer)
+        assert {:ok, %{outcome: :completed}} = Ideation.expire_timer(timer.id, timer.version)
+    end
+
+    assert {:ok, capsule} =
+             Repo.transact(fn ->
+               Repo.one!(from p in Project, where: p.id == ^ctx.project.id, lock: "FOR UPDATE")
+               Ideation.capture_recovery(ctx.project.id)
+             end)
+
+    assert {:ok, _} = Capsule.open(capsule)
+    completed = timer(ctx)
+    refute DateTime.before?(completed.completed_at, original_start)
+    assert completed.remaining_seconds == 0
   end
 
   defp current(ctx) do

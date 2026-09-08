@@ -21,7 +21,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.CancelTimer do
         status: :cancelled,
         deadline_at: nil,
         remaining_seconds: 0,
-        completed_at: TimerMutation.now()
+        completed_at: TimerMutation.completion_time(timer)
       },
       :timer_cancelled
     )
