@@ -59,11 +59,11 @@ defmodule Storyarn.MixProject do
       {:postgrex, "~> 0.22"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.1.0"},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_view, "~> 1.2.0"},
+      {:phoenix_live_dashboard, "~> 0.9.1"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
-      {:live_vue, "~> 1.2"},
+      {:live_vue, "~> 1.2.3"},
       {:igniter, "~> 0.6"},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.0"},
@@ -78,7 +78,7 @@ defmodule Storyarn.MixProject do
       {:hammer, "~> 7.0"},
       {:hammer_backend_redis, "~> 7.0"},
       {:remote_ip, "~> 1.2"},
-      {:dns_cluster, "~> 0.2.0"},
+      {:dns_cluster, "~> 0.3.0"},
       {:bandit, "~> 1.5"},
 
       # Background jobs
@@ -102,13 +102,13 @@ defmodule Storyarn.MixProject do
       {:fun_with_flags_ui, "~> 1.1", only: :dev},
 
       # Email templates (MJML → HTML via Rust NIF)
-      {:mjml, "~> 5.3"},
+      {:mjml, "~> 6.0"},
 
       # Documentation
-      {:nimble_publisher, "~> 1.1"},
-      {:makeup, "~> 1.2"},
+      {:nimble_publisher, "~> 2.1"},
+      # faker pins makeup == 1.2.1 for its own docs; the override takes the HTML escaping fix in 1.2.2.
+      {:makeup, "~> 1.2.2", override: true},
       {:makeup_elixir, "~> 1.0"},
-      {:mdex, "~> 0.4"},
 
       # Code quality & security
       {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
