@@ -25,7 +25,7 @@ defmodule Storyarn.Ideation.Recovery.Records do
       {:ok,
        %{
          "format" => "storyarn.ideation",
-         "version" => 3,
+         "version" => 4,
          "actors" => actors,
          "rows" =>
            Map.new(rows, fn {collection, entries} ->
@@ -60,6 +60,7 @@ defmodule Storyarn.Ideation.Recovery.Records do
   defp parent_ids(:project_id, project_id, _), do: [project_id]
   defp parent_ids(:session_id, _, rows), do: Enum.map(rows["sessions"], & &1.id)
   defp parent_ids(:idea_id, _, rows), do: Enum.map(rows["ideas"], & &1.id)
+  defp parent_ids(:group_id, _, rows), do: Enum.map(rows["groups"], & &1.id)
 
   defp actor_ids(rows) do
     direct =

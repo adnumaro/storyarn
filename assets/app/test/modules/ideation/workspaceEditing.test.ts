@@ -8,7 +8,7 @@ import type { Board, Idea } from "@modules/ideation/types";
 
 const Canvas = defineComponent({
   name: "BrainstormingCanvas",
-  props: ["notes", "editingId", "permissions", "historyState", "cursorEnabled", "selectedIds"],
+  props: ["notes", "editingId", "permissions", "historyState", "collaboration", "selectedIds"],
   setup(_props, { expose }) {
     expose({ focus: vi.fn() });
     return () => h("div");
@@ -176,7 +176,7 @@ describe("workspace editing transitions", () => {
 
   it("turns off canvas cursors while private mode is active", async () => {
     const { current, canvas } = workspace();
-    expect(canvas.props("cursorEnabled")).toBe(true);
+    expect(canvas.props("collaboration").cursors).toBe(true);
     await wrapper.setProps({
       board: {
         ...current,
@@ -186,7 +186,7 @@ describe("workspace editing transitions", () => {
         },
       },
     });
-    expect(canvas.props("cursorEnabled")).toBe(false);
+    expect(canvas.props("collaboration").cursors).toBe(false);
   });
 
   it("retries an interrupted batch without repeating already restored notes", async () => {

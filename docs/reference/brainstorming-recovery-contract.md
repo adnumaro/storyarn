@@ -4,12 +4,12 @@
 >
 > Last reviewed: 2026-09-08
 >
-> Scope: ENG-129, ENG-136, ENG-137 and the sessions/ideas slice of ENG-147
+> Scope: ENG-129, ENG-136, ENG-137, ENG-138 and the sessions/ideas/groups slice of ENG-147
 
 ## Ownership and permissions
 
 Ideation owns sessions, configuration, responsibilities, ideas, revisions,
-publication consent, reveal operations and conflicting input. Projects owns
+publication consent, reveal operations, conflicting input, groups and synthesis provenance. Projects owns
 project identity, effective access, transfer, snapshots and their storage
 lifecycle. Accounts owns account identity; its server-generated recovery UUID
 is immutable through registration and profile forms and is not exposed in Vue
@@ -23,17 +23,19 @@ by the session lock. Session responsibility is not membership and never grants
 access to a project. Direct membership precedence and inherited access remain
 Project policy.
 
-| Operation                                                       | Author with current access       | Other participant              | Facilitator                                         | Project owner                                   |
-| --------------------------------------------------------------- | -------------------------------- | ------------------------------ | --------------------------------------------------- | ----------------------------------------------- |
-| Read session metadata and published ideas                       | Yes                              | Yes, including viewers         | Yes                                                 | Yes                                             |
-| Read a private draft, unpublished revision or conflicting input | Own only                         | No                             | Own only                                            | Own only                                        |
-| Create/edit an idea                                             | Edit permission; own ideas       | Own ideas with edit permission | Own ideas                                           | Own ideas                                       |
-| Publish a revision                                              | Own revision                     | No                             | Exact eligible manifest with prior assisted consent | Same rule as facilitator, no extra draft access |
-| Change creative state                                           | Own idea with edit permission    | No                             | Own only                                            | Own only                                        |
-| Configure/archive/reopen a session                              | Only when also facilitator/owner | No                             | With edit permission                                | Yes                                             |
-| Recover a replaced session                                      | Only when also facilitator/owner | No                             | With edit permission                                | Yes                                             |
-| Permanently purge a replaced session                            | Only when also owner             | No                             | Only when also owner                                | Explicit action with current edit permission    |
-| Group, decide, invoke shared AI, attach private files           | Not implemented                  | Not implemented                | Not implemented                                     | Not implemented                                 |
+| Operation                                                       | Author with current access       | Other participant                | Facilitator                                         | Project owner                                   |
+| --------------------------------------------------------------- | -------------------------------- | -------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
+| Read session metadata and published ideas                       | Yes                              | Yes, including viewers           | Yes                                                 | Yes                                             |
+| Read a private draft, unpublished revision or conflicting input | Own only                         | No                               | Own only                                            | Own only                                        |
+| Create/edit an idea                                             | Edit permission; own ideas       | Own ideas with edit permission   | Own ideas                                           | Own ideas                                       |
+| Publish a revision                                              | Own revision                     | No                               | Exact eligible manifest with prior assisted consent | Same rule as facilitator, no extra draft access |
+| Change creative state                                           | Own idea with edit permission    | No                               | Own only                                            | Own only                                        |
+| Configure/archive/reopen a session                              | Only when also facilitator/owner | No                               | With edit permission                                | Yes                                             |
+| Recover a replaced session                                      | Only when also facilitator/owner | No                               | With edit permission                                | Yes                                             |
+| Permanently purge a replaced session                            | Only when also owner             | No                               | Only when also owner                                | Explicit action with current edit permission    |
+| Read groups and synthesis                                       | Shared mode and current access   | Shared mode and current access   | Same rule                                           | Same rule                                       |
+| Group published ideas and edit synthesis                        | Current edit access; shared mode | Current edit access; shared mode | Same rule                                           | Same rule                                       |
+| Decide, invoke shared AI, attach private files                  | Not implemented                  | Not implemented                  | Not implemented                                     | Not implemented                                 |
 
 All managerial actions remain subject to current project edit permission. The
 owner can recover or delete project data through Project lifecycle operations;
@@ -53,7 +55,8 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **3**. Version **2** inventories normalize to no
+The inner inventory is version **4**. Version **3** inventories normalize to no
+groups, memberships or group revisions. Version **2** inventories also normalize to no
 timer and open contributions. Version **1** additionally normalizes to no rounds
 and unassigned, non-late contributions.
 The inventory covers:
@@ -69,8 +72,12 @@ The inventory covers:
 - All authored revisions and successful/conflicting edit receipts.
 - Prepared/completed reveal operations, exact selections/manifests, and the
   immutable publication ledger.
+- Groups, encrypted titles and synthesis, canvas placement, deletion markers,
+  complete membership history and the published source revision pinned by each
+  membership. Immutable group revisions retain their source map, actor, state and
+  durable request receipt.
 
-Ciphertext for title/body/conflicting input is copied from persistence; it is
+Ciphertext for title/body/conflicting input and group title/synthesis is copied from persistence; it is
 not loaded through the ordinary decrypted-content schema. The whole inventory,
 including actor bindings, is additionally encrypted and authenticated. Encrypting
 only draft bodies would leave authorship metadata forgeable by an archive holder.
@@ -106,7 +113,7 @@ reconstitution transaction. The architecture ratchet restricts these ports to
 exact Project capture, validation, materialization and verification callers;
 ordinary Web code cannot use them as a draft-reading API.
 
-Each persisted session, round, timer, idea, revision, receipt, reveal and publication carries
+Each persisted session, round, timer, idea, group, membership, revision, receipt, reveal and publication carries
 an immutable recovery UUID. Restore compares complete session generations using
 those identities and content, independent of database IDs and replacement time.
 An identical generation already present in the destination is reused; a distinct
@@ -115,6 +122,23 @@ selections/manifests and historical responsibility assignments are remapped expl
 are not rewritten. Creation receipts retain their original source identity so
 retrying a derivation with its remapped source still recognizes the request.
 Successful/conflicting saves remain replayable.
+
+Groups are inserted after ideas and their publication ledger, followed by their
+memberships and revisions. Group references, membership idea IDs, revision idea
+lists and source-map keys are remapped while source revision numbers remain
+unchanged. A group's entire membership history and all revision receipts
+participate in generation matching, so repeated recovery reuses the same
+complete generation.
+
+Validation requires every group source to belong to the same session and point
+to an existing published revision. Historical revision sources must also have
+matching retained membership provenance. It rejects private or unpublished
+sources, duplicate active memberships, malformed receipts and invalid group
+versions before replacing any session. A published source later deleted remains
+recoverable as a tombstone with its original publication and provenance; recovery
+never republishes it. Ordinary group queries still enforce current project access
+and hide groups before decryption when the restored session is private. Restoring
+encrypted synthesis grants no additional draft access.
 
 Rounds are inserted before ideas, and idea-to-round references are remapped
 within the restored session. Validation rejects cross-session round references,
@@ -201,7 +225,7 @@ rejects an Ideation compartment outside the exact snapshot-import path. Runtime
 exports (Yarn/Ink and the existing tool-oriented exports) do not export
 brainstorming. They are not whole-project backups.
 
-No private attachments, shared AI outputs, groups, decisions,
+No private attachments, shared AI outputs, decisions,
 brainstorming conversations, cross-tool references or external credentials exist
 in this persisted slice. Their tickets must extend this contract and its
 restoration tests before admitting those data. ENG-147 remains open for that

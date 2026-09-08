@@ -156,6 +156,9 @@ defmodule Storyarn.Ideation.Recovery.Restore do
   defp insert_row("edits", row), do: insert_one("ideation_idea_edits", row)
   defp insert_row("reveals", row), do: insert_one("ideation_reveal_operations", row)
   defp insert_row("publications", row), do: insert_one("ideation_idea_publications", row)
+  defp insert_row("groups", row), do: insert_one("ideation_groups", row)
+  defp insert_row("group_memberships", row), do: insert_one("ideation_group_memberships", row)
+  defp insert_row("group_revisions", row), do: insert_one("ideation_group_revisions", row)
 
   defp insert_one(table, row), do: Repo.insert_all(table, [row], returning: [:id], log: false)
 end

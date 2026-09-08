@@ -10,9 +10,38 @@ defmodule Storyarn.Ideation do
   membership remain authoritative in Projects.
   """
 
+  alias Storyarn.Ideation.Groups
   alias Storyarn.Ideation.Ideas
   alias Storyarn.Ideation.Recovery
   alias Storyarn.Ideation.Sessions
+
+  @doc "Lists shared canvas groups and live source geometry; private mode hides all synthesis."
+  @spec list_groups(map(), pos_integer(), pos_integer()) :: {:ok, [map()]} | {:error, term()}
+  defdelegate list_groups(scope, project_id, session_id), to: Groups
+
+  @doc "Groups at least two shared notes while retaining pinned source provenance."
+  @spec create_group(map(), pos_integer(), pos_integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate create_group(scope, project_id, session_id, attrs), to: Groups
+
+  @doc "Edits a group's text and membership with optimistic concurrency and durable request identity."
+  @spec update_group(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), map()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate update_group(scope, project_id, session_id, id, version, attrs), to: Groups
+
+  @doc "Moves the group and every live source atomically, rejecting stale member placements."
+  @spec move_group(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), map()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate move_group(scope, project_id, session_id, id, version, attrs), to: Groups
+
+  @doc "Deletes a group container while preserving every source idea."
+  @spec delete_group(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), String.t()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate delete_group(scope, project_id, session_id, id, version, request_key), to: Groups
+
+  @doc "Undoes the acting editor's exact group deletion without replacing arbitrary history."
+  @spec restore_group(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), map()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate restore_group(scope, project_id, session_id, id, version, attrs), to: Groups
 
   defdelegate create_session(scope, project_id, attrs), to: Sessions
   defdelegate subscribe_sessions(scope, project_id), to: Sessions

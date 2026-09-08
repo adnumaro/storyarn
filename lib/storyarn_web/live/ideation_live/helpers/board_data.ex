@@ -44,6 +44,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       session: nil,
       session_missing: false,
       ideas: [],
+      groups: [],
       ideas_next: nil,
       idea_before: nil,
       counts: @empty_counts,
@@ -104,6 +105,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
     opts = [round_id: round_id, state: :all, limit: @page_size]
 
     with {:ok, ideas, next} <- read_idea_pages(scope, project_id, current.id, filters.idea_before, opts, []),
+         {:ok, groups} <- Ideation.list_groups(scope, project_id, current.id),
          {:ok, counts} <- Ideation.count_ideas(scope, project_id, current.id, round_id: round_id),
          {:ok, rounds} <- RoundData.load(scope, project_id, current.id, through, ideas, round_id) do
       {:ok,
@@ -111,6 +113,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
          session: session(current, scope.user.id, false, false),
          session_missing: false,
          ideas: Enum.map(ideas, &idea/1),
+         groups: groups,
          ideas_next: next,
          idea_before: filters.idea_before,
          round_filter: round_id,
@@ -140,6 +143,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       :session,
       :session_missing,
       :ideas,
+      :groups,
       :ideas_next,
       :idea_before,
       :counts,

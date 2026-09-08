@@ -8,6 +8,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias Storyarn.Projects
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.IdeationLive.Handlers.GroupHandlers
   alias StoryarnWeb.IdeationLive.Handlers.IdeaHandlers
   alias StoryarnWeb.IdeationLive.Handlers.RoundHandlers
   alias StoryarnWeb.IdeationLive.Handlers.SessionHandlers
@@ -23,6 +24,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas prepare_reveal reveal_ideas)
   @round_writes ~w(create_round update_round cancel_round start_round close_round)
   @timer_writes ~w(start_timer pause_timer resume_timer extend_timer cancel_timer set_contributions_open)
+  @group_writes ~w(create_group update_group move_group delete_group restore_group)
 
   @impl true
   def render(assigns) do
@@ -69,6 +71,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       <.vue
         v-component="live/ideation/BrainstormingBoard"
         v-socket={@socket}
+        v-diff={Application.get_env(:live_vue, :enable_props_diff, true)}
         v-inject="project-layout"
         id="brainstorming-board"
         class="contents"
@@ -146,7 +149,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   @impl true
   def handle_event(event, params, socket)
-      when event in @session_writes or event in @idea_writes or event in @round_writes or event in @timer_writes do
+      when event in @session_writes or event in @idea_writes or event in @round_writes or event in @timer_writes or
+             event in @group_writes do
     Authorize.with_authorization(socket, :edit_content, fn socket -> write(event, params, socket) end, fn socket,
                                                                                                           reason ->
       {:reply, Replies.error(reason), reload_access(socket)}
@@ -411,7 +415,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   defp write(event, params, socket) do
     with :ok <- current_epoch(params, socket),
          :ok <-
-           if(event in (@idea_writes ++ @round_writes ++ @timer_writes),
+           if(event in (@idea_writes ++ @round_writes ++ @timer_writes ++ @group_writes),
              do: current_session(params, socket),
              else: :ok
            ) do
@@ -431,6 +435,15 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
           event in @timer_writes ->
             TimerHandlers.run(
+              event,
+              socket.assigns.current_scope,
+              socket.assigns.project.id,
+              socket.assigns.session_id,
+              params
+            )
+
+          event in @group_writes ->
+            GroupHandlers.run(
               event,
               socket.assigns.current_scope,
               socket.assigns.project.id,

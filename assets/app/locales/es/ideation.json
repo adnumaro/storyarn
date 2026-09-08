@@ -80,7 +80,7 @@
       "stale_reveal": "Las revisiones seleccionadas ya no son elegibles. Cierra este diálogo y revisa una nueva selección.",
       "session_creation_unknown": "Se interrumpió la conexión al crear la sesión. Comprueba la lista y recarga antes de crear otra.",
       "invalid_canvas": "La posición no es válida.",
-      "stale_canvas": "Otra persona ha movido esta nota. Se ha actualizado su posición.",
+      "stale_canvas": "Algunas notas se movieron en otra sesión. Actualiza e intenta mover el grupo de nuevo.",
       "save_before_connect": "Escribe algo y espera a que se guarde la nota antes de conectarla.",
       "session_private": "El facilitador controla la revelación de esta sesión.",
       "stale_deletion": "Esta eliminación ha cambiado. Actualiza el tablero antes de volver a intentarlo.",
@@ -105,7 +105,12 @@
       "timer_reveal_requires_private": "Activa el modo privado antes de elegir revelar las notas al terminar el tiempo.",
       "timer_not_found": "Este cronómetro ya no está disponible. Actualiza el tablero.",
       "invalid_timer_version": "El estado del cronómetro no es válido. Actualiza el tablero y vuelve a intentarlo.",
-      "timer_scheduling_failed": "No se pudo programar el cronómetro. No se ha guardado ningún cambio. Inténtalo de nuevo."
+      "timer_scheduling_failed": "No se pudo programar el cronómetro. No se ha guardado ningún cambio. Inténtalo de nuevo.",
+      "stale_group": "El grupo cambió en otra sesión. Tu texto se conserva; revisa la última versión e inténtalo de nuevo.",
+      "already_grouped": "Una nota seleccionada ya pertenece a un grupo. Sácala de ese grupo primero.",
+      "private_mode": "Los grupos están disponibles al salir del modo privado.",
+      "invalid_group": "Selecciona al menos dos notas compartidas para crear un grupo.",
+      "group_sync_pending": "El guardado del grupo está tardando más de lo previsto. Tu borrador se conserva. Actualiza o vuelve a intentarlo."
     },
     "saveStatus": {
       "saved": "Guardado",
@@ -221,6 +226,33 @@
         "skipped_configuration": "Terminó el tiempo. No se aplicaron las acciones automáticas porque cambió la configuración de la sesión.",
         "skipped_session": "Terminó el tiempo. No se aplicaron las acciones automáticas porque la sesión ya no está abierta."
       }
+    },
+    "groups": {
+      "untitled": "Grupo sin título",
+      "title": "Título del grupo",
+      "count": "Sin notas | 1 nota | {count} notas",
+      "rename": "Renombrar grupo",
+      "create": "Agrupar",
+      "createHelp": "Agrupar las notas compartidas seleccionadas · Cmd/Ctrl G",
+      "synthesis": "Síntesis",
+      "synthesisHelp": "Recoge lo que conecta estas notas.",
+      "editSynthesis": "Escribir síntesis",
+      "synthesisPlaceholder": "¿Qué conecta estas ideas? Recoge su esencia sin cambiar las notas originales.",
+      "separate": "Desagrupar",
+      "separateHelp": "Separar las notas. La síntesis se conserva en el lienzo.",
+      "privateHelp": "Los grupos están disponibles al salir del modo privado.",
+      "sharedHelp": "Comparte estas notas antes de agruparlas.",
+      "alreadyGrouped": "Saca las notas de su grupo actual para reagruparlas.",
+      "addTo": "Añadir a grupo",
+      "remove": "Sacar del grupo",
+      "removeHelp": "Sacar las notas seleccionadas de «{title}». Las notas se conservan en el lienzo.",
+      "partial": "{visible} de {total} notas visibles. Muéstralas todas para mover o desagrupar.",
+      "showAll": "Mostrar todas",
+      "saveDraft": "Guardar mi borrador",
+      "draftKept": "No se pudo guardar el grupo. Tu borrador se conserva aquí. Revisa el texto guardado y vuelve a intentarlo.",
+      "latestText": "Último texto guardado",
+      "delete": "Eliminar grupo",
+      "deleteHelp": "Eliminar este grupo y su síntesis. Las notas originales se conservan en el lienzo."
     }
   }
 }

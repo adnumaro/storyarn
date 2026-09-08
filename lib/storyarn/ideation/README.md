@@ -47,6 +47,26 @@ current Project access and the session lifecycle without granting managerial
 draft access. Ideas owns the outer transaction and emits invalidations only after
 commit. Other capabilities cannot import private implementation modules.
 
+## Groups capability
+
+Groups owns shared canvas containers, optional plain-text synthesis, retained source
+memberships and immutable actor revisions that also serve as durable write receipts.
+Each note belongs to at most one active group. Membership pins the published source
+revision at joining; removing or deleting a group never deletes its source notes.
+Empty membership may retain synthesis as an independent canvas container. Detaching
+and reattaching may restore its anchor without moving sources; populated group moves
+remain atomic. Reattachment preserves the most recent retained source pin for the
+same group and note, including undo after the note receives a newer revision.
+
+Every write uses current project editor access, the open session contribution lock,
+an optimistic group version and a UUID request identity. Private mode hides group
+content before decryption and rejects group writes. Group movement delegates geometry
+writes through Ideas' closed transaction port and checks every live member version.
+Revisions support provenance and exact browser undo only, with no history endpoint.
+Deleting a group permits only its deleting actor to restore that exact deletion.
+Queries and entities stay passive; events emit content-free invalidations after commit.
+Recovery includes groups, memberships and revisions in its sealed inventory.
+
 ## Project authority
 
 Projects owns identity and effective membership, including inherited access and
@@ -70,7 +90,7 @@ of the session transaction, not a background side effect. Queries and entities
 never write or acquire locks. Physical project deletion cascades its records;
 archive only changes the session lifecycle and records a revision.
 
-Recovery is the privileged reconstitution capability for the nine session/round/timer/idea
+Recovery is the privileged reconstitution capability for the twelve session/round/timer/idea/group
 tables. Its closed inventory uses raw encrypted fields and owns the derived
 `ideation_recovery_captures` cache. `execution/` coordinates capture/reconstitution;
 `adapters/` handles bounded persistence and encryption; `contracts/` owns the

@@ -4,6 +4,16 @@ defmodule Storyarn.Ideation.Ideas do
   alias Storyarn.Ideation.Ideas.Events.Invalidation
   alias Storyarn.Ideation.Ideas.Queries
 
+  @doc false
+  @spec group_sources(pos_integer(), [pos_integer()]) :: [map()]
+  defdelegate group_sources(session_id, ids), to: Queries.GroupSources, as: :list
+
+  @doc false
+  @spec move_group_sources(map(), [pos_integer()], map(), number(), number()) :: :ok | {:error, atom()}
+  defdelegate move_group_sources(access, ids, versions, dx, dy),
+    to: Storyarn.Ideation.Ideas.Execution.GroupPlacement,
+    as: :move
+
   defdelegate set_private_mode_locked(access, revision, enabled),
     to: Storyarn.Ideation.Ideas.Execution.PrivateMode,
     as: :set_locked

@@ -14,6 +14,7 @@ defmodule Storyarn.Ideation.Recovery.References do
     |> remap(:session_id, &lookup(maps, "sessions", &1))
     |> remap(:round_id, &lookup(maps, "rounds", &1))
     |> remap(:idea_id, &lookup(maps, "ideas", &1))
+    |> remap(:group_id, &lookup(maps, "groups", &1))
     |> remap(:operation_id, &lookup(maps, "reveals", &1))
     |> remap(:source_idea_id, &lookup(maps, "ideas", &1))
     |> rewrite_payload(collection, actors, maps)
@@ -32,6 +33,15 @@ defmodule Storyarn.Ideation.Recovery.References do
   end
 
   defp rewrite_payload(row, "timers", _, _), do: TimerState.restore(row)
+
+  defp rewrite_payload(row, "group_revisions", _, maps) do
+    sources =
+      Map.new(row.sources, fn {id, revision} ->
+        {to_string(lookup(maps, "ideas", String.to_integer(id))), revision}
+      end)
+
+    %{row | idea_ids: Enum.map(row.idea_ids, &lookup(maps, "ideas", &1)), sources: sources}
+  end
 
   defp rewrite_payload(row, "session_revisions", actors, _) do
     snapshot =

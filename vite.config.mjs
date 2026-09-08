@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
 import liveVuePlugin from "live_vue/vitePlugin";
+import stableLiveVueInjection from "./scripts/vite-live-vue-injection.mjs";
 import path from "path";
 
 const vendorChunkRules = [
@@ -74,6 +75,7 @@ export default defineConfig({
     modules: [path.resolve(__dirname), "node_modules"],
   },
   plugins: [
+    stableLiveVueInjection(),
     tailwindcss(),
     vue({
       template: {
