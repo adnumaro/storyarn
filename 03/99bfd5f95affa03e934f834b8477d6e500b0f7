@@ -1,0 +1,25 @@
+.github/workflows/ci.yml
+  s_5af6a6d0a150f1::t_6eaf661b74825e 73-75
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_dc5acf324bbe25 139,149
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_0944028f22a65d 139,149
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_49165b6d4f6a9e 139,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0399bfd5f95affa03e934f834b8477d6e500b0f7",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
