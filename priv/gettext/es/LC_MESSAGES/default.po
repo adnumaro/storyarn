@@ -136,7 +136,7 @@ msgstr "No se detectaron cambios"
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
-#: lib/storyarn_web/live/ideation_live/board.ex:101
+#: lib/storyarn_web/live/ideation_live/board.ex:104
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr "Brainstorming"
@@ -146,7 +146,7 @@ msgstr "Brainstorming"
 msgid "Untitled session"
 msgstr "Sesión sin título"
 
-#: lib/storyarn_web/live/ideation_live/board.ex:269
+#: lib/storyarn_web/live/ideation_live/board.ex:272
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr "Miembro"

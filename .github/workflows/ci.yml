@@ -70,6 +70,9 @@ jobs:
       - name: Check Elixir formatting
         run: mix format --check-formatted
 
+      - name: Check backend translation extraction
+        run: mix gettext.extract --check-up-to-date
+
       - name: Check backend conventions
         run: mix convention.check
 
