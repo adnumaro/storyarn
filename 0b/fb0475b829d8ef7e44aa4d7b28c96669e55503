@@ -1,0 +1,53 @@
+assets/app/locales/en/ideation.json
+  s_865ec50f67bad5::t_271d5bc3d49510 83,113-117
+assets/app/locales/es/ideation.json
+  s_865ec50f67bad5::t_3e451a674a1bdf 83,113-117
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_865ec50f67bad5::t_8d06bf1ae2ddad 132-137,141-144,146
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_865ec50f67bad5::t_e7e058aaf9d776 127-135,142-149,152-153,155-156,307-311,333,469-470,486-545,712-716
+assets/app/modules/ideation/composables/useCanvasGroups.ts
+  s_865ec50f67bad5::t_fec4b288037ffd 13-17,84-85,91,94-95,98,106-107,111,129,132-133,135
+assets/app/test/modules/ideation/canvasGroups.test.ts
+  s_865ec50f67bad5::t_373cb7514a1b49 212,214,219,221-224,227,229-238
+assets/app/test/modules/ideation/canvasInteractions.test.ts
+  s_865ec50f67bad5::t_2426380509aa47 367-394
+assets/app/test/shared/liveVueInjectionAdapter.test.ts
+  s_865ec50f67bad5::t_8af1a8f28b529c 1-38
+docs/reference/brainstorming-groups-contract.md
+  s_865ec50f67bad5::t_9ce9101f06d43c 34-42,64-67
+lib/storyarn/ideation/README.md
+  s_865ec50f67bad5::t_d728b6e2b48b47 60
+lib/storyarn/ideation/groups/execution/memberships.ex
+  s_865ec50f67bad5::t_1ad4e86f557867 29-30,33-34,70-76
+lib/storyarn/ideation/groups/execution/mutation.ex
+  s_865ec50f67bad5::t_5229ade08fd7eb 82,117
+lib/storyarn/ideation/groups/execution/transaction.ex
+  s_865ec50f67bad5::t_1aee2336fd1ee7 66-70
+lib/storyarn/ideation/ideas/execution/group_placement.ex
+  s_865ec50f67bad5::t_63615f903449e0 3,8,19-20,29-42,58-63
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_865ec50f67bad5::t_9c88e802849f36 37-38
+lib/storyarn/ideation/recovery/contracts/group_state.ex
+  s_865ec50f67bad5::t_d7cf477f7c6f84 36-46
+test/storyarn/ideation/group_recovery_test.exs
+  s_865ec50f67bad5::t_7f7624ad2ee78e 12,233-267
+test/storyarn/ideation/groups_test.exs
+  s_865ec50f67bad5::t_3582a91aa3709e 10,41-49,173-174,292-388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0bfb0475b829d8ef7e44aa4d7b28c96669e55503",
+  "prompts": {},
+  "sessions": {
+    "s_865ec50f67bad5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a175978-450f-4e9a-9d93-a33004368740",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
