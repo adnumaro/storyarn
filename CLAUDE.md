@@ -4,7 +4,7 @@
 
 **Storyarn** is a narrative design platform for game development and interactive storytelling. Built with collaborative, real-time editing.
 
-**Stack:** Elixir 1.20+ / Erlang/OTP 29 / Phoenix 1.8 / LiveView 1.1 / LiveVue 1.2 / PostgreSQL / Redis / Tailwind v4 / shadcn-vue + reka-ui / TypeScript / Vue 3
+**Stack:** Elixir 1.20+ / Erlang/OTP 29 / Phoenix 1.8 / LiveView 1.2 / LiveVue 1.2 / PostgreSQL / Redis / Tailwind v4 / shadcn-vue + reka-ui / TypeScript / Vue 3
 
 ## Branch Naming — Git Flow
 

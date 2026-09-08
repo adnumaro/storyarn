@@ -8,7 +8,8 @@ defmodule Storyarn.Public.Blog.Post do
     from: "priv/blog/**/*.md",
     as: :posts,
     highlighters: [:makeup_elixir],
-    earmark_options: %Earmark.Options{gfm_tables: true}
+    # Earmark applied smart punctuation by default; keep the published typography.
+    comrak_options: [parse: [smart: true]]
 
   @default_locale Storyarn.Public.Publication.Locales.default_locale()
 

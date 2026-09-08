@@ -11,7 +11,8 @@ defmodule Storyarn.Public.Docs.Guide do
     from: "priv/docs/**/*.md",
     as: :guides,
     highlighters: [:makeup_elixir],
-    earmark_options: %Earmark.Options{gfm_tables: true}
+    # Earmark applied smart punctuation by default; keep the published typography.
+    comrak_options: [parse: [smart: true]]
 
   @default_locale "en"
 
