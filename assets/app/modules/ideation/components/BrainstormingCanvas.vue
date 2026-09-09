@@ -11,8 +11,6 @@ import {
   List,
   Search,
   X,
-  Undo2,
-  Redo2,
 } from "@lucide/vue";
 import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
@@ -22,6 +20,7 @@ import CanvasGroup from "./CanvasGroup.vue";
 import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups";
 import CanvasCursors from "./CanvasCursors.vue";
 import { useCanvasViewport, type Point } from "../composables/useCanvasViewport";
+import { useCanvasMarquee } from "../composables/useCanvasMarquee";
 import { useBoardText } from "../composables/useBoardText";
 import { notePosition } from "../lib/placement";
 import type {
@@ -121,6 +120,23 @@ function position(note: Idea): Point {
   return positions.value.get(note.id) ?? notePosition(note);
 }
 const noteHeights = ref(new Map<number, number>());
+const marquee = useCanvasMarquee({
+  root,
+  world,
+  bounds: () =>
+    notes.map((note) => ({
+      id: note.id,
+      ...position(note),
+      width: note.canvas?.width ?? 280,
+      height: noteHeights.value.get(note.id) ?? 260,
+    })),
+  selection: () => ({ ids: visibleSelection.value, groupId: selectedGroupId.value }),
+  select: ({ ids, groupId }) => {
+    emit("selectGroup", groups.value.some((group) => group.id === groupId) ? groupId : null);
+    emit("select", ids);
+  },
+});
+const { active: selectingArea, area: selectionArea } = marquee;
 const groupAnchors = ref(new Map<number, Point>());
 const groupHeights = ref(new Map<number, number>());
 const openSyntheses = ref(new Set<number>());
@@ -223,6 +239,7 @@ const links = computed(() =>
   ),
 );
 function chooseTool(value: string) {
+  marquee.cancel();
   emit("finish");
   tool.value = value;
   linkSource.value = null;
@@ -260,11 +277,10 @@ function interactiveTarget(target: EventTarget | null): boolean {
   );
 }
 function pointerDown(event: PointerEvent) {
-  if (interactiveTarget(event.target) || ![0, 1].includes(event.button)) return;
+  if (ignorePointer(event)) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   const id = element ? Number(element.dataset.noteId) : null;
-  const panning = space.value || tool.value === "pan" || event.button === 1;
-  if (panning) {
+  if (panning(event)) {
     event.preventDefault();
     focus();
     beginDrag(event, null, []);
@@ -272,8 +288,20 @@ function pointerDown(event: PointerEvent) {
   }
   if (groupNudge) return settleThenSelect(id, event);
   if (historyState.busy) return;
-  if (id === null) selectBackground(event);
+  if (id === null && tool.value === "select") beginMarquee(event);
+  else if (id === null) selectBackground(event);
   else dragSelection(id, event);
+}
+function ignorePointer(event: PointerEvent) {
+  return (
+    drag !== null ||
+    selectingArea.value ||
+    interactiveTarget(event.target) ||
+    ![0, 1].includes(event.button)
+  );
+}
+function panning(event: PointerEvent) {
+  return space.value || tool.value === "pan" || event.button === 1;
 }
 // Commit the settling keyboard movement first. Selection proceeds; a drag
 // would race the movement's version check, so it waits for the next press.
@@ -306,8 +334,8 @@ function selectGroup(id: number | null) {
   emit("selectGroup", id);
 }
 function groupPointer(event: PointerEvent, group: IdeaGroup, move: boolean) {
-  if (![0, 1].includes(event.button)) return;
-  if (space.value || tool.value === "pan" || event.button === 1) {
+  if (ignorePointer(event)) return;
+  if (panning(event)) {
     event.preventDefault();
     beginDrag(event, null, []);
     return;
@@ -320,6 +348,10 @@ function groupPointer(event: PointerEvent, group: IdeaGroup, move: boolean) {
     return;
   }
   if (historyState.busy) return;
+  if (emptyGroupBody(event, move)) {
+    beginMarquee(event, group.id);
+    return;
+  }
   selectGroup(group.id);
   focus();
   if (
@@ -332,6 +364,10 @@ function groupPointer(event: PointerEvent, group: IdeaGroup, move: boolean) {
   )
     return;
   beginGroupDrag(event, group);
+}
+function emptyGroupBody(event: PointerEvent, move: boolean) {
+  const target = event.target as HTMLElement;
+  return !move && tool.value === "select" && !target.closest("[data-group-content]");
 }
 function beginGroupDrag(event: PointerEvent, group: IdeaGroup) {
   event.preventDefault();
@@ -360,6 +396,11 @@ function selectBackground(event: PointerEvent) {
     emit("add", world(event.clientX, event.clientY));
     tool.value = "select";
   }
+}
+function beginMarquee(event: PointerEvent, clickGroup?: number) {
+  marquee.begin(event, clickGroup);
+  emit("finish");
+  focus();
 }
 function dragSelection(id: number, event: PointerEvent) {
   const connecting = tool.value === "connect";
@@ -390,6 +431,10 @@ function beginDrag(event: PointerEvent, id: number | null, ids: number[]) {
 }
 function pointerMove(event: PointerEvent) {
   ghost.value = world(event.clientX, event.clientY);
+  if (selectingArea.value) {
+    marquee.move(event);
+    return;
+  }
   if (!drag || drag.pointer !== event.pointerId) return;
   const dx = event.clientX - drag.start.x,
     dy = event.clientY - drag.start.y;
@@ -417,6 +462,7 @@ function pointerMove(event: PointerEvent) {
   }
 }
 async function pointerUp(event: PointerEvent) {
+  if (marquee.finish(event)) return;
   if (!drag || drag.pointer !== event.pointerId) return;
   if (drag.groupId !== undefined) {
     await finishGroupDrag(event, drag);
@@ -446,7 +492,9 @@ async function finishGroupDrag(event: PointerEvent, finished: CanvasDrag) {
   for (const note of finished.notes) positions.value.delete(note.id);
   groupAnchors.value.delete(finished.groupId!);
 }
-function cancelDrag() {
+function cancelDrag(event: PointerEvent) {
+  marquee.cancel(event);
+  if (!drag || drag.pointer !== event.pointerId) return;
   if (drag?.groupId !== undefined) groupAnchors.value.delete(drag.groupId);
   for (const note of drag?.notes ?? []) positions.value.delete(note.id);
   drag = null;
@@ -561,13 +609,16 @@ async function flushGroupNudge() {
   groupAnchors.value.delete(nudge.id);
 }
 function keydown(event: KeyboardEvent) {
-  if (event.defaultPrevented) return;
-  if (interactiveTarget(event.target)) return;
+  if (ignoreKey(event)) return;
+  if (selectingArea.value) {
+    event.preventDefault();
+    if (event.key === "Escape") marquee.cancel();
+    return;
+  }
   if (event.metaKey || event.ctrlKey) {
     modifiedShortcut(event);
     return;
   }
-  if (event.altKey || event.isComposing) return;
   if (event.key === "Escape") {
     chooseTool("select");
     emit("select", []);
@@ -581,6 +632,11 @@ function keydown(event: KeyboardEvent) {
   if (removeShortcut(event)) return;
   shortcut(event);
   nudge(event);
+}
+function ignoreKey(event: KeyboardEvent) {
+  return (
+    event.defaultPrevented || event.altKey || event.isComposing || interactiveTarget(event.target)
+  );
 }
 function editFocusedNote(event: KeyboardEvent) {
   if (selectedGroupId.value !== null) {
@@ -677,7 +733,7 @@ function pastePoint(): Point {
   );
 }
 function clipboard(event: ClipboardEvent, operation: "copy" | "cut" | "paste") {
-  if (interactiveTarget(event.target) || event.defaultPrevented) return;
+  if (ignoreClipboard(event)) return;
   if (operation !== "copy" && (!permissions.edit || historyState.busy)) return;
   if (operation === "paste") {
     if (canCreate.value) emit("paste", event, pastePoint());
@@ -685,6 +741,12 @@ function clipboard(event: ClipboardEvent, operation: "copy" | "cut" | "paste") {
     if (operation === "copy") emit("copy", event, [...visibleSelection.value]);
     else emit("cut", event, [...visibleSelection.value]);
   }
+}
+function ignoreClipboard(event: ClipboardEvent) {
+  if (interactiveTarget(event.target) || event.defaultPrevented) return true;
+  if (!selectingArea.value) return false;
+  event.preventDefault();
+  return true;
 }
 function shortcut(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
@@ -706,6 +768,22 @@ watch(
     if (!allowed && tool.value === "note") tool.value = "select";
   },
 );
+// Controls, resizes and navigation may change the viewport mid-gesture.
+watch(
+  [
+    () => view.x,
+    () => view.y,
+    () => view.zoom,
+    () => view.width,
+    () => view.height,
+    () => historyState.busy,
+  ],
+  () => marquee.cancel(),
+);
+function canvasWheel(event: WheelEvent) {
+  if (selectingArea.value) event.preventDefault();
+  else wheel(event);
+}
 onMounted(async () => {
   if (typeof ResizeObserver !== "undefined")
     noteObserver = new ResizeObserver((entries) => {
@@ -741,6 +819,8 @@ onUnmounted(() => {
     id="brainstorming-canvas"
     tabindex="0"
     :aria-label="t('ideation.canvas.label')"
+    aria-describedby="brainstorming-selection-help brainstorming-history-help"
+    aria-keyshortcuts="Meta+Z Control+Z Meta+Shift+Z Control+Shift+Z Control+Y"
     class="absolute inset-0 touch-none overflow-hidden outline-none"
     :class="
       space || tool === 'pan'
@@ -755,7 +835,7 @@ onUnmounted(() => {
       backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
       backgroundPosition: `${view.x}px ${view.y}px`,
     }"
-    @wheel="wheel"
+    @wheel="canvasWheel"
     @pointerdown="pointerDown"
     @pointermove="pointerMove"
     @pointerup="pointerUp"
@@ -838,7 +918,7 @@ onUnmounted(() => {
           "
         />
         <div
-          v-if="selectedId === note.id"
+          v-if="selectedId === note.id && !selectionArea"
           data-canvas-chrome
           class="absolute bottom-full left-1/2 z-20 mb-4 -translate-x-1/2"
           :style="{ transform: `scale(${1 / view.zoom})`, transformOrigin: 'bottom center' }"
@@ -852,6 +932,20 @@ onUnmounted(() => {
         :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
       />
     </div>
+    <div
+      v-if="selectionArea"
+      id="brainstorming-selection-area"
+      aria-hidden="true"
+      class="pointer-events-none absolute z-20 border border-primary bg-primary/10"
+      :style="{
+        left: `${selectionArea.x}px`,
+        top: `${selectionArea.y}px`,
+        width: `${selectionArea.width}px`,
+        height: `${selectionArea.height}px`,
+      }"
+    />
+    <p id="brainstorming-selection-help" class="sr-only">{{ t("ideation.canvas.selectHelp") }}</p>
+    <p id="brainstorming-history-help" class="sr-only">{{ t("ideation.canvas.historyHelp") }}</p>
     <CanvasCursors
       v-if="collaboration.cursors"
       :container="root"
@@ -934,6 +1028,7 @@ onUnmounted(() => {
         :icon="MousePointer2"
         :active="tool === 'select'"
         :tooltip-title="t('ideation.canvas.select')"
+        :tooltip-description="`${t('ideation.canvas.selectHelp')} ${t('ideation.canvas.historyHelp')}`"
         @click="chooseTool('select')"
       />
       <DockToolButton
@@ -957,35 +1052,6 @@ onUnmounted(() => {
           :tooltip-title="t('ideation.canvas.connect')"
           @click="chooseTool('connect')"
       /></template>
-      <template v-if="permissions.edit">
-        <div class="mx-0.5 h-6 w-px bg-border" />
-        <ToolbarTooltip :label="t('ideation.canvas.undoHelp')">
-          <button
-            id="brainstorming-undo"
-            type="button"
-            class="dock-btn disabled:opacity-35"
-            :aria-label="t('ideation.canvas.undo')"
-            aria-keyshortcuts="Meta+Z Control+Z"
-            :disabled="!historyState.canUndo || historyState.busy"
-            @click="emit('undo')"
-          >
-            <Undo2 class="size-5" />
-          </button>
-        </ToolbarTooltip>
-        <ToolbarTooltip :label="t('ideation.canvas.redoHelp')">
-          <button
-            id="brainstorming-redo"
-            type="button"
-            class="dock-btn disabled:opacity-35"
-            :aria-label="t('ideation.canvas.redo')"
-            aria-keyshortcuts="Meta+Shift+Z Control+Shift+Z Control+Y"
-            :disabled="!historyState.canRedo || historyState.busy"
-            @click="emit('redo')"
-          >
-            <Redo2 class="size-5" />
-          </button>
-        </ToolbarTooltip>
-      </template>
       <div class="mx-0.5 h-6 w-px bg-border" />
       <DockToolButton
         :icon="List"

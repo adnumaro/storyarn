@@ -40,6 +40,11 @@ function canvas(props = {}) {
     },
     global: { stubs: { CanvasNote: NoteStub, CanvasCursors: true } },
   });
+  Object.assign(wrapper.element, {
+    setPointerCapture: vi.fn(),
+    hasPointerCapture: () => false,
+    releasePointerCapture: vi.fn(),
+  });
   mounted.push(wrapper);
   return wrapper;
 }
@@ -198,7 +203,8 @@ describe("canvas keyboard and selection", () => {
     expect(wrapper.emitted("undo")).toHaveLength(1);
     for (const event of ["duplicate", "remove", "cut", "paste"])
       expect(wrapper.emitted(event)).toBeUndefined();
-    expect(wrapper.get("#brainstorming-undo").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("#brainstorming-undo").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-redo").exists()).toBe(false);
     await wrapper.setProps({
       permissions: { edit: false, create: false },
       historyState: { canUndo: true, canRedo: true, busy: false },
@@ -263,6 +269,7 @@ describe("canvas keyboard and selection", () => {
       button: 0,
       pointerId: 1,
     });
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
     expect(wrapper.emitted("selectGroup")?.[0]).toEqual([40]);
     expect(wrapper.emitted("select")?.[0]).toEqual([[]]);
     await pointer(wrapper.get('[data-note-id="10"]').element, "pointerdown", {

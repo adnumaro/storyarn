@@ -41,7 +41,15 @@ defmodule StoryarnWeb.E2E.IdeationGroupsTest do
       |> authenticate(ctx.viewer.user)
       |> visit(path(ctx))
 
-    browser = browser |> assert_has("[data-note-id]", count: 2) |> press("#brainstorming-canvas", "ControlOrMeta+a")
+    browser =
+      browser
+      |> assert_has("[data-note-id]", count: 2)
+      |> refute_has("#brainstorming-undo")
+      |> refute_has("#brainstorming-redo")
+      |> press("#brainstorming-canvas", "1")
+      |> click("button[aria-label='Zoom out']")
+      |> pan_canvas()
+      |> select_notes_by_area()
 
     browser =
       browser
@@ -139,6 +147,65 @@ defmodule StoryarnWeb.E2E.IdeationGroupsTest do
   defp path(ctx) do
     project = Repo.preload(ctx.project, :workspace)
     "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/brainstorming/#{ctx.session.id}"
+  end
+
+  defp pan_canvas(browser) do
+    browser = press(browser, "#brainstorming-canvas", "h")
+
+    {:ok, %{"x" => x, "y" => y}} =
+      PlaywrightEx.Frame.evaluate(browser.frame_id,
+        expression: """
+        (() => {
+          const rect = document.querySelector('#brainstorming-canvas').getBoundingClientRect();
+          return { x: rect.left + 24, y: rect.top + rect.height / 2 };
+        })()
+        """,
+        timeout: 10_000
+      )
+
+    browser
+    |> mouse_drag({x, y}, {x + 35, y + 20})
+    |> press("#brainstorming-canvas", "v")
+    |> refute_has(".canvas-note[aria-selected=true]")
+  end
+
+  defp select_notes_by_area(browser) do
+    # Coordinates come from rendered notes after zooming and panning. Real mouse
+    # input exercises pointer capture and the canvas's screen-to-world conversion.
+    {:ok, %{"left" => left, "top" => top, "right" => right, "bottom" => bottom}} =
+      PlaywrightEx.Frame.evaluate(browser.frame_id,
+        expression: """
+        (() => {
+          const rects = [...document.querySelectorAll('.canvas-note')].map(note => note.getBoundingClientRect());
+          return {
+            left: Math.min(...rects.map(rect => rect.left)) - 12,
+            top: Math.min(...rects.map(rect => rect.top)) - 12,
+            right: Math.max(...rects.map(rect => rect.right)) + 12,
+            bottom: Math.max(...rects.map(rect => rect.bottom)) + 12,
+          };
+        })()
+        """,
+        timeout: 10_000
+      )
+
+    mouse_drag(browser, {left, top}, {right, bottom}, true)
+  end
+
+  defp mouse_drag(browser, {start_x, start_y}, {end_x, end_y}, verify_selection? \\ false) do
+    {:ok, _} = PlaywrightEx.Page.mouse_move(browser.page_id, x: start_x, y: start_y, timeout: 10_000)
+    {:ok, _} = PlaywrightEx.Page.mouse_down(browser.page_id, timeout: 10_000)
+
+    {:ok, _} =
+      PlaywrightEx.Page.mouse_move(browser.page_id,
+        x: (start_x + end_x) / 2,
+        y: (start_y + end_y) / 2,
+        timeout: 10_000
+      )
+
+    {:ok, _} = PlaywrightEx.Page.mouse_move(browser.page_id, x: end_x, y: end_y, timeout: 10_000)
+    browser = if verify_selection?, do: assert_has(browser, "#brainstorming-selection-area"), else: browser
+    {:ok, _} = PlaywrightEx.Page.mouse_up(browser.page_id, timeout: 10_000)
+    refute_has(browser, "#brainstorming-selection-area")
   end
 
   defp click(browser, selector) do

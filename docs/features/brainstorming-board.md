@@ -1,7 +1,7 @@
 # Brainstorming canvas
 
-> Last reviewed: 2026-09-08
-> Scope: ENG-134, ENG-136, ENG-137 and ENG-138
+> Last reviewed: 2026-09-10
+> Scope: ENG-134, ENG-136, ENG-137, ENG-138 and ENG-182
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
@@ -16,6 +16,12 @@ an existing authored note to edit that same note. Notes autosave, can be dragged
 freely, colored and connected without imposing a tree. Shift-click toggles notes
 in the selection; Command/Ctrl+A selects the visible notes when the canvas has
 focus. These canvas shortcuts do not intercept text editing or other input fields.
+
+With the select tool, drag empty canvas to select every visible note touched by
+the rectangle, including notes inside groups. Shift adds to the initial selection;
+Escape cancels the gesture. Dragging a group's empty interior also selects notes,
+while its header still moves the group. Selection does not include unloaded or
+hidden notes, and does not change group membership.
 
 Space/drag or the hand tool pans. The wheel pans; Ctrl/Command-wheel zooms around
 the pointer. The zoom controls and 1 fit the notes. Arrow keys move a selected
@@ -37,7 +43,9 @@ historical content revisions.
 ## Undo and redo
 
 Command/Ctrl+Z undoes the participant's own actions; Command/Ctrl+Shift+Z redoes
-them. While editing rich text, the text editor handles its own undo/redo. Canvas
+them; Ctrl+Y also redoes on Windows/Linux. Undo/redo use shortcuts instead of dock
+buttons, with a reminder in the select tool's help. While editing rich text, the text
+editor handles its own undo/redo. Canvas
 history covers completed text edits, movement, color, creative state, creation
 and deletion. Connection undo belongs to ENG-165. Undoing another participant's
 work is not supported.
