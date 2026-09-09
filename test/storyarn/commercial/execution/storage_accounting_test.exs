@@ -236,11 +236,11 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       attrs = reservation_attrs(context, "expired-replay", "snapshot_export", 100, snapshot)
       assert {:ok, reservation} = Billing.reserve_storage(attrs)
 
-      measured_at = DateTime.add(TimeHelpers.now(), -2, :second)
+      measured_at = DateTime.shift(TimeHelpers.now(), second: -2)
 
       reservation
       |> Ecto.Changeset.change(
-        expires_at: DateTime.add(measured_at, 1, :second),
+        expires_at: DateTime.shift(measured_at, second: 1),
         accounting_measured_at: measured_at
       )
       |> Repo.update!()
@@ -575,13 +575,13 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
                  fn _reservation -> flunk("a stale worker must not publish ownership") end
                )
 
-      measured_at = DateTime.add(TimeHelpers.now(), -2, :second)
+      measured_at = DateTime.shift(TimeHelpers.now(), second: -2)
 
       mark_reservation_started!(renewed)
 
       renewed
       |> Ecto.Changeset.change(
-        expires_at: DateTime.add(measured_at, 1, :second),
+        expires_at: DateTime.shift(measured_at, second: 1),
         accounting_measured_at: measured_at
       )
       |> Repo.update!()
@@ -965,7 +965,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
         claim
         |> Ecto.Changeset.change(
           status: "publishing",
-          lease_expires_at: DateTime.add(TimeHelpers.now(), 3600, :second)
+          lease_expires_at: DateTime.shift(TimeHelpers.now(), hour: 1)
         )
         |> Repo.update!()
       end
@@ -1244,7 +1244,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       attrs =
         context
         |> reservation_attrs("coalesced-export", "snapshot_export", 0, snapshot)
-        |> Map.put(:expires_at, DateTime.add(database_before, 30 * 24 * 60 * 60, :second))
+        |> Map.put(:expires_at, DateTime.shift(database_before, day: 30))
 
       assert {:ok, first} = Billing.acquire_snapshot_export_lease(attrs)
       database_after = database_clock_now()
@@ -1255,12 +1255,12 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       assert DateTime.diff(first.expires_at, first.accounting_measured_at, :second) ==
                Versioning.project_snapshot_download_export_lease_ttl_seconds()
 
-      assert DateTime.before?(first.expires_at, DateTime.add(database_before, 30 * 24 * 60 * 60, :second))
+      assert DateTime.before?(first.expires_at, DateTime.shift(database_before, day: 30))
 
       assert {:ok, second} =
                context
                |> reservation_attrs("second-coalesced-export", "snapshot_export", 0, snapshot)
-               |> Map.put(:expires_at, DateTime.add(database_before, 60 * 24 * 60 * 60, :second))
+               |> Map.put(:expires_at, DateTime.shift(database_before, day: 60))
                |> Billing.acquire_snapshot_export_lease()
 
       assert second.id == first.id
@@ -1399,9 +1399,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       assert {:ok, lease} = reserve(context, "future-advisory", "snapshot_export", 0, snapshot)
 
       assert %{candidate_count: 1, released_count: 0, failure_count: 0} =
-               Versioning.recover_expired_project_snapshot_export_leases(
-                 DateTime.add(TimeHelpers.now(), 2 * 24 * 60 * 60, :second)
-               )
+               Versioning.recover_expired_project_snapshot_export_leases(DateTime.shift(TimeHelpers.now(), day: 2))
 
       assert Repo.get!(StorageReservation, lease.id).status == "active"
 
@@ -1433,8 +1431,8 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       for reservation <- [expired, positive] do
         reservation
         |> Ecto.Changeset.change(
-          accounting_measured_at: DateTime.add(now, -120, :second),
-          expires_at: DateTime.add(now, -60, :second)
+          accounting_measured_at: DateTime.shift(now, minute: -2),
+          expires_at: DateTime.shift(now, minute: -1)
         )
         |> Repo.update!()
       end
@@ -1504,8 +1502,8 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       assert {:ok, positive} = reserve(context, "positive-export-after-batch", "snapshot_export", 100, snapshot)
 
       now = TimeHelpers.now()
-      accounting_measured_at = DateTime.add(now, -120, :second)
-      expires_at = DateTime.add(now, -60, :second)
+      accounting_measured_at = DateTime.shift(now, minute: -2)
+      expires_at = DateTime.shift(now, minute: -1)
       expired_ids = Enum.map(expired, & &1.id)
 
       {51, _rows} =
@@ -1584,10 +1582,10 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       now = TimeHelpers.now()
 
       old_released
-      |> Ecto.Changeset.change(settled_at: DateTime.add(now, -8 * 24 * 60 * 60, :second))
+      |> Ecto.Changeset.change(settled_at: DateTime.shift(now, day: -8))
       |> Repo.update!()
 
-      cutoff = DateTime.add(now, -7 * 24 * 60 * 60, :second)
+      cutoff = DateTime.shift(now, week: -1)
 
       assert %{
                candidate_count: 1,
@@ -1630,7 +1628,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
 
       [first_released, second_released] = released
       now = TimeHelpers.now()
-      settled_at = DateTime.add(now, -8 * 24 * 60 * 60, :second)
+      settled_at = DateTime.shift(now, day: -8)
 
       {2, _rows} =
         Repo.update_all(
@@ -1641,7 +1639,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
         )
 
       assert %{candidate_count: 1, purged_count: 1, changed_count: 0, failure_count: 0} =
-               Billing.purge_released_snapshot_export_leases(DateTime.add(now, -7 * 24 * 60 * 60, :second))
+               Billing.purge_released_snapshot_export_leases(DateTime.shift(now, week: -1))
 
       refute Repo.get(StorageReservation, first_released.id)
       assert Repo.get!(StorageReservation, second_released.id).status == "released"
@@ -1668,7 +1666,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       now = TimeHelpers.now()
 
       claimed
-      |> Ecto.Changeset.change(settled_at: DateTime.add(now, -8 * 24 * 60 * 60, :second))
+      |> Ecto.Changeset.change(settled_at: DateTime.shift(now, day: -8))
       |> Repo.update!()
 
       Repo.insert!(%SnapshotObjectPublicationClaim{
@@ -1689,7 +1687,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
                reserve(context, "later-export-evidence", "snapshot_export", 0, later_snapshot)
 
       assert %{candidate_count: 1, purged_count: 0, changed_count: 1, failure_count: 0} =
-               Billing.purge_released_snapshot_export_leases(DateTime.add(now, -7 * 24 * 60 * 60, :second))
+               Billing.purge_released_snapshot_export_leases(DateTime.shift(now, week: -1))
 
       assert Repo.get!(StorageReservation, claimed.id).status == "released"
     end
@@ -1787,7 +1785,7 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
   end
 
   defp insert_publication_claim!(reservation, status, inventory_source \\ nil) do
-    lease_expires_at = if status in ["staging", "publishing"], do: DateTime.add(TimeHelpers.now(), 3600, :second)
+    lease_expires_at = if status in ["staging", "publishing"], do: DateTime.shift(TimeHelpers.now(), hour: 1)
     inventory_source = inventory_source || Repo.get!(ProjectSnapshot, reservation.project_snapshot_id_snapshot)
     inventory_digest = SnapshotObjectPublicationClaim.inventory_digest(inventory_source)
 

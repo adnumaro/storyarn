@@ -330,7 +330,7 @@ defmodule StoryarnWeb.UserAuthTest do
       conn: conn,
       user: user
     } do
-      three_hours_ago = :second |> DateTime.utc_now() |> DateTime.add(-3, :hour)
+      three_hours_ago = :second |> DateTime.utc_now() |> DateTime.shift(hour: -3)
       user = %{user | authenticated_at: three_hours_ago}
       user_token = Accounts.generate_user_session_token(user)
       {user, token_inserted_at} = Accounts.get_user_by_session_token(user_token)
@@ -357,7 +357,7 @@ defmodule StoryarnWeb.UserAuthTest do
     end
 
     test "accepts and assigns a grant bound to the stale session", %{conn: conn, user: user} do
-      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      stale_user = %{user | authenticated_at: DateTime.shift(DateTime.utc_now(:second), minute: -21)}
       user_token = Accounts.generate_user_session_token(stale_user)
       grant = UserAuth.issue_sudo_grant(stale_user, user_token)
       session = conn |> put_session(:user_token, user_token) |> get_session()
@@ -384,12 +384,12 @@ defmodule StoryarnWeb.UserAuthTest do
     test "uses one twenty-minute sudo window across the web authentication flow", %{user: user} do
       assert UserAuth.sudo_mode?(%{
                user
-               | authenticated_at: DateTime.add(DateTime.utc_now(:second), -19, :minute)
+               | authenticated_at: DateTime.shift(DateTime.utc_now(:second), minute: -19)
              })
 
       refute UserAuth.sudo_mode?(%{
                user
-               | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)
+               | authenticated_at: DateTime.shift(DateTime.utc_now(:second), minute: -21)
              })
     end
 
@@ -409,7 +409,7 @@ defmodule StoryarnWeb.UserAuthTest do
     end
 
     test "issues a grant that is valid only for its active user session", %{user: user} do
-      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      stale_user = %{user | authenticated_at: DateTime.shift(DateTime.utc_now(:second), minute: -21)}
       session_token = Accounts.generate_user_session_token(stale_user)
       another_session_token = Accounts.generate_user_session_token(stale_user)
       other_user = %{user_fixture() | authenticated_at: stale_user.authenticated_at}
@@ -426,7 +426,7 @@ defmodule StoryarnWeb.UserAuthTest do
     end
 
     test "rejects expired or revoked grants", %{user: user} do
-      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      stale_user = %{user | authenticated_at: DateTime.shift(DateTime.utc_now(:second), minute: -21)}
       session_token = Accounts.generate_user_session_token(stale_user)
 
       expired_grant =
@@ -444,7 +444,7 @@ defmodule StoryarnWeb.UserAuthTest do
     test "issues a session-rotation handoff that cannot be used as a normal sudo grant", %{
       user: user
     } do
-      stale_user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)}
+      stale_user = %{user | authenticated_at: DateTime.shift(DateTime.utc_now(:second), minute: -21)}
       session_token = Accounts.generate_user_session_token(stale_user)
       another_session_token = Accounts.generate_user_session_token(stale_user)
       handoff = UserAuth.issue_sudo_handoff(stale_user, session_token)

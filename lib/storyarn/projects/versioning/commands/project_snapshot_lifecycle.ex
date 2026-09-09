@@ -313,7 +313,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     limit = opts |> Keyword.get(:limit, @retention_batch_size) |> min(@retention_batch_size) |> max(1)
     after_id = Keyword.get(opts, :after_id, 0)
     through_id = Keyword.get_lazy(opts, :through_id, &lifecycle_high_watermark/0)
-    quiesced_before = DateTime.add(now, -@build_recovery_quarantine_seconds, :second)
+    quiesced_before = DateTime.shift(now, second: -@build_recovery_quarantine_seconds)
     quiescent_job = quiescent_build_job_dynamic(quiesced_before)
 
     Repo.all(
@@ -456,7 +456,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   @spec discard_stale_maintenance_jobs() :: %{discarded_count: non_neg_integer()}
   def discard_stale_maintenance_jobs do
     now = %{database_clock_now() | microsecond: {0, 6}}
-    cutoff = DateTime.add(now, -@maintenance_job_stale_after_seconds, :second)
+    cutoff = DateTime.shift(now, second: -@maintenance_job_stale_after_seconds)
 
     {discarded_count, _jobs} =
       Oban.Job
@@ -475,7 +475,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   @spec rescue_stale_cleanup_jobs() :: %{discarded_count: non_neg_integer(), rescued_count: non_neg_integer()}
   def rescue_stale_cleanup_jobs do
     now = %{database_clock_now() | microsecond: {0, 6}}
-    cutoff = DateTime.add(now, -@cleanup_job_rescue_after_seconds, :second)
+    cutoff = DateTime.shift(now, second: -@cleanup_job_rescue_after_seconds)
 
     stale_jobs =
       from(job in Oban.Job,
@@ -968,7 +968,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   defp revalidate_expired_build_candidate(snapshot, project, reservation, candidate, now) do
     job = lock_build_job(snapshot.build_job_id)
-    quiesced_before = DateTime.add(now, -@build_recovery_quarantine_seconds, :second)
+    quiesced_before = DateTime.shift(now, second: -@build_recovery_quarantine_seconds)
 
     facts = {
       snapshot.id,

@@ -58,7 +58,7 @@ defmodule Storyarn.Projects.InvitationSchema do
       def build_invitation(parent, invited_by, email, role \\ unquote(default_role)) do
         {encoded_token, hashed_token} = TokenGenerator.build_hashed_token()
 
-        expires_at = DateTime.add(TimeHelpers.now(), @invitation_validity_in_days, :day)
+        expires_at = DateTime.shift(TimeHelpers.now(), day: @invitation_validity_in_days)
 
         invited_by_id = if invited_by, do: invited_by.id
 

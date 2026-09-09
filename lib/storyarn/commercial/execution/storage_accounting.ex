@@ -1022,10 +1022,9 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
       |> StorageReservation.extend_changeset(target_bytes, %{
         generation: reservation.generation + 1,
         expires_at:
-          DateTime.add(
+          DateTime.shift(
             measured_at,
-            reservation_ttl_seconds(reservation.kind, target_bytes),
-            :second
+            second: reservation_ttl_seconds(reservation.kind, target_bytes)
           ),
         accounting_measured_at: measured_at
       })
@@ -1065,10 +1064,9 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
     %{
       attrs
       | expires_at:
-          DateTime.add(
+          DateTime.shift(
             measured_at,
-            StorageLeasePolicy.download_export_lease_ttl_seconds(),
-            :second
+            second: StorageLeasePolicy.download_export_lease_ttl_seconds()
           ),
         accounting_measured_at: measured_at
     }
@@ -1081,10 +1079,9 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
     |> StorageReservation.live_owner_renew_changeset(%{
       generation: reservation.generation + 1,
       expires_at:
-        DateTime.add(
+        DateTime.shift(
           measured_at,
-          StorageLeasePolicy.build_lease_ttl_seconds(),
-          :second
+          second: StorageLeasePolicy.build_lease_ttl_seconds()
         ),
       accounting_measured_at: measured_at
     })
@@ -2252,10 +2249,9 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
       generation: 1,
       expires_at:
         value(attrs, :expires_at) ||
-          DateTime.add(
+          DateTime.shift(
             measured_at,
-            reservation_ttl_seconds(kind, value(attrs, :reserved_bytes)),
-            :second
+            second: reservation_ttl_seconds(kind, value(attrs, :reserved_bytes))
           ),
       accounting_version: @accounting_version,
       accounting_measured_at: measured_at
@@ -2933,13 +2929,12 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
 
   defp renewed_expiry(reservation, measured_at) do
     full_ttl =
-      DateTime.add(
+      DateTime.shift(
         measured_at,
-        reservation_ttl_seconds(reservation.kind, reservation.reserved_bytes),
-        :second
+        second: reservation_ttl_seconds(reservation.kind, reservation.reserved_bytes)
       )
 
-    after_previous_expiry = DateTime.add(reservation.expires_at, 1, :second)
+    after_previous_expiry = DateTime.shift(reservation.expires_at, second: 1)
 
     if DateTime.after?(full_ttl, after_previous_expiry), do: full_ttl, else: after_previous_expiry
   end

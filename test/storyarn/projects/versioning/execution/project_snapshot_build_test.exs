@@ -41,7 +41,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
     test "normalizes inserted lifecycle time to the database clock" do
       project = project_fixture(user_fixture())
       database_before = database_clock_now()
-      future = DateTime.add(database_before, 300, :second)
+      future = DateTime.shift(database_before, minute: 5)
       snapshot = pending_project_snapshot_fixture(project, %{state_updated_at: future})
 
       database_after = database_clock_now()
@@ -306,7 +306,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
 
       scheduled_at =
         TimeHelpers.now()
-        |> DateTime.add(600, :second)
+        |> DateTime.shift(minute: 10)
         |> Map.put(:microsecond, {0, 6})
 
       snapshot.build_job_id
@@ -1199,7 +1199,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       reservation
       |> Ecto.Changeset.change(
         accounting_measured_at: now,
-        expires_at: DateTime.add(now, 24 * 60 * 60, :second)
+        expires_at: DateTime.shift(now, day: 1)
       )
       |> Repo.update!()
 
@@ -1208,7 +1208,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
         |> SnapshotObjectPublicationClaim.create_changeset(
           String.duplicate("a", 64),
           Ecto.UUID.generate(),
-          DateTime.add(now, 1, :second),
+          DateTime.shift(now, second: 1),
           reservation.id,
           reservation.lease_token
         )
@@ -1264,12 +1264,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
 
       renewed_reservation
       |> Ecto.Changeset.change(
-        accounting_measured_at: DateTime.add(database_after, -120, :second),
-        expires_at: DateTime.add(database_after, -60, :second)
+        accounting_measured_at: DateTime.shift(database_after, minute: -2),
+        expires_at: DateTime.shift(database_after, minute: -1)
       )
       |> Repo.update!()
 
-      expired_claim_lease = DateTime.add(database_after, -60, :second)
+      expired_claim_lease = DateTime.shift(database_after, minute: -1)
 
       renewed_claim
       |> Ecto.Changeset.change(lease_expires_at: expired_claim_lease)
@@ -1289,7 +1289,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       assert expired_claim.lease_expires_at == expired_claim_lease
       assert DateTime.before?(expired_claim.lease_expires_at, database_clock_now())
 
-      future = DateTime.add(database_after, 300, :second)
+      future = DateTime.shift(database_after, minute: 5)
       skew_before = database_clock_now()
       normalized = building |> ProjectSnapshot.build_state_changeset(%{state_updated_at: future}) |> Repo.update!()
       skew_after = database_clock_now()
@@ -1535,12 +1535,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
 
       active_reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
       active_claim = Repo.get!(SnapshotObjectPublicationClaim, requested.object_prefix)
-      expired_at = DateTime.add(database_clock_now(), -1, :second)
+      expired_at = DateTime.shift(database_clock_now(), second: -1)
 
       active_reservation
       |> Ecto.Changeset.change(
         expires_at: expired_at,
-        accounting_measured_at: DateTime.add(expired_at, -1, :second)
+        accounting_measured_at: DateTime.shift(expired_at, second: -1)
       )
       |> Repo.update!()
 
@@ -2273,7 +2273,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
         |> SnapshotObjectPublicationClaim.create_changeset(
           inventory_digest,
           Ecto.UUID.generate(),
-          DateTime.add(TimeHelpers.now(), 3_600, :second),
+          DateTime.shift(TimeHelpers.now(), hour: 1),
           reservation.id,
           reservation.lease_token
         )
@@ -2295,7 +2295,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       assert is_nil(unchanged_reservation.storage_started_at)
       assert Repo.get!(SnapshotObjectPublicationClaim, claim.object_prefix).status == "staging"
 
-      expired_at = DateTime.add(TimeHelpers.now(), -1, :second)
+      expired_at = DateTime.shift(TimeHelpers.now(), second: -1)
 
       claim
       |> SnapshotObjectPublicationClaim.status_changeset("staging", expired_at)
@@ -2363,7 +2363,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
         storage_reservation_id_snapshot: claim.storage_reservation_id_snapshot,
         storage_reservation_lease_token: claim.storage_reservation_lease_token,
         status: "staging",
-        lease_expires_at: DateTime.add(TimeHelpers.now(), -1, :second)
+        lease_expires_at: DateTime.shift(TimeHelpers.now(), second: -1)
       })
 
       assert {:ok, %ProjectSnapshot{lifecycle_state: "ready"} = ready} =
@@ -2655,8 +2655,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
 
       cleanup_request
       |> StorageCleanupRequest.multipart_quiescence_changeset(
-        DateTime.add(handoff_now, -2, :second),
-        DateTime.add(handoff_now, -1, :second)
+        DateTime.shift(handoff_now, second: -2),
+        DateTime.shift(handoff_now, second: -1)
       )
       |> Repo.update!()
 
@@ -2688,8 +2688,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       cleanup_request_id
       |> then(&Repo.get!(StorageCleanupRequest, &1))
       |> Ecto.Changeset.change(
-        multipart_quiescence_started_at: DateTime.add(now, -2, :second),
-        multipart_quiescence_not_before: DateTime.add(now, -1, :second)
+        multipart_quiescence_started_at: DateTime.shift(now, second: -2),
+        multipart_quiescence_not_before: DateTime.shift(now, second: -1)
       )
       |> Repo.update!()
 
@@ -3020,7 +3020,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       |> SnapshotObjectPublicationClaim.create_changeset(
         String.duplicate("a", 64),
         Ecto.UUID.generate(),
-        DateTime.add(TimeHelpers.now(), 3_600, :second),
+        DateTime.shift(TimeHelpers.now(), hour: 1),
         started.id,
         started.lease_token
       )
@@ -3136,7 +3136,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
     |> Repo.update!()
     |> SnapshotObjectPublicationClaim.status_changeset(
       "publishing",
-      DateTime.add(TimeHelpers.now(), 3_600, :second)
+      DateTime.shift(TimeHelpers.now(), hour: 1)
     )
     |> Repo.update!()
   end
@@ -3157,18 +3157,18 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
 
   defp recover_expired_build!(snapshot, reservation_id) do
     now = TimeHelpers.now()
-    expired_at = DateTime.add(now, -1, :second)
+    expired_at = DateTime.shift(now, second: -1)
 
     quiesced_at =
       now
-      |> DateTime.add(-Versioning.project_snapshot_build_recovery_quarantine_seconds() - 1, :second)
+      |> DateTime.shift(second: -Versioning.project_snapshot_build_recovery_quarantine_seconds() - 1)
       |> Map.put(:microsecond, {0, 6})
 
     reservation_id
     |> then(&Repo.get!(StorageReservation, &1))
     |> Ecto.Changeset.change(
       expires_at: expired_at,
-      accounting_measured_at: DateTime.add(expired_at, -1, :second)
+      accounting_measured_at: DateTime.shift(expired_at, second: -1)
     )
     |> Repo.update!()
 

@@ -12,7 +12,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
   end
 
   defp stale_login(conn, user) do
-    stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+    stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
     log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
   end
 
@@ -147,7 +147,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
       conn: conn,
       user: user
     } do
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -19)
 
       {:ok, view, _html} =
         conn

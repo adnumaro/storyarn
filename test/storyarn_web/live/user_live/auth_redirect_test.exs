@@ -59,7 +59,7 @@ defmodule StoryarnWeb.UserLive.AuthRedirectTest do
       user: user
     } do
       token = get_session(conn, :user_token)
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       override_token_authenticated_at(token, stale_authenticated_at)
 
       {:ok, view, _html} =

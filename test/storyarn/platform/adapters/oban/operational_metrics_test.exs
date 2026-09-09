@@ -15,11 +15,11 @@ defmodule Storyarn.Platform.Adapters.Oban.OperationalMetricsTest do
     now = ~U[2026-09-02 20:00:00.000000Z]
 
     rows = [
-      {"imports", "available", 2, 2, DateTime.add(now, -90, :second), DateTime.add(now, -90, :second), nil, 0},
-      {"imports", "retryable", 3, 1, DateTime.add(now, -30, :second), DateTime.add(now, -30, :second), nil, 4},
-      {"imports", "scheduled", 1, 0, nil, DateTime.add(now, -7_200, :second), nil, 0},
-      {"imports", "executing", 1, 0, nil, DateTime.add(now, -300, :second), DateTime.add(now, -5, :second), 2},
-      {"snapshot_archives", "available", 99, 99, DateTime.add(now, -900, :second), DateTime.add(now, -900, :second), nil,
+      {"imports", "available", 2, 2, DateTime.shift(now, second: -90), DateTime.shift(now, second: -90), nil, 0},
+      {"imports", "retryable", 3, 1, DateTime.shift(now, second: -30), DateTime.shift(now, second: -30), nil, 4},
+      {"imports", "scheduled", 1, 0, nil, DateTime.shift(now, hour: -2), nil, 0},
+      {"imports", "executing", 1, 0, nil, DateTime.shift(now, minute: -5), DateTime.shift(now, second: -5), 2},
+      {"snapshot_archives", "available", 99, 99, DateTime.shift(now, minute: -15), DateTime.shift(now, minute: -15), nil,
        8}
     ]
 
@@ -198,8 +198,8 @@ defmodule Storyarn.Platform.Adapters.Oban.OperationalMetricsTest do
 
     insert_import_job!(
       state: "scheduled",
-      inserted_at: DateTime.add(now, -7_200, :second),
-      scheduled_at: DateTime.add(now, 3_600, :second),
+      inserted_at: DateTime.shift(now, hour: -2),
+      scheduled_at: DateTime.shift(now, hour: 1),
       attempted_at: nil,
       attempt: 0,
       errors: []
@@ -207,9 +207,9 @@ defmodule Storyarn.Platform.Adapters.Oban.OperationalMetricsTest do
 
     insert_import_job!(
       state: "retryable",
-      inserted_at: DateTime.add(now, -600, :second),
-      scheduled_at: DateTime.add(now, -90, :second),
-      attempted_at: DateTime.add(now, -120, :second),
+      inserted_at: DateTime.shift(now, minute: -10),
+      scheduled_at: DateTime.shift(now, second: -90),
+      attempted_at: DateTime.shift(now, minute: -2),
       attempt: 4,
       max_attempts: 5,
       errors: Enum.map(1..4, &%{"attempt" => &1})
@@ -217,9 +217,9 @@ defmodule Storyarn.Platform.Adapters.Oban.OperationalMetricsTest do
 
     insert_import_job!(
       state: "executing",
-      inserted_at: DateTime.add(now, -300, :second),
-      scheduled_at: DateTime.add(now, -300, :second),
-      attempted_at: DateTime.add(now, -5, :second),
+      inserted_at: DateTime.shift(now, minute: -5),
+      scheduled_at: DateTime.shift(now, minute: -5),
+      attempted_at: DateTime.shift(now, second: -5),
       attempt: 3,
       max_attempts: 5,
       errors: Enum.map(1..2, &%{"attempt" => &1})

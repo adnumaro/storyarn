@@ -18,7 +18,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExtendTimer do
             version: timer.version + 1,
             duration_seconds: timer.duration_seconds + seconds,
             remaining_seconds: remaining,
-            deadline_at: if(timer.status == :running, do: DateTime.add(TimerMutation.now(), remaining, :second))
+            deadline_at: if(timer.status == :running, do: DateTime.shift(TimerMutation.now(), second: remaining))
           },
           :timer_extended
         )

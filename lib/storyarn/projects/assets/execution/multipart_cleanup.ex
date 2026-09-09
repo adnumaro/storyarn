@@ -406,7 +406,7 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
       multipart_cleanup_phase: "discover",
       multipart_cleanup_cursor: 0,
       multipart_cleanup_claim_token: Ecto.UUID.generate(),
-      multipart_cleanup_claim_expires_at: DateTime.add(now, @claim_lease_seconds, :second)
+      multipart_cleanup_claim_expires_at: DateTime.shift(now, second: @claim_lease_seconds)
     })
     |> Repo.update()
     |> case do
@@ -419,7 +419,7 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
     request
     |> StorageCleanupRequest.multipart_cleanup_changeset(%{
       multipart_cleanup_claim_token: Ecto.UUID.generate(),
-      multipart_cleanup_claim_expires_at: DateTime.add(now, @claim_lease_seconds, :second)
+      multipart_cleanup_claim_expires_at: DateTime.shift(now, second: @claim_lease_seconds)
     })
     |> Repo.update()
     |> case do
@@ -458,7 +458,7 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
           multipart_cleanup_claim_token: nil,
           multipart_cleanup_claim_expires_at: nil,
           multipart_cleanup_failure_count: failures,
-          multipart_cleanup_next_attempt_at: DateTime.add(now, retry_seconds(failures), :second),
+          multipart_cleanup_next_attempt_at: DateTime.shift(now, second: retry_seconds(failures)),
           multipart_cleanup_last_error_code: "multipart_cleanup_claim_expired"
         }
       end
@@ -818,7 +818,7 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
         with %StorageCleanupRequest{} = current <- lock_request(request.id),
              true <- current_claim?(current, request) do
           now = database_clock_now()
-          not_before = DateTime.add(now, Storage.multipart_cleanup_quiescence_seconds(), :second)
+          not_before = DateTime.shift(now, second: Storage.multipart_cleanup_quiescence_seconds())
 
           current
           |> StorageCleanupRequest.multipart_cleanup_changeset(%{
@@ -1424,7 +1424,7 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
             multipart_cleanup_claim_token: nil,
             multipart_cleanup_claim_expires_at: nil,
             multipart_cleanup_failure_count: failures,
-            multipart_cleanup_next_attempt_at: DateTime.add(database_clock_now(), retry_seconds(failures), :second),
+            multipart_cleanup_next_attempt_at: DateTime.shift(database_clock_now(), second: retry_seconds(failures)),
             multipart_cleanup_last_error_code: safe_code
           }
         end

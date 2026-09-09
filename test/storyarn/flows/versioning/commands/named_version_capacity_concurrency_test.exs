@@ -149,7 +149,7 @@ defmodule Storyarn.Flows.NamedVersionLimitConcurrencyTest do
     automatic_versions: automatic_versions
   } do
     latest = List.last(automatic_versions)
-    expired_at = DateTime.add(TimeHelpers.now(), -601, :second)
+    expired_at = DateTime.shift(TimeHelpers.now(), second: -601)
 
     Sandbox.unboxed_run(Repo, fn ->
       Repo.update_all(

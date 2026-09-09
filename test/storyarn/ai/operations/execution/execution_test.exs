@@ -123,7 +123,7 @@ defmodule Storyarn.AI.ExecutionTest do
   test "expired route references never fall back", ctx do
     base = intent!(ctx, "expired")
     route_ref = route_ref!(base)
-    Repo.update_all(RouteOption, set: [expires_at: DateTime.add(TimeHelpers.now(), -1, :second)])
+    Repo.update_all(RouteOption, set: [expires_at: DateTime.shift(TimeHelpers.now(), second: -1)])
 
     assert {:error, :route_ref_expired} =
              ctx |> execution_intent!("expired", route_ref, "expired-route") |> AI.execute()
@@ -137,7 +137,7 @@ defmodule Storyarn.AI.ExecutionTest do
 
     Repo.update_all(
       from(option in RouteOption, where: option.id == ^route_option_id),
-      set: [expires_at: DateTime.add(TimeHelpers.now(), -1, :second)]
+      set: [expires_at: DateTime.shift(TimeHelpers.now(), second: -1)]
     )
 
     assert RouteOptions.delete_expired() == 1
@@ -265,7 +265,7 @@ defmodule Storyarn.AI.ExecutionTest do
     assert :ok = Executor.run(queued.id)
 
     result = Repo.get_by!(Result, operation_id: queued.id)
-    assert DateTime.after?(result.expires_at, DateTime.add(before_execution, 55, :second))
+    assert DateTime.after?(result.expires_at, DateTime.shift(before_execution, second: 55))
   end
 
   test "exhausted worker retries terminalize a queued operation without provider usage", ctx do
@@ -525,7 +525,7 @@ defmodule Storyarn.AI.ExecutionTest do
     {abandoned, _intent} = execute_success!(ctx, "expire me")
 
     Repo.update_all(from(result in Result, where: result.operation_id == ^abandoned.id),
-      set: [expires_at: DateTime.add(TimeHelpers.now(), -1, :second)]
+      set: [expires_at: DateTime.shift(TimeHelpers.now(), second: -1)]
     )
 
     assert {:ok, %{expired_count: 1, failure_count: 0, more?: false}} = Results.expire()
@@ -535,7 +535,7 @@ defmodule Storyarn.AI.ExecutionTest do
   test "result expiry is processed in bounded batches", ctx do
     {first, _intent} = execute_success!(ctx, "expire batch one")
     {second, _intent} = execute_success!(ctx, "expire batch two")
-    expired_at = DateTime.add(TimeHelpers.now(), -1, :second)
+    expired_at = DateTime.shift(TimeHelpers.now(), second: -1)
 
     Repo.update_all(
       from(result in Result, where: result.operation_id in ^[first.id, second.id]),

@@ -165,8 +165,8 @@ defmodule Storyarn.Projects.Imports.Expiration do
 
   defp stale_expiration_candidates_query(now) do
     active_statuses = ProjectImportAttempt.active_statuses()
-    absolute_cutoff = DateTime.add(now, -@absolute_plan_retention_seconds, :second)
-    retry_cutoff = DateTime.add(now, -@expiration_retry_backoff_seconds, :second)
+    absolute_cutoff = DateTime.shift(now, second: -@absolute_plan_retention_seconds)
+    retry_cutoff = DateTime.shift(now, second: -@expiration_retry_backoff_seconds)
 
     from attempt in ProjectImportAttempt,
       left_join: job in Oban.Job,
@@ -190,7 +190,7 @@ defmodule Storyarn.Projects.Imports.Expiration do
   # many stale attempts are still available.
   defp maybe_wake_stale_available_import(now, opts) do
     active_statuses = ProjectImportAttempt.active_statuses()
-    absolute_cutoff = DateTime.add(now, -@absolute_plan_retention_seconds, :second)
+    absolute_cutoff = DateTime.shift(now, second: -@absolute_plan_retention_seconds)
 
     attempt =
       Repo.one(
@@ -268,7 +268,7 @@ defmodule Storyarn.Projects.Imports.Expiration do
 
   defp lock_stale_attempt(attempt_id, now) do
     active_statuses = ProjectImportAttempt.active_statuses()
-    absolute_cutoff = DateTime.add(now, -@absolute_plan_retention_seconds, :second)
+    absolute_cutoff = DateTime.shift(now, second: -@absolute_plan_retention_seconds)
 
     ProjectImportAttempt
     |> where(

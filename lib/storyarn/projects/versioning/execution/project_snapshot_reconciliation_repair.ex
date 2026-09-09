@@ -213,7 +213,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   defp recover_locked_repair_delivery(action) do
     now = %{database_clock_now() | microsecond: {0, 6}}
-    cutoff = DateTime.add(now, -RepairProjectSnapshotFindingWorker.recovery_after_seconds(), :second)
+    cutoff = DateTime.shift(now, second: -RepairProjectSnapshotFindingWorker.recovery_after_seconds())
     jobs = exact_repair_delivery_jobs(action)
     active_jobs = Enum.filter(jobs, &(&1.state in @active_repair_job_states))
 

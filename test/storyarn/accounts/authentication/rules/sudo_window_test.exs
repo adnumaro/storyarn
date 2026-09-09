@@ -15,7 +15,7 @@ defmodule Storyarn.Accounts.Authentication.Rules.SudoWindowTest do
 
     test "returns false when authenticated long ago" do
       user = user_fixture()
-      old_time = DateTime.add(TimeHelpers.now(), -30, :minute)
+      old_time = DateTime.shift(TimeHelpers.now(), minute: -30)
       user = %{user | authenticated_at: old_time}
       refute SudoWindow.active?(user)
     end
@@ -28,7 +28,7 @@ defmodule Storyarn.Accounts.Authentication.Rules.SudoWindowTest do
 
     test "respects custom minutes parameter" do
       user = user_fixture()
-      five_min_ago = DateTime.add(TimeHelpers.now(), -5, :minute)
+      five_min_ago = DateTime.shift(TimeHelpers.now(), minute: -5)
       user = %{user | authenticated_at: five_min_ago}
 
       assert SudoWindow.active?(user, -10)
@@ -37,7 +37,7 @@ defmodule Storyarn.Accounts.Authentication.Rules.SudoWindowTest do
 
     test "boundary: exactly at the limit" do
       user = user_fixture()
-      exactly_20_min_ago = DateTime.add(TimeHelpers.now(), -20, :minute)
+      exactly_20_min_ago = DateTime.shift(TimeHelpers.now(), minute: -20)
       user = %{user | authenticated_at: exactly_20_min_ago}
 
       refute SudoWindow.active?(user)

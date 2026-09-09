@@ -53,7 +53,7 @@ defmodule Storyarn.AI.RouteOptions do
   def issue(%ExecutionIntent{} = intent, %Task{} = task, %ExecutionRoute{} = route, context \\ nil) do
     token = 32 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
     subject = intent.subject || %{}
-    expires_at = DateTime.add(TimeHelpers.now(), ttl_seconds(), :second)
+    expires_at = DateTime.shift(TimeHelpers.now(), second: ttl_seconds())
 
     attrs = %{
       token_hash: token_hash(token),

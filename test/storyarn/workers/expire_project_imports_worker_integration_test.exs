@@ -16,8 +16,8 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorkerIntegrationTest do
     user = user_fixture()
     project = project_fixture(user)
     now = TimeHelpers.now()
-    stale_at = DateTime.add(now, -600, :second)
-    expires_at = DateTime.add(now, -60, :second)
+    stale_at = DateTime.shift(now, minute: -10)
+    expires_at = DateTime.shift(now, minute: -1)
     storage_keys = Enum.map(1..101, &storage_key/1)
 
     insert_cleanup_requests(storage_keys, project.id, now, "retained", nil)
@@ -82,7 +82,7 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorkerIntegrationTest do
 
   test "reports and drains a cleanup backlog larger than one bounded batch" do
     now = TimeHelpers.now()
-    due_at = DateTime.add(now, -60, :second)
+    due_at = DateTime.shift(now, minute: -1)
     storage_keys = Enum.map(1..101, &storage_key/1)
 
     insert_cleanup_requests(storage_keys, nil, now, "pending", due_at)

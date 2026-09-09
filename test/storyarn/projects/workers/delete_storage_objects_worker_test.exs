@@ -108,7 +108,7 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorkerTest do
 
   test "a persisted multipart backoff snoozes the same per-request delivery" do
     key = "projects/1/snapshots/archives/v2/staging/RetryBackoff0001/snapshot.zip"
-    next_attempt_at = DateTime.add(TimeHelpers.now(), 60, :second)
+    next_attempt_at = DateTime.shift(TimeHelpers.now(), minute: 1)
 
     request =
       %StorageCleanupRequest{}

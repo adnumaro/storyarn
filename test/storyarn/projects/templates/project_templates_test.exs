@@ -1635,7 +1635,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
       newest_completed_at = DateTime.truncate(DateTime.utc_now(), :second)
-      older_completed_at = DateTime.add(newest_completed_at, -60, :second)
+      older_completed_at = DateTime.shift(newest_completed_at, minute: -1)
 
       insert_failure = fn project_name, completed_at ->
         Repo.insert!(%ProjectTemplateInstall{
@@ -1690,7 +1690,7 @@ defmodule Storyarn.ProjectTemplatesTest do
         })
       end
 
-      older = insert_failure.("Older Template Failure", DateTime.add(completed_at, -60, :second))
+      older = insert_failure.("Older Template Failure", DateTime.shift(completed_at, minute: -1))
 
       newer =
         Enum.map(1..10, fn index ->
@@ -1730,7 +1730,7 @@ defmodule Storyarn.ProjectTemplatesTest do
           source: "template_show",
           error_code: "test_failure",
           error_message: "Test failure",
-          completed_at: DateTime.add(completed_at, index, :second)
+          completed_at: DateTime.shift(completed_at, second: index)
         })
       end
 

@@ -67,7 +67,7 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
     end
 
     test "mounts locked instead of redirecting when sudo mode has expired", %{conn: conn} do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
 
       conn =
         log_in_user(conn, user_fixture(), token_authenticated_at: stale_authenticated_at)
@@ -82,7 +82,7 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
 
     test "re-authenticates in place and locks password changes until then", %{conn: conn} do
       user = user_fixture()
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
 
       {:ok, view, _html} =
         conn
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
       conn: conn
     } do
       user = user_fixture()
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -19)
 
       {:ok, view, _html} =
         conn
@@ -133,7 +133,7 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
 
     test "preserves a session-bound grant through the layout and password form", %{conn: conn} do
       user = user_fixture()
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
       session_token = get_session(conn, :user_token)
       grant = UserAuth.issue_sudo_grant(user, session_token)

@@ -51,7 +51,7 @@ defmodule Storyarn.AI.Operations.Commands.ReconcileReservations do
   end
 
   defp query_stale_operations(args, sweep_started_at, batch_size, stale_after_seconds) do
-    cutoff = DateTime.add(sweep_started_at, -stale_after_seconds, :second)
+    cutoff = DateTime.shift(sweep_started_at, second: -stale_after_seconds)
     after_operation_id = cursor(args, "after_operation_id")
 
     operations =

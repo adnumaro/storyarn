@@ -300,7 +300,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
     limit = opts |> Keyword.get(:limit, @delivery_recovery_batch_size) |> min(@delivery_recovery_batch_size) |> max(1)
     after_id = Keyword.get(opts, :after_id, 0)
     through_id = Keyword.get_lazy(opts, :through_id, &delivery_recovery_high_watermark/0)
-    recovery_cutoff = DateTime.add(TimeHelpers.now(), -@delivery_recovery_quarantine_seconds, :second)
+    recovery_cutoff = DateTime.shift(TimeHelpers.now(), second: -@delivery_recovery_quarantine_seconds)
     abandoned_job = abandoned_delivery_job_dynamic(recovery_cutoff)
 
     Repo.all(
@@ -732,7 +732,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   defp valid_recovery_cutoff?(candidate) do
     case Map.get(candidate, :recovery_cutoff) do
       %DateTime{} = cutoff ->
-        latest = DateTime.add(TimeHelpers.now(), -@delivery_recovery_quarantine_seconds, :second)
+        latest = DateTime.shift(TimeHelpers.now(), second: -@delivery_recovery_quarantine_seconds)
         DateTime.compare(cutoff, latest) in [:lt, :eq]
 
       _invalid ->

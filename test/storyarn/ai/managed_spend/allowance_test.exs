@@ -194,7 +194,7 @@ defmodule Storyarn.AI.ManagedSpendTest do
                grant_key: "expired-invite",
                kind: "one_time",
                units: 3,
-               expires_at: DateTime.add(TimeHelpers.now(), -1, :second)
+               expires_at: DateTime.shift(TimeHelpers.now(), second: -1)
              })
 
     assert {:ok, summary} = AI.allowance_summary(ctx.scope, ctx.workspace.id)
@@ -221,7 +221,7 @@ defmodule Storyarn.AI.ManagedSpendTest do
                    grant_key: "batch-expiry-#{index}",
                    kind: "one_time",
                    units: 1,
-                   expires_at: DateTime.add(now, -60, :second)
+                   expires_at: DateTime.shift(now, minute: -1)
                  })
 
         grant
@@ -411,7 +411,7 @@ defmodule Storyarn.AI.ManagedSpendTest do
       grant = grant!(ctx, 4, "expiring")
 
       grant
-      |> Ecto.Changeset.change(expires_at: DateTime.add(TimeHelpers.now(), -60, :second))
+      |> Ecto.Changeset.change(expires_at: DateTime.shift(TimeHelpers.now(), minute: -1))
       |> Repo.update!()
 
       assert %{available_units: 0} = ManagedSpend.projection(ctx.workspace.id)

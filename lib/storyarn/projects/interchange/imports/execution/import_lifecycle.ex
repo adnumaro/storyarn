@@ -481,7 +481,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
 
   defp persist_import_plan(scope, project, plan, preview, binary, opts) do
     storage_key = PlanStorage.storage_key(project.id)
-    expires_at = DateTime.add(TimeHelpers.now(), @plan_retention_seconds, :second)
+    expires_at = DateTime.shift(TimeHelpers.now(), second: @plan_retention_seconds)
     idempotency_key = idempotency_key(scope, project, plan, binary)
 
     with {:ok, plan} <- Shared.bind_plan_to_attempt(plan, storage_key),

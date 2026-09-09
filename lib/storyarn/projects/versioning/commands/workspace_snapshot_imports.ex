@@ -236,7 +236,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   def reconcile_abandoned_deliveries(opts) when is_list(opts) do
     limit = opts |> Keyword.get(:limit, 50) |> min(50) |> max(1)
     upload_ttl = Keyword.get(opts, :upload_ttl_seconds, @upload_ttl_seconds)
-    stale_before = DateTime.add(TimeHelpers.now(), -upload_ttl, :second)
+    stale_before = DateTime.shift(TimeHelpers.now(), second: -upload_ttl)
 
     candidates =
       WorkspaceSnapshotImport
@@ -300,10 +300,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp enforce_upload_grant_limit(workspace_id) do
     cutoff =
-      DateTime.add(
+      DateTime.shift(
         TimeHelpers.now(),
-        -@upload_ttl_seconds - Storage.multipart_cleanup_quiescence_seconds(),
-        :second
+        second: -@upload_ttl_seconds - Storage.multipart_cleanup_quiescence_seconds()
       )
 
     count =
@@ -1249,10 +1248,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   # older release. Cleanup must never relabel old bytes with a new provider.
   defp persist_import_cleanup(import, storage_keys, provider_namespace_fingerprint) do
     not_before =
-      DateTime.add(
+      DateTime.shift(
         import.inserted_at,
-        @upload_ttl_seconds + Storage.multipart_cleanup_quiescence_seconds(),
-        :second
+        second: @upload_ttl_seconds + Storage.multipart_cleanup_quiescence_seconds()
       )
 
     with :ok <- validate_import_namespace(import, provider_namespace_fingerprint),

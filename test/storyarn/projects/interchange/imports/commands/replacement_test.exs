@@ -479,7 +479,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^expired.id),
-      set: [updated_at: DateTime.add(cancelled_at, -600, :second)]
+      set: [updated_at: DateTime.shift(cancelled_at, minute: -10)]
     )
 
     assert %{cleaned_count: 1, failure_count: 0, more?: false} =
@@ -560,7 +560,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
              )
 
     for {age_seconds, expected_snooze} <- [{10, 5}, {60, 15}, {300, 60}, {1_200, 300}] do
-      bound_at = DateTime.add(TimeHelpers.now(), -age_seconds, :second)
+      bound_at = DateTime.shift(TimeHelpers.now(), second: -age_seconds)
 
       ProjectImportAttempt
       |> Repo.get!(queued.id)
@@ -676,7 +676,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^failed.id),
-      set: [updated_at: DateTime.add(failed_at, -600, :second)]
+      set: [updated_at: DateTime.shift(failed_at, minute: -10)]
     )
 
     assert %{cleaned_count: 1, failure_count: 0, more?: false} =
@@ -725,7 +725,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^failed.id),
-      set: [updated_at: DateTime.add(failed_at, -600, :second)]
+      set: [updated_at: DateTime.shift(failed_at, minute: -10)]
     )
 
     assert {:ok, %{expired_count: 0, failure_count: 0, more?: false}} =
@@ -766,7 +766,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^failed.id),
-      set: [updated_at: DateTime.add(failed_at, -600, :second)]
+      set: [updated_at: DateTime.shift(failed_at, minute: -10)]
     )
 
     ctx.project

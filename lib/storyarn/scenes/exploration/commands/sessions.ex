@@ -51,7 +51,7 @@ defmodule Storyarn.Scenes.Exploration.Commands.Sessions do
 
   @doc "Deletes exploration sessions older than the given number of days."
   def cleanup_old_sessions(days \\ 30) do
-    cutoff = DateTime.add(TimeHelpers.now(), -days * 86_400, :second)
+    cutoff = DateTime.shift(TimeHelpers.now(), day: -days)
 
     Repo.delete_all(from(session in ExplorationSession, where: session.updated_at < ^cutoff))
   end

@@ -37,7 +37,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanup do
   """
 
   def absolute_plan_deadline(%ProjectImportAttempt{inserted_at: inserted_at}) do
-    DateTime.add(inserted_at, @absolute_plan_retention_seconds, :second)
+    DateTime.shift(inserted_at, second: @absolute_plan_retention_seconds)
   end
 
   def absolute_plan_deadline_reached?(%ProjectImportAttempt{} = attempt, now) do
@@ -48,7 +48,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanup do
   end
 
   def bounded_plan_retention_deadline(%ProjectImportAttempt{} = attempt, now) do
-    rolling_deadline = DateTime.add(now, @plan_retention_seconds, :second)
+    rolling_deadline = DateTime.shift(now, second: @plan_retention_seconds)
     absolute_deadline = absolute_plan_deadline(attempt)
 
     if DateTime.after?(rolling_deadline, absolute_deadline),
@@ -100,7 +100,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanup do
   # definitive delete instead of falsely declaring the key clean immediately.
   def defer_uncertain_plan_cleanup(%PlanCleanupRequest{} = request) do
     now = TimeHelpers.now()
-    cleanup_after = DateTime.add(now, @plan_retention_seconds, :second)
+    cleanup_after = DateTime.shift(now, second: @plan_retention_seconds)
 
     Repo.update_all(
       from(candidate in PlanCleanupRequest, where: candidate.id == ^request.id),
@@ -225,7 +225,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanup do
 
   defp claim_plan_cleanup(request_id) do
     now = TimeHelpers.now()
-    lease_until = DateTime.add(now, @cleanup_delete_lease_seconds, :second)
+    lease_until = DateTime.shift(now, second: @cleanup_delete_lease_seconds)
 
     Repo.transact(fn ->
       request =
@@ -342,7 +342,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanup do
 
   defp record_plan_cleanup_failure(request) do
     now = TimeHelpers.now()
-    retry_at = DateTime.add(now, cleanup_retry_delay(request.attempt_count), :second)
+    retry_at = DateTime.shift(now, second: cleanup_retry_delay(request.attempt_count))
 
     Repo.update_all(
       from(candidate in PlanCleanupRequest,
@@ -451,7 +451,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanup do
   def cleanup_failure_count(_unexpected), do: 1
 
   defp purge_completed_cleanup_tombstones do
-    cutoff = DateTime.add(TimeHelpers.now(), -@cleanup_tombstone_retention_seconds, :second)
+    cutoff = DateTime.shift(TimeHelpers.now(), second: -@cleanup_tombstone_retention_seconds)
 
     Repo.delete_all(
       from(request in PlanCleanupRequest,

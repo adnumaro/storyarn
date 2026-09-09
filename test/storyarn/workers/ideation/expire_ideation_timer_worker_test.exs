@@ -88,7 +88,7 @@ defmodule Storyarn.Workers.ExpireIdeationTimerWorkerTest do
   end
 
   defp due(timer) do
-    deadline = %{DateTime.add(TimeHelpers.now(), -1, :second) | microsecond: {0, 6}}
+    deadline = %{DateTime.shift(TimeHelpers.now(), second: -1) | microsecond: {0, 6}}
     Timer |> Repo.get!(timer.id) |> change(deadline_at: deadline) |> Repo.update!()
   end
 end

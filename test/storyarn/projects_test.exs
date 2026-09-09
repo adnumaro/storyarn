@@ -444,7 +444,7 @@ defmodule Storyarn.ProjectsTest do
 
       expired_invitation =
         invitation
-        |> Map.put(:expires_at, DateTime.add(DateTime.utc_now(:second), -1, :day))
+        |> Map.put(:expires_at, DateTime.shift(DateTime.utc_now(:second), day: -1))
         |> Repo.insert!()
 
       assert {:ok, renewed_invitation} =

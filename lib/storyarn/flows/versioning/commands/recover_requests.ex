@@ -24,7 +24,7 @@ defmodule Storyarn.Flows.Versioning.Commands.RecoverRequests do
   end
 
   defp stale_pending_ids do
-    cutoff = DateTime.add(TimeHelpers.now(), -900, :second)
+    cutoff = DateTime.shift(TimeHelpers.now(), minute: -15)
 
     Repo.all(
       from r in VersionRequest,

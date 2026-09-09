@@ -1786,10 +1786,10 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       {:ok, deleted_source} = Sheets.delete_block(source)
 
       historical_deleted_at =
-        DateTime.add(deleted_source.deleted_at, -3_600, :second)
+        DateTime.shift(deleted_source.deleted_at, hour: -1)
 
-      prior_deleted_at = DateTime.add(historical_deleted_at, -10, :second)
-      later_deleted_at = DateTime.add(historical_deleted_at, 10, :second)
+      prior_deleted_at = DateTime.shift(historical_deleted_at, second: -10)
+      later_deleted_at = DateTime.shift(historical_deleted_at, second: 10)
 
       Repo.update_all(
         from(block in Block,

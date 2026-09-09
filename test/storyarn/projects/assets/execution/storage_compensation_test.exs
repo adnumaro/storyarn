@@ -404,7 +404,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
 
     requested_not_before =
       TimeHelpers.now()
-      |> DateTime.add(max(div(quiescence_seconds, 2), 1), :second)
+      |> DateTime.shift(second: max(div(quiescence_seconds, 2), 1))
       |> DateTime.truncate(:second)
 
     assert {:ok,
@@ -429,7 +429,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
 
     fingerprint = String.duplicate("a", 64)
     quiescence_seconds = Storage.multipart_cleanup_quiescence_seconds()
-    not_before = TimeHelpers.now() |> DateTime.add(quiescence_seconds + 300, :second) |> DateTime.truncate(:second)
+    not_before = TimeHelpers.now() |> DateTime.shift(second: quiescence_seconds + 300) |> DateTime.truncate(:second)
 
     assert {:ok,
             %StorageCleanupRequest{
@@ -1734,7 +1734,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
 
   test "reports aggregate durable cleanup backlog from the time work became due" do
     now = TimeHelpers.now()
-    oldest = DateTime.add(now, -600, :second)
+    oldest = DateTime.shift(now, minute: -10)
 
     Repo.insert!(%StorageCleanupRequest{
       storage_keys: [cleanup_asset_key("oldest-due")],
@@ -1744,18 +1744,18 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
 
     Repo.insert!(%StorageCleanupRequest{
       storage_keys: [cleanup_asset_key("overdue-multipart")],
-      inserted_at: DateTime.add(now, -1_200, :second),
-      updated_at: DateTime.add(now, -1_200, :second),
-      multipart_quiescence_started_at: DateTime.add(now, -120, :second),
-      multipart_quiescence_not_before: DateTime.add(now, -60, :second)
+      inserted_at: DateTime.shift(now, minute: -20),
+      updated_at: DateTime.shift(now, minute: -20),
+      multipart_quiescence_started_at: DateTime.shift(now, minute: -2),
+      multipart_quiescence_not_before: DateTime.shift(now, minute: -1)
     })
 
     Repo.insert!(%StorageCleanupRequest{
       storage_keys: [cleanup_asset_key("deferred-multipart")],
-      inserted_at: DateTime.add(now, -1_800, :second),
-      updated_at: DateTime.add(now, -1_800, :second),
+      inserted_at: DateTime.shift(now, minute: -30),
+      updated_at: DateTime.shift(now, minute: -30),
       multipart_quiescence_started_at: now,
-      multipart_quiescence_not_before: DateTime.add(now, 300, :second)
+      multipart_quiescence_not_before: DateTime.shift(now, minute: 5)
     })
 
     Repo.insert!(%StorageCleanupRequest{
@@ -1977,7 +1977,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert_receive :multipart_confirmation_inventory_started
 
     reset_started_at = TimeHelpers.now()
-    reset_not_before = DateTime.add(reset_started_at, Storage.multipart_cleanup_quiescence_seconds(), :second)
+    reset_not_before = DateTime.shift(reset_started_at, second: Storage.multipart_cleanup_quiescence_seconds())
 
     request.id
     |> then(&Repo.get!(StorageCleanupRequest, &1))
@@ -2036,7 +2036,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
         reserved_bytes: 1,
         lease_token: lease_token,
         generation: 1,
-        expires_at: DateTime.add(now, 3_600, :second),
+        expires_at: DateTime.shift(now, hour: 1),
         accounting_version: 1,
         accounting_measured_at: now,
         inserted_at: now,
@@ -2080,7 +2080,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
         reserved_bytes: 1,
         lease_token: lease_token,
         generation: 1,
-        expires_at: DateTime.add(now, 3_600, :second),
+        expires_at: DateTime.shift(now, hour: 1),
         accounting_version: 1,
         accounting_measured_at: now
       })
@@ -2111,8 +2111,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
       Repo.update_all(
         from(request in StorageCleanupRequest, where: request.id == ^cleanup_request_id),
         set: [
-          multipart_quiescence_started_at: DateTime.add(now, -2, :second),
-          multipart_quiescence_not_before: DateTime.add(now, -1, :second)
+          multipart_quiescence_started_at: DateTime.shift(now, second: -2),
+          multipart_quiescence_not_before: DateTime.shift(now, second: -1)
         ]
       )
 

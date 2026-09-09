@@ -19,7 +19,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.StartTimer do
             configuration_version: session.configuration_version,
             status: :running,
             remaining_seconds: options.duration_seconds,
-            deadline_at: DateTime.add(now, options.duration_seconds, :second),
+            deadline_at: DateTime.shift(now, second: options.duration_seconds),
             started_at: now,
             completed_at: nil,
             expiry_outcome: nil

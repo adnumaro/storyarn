@@ -982,7 +982,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
 
     pretrash_flow = flow_fixture(project, %{name: "Already trashed"})
     pretrash_node = node_fixture(pretrash_flow, %{type: "dialogue", data: %{"text" => "Old trash"}})
-    pretrash_at = DateTime.add(TimeHelpers.now(), -3_600, :second)
+    pretrash_at = DateTime.shift(TimeHelpers.now(), hour: -1)
 
     Repo.update_all(
       from(node in FlowNode, where: node.flow_id == ^pretrash_flow.id),

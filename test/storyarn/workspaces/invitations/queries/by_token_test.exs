@@ -35,7 +35,7 @@ defmodule Storyarn.Workspaces.Invitations.Queries.ByTokenTest do
 
     expired_at =
       DateTime.utc_now()
-      |> DateTime.add(-1, :day)
+      |> DateTime.shift(day: -1)
       |> DateTime.truncate(:second)
 
     {:ok, _inserted} = Repo.insert(%{invitation | expires_at: expired_at})

@@ -236,7 +236,7 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
           operation
         end
 
-      expired_at = DateTime.add(TimeHelpers.now(), -60, :second)
+      expired_at = DateTime.shift(TimeHelpers.now(), minute: -1)
 
       grants =
         for index <- 1..3 do
@@ -310,7 +310,7 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
       assert {1, nil} =
                Repo.update_all(
                  from(job in Oban.Job, where: job.id == ^root_job.id),
-                 set: [inserted_at: DateTime.add(TimeHelpers.now(), -241, :second)]
+                 set: [inserted_at: DateTime.shift(TimeHelpers.now(), second: -241)]
                )
 
       assert :ok =
@@ -374,7 +374,7 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
   # reservation row, so the reaper's inner join has nothing to match. Seed the
   # row the managed adapter would have written, backdated past the cutoff.
   defp reserve_stale!(%Operation{} = operation, seconds_ago) do
-    inserted_at = DateTime.add(TimeHelpers.now(), -seconds_ago, :second)
+    inserted_at = DateTime.shift(TimeHelpers.now(), second: -seconds_ago)
 
     %AllowanceReservation{}
     |> AllowanceReservation.create_changeset(%{
@@ -397,7 +397,7 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
 
     inserted_at =
       DateTime.utc_now()
-      |> DateTime.add(-seconds_ago, :second)
+      |> DateTime.shift(second: -seconds_ago)
       |> DateTime.add(lead_ms, :millisecond)
 
     %{}

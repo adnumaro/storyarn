@@ -28,7 +28,7 @@ defmodule Storyarn.Projects.Versioning.ChangeDetectorTest do
       project = project_fixture()
 
       # Create snapshot with inserted_at in the past
-      past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      past = DateTime.utc_now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
       insert_snapshot(project.id, inserted_at: past)
 
       # Now create an entity (updated_at will be after snapshot)

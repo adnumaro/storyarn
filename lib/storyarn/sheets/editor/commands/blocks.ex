@@ -497,8 +497,8 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
          %Block{scope: "children", deleted_at: %DateTime{} = deleted_at} = block,
          project_id
        ) do
-    lower_threshold = DateTime.add(deleted_at, -2, :second)
-    upper_threshold = DateTime.add(deleted_at, 2, :second)
+    lower_threshold = DateTime.shift(deleted_at, second: -2)
+    upper_threshold = DateTime.shift(deleted_at, second: 2)
 
     instance_ids =
       list_restorable_inherited_instance_ids(

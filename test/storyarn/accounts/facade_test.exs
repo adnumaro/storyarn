@@ -150,12 +150,12 @@ defmodule Storyarn.Accounts.FacadeTest do
       now = DateTime.utc_now()
 
       assert Accounts.sudo_mode?(%User{authenticated_at: DateTime.utc_now()})
-      assert Accounts.sudo_mode?(%User{authenticated_at: DateTime.add(now, -19, :minute)})
-      refute Accounts.sudo_mode?(%User{authenticated_at: DateTime.add(now, -21, :minute)})
+      assert Accounts.sudo_mode?(%User{authenticated_at: DateTime.shift(now, minute: -19)})
+      refute Accounts.sudo_mode?(%User{authenticated_at: DateTime.shift(now, minute: -21)})
 
       # minute override
       refute Accounts.sudo_mode?(
-               %User{authenticated_at: DateTime.add(now, -11, :minute)},
+               %User{authenticated_at: DateTime.shift(now, minute: -11)},
                -10
              )
 
@@ -467,7 +467,7 @@ defmodule Storyarn.Accounts.FacadeTest do
     end
 
     test "duplicates the authenticated_at of given user in new token", %{user: user} do
-      user = %{user | authenticated_at: DateTime.add(DateTime.utc_now(:second), -3600)}
+      user = %{user | authenticated_at: DateTime.shift(DateTime.utc_now(:second), hour: -1)}
       token = Accounts.generate_user_session_token(user)
       assert user_token = Repo.get_by(UserToken, token: token)
       assert user_token.authenticated_at == user.authenticated_at
@@ -502,7 +502,7 @@ defmodule Storyarn.Accounts.FacadeTest do
 
   describe "reauthenticate_user_session/3" do
     test "validates only the requested active token without elevating any session" do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       user = %{user_fixture() | authenticated_at: stale_authenticated_at}
       token = Accounts.generate_user_session_token(user)
       other_token = Accounts.generate_user_session_token(user)
@@ -529,7 +529,7 @@ defmodule Storyarn.Accounts.FacadeTest do
     end
 
     test "rejects invalid credentials without changing the timestamp" do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       user = %{user_fixture() | authenticated_at: stale_authenticated_at}
       token = Accounts.generate_user_session_token(user)
 
@@ -563,7 +563,7 @@ defmodule Storyarn.Accounts.FacadeTest do
     test "does not revive an expired token" do
       user = user_fixture()
       token = Accounts.generate_user_session_token(user)
-      expired_at = DateTime.add(DateTime.utc_now(:second), -15, :day)
+      expired_at = DateTime.shift(DateTime.utc_now(:second), day: -15)
       {1, nil} = Repo.update_all(UserToken, set: [inserted_at: expired_at])
 
       assert {:error, :invalid_session} =

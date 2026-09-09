@@ -1082,7 +1082,7 @@ defmodule Storyarn.Sheets.Editor.Commands.InheritanceTest do
 
       # Restoring later must compare instances with the original deletion time,
       # not the wall clock at restoration time.
-      old_deleted_at = DateTime.add(deleted_block.deleted_at, -3_600, :second)
+      old_deleted_at = DateTime.shift(deleted_block.deleted_at, hour: -1)
 
       Repo.update_all(
         from(candidate in Block,

@@ -407,7 +407,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
         claim
         |> SnapshotObjectPublicationClaim.status_changeset(
           status,
-          DateTime.add(now, ProjectSnapshotLeasePolicy.build_lease_ttl_seconds(), :second)
+          DateTime.shift(now, second: ProjectSnapshotLeasePolicy.build_lease_ttl_seconds())
         )
         |> Repo.update()
         |> case do
@@ -449,7 +449,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   def reconcile_stale_builds do
     stale_build_heartbeat_seconds = stale_build_heartbeat_seconds()
     advisory_now = database_clock_now()
-    stale_before = DateTime.add(advisory_now, -stale_build_heartbeat_seconds, :second)
+    stale_before = DateTime.shift(advisory_now, second: -stale_build_heartbeat_seconds)
 
     advisory_now
     |> stale_build_candidates(stale_before)
@@ -553,7 +553,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     result =
       Commercial.transact_with_workspace_lock(candidate.workspace_id, fn _workspace ->
         now = database_clock_now()
-        stale_before = DateTime.add(now, -stale_build_heartbeat_seconds, :second)
+        stale_before = DateTime.shift(now, second: -stale_build_heartbeat_seconds)
         reconcile_stale_build_candidate_locked(candidate, now, stale_before)
       end)
 

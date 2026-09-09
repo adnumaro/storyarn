@@ -507,7 +507,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairRecove
     |> Ecto.Changeset.change(
       state: "executing",
       attempt: attempt,
-      attempted_at: %{DateTime.add(TimeHelpers.now(), -attempted_seconds_ago, :second) | microsecond: {0, 6}}
+      attempted_at: %{DateTime.shift(TimeHelpers.now(), second: -attempted_seconds_ago) | microsecond: {0, 6}}
     )
     |> Repo.update!()
   end
