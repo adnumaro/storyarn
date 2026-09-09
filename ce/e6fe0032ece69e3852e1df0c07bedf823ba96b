@@ -1,0 +1,199 @@
+lib/storyarn/accounts/authentication/rules/sudo_window.ex
+  s_5af6a6d0a150f1::t_45c4df80850fb7 11
+lib/storyarn/ai/operations/commands/lifecycle.ex
+  s_5af6a6d0a150f1::t_23d24f297bda0f 291
+lib/storyarn/ai/operations/commands/reconcile_reservations.ex
+  s_5af6a6d0a150f1::t_73c2aa501d3986 54
+lib/storyarn/ai/routing/commands/route_options.ex
+  s_5af6a6d0a150f1::t_e6ebe9ba08cc59 56
+lib/storyarn/commercial/execution/storage_accounting.ex
+  s_5af6a6d0a150f1::t_5093d31ee43ba2 1025,1027,1067,1069,1082,1084,2252,2254,2932,2934,2937
+lib/storyarn/flows/versioning/commands/recover_requests.ex
+  s_5af6a6d0a150f1::t_2bbf9d150752cb 27
+lib/storyarn/ideation/sessions/commands/extend_timer.ex
+  s_5af6a6d0a150f1::t_7a9999a7049c1f 21
+lib/storyarn/ideation/sessions/commands/resume_timer.ex
+  s_5af6a6d0a150f1::t_8d08a9fb955935 19
+lib/storyarn/ideation/sessions/commands/start_timer.ex
+  s_5af6a6d0a150f1::t_d6e8e5cd56a35e 22
+lib/storyarn/projects/access/entities/invitation_schema.ex
+  s_5af6a6d0a150f1::t_7f4852751578b2 61
+lib/storyarn/projects/assets/execution/multipart_cleanup.ex
+  s_5af6a6d0a150f1::t_921d4b4461edcd 409,422,461,821,1427
+lib/storyarn/projects/assets/execution/storage_compensation.ex
+  s_5af6a6d0a150f1::t_133e59ad492518 1228
+lib/storyarn/projects/interchange/imports/commands/expiration.ex
+  s_5af6a6d0a150f1::t_438d8a773a37a8 168-169,193,271
+lib/storyarn/projects/interchange/imports/commands/plan_cleanup.ex
+  s_5af6a6d0a150f1::t_95cefafb31d92e 40,51,103,228,345,454
+lib/storyarn/projects/interchange/imports/commands/replacement.ex
+  s_5af6a6d0a150f1::t_30c703f1b10e93 149
+lib/storyarn/projects/interchange/imports/execution/import_lifecycle.ex
+  s_5af6a6d0a150f1::t_31cb0726fb324e 484
+lib/storyarn/projects/trash/execution/project_trash.ex
+  s_5af6a6d0a150f1::t_810217cffb5109 475
+lib/storyarn/projects/trash/execution/scene_project_trash.ex
+  s_5af6a6d0a150f1::t_cb73495cd1f6ac 116
+lib/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage.ex
+  s_5af6a6d0a150f1::t_d0c4a02894596e 1880
+lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex
+  s_5af6a6d0a150f1::t_12dfbcdb85d769 316,459,478,971
+lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex
+  s_5af6a6d0a150f1::t_3be68915827fad 303,735
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_5af6a6d0a150f1::t_405ea760d443c1 239,303,305,1251,1253
+lib/storyarn/projects/versioning/execution/project_snapshot_build.ex
+  s_5af6a6d0a150f1::t_728e2de2e7b6db 410,452,556
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation.ex
+  s_5af6a6d0a150f1::t_085b4efec9219a 698,792,2309
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex
+  s_5af6a6d0a150f1::t_356233865552e1 216
+lib/storyarn/projects/versioning/queries/change_detector.ex
+  s_5af6a6d0a150f1::t_8900f0577553c1 29
+lib/storyarn/projects/versioning/rules/project_snapshot_policy.ex
+  s_5af6a6d0a150f1::t_01235ca8d99b11 61
+lib/storyarn/scenes/editor/commands/scenes.ex
+  s_5af6a6d0a150f1::t_57550da1e49a74 297
+lib/storyarn/scenes/exploration/commands/sessions.ex
+  s_5af6a6d0a150f1::t_b0c449f2a19573 54
+lib/storyarn/sheets/editor/commands/blocks.ex
+  s_5af6a6d0a150f1::t_aeeeb760a68a9b 500-501
+lib/storyarn/sheets/editor/commands/inheritance.ex
+  s_5af6a6d0a150f1::t_d4eba4e40d79b6 968-969
+lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex
+  s_5af6a6d0a150f1::t_d726ca2e70f47a 1853-1854
+lib/storyarn/workers/projects/project_snapshot_retention_worker.ex
+  s_5af6a6d0a150f1::t_e3234e75d772de 191,339,341
+lib/storyarn/workspaces/invitations/rules/policy.ex
+  s_5af6a6d0a150f1::t_4922fc3ed84866 14
+test/e2e/settings_reauthentication_test.exs
+  s_5af6a6d0a150f1::t_1ef304f3e54f4f 23
+test/storyarn/accounts/authentication/rules/sudo_window_test.exs
+  s_5af6a6d0a150f1::t_50d9d6d1839508 18,31,40
+test/storyarn/accounts/facade_test.exs
+  s_5af6a6d0a150f1::t_fe33a964eda71f 153-154,158,470,505,532,566
+test/storyarn/ai/integrations/commands/integration_crud_test.exs
+  s_5af6a6d0a150f1::t_3ea5ba763a78b2 110
+test/storyarn/ai/managed_spend/allowance_lock_order_test.exs
+  s_5af6a6d0a150f1::t_c7be112c2619d5 256
+test/storyarn/ai/managed_spend/allowance_test.exs
+  s_5af6a6d0a150f1::t_c1f8c16e1e1d6a 197,224,414
+test/storyarn/ai/operations/commands/operation_authorization_lock_order_test.exs
+  s_5af6a6d0a150f1::t_942e74ed653baf 430
+test/storyarn/ai/operations/execution/execution_test.exs
+  s_5af6a6d0a150f1::t_19ad836f81405b 126,140,268,528,538
+test/storyarn/ai/routing/execution/personal_byok_test.exs
+  s_5af6a6d0a150f1::t_30c3344ea3ed38 224
+test/storyarn/ai/workers/reconcile_ai_reservations_worker_test.exs
+  s_5af6a6d0a150f1::t_86aa227fd4d782 239,313,377,400
+test/storyarn/commercial/execution/storage_accounting_test.exs
+  s_5af6a6d0a150f1::t_6b813ebaae8436 239,243,578,584,968,1247,1258,1263,1402,1434-1435,1505-1506,1585,1588,1631,1642,1669,1690,1788
+test/storyarn/flows/versioning/commands/named_version_capacity_concurrency_test.exs
+  s_5af6a6d0a150f1::t_bf8edc09452b90 152
+test/storyarn/flows/versioning/integration/version_requests_test.exs
+  s_5af6a6d0a150f1::t_81efeb0dc31dea 131,157
+test/storyarn/ideation/canvas_delete_restore_test.exs
+  s_5af6a6d0a150f1::t_e29dffaeac42a2 45
+test/storyarn/ideation/session_concurrency_test.exs
+  s_5af6a6d0a150f1::t_751b3e3b506834 303,352
+test/storyarn/ideation/timers_test.exs
+  s_5af6a6d0a150f1::t_33a702ed50bf7e 65,104,117,397,400,452
+test/storyarn/platform/adapters/oban/operational_metrics_test.exs
+  s_5af6a6d0a150f1::t_d909b3d8604a9f 18-22,201-202,210-212,220-222
+test/storyarn/platform/discovery/queries/global_search/destinations_test.exs
+  s_5af6a6d0a150f1::t_9d1afa8f09687f 229
+test/storyarn/projects/assets/execution/multipart_cleanup_test.exs
+  s_5af6a6d0a150f1::t_5c0cfd3ad9fcee 580,761,765
+test/storyarn/projects/assets/execution/storage_compensation_test.exs
+  s_5af6a6d0a150f1::t_8c505e6445b3d5 407,432,1737,1747-1750,1755-1756,1758,1980,2039,2083,2114-2115
+test/storyarn/projects/interchange/imports/commands/replacement_test.exs
+  s_5af6a6d0a150f1::t_f6e317c6b3a7c9 482,563,679,728,769
+test/storyarn/projects/interchange/imports/integration/import_lifecycle_test.exs
+  s_5af6a6d0a150f1::t_7ee1bb01001b08 537,1891,1936,1995,2043,2095,2157,2324,2410,2431,2499-2500,2551,2559,2650,2711,3119-3120
+test/storyarn/projects/lifecycle/project_soft_delete_test.exs
+  s_5af6a6d0a150f1::t_c354d7e1124e56 136,163,180,250
+test/storyarn/projects/templates/project_templates_test.exs
+  s_5af6a6d0a150f1::t_b7b5acbd46ca5f 1638,1693,1733
+test/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage_test.exs
+  s_5af6a6d0a150f1::t_b83dcc7c6b14bd 375,400,452,467,507,572,626,677,715
+test/storyarn/projects/versioning/commands/project_snapshot_lifecycle_test.exs
+  s_5af6a6d0a150f1::t_37a6fe131d8c7e 48-49,671,696,706,721,728,746,799,819,854,914,938,945-946,979,987,992-993,1081,1091,1109,1167-1168,1172,1206-1207,1212,1232-1233,1237,1245,1269-1270,1450,1586,1588,1662-1663,1690,1709,1755-1756,1789-1790
+test/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle_test.exs
+  s_5af6a6d0a150f1::t_b8b88098d4a278 1110
+test/storyarn/projects/versioning/execution/project_snapshot_build_test.exs
+  s_5af6a6d0a150f1::t_16c2942f50e10c 44,309,1202,1211,1267-1268,1272,1292,1538,1543,2276,2298,2366,2658-2659,2691-2692,3023,3139,3160,3164,3171
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair_recovery_test.exs
+  s_5af6a6d0a150f1::t_8c11414a83a8bd 510
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair_test.exs
+  s_5af6a6d0a150f1::t_d5ece9468d88ee 594,981,986-987,1050-1051
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_test.exs
+  s_5af6a6d0a150f1::t_f1c948d18417a5 327,360-361,391-392,420,425-426,454,459-460,660,757,1268,1640,1655,1676,1793,1799-1800,1830-1831,1988,1995,2027,2040,2059,2066
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_5af6a6d0a150f1::t_00f5118e919258 985
+test/storyarn/projects/versioning/queries/change_detector_test.exs
+  s_5af6a6d0a150f1::t_254d147bd28d26 31
+test/storyarn/projects/workers/delete_storage_objects_worker_test.exs
+  s_5af6a6d0a150f1::t_8522f5a582d430 111
+test/storyarn/projects/workers/trash_retention_worker_test.exs
+  s_5af6a6d0a150f1::t_2431fc4e0c9d9d 97,183,202
+test/storyarn/projects_test.exs
+  s_5af6a6d0a150f1::t_3637f23c70e362 447
+test/storyarn/scenes/versioning/integration/concurrency_test.exs
+  s_5af6a6d0a150f1::t_191cabd1ba6ba9 93
+test/storyarn/sheets/editor/commands/inheritance_test.exs
+  s_5af6a6d0a150f1::t_f86e7cf9f30d4e 1085
+test/storyarn/sheets/versioning/execution/sheet_snapshot_contract_test.exs
+  s_5af6a6d0a150f1::t_703d7dd36d3702 1789,1791-1792
+test/storyarn/workers/expire_project_imports_worker_integration_test.exs
+  s_5af6a6d0a150f1::t_d8a05dcfa2bf97 19-20,85
+test/storyarn/workers/ideation/expire_ideation_timer_worker_test.exs
+  s_5af6a6d0a150f1::t_64eeb7a6d68d32 91
+test/storyarn/workers/project_snapshot_cleanup_workers_test.exs
+  s_5af6a6d0a150f1::t_84d37a082d765e 60,68-69,183,200,214,229,664-665
+test/storyarn/workers/workspaces/deliver_workspace_invitation_worker_test.exs
+  s_5af6a6d0a150f1::t_5e981b9a666a2f 150
+test/storyarn/workspaces/invitations/invitations_test.exs
+  s_5af6a6d0a150f1::t_8904a955ad0c24 33
+test/storyarn/workspaces/invitations/queries/by_token_test.exs
+  s_5af6a6d0a150f1::t_80ef294328ce45 38
+test/storyarn_web/controllers/user_session_controller_test.exs
+  s_5af6a6d0a150f1::t_5ed22396acf202 159,193,226,267,290,311,335,360,399
+test/storyarn_web/live/project_live/invitation_test.exs
+  s_5af6a6d0a150f1::t_c82ea8fd24e456 174
+test/storyarn_web/live/project_live/settings_test.exs
+  s_5af6a6d0a150f1::t_2c803caf8e1ace 1469-1470
+test/storyarn_web/live/settings_live/ai_team_test.exs
+  s_5af6a6d0a150f1::t_f41de7e7ae219c 67
+test/storyarn_web/live/settings_live/integration_detail_test.exs
+  s_5af6a6d0a150f1::t_d10abf08df9d44 42
+test/storyarn_web/live/settings_live/integrations_test.exs
+  s_5af6a6d0a150f1::t_b73778086486ca 34
+test/storyarn_web/live/settings_live/preferences_test.exs
+  s_5af6a6d0a150f1::t_52c30b266e8d5e 44
+test/storyarn_web/live/settings_live/profile_test.exs
+  s_5af6a6d0a150f1::t_b0ddc9ccd98f18 15,150
+test/storyarn_web/live/settings_live/security_test.exs
+  s_5af6a6d0a150f1::t_b203fa09cdec14 70,85,114,136
+test/storyarn_web/live/user_live/auth_redirect_test.exs
+  s_5af6a6d0a150f1::t_aa810bcb434236 62
+test/storyarn_web/live/workspace_live/invitation_test.exs
+  s_5af6a6d0a150f1::t_ffc3ea8b64104c 171
+test/storyarn_web/user_auth_test.exs
+  s_5af6a6d0a150f1::t_c01823e5cb037d 333,360,387,392,412,429,447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "cee6fe0032ece69e3852e1df0c07bedf823ba96b",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
