@@ -19,6 +19,15 @@ export interface CommentPosition {
   y: number;
 }
 
+/** Optional context within the owning surface; it never owns the conversation. */
+export interface CommentContext {
+  type: string;
+  id: string;
+  label: string;
+  status: "available" | "unavailable";
+  offset: CommentPosition | null;
+}
+
 export interface CommentThread<TSource extends CommentSource = CommentSource> {
   id: number;
   status: CommentStatus;
@@ -29,6 +38,7 @@ export interface CommentThread<TSource extends CommentSource = CommentSource> {
   resolved_at: string | null;
   resolved_by: CommentMember | null;
   source: TSource;
+  context?: CommentContext | null;
   author: CommentMember;
   preview?: string;
   root_message_id?: number;

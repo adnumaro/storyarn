@@ -5,6 +5,7 @@ import { createMockLive } from "@app/test/setup";
 import type { FlowCommentThread, FlowCommentsPanelState } from "@modules/flows/types/comments";
 import {
   commentCanvasPoint,
+  commentNodeId,
   commentPopoverPosition,
 } from "@modules/flows/editor/lib/comment-geometry";
 import { createContextMenuItems } from "@modules/flows/editor/lib/context_menu_items";
@@ -28,10 +29,17 @@ const thread: FlowCommentThread = {
   last_activity_at: "2026-09-04T09:00:00Z",
   resolved_at: null,
   resolved_by: null,
-  source: { type: "flow_node", id: 42, flow_id: 7, label: "Dialogue", status: "available" },
+  source: { type: "flow_canvas", id: 7, flow_id: 7, label: "Flow", status: "available" },
+  context: {
+    type: "flow_node",
+    id: "42",
+    label: "Dialogue",
+    status: "available",
+    offset: { x: 10, y: 20 },
+  },
   author: { id: 4, display_name: "Ada", avatar_url: null },
   preview: "Why does the guard leave?",
-  position: { x: 10, y: 20 },
+  position: { x: 160, y: 110 },
 };
 const base: FlowCommentsPanelState = {
   open: false,
@@ -162,10 +170,11 @@ describe("spatial comment geometry and interactions", () => {
     const free = {
       ...thread,
       source: { ...thread.source, type: "flow_canvas" as const },
+      context: null,
       position: { x: 300, y: 400 },
     };
     expect(commentCanvasPoint(free, new Map())).toEqual({ x: 300, y: 400 });
-    expect(commentCanvasPoint(thread, new Map())).toBeNull();
+    expect(commentCanvasPoint(thread, new Map())).toEqual(thread.position);
     expect(
       commentCanvasPoint({ ...free, source: { ...free.source, status: "unavailable" } }, new Map()),
     ).toBeNull();
@@ -176,6 +185,39 @@ describe("spatial comment geometry and interactions", () => {
         { width: 300, height: 200 },
       ),
     ).toEqual({ x: 166, y: 188 });
+  });
+
+  it("retains the surface position when node context becomes unavailable", () => {
+    const detached = {
+      ...thread,
+      context: { ...thread.context!, status: "unavailable" as const },
+    };
+    const nodes = new Map([["node-42", { position: { x: 500, y: 600 } }]]);
+    expect(commentCanvasPoint(detached, nodes)).toEqual(thread.position);
+    expect(commentNodeId(detached)).toBeNull();
+    expect(commentNodeId(thread)).toBe(42);
+    expect(commentCanvasPoint(thread, nodes)).toEqual({ x: 510, y: 620 });
+  });
+
+  it("keeps legacy offsets readable while suppressing ambiguous unavailable anchors", () => {
+    const legacy = {
+      ...thread,
+      source: { ...thread.source, type: "flow_node" as const, id: 42 },
+      context: null,
+      position: { x: 10, y: 20 },
+    };
+    const nodes = new Map([["node-42", { position: { x: 150, y: 90 } }]]);
+    expect(commentCanvasPoint(legacy, nodes)).toEqual({ x: 160, y: 110 });
+    expect(commentCanvasPoint(legacy, new Map())).toBeNull();
+    expect(
+      commentCanvasPoint(
+        {
+          ...legacy,
+          source: { ...legacy.source, status: "unavailable" },
+        },
+        nodes,
+      ),
+    ).toBeNull();
   });
 
   it("places at the actual click with zoom conversion before any graph selection or drag", async () => {
@@ -228,7 +270,13 @@ describe("spatial comment geometry and interactions", () => {
     pointer(window, "pointerup", 240, 220);
     expect(live.pushEvent).toHaveBeenCalledWith(
       "comments_move",
-      { thread_id: 12, x: 30, y: 30, expected_revision: 3 },
+      {
+        thread_id: 12,
+        x: 180,
+        y: 120,
+        expected_revision: 3,
+        context: { type: "flow_node", id: "42", offset: { x: 30, y: 30 } },
+      },
       expect.any(Function),
       expect.any(Function),
     );
@@ -238,6 +286,30 @@ describe("spatial comment geometry and interactions", () => {
     await nextTick();
     expect(pin.attributes("style")).toContain("left: 420px");
     expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+  });
+
+  it("starts a contextual drag at the node's current position and preserves the offset", async () => {
+    const { wrapper, area, pipes } = setup();
+    area.nodeViews.get("node-42")!.position = { x: 250, y: 190 };
+    pipes[0]({ type: "nodetranslated" });
+    await flushFrames();
+    pointer(wrapper.get("#flow-comment-pin-12").element, "pointerdown", 200, 200);
+    pointer(window, "pointermove", 240, 220);
+    await nextTick();
+    expect(wrapper.get("#flow-comment-pin-12").attributes("style")).toContain("left: 660px");
+    pointer(window, "pointerup", 240, 220);
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "comments_move",
+      {
+        thread_id: 12,
+        x: 280,
+        y: 220,
+        expected_revision: 3,
+        context: { type: "flow_node", id: "42", offset: { x: 30, y: 30 } },
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
   });
 
   it("moves a draft with an explicit preserve-draft signal", async () => {
@@ -259,6 +331,24 @@ describe("spatial comment geometry and interactions", () => {
     vi.mocked(live.pushEvent).mock.calls[0][3]!(new Error("Disconnected"));
     await nextTick();
     expect(wrapper.get("#flow-comment-draft-pin").attributes("style")).toContain("left: 140px");
+  });
+
+  it("moves a pin freely when its context is unavailable without trying to reattach it", async () => {
+    const unavailable = {
+      ...thread,
+      context: { ...thread.context!, status: "unavailable" as const },
+    };
+    const { wrapper } = setup({}, [unavailable]);
+    await nextTick();
+    pointer(wrapper.get("#flow-comment-pin-12").element, "pointerdown", 200, 200);
+    pointer(window, "pointermove", 240, 220);
+    pointer(window, "pointerup", 240, 220);
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "comments_move",
+      { thread_id: 12, x: 180, y: 120, expected_revision: 3 },
+      expect.any(Function),
+      expect.any(Function),
+    );
   });
 
   it("allows viewers to read pins but never create or move them", async () => {
@@ -303,6 +393,7 @@ describe("spatial comment geometry and interactions", () => {
     const free = {
       ...thread,
       source: { ...thread.source, type: "flow_canvas" as const },
+      context: null,
       position: { x: 300, y: 400 },
     };
     const { area } = setup({ open: true, thread: free, presentation: "canvas" }, [free], 12);

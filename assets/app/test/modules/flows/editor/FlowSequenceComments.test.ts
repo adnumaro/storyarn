@@ -17,7 +17,14 @@ const thread: FlowCommentThread = {
   resolved_by: null,
   author,
   preview: "Move the character",
-  source: { type: "flow_node", id: 42, flow_id: 7, label: "Dialogue #42", status: "available" },
+  source: { type: "flow_canvas", id: 7, flow_id: 7, label: "Flow", status: "available" },
+  context: {
+    type: "flow_node",
+    id: "42",
+    label: "Dialogue #42",
+    status: "available",
+    offset: { x: 16, y: 16 },
+  },
 };
 function state(overrides: Partial<FlowCommentsPanelState> = {}): FlowCommentsPanelState {
   return {

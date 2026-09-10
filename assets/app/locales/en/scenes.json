@@ -501,6 +501,7 @@
       "resolve": "Resolve",
       "reopen": "Reopen",
       "unavailable": "This source is no longer available. Its discussion is preserved for reference.",
+      "context_unavailable": "Context unavailable",
       "source_unavailable": "Scene unavailable",
       "messages": "Thread messages",
       "reply_to": "Reply to {name}",

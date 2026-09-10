@@ -148,6 +148,16 @@ function changeStatus(status: CommentStatus) {
                   : state.thread.source.label
               }}
             </p>
+            <p
+              v-if="state.thread.context"
+              :id="domId('context')"
+              class="mt-1 text-xs text-muted-foreground"
+            >
+              {{ state.thread.context.label }}
+              <span v-if="state.thread.context.status === 'unavailable'">
+                · {{ $t(translationKey("context_unavailable")) }}
+              </span>
+            </p>
             <p class="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <CheckCheck v-if="state.thread.status === 'resolved'" class="size-3.5" />{{
                 $t(translationKey(state.thread.status))
@@ -308,6 +318,12 @@ function changeStatus(status: CommentStatus) {
                 :aria-label="$t(translationKey('resolved'))"
               />
             </div>
+            <p v-if="thread.context" class="mt-1 truncate text-xs text-muted-foreground">
+              {{ thread.context.label }}
+              <span v-if="thread.context.status === 'unavailable'">
+                · {{ $t(translationKey("context_unavailable")) }}
+              </span>
+            </p>
             <p v-if="thread.preview" class="mt-1.5 line-clamp-2 break-words text-sm">
               {{ thread.preview }}
             </p>

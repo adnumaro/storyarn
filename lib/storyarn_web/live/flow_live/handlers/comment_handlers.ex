@@ -147,7 +147,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
     case Projects.list_flow_comment_pins(scope, project.id, flow.id) do
       {:ok, pins} ->
-        counts = pins |> Enum.filter(&(&1.source.type == "flow_node")) |> Enum.frequencies_by(& &1.source.id)
+        counts = pins |> Enum.map(&context_node_id/1) |> Enum.reject(&is_nil/1) |> Enum.frequencies()
         can_comment = match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content))
 
         socket =
@@ -243,7 +243,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
              socket.assigns.project.id,
              thread_id,
              position,
-             positive_id(params["expected_revision"])
+             positive_id(params["expected_revision"]),
+             context_options(params)
            ) do
       {:reply, %{ok: true, thread: thread}, refresh(socket)}
     else
@@ -253,7 +254,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
   defp mutate("create", params, socket) do
     %{current_scope: scope, project: project, flow: flow} = socket.assigns
-    attrs = Map.take(params, ~w(body client_request_id mention_user_ids position))
+    attrs = Map.take(params, ~w(body client_request_id mention_user_ids position context))
 
     result =
       case {params["node_id"], positive_id(params["node_id"])} do
@@ -349,7 +350,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
           end
 
         available? = thread.source.status == "available"
-        node_id = if available? && thread.source.type == "flow_node", do: thread.source.id
+        node_id = context_node_id(thread)
         presentation = if available?, do: socket.assigns.comments.presentation, else: "panel"
 
         socket
@@ -438,6 +439,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
        when is_number(x) and is_number(y) and abs(x) <= 10_000_000 and abs(y) <= 10_000_000, do: {:ok, %{x: x, y: y}}
 
   defp position(_params), do: {:error, :invalid_position}
+
+  defp context_options(%{"context" => context}), do: [context: context]
+  defp context_options(_params), do: []
+
+  defp context_node_id(%{source: %{status: "unavailable"}}), do: nil
+
+  defp context_node_id(%{context: %{type: "flow_node", id: id, status: "available"}}), do: positive_id(id)
+
+  defp context_node_id(%{source: %{type: "flow_node", id: id}}), do: id
+  defp context_node_id(_thread), do: nil
 
   defp positive_id(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807, do: id
 

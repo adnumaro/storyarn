@@ -62,11 +62,20 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpersTest do
   end
 
   test "keeps a readable notification but removes navigation when its source is unavailable", context do
-    assert {:ok, _deleted, _effects} = Flows.delete_node(context.node)
+    assert {:ok, _deleted} = Flows.delete_flow(context.flow)
 
     assert %{items: [notification], unreadCount: 1} = NotificationHelpers.client_state(context.scope)
     assert notification.kind == "comment_mention"
     assert is_nil(notification.href)
+  end
+
+  test "keeps navigation when optional node context is removed", context do
+    assert {:ok, _deleted, _effects} = Flows.delete_node(context.node)
+
+    assert %{items: [notification], unreadCount: 1} = NotificationHelpers.client_state(context.scope)
+
+    assert notification.href ==
+             "/workspaces/#{context.workspace.slug}/projects/#{context.project.slug}/flows/#{context.flow.id}?thread=#{context.thread.id}"
   end
 
   test "builds Scene conversation links from the source-family destination", context do

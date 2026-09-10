@@ -211,7 +211,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
              socket.assigns.project.id,
              thread_id,
              position,
-             positive_id(params["expected_revision"])
+             positive_id(params["expected_revision"]),
+             context_options(params)
            ) do
       {:reply, %{ok: true, thread: thread}, refresh(socket)}
     else
@@ -221,7 +222,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
 
   defp mutate("create", params, socket) do
     %{current_scope: scope, project: project, scene: scene} = socket.assigns
-    attrs = Map.take(params, ~w(body client_request_id mention_user_ids position))
+    attrs = Map.take(params, ~w(body client_request_id mention_user_ids position context))
 
     scope
     |> Projects.create_scene_canvas_comment(project.id, scene.id, attrs)
@@ -386,6 +387,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
     do: {:ok, %{x: x, y: y}}
 
   defp position(_params), do: {:error, :invalid_position}
+
+  defp context_options(%{"context" => context}), do: [context: context]
+  defp context_options(_params), do: []
 
   defp positive_id(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807, do: id
 

@@ -135,6 +135,7 @@
       "resolve": "Resolve",
       "reopen": "Reopen",
       "unavailable": "This sheet is no longer available. Its discussion is preserved for reference.",
+      "context_unavailable": "Context unavailable",
       "source_unavailable": "Sheet unavailable",
       "messages": "Thread messages",
       "reply_to": "Reply to {name}",

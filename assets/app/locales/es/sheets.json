@@ -135,6 +135,7 @@
       "resolve": "Resolver",
       "reopen": "Reabrir",
       "unavailable": "Esta ficha ya no está disponible. La conversación se conserva como referencia.",
+      "context_unavailable": "Contexto no disponible",
       "source_unavailable": "Ficha no disponible",
       "messages": "Mensajes del hilo",
       "reply_to": "Responder a {name}",

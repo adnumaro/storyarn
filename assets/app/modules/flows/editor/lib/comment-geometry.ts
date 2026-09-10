@@ -14,19 +14,40 @@ export interface CommentNodeView {
   position: CommentPoint;
 }
 
+export function commentNodeId(thread: FlowCommentThread): number | null {
+  if (thread.source.status !== "available") return null;
+  if (thread.source.type === "flow_node") return thread.source.id;
+  const context = thread.context;
+  if (context?.type !== "flow_node" || context.status !== "available") return null;
+  const id = Number(context.id);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
 /** Rete stores sequence children in absolute canvas coordinates as well. */
 export function commentCanvasPoint(
   thread: FlowCommentThread,
   views: ReadonlyMap<string, CommentNodeView>,
-  position = thread.position,
+  movedPosition?: CommentPoint,
 ): CommentPoint | null {
   if (thread.source.status !== "available") return null;
-  if (thread.source.type === "flow_canvas") return position ?? null;
+  if (thread.source.type === "flow_canvas")
+    return movedPosition ?? contextualCanvasPoint(thread, views);
   const node = views.get(`node-${thread.source.id}`);
   if (!node) return null;
   // Older, node-only threads did not store an offset.
-  const offset = position ?? { x: 16, y: 16 };
+  const offset = movedPosition ?? thread.position ?? { x: 16, y: 16 };
   return { x: node.position.x + offset.x, y: node.position.y + offset.y };
+}
+
+function contextualCanvasPoint(
+  thread: FlowCommentThread,
+  views: ReadonlyMap<string, CommentNodeView>,
+): CommentPoint | null {
+  const nodeId = commentNodeId(thread);
+  const node = nodeId == null ? null : views.get(`node-${nodeId}`);
+  const offset = thread.context?.offset;
+  if (node && offset) return { x: node.position.x + offset.x, y: node.position.y + offset.y };
+  return thread.position ?? null;
 }
 
 export function commentScreenPoint(point: CommentPoint, viewport: CommentViewport): CommentPoint {

@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.CommentsConcurrencyTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
@@ -13,6 +14,7 @@ defmodule Storyarn.Projects.CommentsConcurrencyTest do
   alias Storyarn.Projects.Comments.Thread
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Sheets
   alias Storyarn.Workspaces.Workspace
 
   test "simultaneous identical creates persist one thread and one message" do
@@ -61,6 +63,64 @@ defmodule Storyarn.Projects.CommentsConcurrencyTest do
       assert Enum.count(results, &match?({:ok, _}, &1)) == 1
       assert Enum.count(results, &match?({:error, :stale}, &1)) == 1
       assert Repo.get!(Thread, detail.thread.id).revision == detail.thread.revision + 1
+    end)
+  end
+
+  test "concurrent last-member deletions invalidate row context after both transactions commit" do
+    with_project(fn ctx ->
+      sheet = sheet_fixture(ctx.project)
+      blocks = for _ <- 1..2, do: block_fixture(sheet)
+      {:ok, group_id} = Sheets.create_column_group(sheet.id, Enum.map(blocks, & &1.id))
+
+      {:ok, detail} =
+        Projects.create_sheet_canvas_comment(ctx.scope, ctx.project.id, sheet.id, %{
+          body: "Keep this row discussion",
+          client_request_id: Ecto.UUID.generate(),
+          position: %{x: 40, y: 800},
+          context: %{type: "sheet_column_group", id: group_id}
+        })
+
+      stored = Repo.get!(Thread, detail.thread.id)
+      assert [{:ok, :removed}, {:ok, :removed}] = delete_group_members_concurrently(blocks)
+      assert Repo.get!(Thread, detail.thread.id) == %{stored | context_sheet_column_group_id: nil}
+
+      assert {:ok, retained} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+      assert retained.thread.source.status == "available"
+      assert retained.thread.context.status == "unavailable"
+      assert retained.thread.context.id == group_id
+      assert retained.thread.context.label == detail.thread.context.label
+      assert retained.thread.position == detail.thread.position
+      assert retained.messages == detail.messages
+    end)
+  end
+
+  defp delete_group_members_concurrently(blocks) do
+    parent = self()
+    reference = make_ref()
+
+    tasks = Enum.map(blocks, &start_group_member_deletion(&1, parent, reference))
+
+    try do
+      Enum.each(tasks, fn _task -> assert_receive {^reference, :ready, _pid}, 5_000 end)
+      Enum.each(tasks, &send(&1.pid, {reference, :start}))
+      Task.await_many(tasks, 10_000)
+    after
+      Enum.each(tasks, &Task.shutdown(&1, :brutal_kill))
+    end
+  end
+
+  defp start_group_member_deletion(block, parent, reference) do
+    Task.async(fn ->
+      Sandbox.unboxed_run(Repo, fn -> delete_group_member(block, parent, reference) end)
+    end)
+  end
+
+  defp delete_group_member(block, parent, reference) do
+    Repo.transaction(fn ->
+      # Exercise the persistence boundary without the Sheet command's shared
+      # owner lock. Each deletion must finish before either transaction commits.
+      Repo.query!("DELETE FROM blocks WHERE id = $1", [block.id])
+      run_after_start(fn -> :removed end, parent, reference)
     end)
   end
 

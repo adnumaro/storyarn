@@ -931,17 +931,17 @@ msgstr ""
 msgid "The End"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:416
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:420
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:419
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:423
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:422
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:426
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""

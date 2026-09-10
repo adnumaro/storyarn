@@ -37,12 +37,13 @@ defmodule Storyarn.Repo.Migrations.SpatialCommentAnchorsMigrationTest do
     }
   end
 
-  test "node anchors cannot point to a different existing node", ctx do
+  test "node context cannot point to a different existing node", ctx do
     other_node = node_fixture(ctx.flow)
 
     assert_anchor_violation(
       "UPDATE comment_threads SET flow_node_id = $1 WHERE id = $2",
-      [other_node.id, ctx.node_thread.id]
+      [other_node.id, ctx.node_thread.id],
+      "comment_threads_context_identity"
     )
 
     assert Repo.get!(Thread, ctx.node_thread.id) == ctx.node_thread
@@ -71,7 +72,7 @@ defmodule Storyarn.Repo.Migrations.SpatialCommentAnchorsMigrationTest do
     Repo.delete!(ctx.node)
     Repo.delete!(ctx.flow)
 
-    assert Repo.get!(Thread, ctx.node_thread.id) == %{ctx.node_thread | flow_node_id: nil}
+    assert Repo.get!(Thread, ctx.node_thread.id) == %{ctx.node_thread | flow_node_id: nil, flow_canvas_id: nil}
     assert Repo.get!(Thread, ctx.canvas_thread.id) == %{ctx.canvas_thread | flow_canvas_id: nil}
     assert Repo.all(from message in Message, order_by: message.id) == messages
   end
@@ -97,8 +98,8 @@ defmodule Storyarn.Repo.Migrations.SpatialCommentAnchorsMigrationTest do
     }
   end
 
-  defp assert_anchor_violation(sql, params) do
-    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation, constraint: "comment_threads_anchor_identity"}}} =
+  defp assert_anchor_violation(sql, params, constraint \\ "comment_threads_anchor_identity") do
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation, constraint: ^constraint}}} =
              Repo.query(sql, params, mode: :savepoint)
   end
 end

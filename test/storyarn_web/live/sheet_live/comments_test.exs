@@ -100,6 +100,49 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     assert List.last(panel(view)["messages"])["body"] == "Another window replied"
   end
 
+  test "context can change from a block to the header and detach while the Sheet owns the thread", context do
+    view = open_sheet(context)
+
+    render_hook(view, "comments_create", %{
+      position: %{x: 25, y: 750},
+      context: %{type: "sheet_block", id: to_string(context.block.id), offset: %{x: 5, y: 10}},
+      body: "A movable Sheet comment",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    thread = panel(view)["thread"]
+    assert thread["source"]["type"] == "sheet_canvas"
+    assert thread["source"]["id"] == context.sheet.id
+    assert thread["context"]["id"] == to_string(context.block.id)
+
+    render_hook(view, "comments_move", %{
+      thread_id: thread["id"],
+      x: 40,
+      y: 100,
+      context: %{type: "sheet_header", id: to_string(context.sheet.id)},
+      expected_revision: thread["revision"]
+    })
+
+    header = panel(view)["thread"]
+    assert header["source"] == thread["source"]
+    assert header["context"]["type"] == "sheet_header"
+    assert header["context"]["status"] == "available"
+    assert header_comments(view)["count"] == 1
+
+    render_hook(view, "comments_move", %{
+      thread_id: header["id"],
+      x: 50,
+      y: 500,
+      context: nil,
+      expected_revision: header["revision"]
+    })
+
+    detached = panel(view)["thread"]
+    assert detached["context"] == nil
+    assert detached["source"] == thread["source"]
+    assert detached["position"] == %{"x" => 50.0, "y" => 500.0}
+  end
+
   test "viewers can read Sheet conversations but cannot forge mutations", context do
     detail = create_comment(context)
     viewer = user_fixture()

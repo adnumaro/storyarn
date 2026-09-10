@@ -60,18 +60,27 @@ defmodule StoryarnWeb.E2E.IdeationConnectionsTest do
 
     # One undo removes both the new note and its visible connections. The earlier
     # connection remains; redo restores the same identity and only its links.
+    # Wait for each persisted projection before navigation can cancel an active
+    # refresh reader and invalidate the shared SQL sandbox connection.
     browser =
       browser
       |> press("#brainstorming-canvas", "ControlOrMeta+z")
       |> refute_has("#canvas-note-#{created.id}")
       |> assert_edges(incoming, 0)
       |> assert_edges(edge)
+      |> assert_has("#brainstorming-workspace[aria-busy=false][data-persisted-note-count='2']")
 
     browser =
       browser
       |> press("#brainstorming-canvas", "ControlOrMeta+Shift+z")
       |> assert_has("#canvas-note-#{created.id}")
       |> assert_edges(incoming, 2)
+      |> assert_has("#brainstorming-workspace[aria-busy=false][data-persisted-note-count='3']")
+
+    viewer
+    |> assert_has("#canvas-note-#{created.id}")
+    |> assert_edges(incoming, 2)
+    |> assert_has("#brainstorming-workspace[aria-busy=false][data-persisted-note-count='3']")
 
     browser |> visit(path(ctx)) |> assert_edges(incoming, 2) |> assert_edges(edge)
   end

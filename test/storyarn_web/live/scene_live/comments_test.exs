@@ -100,6 +100,46 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
     assert List.last(panel(view)["messages"])["body"] == "Another window replied"
   end
 
+  test "optional pin context persists through movement and can be detached", context do
+    pin = pin_fixture(context.scene)
+    view = open_scene(context)
+
+    render_hook(view, "comments_create", %{
+      position: %{x: 25, y: 75},
+      context: %{type: "scene_pin", id: to_string(pin.id), offset: %{x: 2, y: 3}},
+      body: "Review this map pin",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    thread = panel(view)["thread"]
+    assert thread["source"]["type"] == "scene_canvas"
+    assert thread["context"]["id"] == to_string(pin.id)
+    assert thread["context"]["status"] == "available"
+
+    render_hook(view, "comments_move", %{
+      thread_id: thread["id"],
+      x: 40,
+      y: 60,
+      expected_revision: thread["revision"]
+    })
+
+    moved = panel(view)["thread"]
+    assert moved["context"] == thread["context"]
+
+    render_hook(view, "comments_move", %{
+      thread_id: moved["id"],
+      x: 45,
+      y: 65,
+      context: nil,
+      expected_revision: moved["revision"]
+    })
+
+    detached = panel(view)["thread"]
+    assert detached["context"] == nil
+    assert detached["source"] == thread["source"]
+    assert detached["position"] == %{"x" => 45.0, "y" => 65.0}
+  end
+
   test "viewers read conversations but forged comment mutations do not change them", context do
     detail = create_comment(context)
     viewer = user_fixture()

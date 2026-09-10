@@ -294,6 +294,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     create_scene_canvas_comment: 4,
     create_sheet_canvas_comment: 4,
     move_comment_thread: 5,
+    move_comment_thread: 6,
     list_flow_comment_pins: 3,
     list_scene_comment_pins: 3,
     list_sheet_comment_pins: 3,

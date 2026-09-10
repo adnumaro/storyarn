@@ -39,7 +39,8 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
 
     state = panel(view)
     assert state["presentation"] == "workspace"
-    assert state["thread"]["source"]["id"] == context.node.id
+    assert state["thread"]["source"]["id"] == context.flow.id
+    assert state["thread"]["context"]["id"] == to_string(context.node.id)
     render_hook(view, "comments_close", %{})
     render_hook(view, "comments_select_thread", %{thread_id: state["thread"]["id"], presentation: "canvas"})
     assert panel(view)["presentation"] == "canvas"
@@ -60,7 +61,8 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     render_hook(view, "comments_create", attrs)
     state = panel(view)
     assert state["open"]
-    assert state["thread"]["source"]["id"] == context.node.id
+    assert state["thread"]["source"]["id"] == context.flow.id
+    assert state["thread"]["context"]["id"] == to_string(context.node.id)
     assert [message] = state["messages"]
     assert message["body"] == attrs.body
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
@@ -90,19 +92,31 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
   end
 
-  test "a cold link to a deleted node keeps the normal viewport fit and opens the readable conversation", context do
+  test "a cold link to deleted context still focuses the surface pin and allows replies", context do
     detail = create_comment(context)
     Repo.delete!(context.node)
 
     view = open_flow(context, "?thread=#{detail.thread.id}")
 
     assert panel(view)["thread"]["id"] == detail.thread.id
-    assert panel(view)["thread"]["source"]["status"] == "unavailable"
-    assert panel(view)["presentation"] == "panel"
+    assert panel(view)["thread"]["source"]["status"] == "available"
+    assert panel(view)["thread"]["context"]["status"] == "unavailable"
+    assert panel(view)["presentation"] == "canvas"
     assert [%{"body" => "Review this beat"}] = panel(view)["messages"]
-    assert canvas(view)["commentFocusThreadId"] == nil
+    assert canvas(view)["commentFocusThreadId"] == detail.thread.id
     assert canvas(view)["commentFocusNodeId"] == nil
-    assert canvas(view)["commentPins"] == []
+    assert [%{"id" => thread_id, "context" => %{"status" => "unavailable"}}] = canvas(view)["commentPins"]
+    assert thread_id == detail.thread.id
+
+    render_hook(view, "comments_reply", %{
+      thread_id: detail.thread.id,
+      parent_id: hd(detail.messages).id,
+      body: "Continue the discussion after removing the node",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    assert panel(view)["thread"]["message_count"] == 2
+    assert panel(view)["thread"]["context"]["status"] == "unavailable"
   end
 
   test "a canvas comment is placed, moved and restored by its deep link", context do
@@ -146,7 +160,7 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert panel(reloaded)["thread"]["position"] == %{"x" => 300.0, "y" => 120.0}
   end
 
-  test "node placement retains its relative anchor and Escape cancels placement", context do
+  test "node placement stores surface coordinates and a context offset, and Escape cancels placement", context do
     view = open_flow(context)
     render_hook(view, "comments_place", %{node_id: context.node.id, x: 25, y: 30})
     assert panel(view)["selectedNodeId"] == context.node.id
@@ -159,14 +173,66 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
       client_request_id: Ecto.UUID.generate()
     })
 
-    assert [%{"source" => %{"type" => "flow_node"}, "position" => %{"x" => 25.0, "y" => 30.0}}] =
-             canvas(view)["commentPins"]
+    assert [pin] = canvas(view)["commentPins"]
+    assert pin["source"]["type"] == "flow_canvas"
+    assert pin["source"]["id"] == context.flow.id
+    assert pin["position"] == %{"x" => context.node.position_x + 25.0, "y" => context.node.position_y + 30.0}
+    assert pin["context"]["type"] == "flow_node"
+    assert pin["context"]["id"] == to_string(context.node.id)
+    assert pin["context"]["offset"] == %{"x" => 25.0, "y" => 30.0}
 
     render_hook(view, "comments_mode", %{active: true})
     render_hook(view, "comments_mode", %{active: false})
     refute panel(view)["placing"]
     refute panel(view)["open"]
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
+  end
+
+  test "a surface comment can change and detach its context without changing its owner", context do
+    view = open_flow(context)
+
+    render_hook(view, "comments_create", %{
+      position: %{x: 300, y: 200},
+      context: %{type: "flow_node", id: to_string(context.node.id)},
+      body: "A contextual surface comment",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    thread = panel(view)["thread"]
+    assert thread["source"]["id"] == context.flow.id
+    assert thread["context"]["id"] == to_string(context.node.id)
+    assert thread["context"]["offset"] == %{"x" => 300 - context.node.position_x, "y" => 200 - context.node.position_y}
+
+    other_node = node_fixture(context.flow)
+
+    render_hook(view, "comments_move", %{
+      thread_id: thread["id"],
+      x: 500,
+      y: 300,
+      context: %{type: "flow_node", id: to_string(other_node.id)},
+      expected_revision: thread["revision"]
+    })
+
+    moved = panel(view)["thread"]
+    assert moved["context"]["id"] == to_string(other_node.id)
+    assert moved["source"] == thread["source"]
+    assert canvas(view)["commentCounts"] == %{to_string(other_node.id) => 1}
+    assert canvas(view)["commentFocusNodeId"] == other_node.id
+
+    render_hook(view, "comments_move", %{
+      thread_id: moved["id"],
+      x: 600,
+      y: 400,
+      context: nil,
+      expected_revision: moved["revision"]
+    })
+
+    detached = panel(view)["thread"]
+    assert detached["context"] == nil
+    assert detached["source"] == thread["source"]
+    assert detached["position"] == %{"x" => 600.0, "y" => 400.0}
+    assert canvas(view)["commentCounts"] == %{}
+    assert canvas(view)["commentFocusNodeId"] == nil
   end
 
   test "forged placement and movement cannot cross Flow boundaries or bypass viewer permissions", context do
@@ -186,8 +252,11 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
       expected_revision: other.thread.revision
     })
 
-    assert {:ok, %{thread: %{position: nil}}} =
+    assert {:ok, %{thread: unchanged_other}} =
              Projects.get_comment_thread(context.scope, context.project.id, other.thread.id)
+
+    assert unchanged_other.position == other.thread.position
+    assert unchanged_other.context == other.thread.context
 
     own = create_comment(context)
     viewer = user_fixture()
@@ -205,8 +274,11 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
       expected_revision: own.thread.revision
     })
 
-    assert {:ok, %{thread: %{position: nil}}} =
+    assert {:ok, %{thread: unchanged_own}} =
              Projects.get_comment_thread(context.scope, context.project.id, own.thread.id)
+
+    assert unchanged_own.position == own.thread.position
+    assert unchanged_own.context == own.thread.context
   end
 
   test "another Flow's thread cannot be read or mutated through this Flow", context do
@@ -281,7 +353,7 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert List.last(panel(view)["messages"])["body"] == "Another window replied"
   end
 
-  test "a remote graph refresh updates comment counts and source availability after deletion", context do
+  test "a remote graph refresh removes node counts while preserving surface comment availability", context do
     hub = node_fixture(context.flow, %{type: "hub", data: %{"hub_id" => "reviewed_hub", "label" => "Reviewed hub"}})
     jump = node_fixture(context.flow, %{type: "jump", data: %{"target_hub_id" => "reviewed_hub"}})
     detail = create_comment(%{context | node: hub})
@@ -298,12 +370,15 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
 
     state = panel(view)
     assert state["thread"]["id"] == detail.thread.id
-    assert state["thread"]["source"]["status"] == "unavailable"
+    assert state["thread"]["source"]["status"] == "available"
+    assert state["thread"]["context"]["status"] == "unavailable"
     assert [%{"body" => "Review this beat"}] = state["messages"]
 
     surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
     assert surface.props["surface"]["canvas"]["commentCounts"] == %{}
     assert surface.props["surface"]["canvas"]["commentFocusNodeId"] == nil
+    assert [%{"id" => pin_id}] = surface.props["surface"]["canvas"]["commentPins"]
+    assert pin_id == detail.thread.id
   end
 
   test "malformed node and revision payloads fail without crashing", context do

@@ -44,6 +44,7 @@ import FlowSequenceLayerList from "./FlowSequenceLayerList.vue";
 import FlowSequenceInspector, { type SequenceLayerPatch } from "./FlowSequenceInspector.vue";
 import { newSequenceLayerGeometry } from "../../lib/sequence-layer-creation";
 import { clamp } from "../../lib/sequence-stage-geometry";
+import { commentNodeId } from "../../lib/comment-geometry";
 import {
   SEQUENCE_IMAGE_ACCEPT,
   useSequenceImageImport,
@@ -471,9 +472,7 @@ defineExpose({
         :state="comments.state"
         :top="headerHeight + 8"
         :count="
-          comments.pins.filter(
-            (pin) => pin.source.type === 'flow_node' && String(pin.source.id) === String(ownerId),
-          ).length
+          comments.pins.filter((pin) => String(commentNodeId(pin)) === String(ownerId)).length
         "
       />
       <Button

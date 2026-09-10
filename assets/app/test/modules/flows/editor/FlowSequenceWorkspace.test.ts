@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { defineComponent, nextTick, ref } from "vue";
 import { Select } from "@components/ui/select";
+import type { FlowCommentThread } from "@modules/flows/types/comments";
 import type {
   SequenceConfigPanelData,
   SequenceStageState,
@@ -118,6 +119,52 @@ describe("FlowSequenceWorkspace", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("counts surface comments through their available intervention context", () => {
+    const pin: FlowCommentThread = {
+      id: 12,
+      status: "open",
+      revision: 1,
+      message_count: 1,
+      created_at: "2026-09-10T12:00:00Z",
+      last_activity_at: "2026-09-10T12:00:00Z",
+      resolved_at: null,
+      resolved_by: null,
+      author: { id: 4, display_name: "Ada", avatar_url: null },
+      source: { type: "flow_canvas", id: 7, flow_id: 7, label: "Flow", status: "available" },
+      context: {
+        type: "flow_node",
+        id: "20",
+        label: "Dialogue",
+        status: "available",
+        offset: null,
+      },
+    };
+    const wrapper = workspace({
+      comments: {
+        state: {
+          open: false,
+          selectedNodeId: null,
+          threads: [],
+          thread: null,
+          nextCursor: null,
+          messages: [],
+          messageNextCursor: null,
+          members: [],
+          canComment: true,
+          error: null,
+        },
+        pins: [
+          pin,
+          { ...pin, id: 13, context: { ...pin.context!, status: "unavailable" } },
+          { ...pin, id: 14, context: { ...pin.context!, id: "10" } },
+          { ...pin, id: 15, context: null },
+        ],
+      },
+    });
+    expect(wrapper.get("[data-sequence-comments-toggle]").text()).toBe("Comments1");
+    wrapper.unmount();
   });
 
   it("shares selection and editor locks between the stage, stack and inspector", async () => {
