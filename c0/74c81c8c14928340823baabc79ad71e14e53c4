@@ -1,0 +1,52 @@
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_11667293ceac35::t_f53a2d44e82d2f 297
+test/storyarn/projects/comments/contextual_comments_test.exs
+  s_11667293ceac35::t_3213c644d88b77 236
+  s_11667293ceac35::t_ddb41d794afdf6 10,192,195-196,198-203,205,207-228,313-319
+  s_11667293ceac35::t_0f966339e1ac21 320-321
+priv/repo/migrations/20260910120000_separate_comment_context_from_surface.exs
+  s_11667293ceac35::t_6f809d90846cde 165-167,171-172,175-177,181-182,186-187,214-218,221-223,226
+  s_11667293ceac35::t_350b2ed65f0ce7 1-164,168-170,173-174,178-180,183-185,188-213,219-220,224-225,227-258
+test/storyarn/repo/migrations/spatial_comment_anchors_migration_test.exs
+  s_11667293ceac35::t_f3b1812b0a6a3c 40,45-46,75,101-102
+lib/storyarn/projects/comments/queries/queries.ex
+  s_11667293ceac35::t_2bf89c983c1527 335,344-366
+  s_5af6a6d0a150f1::t_6ef99cd7524c24 367
+test/storyarn/projects/comments/integration/source_lifecycle_test.exs
+  s_11667293ceac35::t_23fcd634d51ab2 48-58,77-87
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_11667293ceac35::t_18ca4900cf917f 9,53-121
+  s_11667293ceac35::t_ca3d39cf6500de 122-123
+test/storyarn/projects/comments/comments_concurrency_test.exs
+  s_11667293ceac35::t_6c49dfdde1383f 101,110-125
+  s_11667293ceac35::t_d342f150f720cd 8,17,69-100,102-109
+  s_11667293ceac35::t_5f27b5c837d689 126
+test/storyarn/repo/migrations/comment_context_migration_test.exs
+  s_11667293ceac35::t_241500ea4fc661 144
+  s_11667293ceac35::t_d342f150f720cd 36-49,140,242-246,255
+  s_11667293ceac35::t_42605a5f38cc45 1-35,50-139,141-143,145-241,247-254,256-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c074c81c8c14928340823baabc79ad71e14e53c4",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
