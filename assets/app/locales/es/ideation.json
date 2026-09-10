@@ -114,7 +114,10 @@
       "stale_group_canvas": "Algunas notas se movieron en otra sesión. Actualiza e intenta mover el grupo de nuevo.",
       "invalid_group_members": "Algunas notas seleccionadas ya no están compartidas o disponibles. Actualiza y vuelve a elegirlas.",
       "group_limit_reached": "Esta sesión ha alcanzado el máximo de grupos. Elimina un grupo antes de crear otro.",
-      "idempotency_conflict": "Esta solicitud ya se usó para un cambio distinto. Actualiza y vuelve a intentarlo."
+      "idempotency_conflict": "Esta solicitud ya se usó para un cambio distinto. Actualiza y vuelve a intentarlo.",
+      "stale_connections": "Los enlaces han cambiado en otra sesión. Actualiza el tablero antes de volver a intentarlo.",
+      "connections_pending": "Todavía no se ha confirmado un enlace. Reinténtalo para continuar.",
+      "invalid_connections": "Algunos enlaces de la selección ya no son válidos. Vuelve a seleccionar las notas."
     },
     "saveStatus": {
       "saved": "Guardado",
@@ -167,7 +170,20 @@
       "duplicate": "Duplicar nota",
       "duplicateHelp": "Duplicar · ⌘/Ctrl+D",
       "selectHelp": "Arrastra sobre el canvas vacío para seleccionar notas. Mantén Shift para añadir a la selección; Escape cancela.",
-      "historyHelp": "Deshacer: ⌘/Ctrl+Z. Rehacer: ⌘/Ctrl+Shift+Z o Ctrl+Y."
+      "historyHelp": "Deshacer: ⌘/Ctrl+Z. Rehacer: ⌘/Ctrl+Shift+Z o Ctrl+Y.",
+      "connectionOrigin": "Origen",
+      "connectionHelp": "Conectar las notas seleccionadas · L",
+      "originHelp": "Los enlaces salen de la nota destacada. Puedes elegir otro origen aquí.",
+      "useAsOrigin": "Usar «{title}» como origen",
+      "connectSelected": "Conectar selección",
+      "disconnectSelected": "Desconectar selección",
+      "addConnectedHelp": "Añadir una nota conectada desde esta nota | Añadir una nota conectada desde estas {count} notas",
+      "addConnected": {
+        "up": "Añadir arriba",
+        "right": "Añadir a la derecha",
+        "down": "Añadir abajo",
+        "left": "Añadir a la izquierda"
+      }
     },
     "rounds": {
       "title": "Rondas",

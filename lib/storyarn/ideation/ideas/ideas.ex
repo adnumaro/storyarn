@@ -24,6 +24,8 @@ defmodule Storyarn.Ideation.Ideas do
     to: Commands.Connect,
     as: :run
 
+  defdelegate update_idea_connections(scope, project_id, session_id, attrs), to: Commands.UpdateConnections, as: :run
+
   defdelegate delete_idea(scope, project_id, session_id, idea_id, revision), to: Commands.Delete, as: :run
 
   defdelegate restore_idea(scope, project_id, session_id, idea_id, revision, deleted_at),

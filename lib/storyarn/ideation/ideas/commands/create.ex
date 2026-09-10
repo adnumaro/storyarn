@@ -3,12 +3,14 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
   import Ecto.Changeset
 
   alias Storyarn.Ideation.Ideas.Edit
+  alias Storyarn.Ideation.Ideas.Execution.Connections
   alias Storyarn.Ideation.Ideas.Execution.Publication
   alias Storyarn.Ideation.Ideas.Execution.Revisions
   alias Storyarn.Ideation.Ideas.Execution.Transaction
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Revision
   alias Storyarn.Ideation.Ideas.Rules.Canvas
+  alias Storyarn.Ideation.Ideas.Rules.Connections, as: ConnectionRules
   alias Storyarn.Ideation.Ideas.Rules.Input
   alias Storyarn.Ideation.Ideas.Rules.Policy
   alias Storyarn.Ideation.Ideas.View
@@ -34,7 +36,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
               :visibility,
               :canvas,
               :canvas_contribution,
-              :round_id
+              :round_id,
+              :connection
             ],
             Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field)),
             do: {field, Input.get(attrs, field)}
@@ -54,7 +57,10 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
         edit = Repo.get_by!(Edit, idea_id: idea.id, actor_id: access.user_id, request_key: key)
 
         fingerprint = Input.fingerprint({:create, nil, fields})
-        Revisions.replay(edit, fingerprint, idea, access.user_id)
+
+        with {:ok, {{:ok, view}, audiences}} <- Revisions.replay(edit, fingerprint, idea, access.user_id) do
+          Transaction.success(creation_view(view, idea), audiences)
+        end
     end
   end
 
@@ -64,6 +70,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
          {:ok, selected_round} <- selected_round(attrs),
          {:ok, round} <- Sessions.select_contribution_round(access, selected_round),
          {:ok, canvas} <- initial_canvas(Input.get(attrs, :canvas)),
+         {:ok, source_ids} <- ConnectionRules.creation(Input.get(attrs, :connection)),
+         {:ok, sources} <- Connections.creation_sources(access, source_ids),
          changeset = Revision.changeset(%Revision{}, Input.content_attrs(attrs)),
          true <- changeset.valid? || {:error, changeset} do
       content = apply_changes(changeset)
@@ -90,8 +98,43 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
       revision = Revisions.insert(idea, content, access.user_id)
       Revisions.record_edit(idea, access, key, fingerprint, 0, :saved)
       idea = if policy.shared?, do: Publication.publish_creation(idea, access.user_id), else: idea
-      audiences = if policy.shared?, do: [:shared], else: [access.user_id]
-      Transaction.success(View.idea(idea, revision, access.user_id), audiences)
+      {connected_from, connection_audiences} = Connections.connect_creation(sources, idea.id)
+      idea = record_connections(idea, connected_from)
+      audiences = if policy.shared?, do: [:shared | connection_audiences], else: [access.user_id | connection_audiences]
+      Transaction.success(creation_view(View.idea(idea, revision, access.user_id), idea), audiences)
+    end
+  end
+
+  defp record_connections(idea, []), do: idea
+
+  defp record_connections(idea, acknowledgements) do
+    receipt =
+      Enum.map(acknowledgements, fn acknowledgement ->
+        %{
+          "id" => acknowledgement.id,
+          "before_version" => acknowledgement.before_version,
+          "version" => acknowledgement.version
+        }
+      end)
+
+    idea
+    |> change(canvas: Map.put(idea.canvas, "creation_links_receipt", receipt))
+    |> Repo.update!()
+  end
+
+  defp creation_view(view, idea) do
+    case Map.get(idea.canvas, "creation_links_receipt") do
+      nil ->
+        view
+
+      receipt ->
+        Map.put(
+          view,
+          :connected_from,
+          Enum.map(receipt, fn entry ->
+            %{id: entry["id"], before_version: entry["before_version"], version: entry["version"]}
+          end)
+        )
     end
   end
 

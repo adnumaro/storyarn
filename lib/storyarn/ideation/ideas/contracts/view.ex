@@ -7,7 +7,7 @@ defmodule Storyarn.Ideation.Ideas.View do
 
     public = %{
       deleted_at: idea.deleted_at,
-      canvas: idea.canvas |> Map.delete("request_key") |> Map.put("links", visible_links),
+      canvas: canvas(idea.canvas, visible_links),
       id: idea.id,
       session_id: idea.session_id,
       round_id: idea.round_id,
@@ -35,6 +35,13 @@ defmodule Storyarn.Ideation.Ideas.View do
     else
       public
     end
+  end
+
+  def canvas(canvas, visible_links) do
+    canvas
+    |> Map.drop(["request_key", "links_receipt", "creation_links_receipt"])
+    |> Map.put_new("links_version", 0)
+    |> Map.put("links", visible_links)
   end
 
   def edit(edit) do

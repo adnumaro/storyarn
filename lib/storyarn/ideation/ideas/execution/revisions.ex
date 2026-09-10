@@ -2,6 +2,7 @@ defmodule Storyarn.Ideation.Ideas.Execution.Revisions do
   @moduledoc false
   alias Storyarn.Ideation.Ideas.Edit
   alias Storyarn.Ideation.Ideas.Execution.Transaction
+  alias Storyarn.Ideation.Ideas.Queries.Visible
   alias Storyarn.Ideation.Ideas.Revision
   alias Storyarn.Ideation.Ideas.View
   alias Storyarn.Repo
@@ -42,7 +43,7 @@ defmodule Storyarn.Ideation.Ideas.Execution.Revisions do
 
       true ->
         revision = Repo.get_by!(Revision, idea_id: idea.id, number: edit.result_revision)
-        Transaction.success(View.idea(idea, revision, actor_id))
+        Transaction.success(View.idea(idea, revision, actor_id, false, Visible.visible_links(idea, actor_id)))
     end
   end
 end

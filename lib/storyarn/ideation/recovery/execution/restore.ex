@@ -74,6 +74,16 @@ defmodule Storyarn.Ideation.Recovery.Restore do
     id = maps["sessions"][session["id"]]
     Repo.update_all(from(s in "ideation_sessions", where: s.id == ^id), set: [deleted_at: row.deleted_at])
 
+    # Identical generations reuse their note IDs, but browser command receipts
+    # still belong to the previous editing session. Strip them on this path too.
+    Repo.update_all(
+      from(i in "ideation_ideas",
+        where: i.session_id == ^id,
+        update: [set: [canvas: fragment("? - 'links_receipt' - 'creation_links_receipt'", i.canvas)]]
+      ),
+      []
+    )
+
     # A live generation can match the normalized paused recovery image. Fence
     # its current timer too; merely reviving the session would keep old jobs live.
     for timer <- rows["timers"] do
