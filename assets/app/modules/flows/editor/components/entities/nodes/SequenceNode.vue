@@ -155,6 +155,7 @@ function startResize(event: PointerEvent) {
   <div
     class="flow-sequence"
     :data-flow-comment-node="nodeId"
+    :data-flow-comment-label="label"
     :class="{
       'flow-sequence--selected': isSelected,
       'flow-sequence--drop-target': isDropTarget,

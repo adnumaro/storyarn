@@ -19,6 +19,13 @@ export interface CommentPosition {
   y: number;
 }
 
+/** Client intent for optional context; the server resolves its label and availability. */
+export interface CommentContextReference {
+  type: string;
+  id: string;
+  offset?: CommentPosition | null;
+}
+
 /** Optional context within the owning surface; it never owns the conversation. */
 export interface CommentContext {
   type: string;
@@ -60,6 +67,8 @@ export interface CommentsPanelState<TSource extends CommentSource = CommentSourc
   presentation?: "panel" | "canvas" | "workspace";
   placing?: boolean;
   draftPosition?: CommentPosition | null;
+  draftContext?: CommentContextReference | null;
+  draftPending?: boolean;
   draftId?: string | null;
   threads: CommentThread<TSource>[];
   nextCursor: number | null;

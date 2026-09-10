@@ -942,7 +942,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
 
   defp install_snapshot_read_switch_storage do
     original_storage = Application.fetch_env!(:storyarn, :storage)
-    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+
+    start_supervised!(%{
+      id: SnapshotReadSwitchStorage,
+      start: {SnapshotReadSwitchStorage, :start_link, [%{}]},
+      restart: :temporary
+    })
 
     Application.put_env(
       :storyarn,
@@ -952,10 +957,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
 
     on_exit(fn ->
       Application.put_env(:storyarn, :storage, original_storage)
-
-      if Process.whereis(SnapshotReadSwitchStorage) do
-        Agent.stop(SnapshotReadSwitchStorage)
-      end
     end)
   end
 

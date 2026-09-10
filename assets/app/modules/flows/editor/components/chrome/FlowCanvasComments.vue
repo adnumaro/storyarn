@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageCircle, Plus } from "@lucide/vue";
+import { Magnet, MessageCircle, Plus, Unlink, Repeat2 } from "@lucide/vue";
 import { computed, nextTick, ref, watch } from "vue";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { FlowAreaExtra, FlowSchemes } from "../../lib/rete-schemes";
@@ -27,6 +27,17 @@ const {
   activePoint,
   draftPoint,
   moveError,
+  panelState,
+  magnetism,
+  moving,
+  dragPreview,
+  snapOutline,
+  isPending,
+  onPinKeyDown,
+  onPinBlur,
+  onLostCapture,
+  toggleMagnetism,
+  cycleContext,
   selectThread,
   startDrag,
 } = useCanvasComments({
@@ -78,8 +89,64 @@ watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previou
     class="pointer-events-none absolute inset-0 z-20 overflow-hidden"
     data-testid="flow-canvas-comments"
   >
+    <div
+      v-if="state.canComment && (pins.length || placing || draftPoint)"
+      class="pointer-events-auto absolute right-4 top-4 z-10 flex items-center gap-2"
+      @pointerdown.stop
+    >
+      <button
+        id="flow-comment-magnetism-toggle"
+        type="button"
+        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        :aria-pressed="magnetism"
+        :title="$t('flows.comments.magnetism_hint')"
+        @click.stop="toggleMagnetism"
+      >
+        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
+        {{ $t(magnetism ? "flows.comments.magnetism_on" : "flows.comments.magnetism_off") }}
+      </button>
+    </div>
+    <p id="flow-comment-move-instructions" class="sr-only">
+      {{ $t("flows.comments.keyboard_move_hint") }}
+    </p>
+    <div
+      v-if="moving && snapOutline"
+      class="absolute rounded-lg border-2 border-primary bg-primary/5"
+      :style="{
+        left: `${snapOutline.left}px`,
+        top: `${snapOutline.top}px`,
+        width: `${snapOutline.width}px`,
+        height: `${snapOutline.height}px`,
+      }"
+    />
+    <div
+      v-if="moving"
+      id="flow-comment-snap-preview"
+      role="status"
+      aria-live="polite"
+      class="absolute bottom-5 left-1/2 flex max-w-[90%] -translate-x-1/2 items-center gap-2 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
+    >
+      <span class="truncate">{{
+        dragPreview?.candidate
+          ? $t("flows.comments.snap_context", { label: dragPreview.candidate.label })
+          : $t("flows.comments.free_position")
+      }}</span>
+      <button
+        v-if="(dragPreview?.candidates.length ?? 0) > 1"
+        type="button"
+        class="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+        @pointerdown.stop.prevent
+        @click.stop="cycleContext(1)"
+      >
+        <Repeat2 class="size-3.5" />{{ $t("flows.comments.next_context") }}
+      </button>
+      <span class="hidden text-muted-foreground sm:inline">{{
+        $t("flows.comments.drag_hint")
+      }}</span>
+    </div>
     <p
       v-if="placing"
+      id="flow-comment-placement-hint"
       role="status"
       class="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-border bg-popover px-4 py-2 text-xs text-popover-foreground shadow-md"
     >
@@ -104,14 +171,21 @@ watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previou
       }"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('flows.comments.pin_label', { author: pin.thread.author.display_name })"
-      :aria-describedby="hoverId === pin.thread.id ? 'flow-comment-preview' : undefined"
+      :aria-describedby="
+        hoverId === pin.thread.id
+          ? 'flow-comment-preview flow-comment-move-instructions'
+          : 'flow-comment-move-instructions'
+      "
+      :aria-busy="isPending(pin.thread.id)"
       :aria-expanded="state.thread?.id === pin.thread.id && popupOpen"
       aria-haspopup="dialog"
       @pointerdown.stop="startDrag($event, pin.thread)"
+      @keydown="onPinKeyDown($event, pin.thread)"
+      @lostpointercapture="onLostCapture"
       @pointerenter="hoverId = pin.thread.id"
       @pointerleave="hoverId = null"
       @focus="hoverId = pin.thread.id"
-      @blur="hoverId = null"
+      @blur="onPinBlur"
       @click.stop="selectThread(pin.thread, $event)"
     >
       <MessageCircle class="size-4" />
@@ -124,7 +198,12 @@ watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previou
       class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40 active:cursor-grabbing"
       :style="{ left: `${draftPoint.x}px`, top: `${draftPoint.y}px` }"
       :aria-label="$t('flows.comments.move_pin')"
+      aria-describedby="flow-comment-move-instructions"
+      :aria-busy="panelState.draftPending"
       @pointerdown.stop="startDrag($event, null)"
+      @keydown="onPinKeyDown($event, null)"
+      @blur="onPinBlur"
+      @lostpointercapture="onLostCapture"
     >
       <Plus class="size-4" />
     </button>
@@ -164,7 +243,7 @@ watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previou
       @wheel.stop
       @contextmenu.stop
     >
-      <FlowCommentsPanel :state="state" embedded />
+      <FlowCommentsPanel :state="panelState" embedded />
     </div>
   </div>
 </template>

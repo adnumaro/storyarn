@@ -239,6 +239,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> fill_in("#register-password-confirmation", "Confirm Password", with: "password12345")
       |> click_button("Create an account")
       |> assert_path("/users/log-in")
+      |> assert_has("#login-form")
+      |> assert_has("[data-phx-main].phx-connected")
 
       invited_user = Accounts.get_user_by_email(invited_email)
       assert invited_user

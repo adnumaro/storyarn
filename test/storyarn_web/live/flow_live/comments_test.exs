@@ -188,6 +188,131 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
   end
 
+  test "a magnetic draft keeps absolute coordinates and context through movement, creation, retry and reload", context do
+    view = open_flow(context)
+    reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
+    position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
+    render_hook(view, "comments_place", Map.merge(position, %{node_id: nil, context: reference}))
+
+    placed = panel(view)
+    assert placed["selectedNodeId"] == nil
+    assert placed["draftPosition"] == %{"x" => position.x, "y" => position.y}
+    assert placed["draftContext"] == %{"type" => "flow_node", "id" => reference.id, "offset" => %{"x" => 25, "y" => 30}}
+
+    other_node = node_fixture(context.flow)
+    moved_reference = %{type: "flow_node", id: to_string(other_node.id), offset: %{x: 50, y: -20}}
+    moved_position = %{x: other_node.position_x + 50, y: other_node.position_y - 20}
+
+    render_hook(
+      view,
+      "comments_place",
+      Map.merge(moved_position, %{
+        node_id: nil,
+        context: moved_reference,
+        moving_draft: true,
+        draft_id: placed["draftId"]
+      })
+    )
+
+    moved = panel(view)
+    assert moved["draftId"] == placed["draftId"]
+    assert moved["draftContext"]["id"] == to_string(other_node.id)
+    assert moved["selectedNodeId"] == nil
+
+    attrs = %{
+      node_id: nil,
+      position: moved["draftPosition"],
+      context: moved["draftContext"],
+      body: "A draft snapped to a different beat",
+      client_request_id: Ecto.UUID.generate()
+    }
+
+    render_hook(view, "comments_create", attrs)
+    thread = panel(view)["thread"]
+    assert thread["source"]["type"] == "flow_canvas"
+    assert thread["source"]["id"] == context.flow.id
+    assert thread["position"] == %{"x" => moved_position.x, "y" => moved_position.y}
+    assert thread["context"]["id"] == to_string(other_node.id)
+    assert thread["context"]["offset"] == %{"x" => 50.0, "y" => -20.0}
+    assert panel(view)["draftContext"] == nil
+
+    render_hook(view, "comments_create", attrs)
+    assert panel(view)["thread"]["id"] == thread["id"]
+    assert panel(view)["thread"]["message_count"] == 1
+    assert [pin] = canvas(view)["commentPins"]
+    assert pin["id"] == thread["id"]
+
+    reloaded = open_flow(context, "?thread=#{thread["id"]}")
+    assert panel(reloaded)["thread"]["context"] == thread["context"]
+    assert panel(reloaded)["thread"]["position"] == thread["position"]
+  end
+
+  test "a magnetic draft can become free and late moves cannot reopen it or replace another draft", context do
+    view = open_flow(context)
+    reference = %{type: "flow_node", id: to_string(context.node.id)}
+    render_hook(view, "comments_place", %{x: 100, y: 200, context: reference})
+    draft_id = panel(view)["draftId"]
+    move = %{x: 300, y: 400, context: nil, moving_draft: true, draft_id: draft_id}
+    render_hook(view, "comments_place", move)
+    assert panel(view)["draftId"] == draft_id
+    assert panel(view)["draftContext"] == nil
+    assert panel(view)["draftPosition"] == %{"x" => 300, "y" => 400}
+
+    render_hook(view, "comments_close", %{})
+    render_hook(view, "comments_place", move)
+    refute panel(view)["open"]
+    assert panel(view)["draftPosition"] == nil
+    assert panel(view)["draftContext"] == nil
+
+    render_hook(view, "comments_place", %{x: 600, y: 700, context: reference})
+    new_id = panel(view)["draftId"]
+    refute new_id == draft_id
+    render_hook(view, "comments_place", move)
+    render_hook(view, "comments_place", Map.delete(move, :draft_id))
+    assert panel(view)["draftId"] == new_id
+    assert panel(view)["draftPosition"] == %{"x" => 600, "y" => 700}
+    assert panel(view)["draftContext"]["id"] == reference.id
+
+    render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
+    assert panel(view)["draftContext"] == nil
+    assert panel(view)["draftPosition"] == nil
+    assert panel(view)["selectedNodeId"] == context.node.id
+  end
+
+  test "draft context rejects foreign, deleted, malformed and ambiguous node references", context do
+    view = open_flow(context)
+    foreign_node = context.project |> flow_fixture() |> node_fixture()
+    deleted_node = node_fixture(context.flow)
+    Repo.delete!(deleted_node)
+
+    invalid_references = [
+      %{type: "flow_node", id: to_string(foreign_node.id)},
+      %{type: "flow_node", id: to_string(deleted_node.id)},
+      %{type: "flow_node", id: "not-a-node"},
+      %{type: "sheet_header", id: to_string(context.flow.id)},
+      %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 10_000_001, y: 0}},
+      %{type: "flow_node", id: to_string(context.node.id), offset: %{x: "NaN", y: 0}},
+      %{type: "flow_node", id: to_string(context.node.id), offset: []}
+    ]
+
+    for reference <- invalid_references do
+      render_hook(view, "comments_place", %{x: 100, y: 200, context: reference})
+      assert panel(view)["draftPosition"] == nil
+      assert panel(view)["draftContext"] == nil
+      assert is_binary(panel(view)["error"])
+    end
+
+    render_hook(view, "comments_place", %{
+      node_id: context.node.id,
+      x: 100,
+      y: 200,
+      context: %{type: "flow_node", id: to_string(context.node.id)}
+    })
+
+    assert panel(view)["draftPosition"] == nil
+    assert panel(view)["draftContext"] == nil
+  end
+
   test "a surface comment can change and detach its context without changing its owner", context do
     view = open_flow(context)
 
