@@ -104,6 +104,11 @@
       }
     },
     "comments": {
+      "context_cover": "Portada",
+      "context_header": "Cabecera",
+      "context_title": "Título",
+      "context_block": "Bloque",
+      "context_row": "Fila de {count} bloques",
       "new_comment_tool": "Nuevo comentario",
       "add_comment": "Añadir comentario",
       "context_menu": "Acciones de la ficha",
@@ -113,7 +118,7 @@
       "place_hint": "Colocar un comentario en esta ficha (C)",
       "placing_hint": "Haz clic en cualquier punto de la superficie de la ficha, o enfócala y pulsa Enter, para colocar un comentario. Pulsa Esc para cancelar.",
       "keyboard_place_hint": "Pulsa Enter para colocar el comentario en el centro de esta ficha.",
-      "keyboard_move_hint": "Usa las flechas para mover este comentario. Mantén Mayús para pasos más pequeños.",
+      "keyboard_move_hint": "Usa las flechas para mover, Mayús para mayor precisión, Intro para guardar y Escape para cancelar. Usa [ y ] para elegir entre contextos superpuestos. Mantén Alt para colocar libremente.",
       "pin_label": "Comentario de {author}",
       "move_pin": "Mover comentario por esta ficha",
       "title": "Comentarios",
@@ -149,7 +154,14 @@
       "empty_hint": "Elige Nuevo comentario o haz clic derecho sobre el fondo de la ficha para iniciar una conversación.",
       "readonly_hint": "Puedes leer las conversaciones. Se necesitan permisos de edición para comentar.",
       "threads": "Hilos de comentarios",
-      "load_threads": "Cargar más hilos"
+      "load_threads": "Cargar más hilos",
+      "magnetism_on": "Magnetismo",
+      "magnetism_off": "Posición libre",
+      "magnetism_hint": "Activa o desactiva el magnetismo. Mantén Alt al mover para colocar libremente.",
+      "snap_context": "Contexto: {label}",
+      "free_position": "Posición libre · sin contexto",
+      "next_context": "Siguiente contexto",
+      "drag_hint": "Alt: libre · [ ]: contexto · Esc: cancelar"
     },
     "metadata": {
       "untitled": "Sin título",

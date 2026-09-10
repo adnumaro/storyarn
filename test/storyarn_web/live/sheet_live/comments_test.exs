@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
 
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   setup :register_and_log_in_user
 
@@ -141,6 +142,133 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     assert detached["context"] == nil
     assert detached["source"] == thread["source"]
     assert detached["position"] == %{"x" => 50.0, "y" => 500.0}
+  end
+
+  test "draft placement validates context and keeps its identity when moving between targets", context do
+    view = open_sheet(context)
+    block_context = %{type: "sheet_block", id: to_string(context.block.id), offset: %{x: -2, y: 12}}
+
+    render_hook(view, "comments_place", %{x: 25, y: 750, context: block_context})
+    draft_id = panel(view)["draftId"]
+    assert is_binary(draft_id)
+
+    assert panel(view)["draftContext"] == %{
+             "type" => "sheet_block",
+             "id" => to_string(context.block.id),
+             "offset" => %{"x" => -2.0, "y" => 12.0}
+           }
+
+    title_context = %{type: "sheet_title", id: to_string(context.sheet.id), offset: %{x: 5, y: 10}}
+
+    render_hook(view, "comments_place", %{
+      x: 45,
+      y: 100,
+      moving_draft: true,
+      draft_id: draft_id,
+      context: title_context
+    })
+
+    assert panel(view)["draftId"] == draft_id
+    assert panel(view)["draftContext"]["type"] == "sheet_title"
+    assert panel(view)["draftPosition"] == %{"x" => 45, "y" => 100}
+
+    render_hook(view, "comments_create", %{
+      position: %{x: 45, y: 100},
+      context: title_context,
+      body: "This refers to the title",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    assert panel(view)["thread"]["context"]["type"] == "sheet_title"
+    assert panel(view)["thread"]["source"]["id"] == context.sheet.id
+    assert panel(view)["draftContext"] == nil
+    assert panel(view)["draftId"] == nil
+  end
+
+  test "invalid draft context and late movement cannot replace, move or reopen the current draft", context do
+    other_sheet = sheet_fixture(context.project)
+    other_block = block_fixture(other_sheet)
+    view = open_sheet(context)
+    render_hook(view, "comments_place", %{x: 25, y: 750, context: nil})
+    draft_id = panel(view)["draftId"]
+
+    for invalid_context <- [
+          %{type: "sheet_block", id: to_string(other_block.id)},
+          %{type: "sheet_header", id: to_string(other_sheet.id)},
+          %{type: "sheet_column_group", id: Ecto.UUID.generate()},
+          %{type: "sheet_title", id: to_string(context.sheet.id), offset: %{x: 1, y: "invalid"}}
+        ] do
+      render_hook(view, "comments_place", %{
+        x: 50,
+        y: 100,
+        moving_draft: true,
+        draft_id: draft_id,
+        context: invalid_context
+      })
+
+      assert panel(view)["draftId"] == draft_id
+      assert panel(view)["draftPosition"] == %{"x" => 25, "y" => 750}
+      assert panel(view)["draftContext"] == nil
+    end
+
+    render_hook(view, "comments_place", %{x: 30, y: 900, context: nil})
+    replacement_id = panel(view)["draftId"]
+    refute replacement_id == draft_id
+
+    late_move = %{x: 50, y: 100, moving_draft: true, draft_id: draft_id, context: nil}
+    render_hook(view, "comments_place", late_move)
+    assert panel(view)["draftId"] == replacement_id
+    assert panel(view)["draftPosition"] == %{"x" => 30, "y" => 900}
+
+    render_hook(view, "comments_close", %{})
+    render_hook(view, "comments_place", %{late_move | draft_id: replacement_id})
+    refute panel(view)["open"]
+    assert panel(view)["draftId"] == nil
+    assert panel(view)["draftPosition"] == nil
+  end
+
+  test "deleting and undoing a block refreshes context without losing the open conversation", context do
+    view = open_sheet(context)
+
+    render_hook(view, "comments_create", %{
+      position: %{x: 25, y: 750},
+      context: %{type: "sheet_block", id: to_string(context.block.id)},
+      body: "Keep this discussion after editing the layout",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    thread_id = panel(view)["thread"]["id"]
+    render_hook(view, "delete_block", %{id: to_string(context.block.id)})
+    assert panel(view)["thread"]["context"]["status"] == "unavailable"
+    assert panel(view)["thread"]["source"]["status"] == "available"
+    assert [%{"id" => ^thread_id, "context" => %{"status" => "unavailable"}}] = content(view)["commentPins"]
+
+    render_hook(view, "undo", %{})
+    assert panel(view)["thread"]["context"]["status"] == "available"
+    assert panel(view)["thread"]["id"] == thread_id
+    assert [%{"body" => "Keep this discussion after editing the layout"}] = panel(view)["messages"]
+  end
+
+  test "remote row dissolution refreshes an open comment while retaining the Sheet destination", context do
+    second = block_fixture(context.sheet)
+    assert {:ok, group_id} = Sheets.create_column_group(context.sheet.id, [context.block.id, second.id])
+    view = open_sheet(context)
+
+    render_hook(view, "comments_create", %{
+      position: %{x: 25, y: 750},
+      context: %{type: "sheet_column_group", id: group_id},
+      body: "Review this row",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    thread = panel(view)["thread"]
+    assert {:ok, _deleted} = Sheets.delete_block(context.block)
+    send(view.pid, {:remote_change, :block_deleted, %{}})
+    assert panel(view)["thread"]["context"]["status"] == "unavailable"
+    assert panel(view)["thread"]["context"]["id"] == group_id
+    assert panel(view)["thread"]["source"] == thread["source"]
+    assert panel(view)["thread"]["position"] == thread["position"]
+    assert panel(view)["thread"]["id"] == thread["id"]
   end
 
   test "viewers can read Sheet conversations but cannot forge mutations", context do

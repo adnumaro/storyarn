@@ -1220,6 +1220,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     socket
     |> assign(:sheet, sheet)
     |> assign_sheet_health()
+    |> CommentHandlers.refresh()
   end
 
   defp reload_blocks(socket) do
@@ -1250,5 +1251,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:gallery_data, gallery_data)
     |> assign(:table_data, table_data)
     |> assign_sheet_health()
+    |> CommentHandlers.refresh()
   end
 end

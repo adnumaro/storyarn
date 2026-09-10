@@ -458,17 +458,17 @@ msgstr ""
 msgid "This dialogue line is no longer available. Refresh and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:440
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:467
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:435
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:462
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:438
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:465
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""

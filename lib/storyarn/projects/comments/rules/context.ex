@@ -219,11 +219,12 @@ defmodule Storyarn.Projects.Comments.Context do
     do: where(query, [target], is_nil(target.deleted_at))
 
   defp active_entities(query, _type), do: query
-  defp group_target([]), do: nil
 
-  defp group_target([first | _] = blocks) do
+  defp group_target([first, _second | _] = blocks) do
     %{id: first.column_group_id, sheet_id: first.sheet_id, inserted_at: nil, name: "Row of #{length(blocks)} blocks"}
   end
+
+  defp group_target(_blocks), do: nil
 
   defp pointer_available?(%{context_type: type} = thread) when type in @fixed_types,
     do:

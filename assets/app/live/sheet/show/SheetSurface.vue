@@ -119,6 +119,7 @@ useSheetHighlight(
     v-if="sheet"
     ref="surfaceRoot"
     data-sheet-comment-surface="true"
+    :data-sheet-comment-owner="sheet.id"
     :role="commentPlacementActive ? 'region' : undefined"
     :aria-label="commentPlacementActive ? $t('sheets.comments.surface_label') : undefined"
     class="relative mx-auto max-w-4xl rounded-2xl border border-border bg-surface p-6 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

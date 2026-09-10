@@ -49,6 +49,34 @@ const base: SheetCommentsPanelState = {
 
 let wrappers: VueWrapper[] = [];
 
+function snapTarget(
+  element: HTMLElement,
+  type: string,
+  id: string,
+  bounds: DOMRect,
+  label: string,
+) {
+  element.dataset.sheetCommentType = type;
+  element.dataset.sheetCommentId = id;
+  element.dataset.sheetCommentLabel = label;
+  return vi.spyOn(element, "getBoundingClientRect").mockReturnValue(bounds);
+}
+
+async function refreshGeometry() {
+  await flushPromises();
+  await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+  await nextTick();
+}
+
+function lastRequest(event: string) {
+  const request = vi
+    .mocked(live.pushEvent)
+    .mock.calls.filter(([name]) => name === event)
+    .at(-1);
+  if (!request) throw new Error(`Expected ${event} request`);
+  return request;
+}
+
 function rect(left: number, top: number, width: number, height: number): DOMRect {
   return {
     left,
@@ -63,13 +91,21 @@ function rect(left: number, top: number, width: number, height: number): DOMRect
   } as DOMRect;
 }
 
-function pointer(target: EventTarget, type: string, x: number, y: number, button = 0): MouseEvent {
+function pointer(
+  target: EventTarget,
+  type: string,
+  x: number,
+  y: number,
+  button = 0,
+  altKey = false,
+): MouseEvent {
   const event = new MouseEvent(type, {
     bubbles: true,
     cancelable: true,
     clientX: x,
     clientY: y,
     button,
+    altKey,
   });
   Object.defineProperty(event, "pointerId", { value: 1 });
   target.dispatchEvent(event);
@@ -94,6 +130,7 @@ function setup(
   surfaceHeight = 800,
   scrollOwner: HTMLElement | null = null,
   draftStorageKey: string | null = null,
+  renderPanel = false,
 ) {
   const container = document.createElement("main");
   const header = document.createElement("header");
@@ -132,7 +169,7 @@ function setup(
       focusThreadId,
       draftStorageKey,
     },
-    global: { stubs: { SheetCommentsPanel: true } },
+    global: { stubs: { SheetCommentsPanel: !renderPanel } },
   });
   wrappers.push(wrapper);
   return {
@@ -249,12 +286,20 @@ describe("Sheet canvas comments", () => {
     expect(headerMenu.defaultPrevented).toBe(true);
     expect(wrapper.get("#sheet-comment-context-menu").attributes("role")).toBe("menu");
     await wrapper.get("#sheet-comment-context-add").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", { x: 50, y: 100 });
+    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
+      x: 50,
+      y: 100,
+      context: null,
+    });
 
     pointer(row, "contextmenu", 610, 520, 2);
     await nextTick();
     await wrapper.get("#sheet-comment-context-add").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", { x: 75, y: 500 });
+    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
+      x: 75,
+      y: 500,
+      context: null,
+    });
   });
 
   it("never opens placement outside the gray sheet bounds", async () => {
@@ -280,7 +325,11 @@ describe("Sheet canvas comments", () => {
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
     );
 
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", { x: 50, y: 400 });
+    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
+      x: 50,
+      y: 400,
+      context: null,
+    });
   });
 
   it("places with Enter in the visible part of a long sheet", () => {
@@ -295,7 +344,11 @@ describe("Sheet canvas comments", () => {
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
     );
 
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", { x: 50, y: 720 });
+    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
+      x: 50,
+      y: 720,
+      context: null,
+    });
   });
 
   it("preserves interactive controls and places on any non-interactive sheet area", () => {
@@ -324,7 +377,11 @@ describe("Sheet canvas comments", () => {
     pointer(header, "pointerup", 210, 270);
     pointer(header, "click", 210, 270);
 
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", { x: 25, y: 250 });
+    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
+      x: 25,
+      y: 250,
+      context: null,
+    });
     expect(surfacePointerDown).not.toHaveBeenCalled();
   });
 
@@ -342,7 +399,7 @@ describe("Sheet canvas comments", () => {
     pointer(window, "pointerup", 1_000, 1_000);
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "comments_move",
-      { thread_id: 12, x: 98, y: 784, expected_revision: 3 },
+      { thread_id: 12, x: 98, y: 784, context: null, expected_revision: 3 },
       expect.any(Function),
       expect.any(Function),
     );
@@ -376,9 +433,7 @@ describe("Sheet canvas comments", () => {
     const pin = wrapper.get("#sheet-comment-pin-12").element;
     pointer(pin, "pointerdown", 210, 540);
     pointer(window, "pointermove", 210, 590);
-    expect(animationFrames).toHaveLength(1);
-
-    animationFrames.shift()?.(performance.now());
+    for (const frame of animationFrames.splice(0)) frame(performance.now());
     expect(scrollBy).toHaveBeenCalled();
     expect(windowScroll).not.toHaveBeenCalled();
     pointer(window, "pointerup", 210, 590);
@@ -419,9 +474,13 @@ describe("Sheet canvas comments", () => {
     const pin = wrapper.get("#sheet-comment-pin-12");
 
     await pin.trigger("keydown", { key: "ArrowRight" });
+    await pin.trigger("keydown", { key: "ArrowDown" });
+    await pin.trigger("keydown", { key: "ArrowUp", shiftKey: true });
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    await pin.trigger("keydown", { key: "Enter" });
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "comments_move",
-      { thread_id: 12, x: 26, y: 300, expected_revision: 3 },
+      { thread_id: 12, x: 26, y: 307, context: null, expected_revision: 3 },
       expect.any(Function),
       expect.any(Function),
     );
@@ -588,7 +647,7 @@ describe("Sheet canvas comments", () => {
 
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "comments_place",
-      { x: 40, y: 640 },
+      { x: 40, y: 640, context: null },
       expect.any(Function),
       expect.any(Function),
     );
@@ -688,9 +747,353 @@ describe("Sheet canvas comments", () => {
     expect(window.sessionStorage.getItem(secondKey)).toContain("Second Sheet");
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "comments_place",
-      { x: 65, y: 520 },
+      { x: 65, y: 520, context: null },
       expect.any(Function),
       expect.any(Function),
     );
+  });
+
+  it("previews header context and persists its offset with the released position", async () => {
+    const { wrapper, header } = setup();
+    snapTarget(header, "sheet_header", "7", rect(170, 100, 500, 100), "Header");
+    await nextTick();
+    const pin = wrapper.get("#sheet-comment-pin-12").element;
+    pointer(pin, "pointerdown", 210, 320);
+    pointer(window, "pointermove", 210, 150);
+    await nextTick();
+    expect(wrapper.get("#sheet-comment-snap-preview").text()).toContain("Header");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    pointer(window, "pointerup", 210, 150);
+    expect(lastRequest("comments_move")[1]).toEqual({
+      thread_id: 12,
+      expected_revision: 3,
+      x: 25,
+      y: 130,
+      context: { type: "sheet_header", id: "7", offset: { x: 5, y: 50 } },
+    });
+  });
+
+  it("cycles from a block to its row with the keyboard and commits only on Enter", async () => {
+    const { wrapper, row, block } = setup();
+    const rowId = "4d92b7f1-0713-4cae-bd33-c749722399aa";
+    snapTarget(row, "sheet_column_group", rowId, rect(90, 300, 640, 160), "Row of 3 blocks");
+    snapTarget(block, "sheet_block", "42", rect(210, 300, 200, 160), "Starting power");
+    await nextTick();
+    const pin = wrapper.get("#sheet-comment-pin-12");
+    await pin.trigger("keydown", { key: "ArrowRight" });
+    expect(wrapper.get("#sheet-comment-snap-preview").text()).toContain("Starting power");
+    await pin.trigger("keydown", { key: "]" });
+    expect(wrapper.get("#sheet-comment-snap-preview").text()).toContain("Row of 3 blocks");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    await pin.trigger("keydown", { key: "Enter" });
+    expect(lastRequest("comments_move")[1]).toEqual({
+      thread_id: 12,
+      expected_revision: 3,
+      x: 26,
+      y: 300,
+      context: { type: "sheet_column_group", id: rowId, offset: { x: 16, y: 20 } },
+    });
+  });
+
+  it("uses Alt on release to detach context and the toggle to place freely", async () => {
+    const { wrapper, header } = setup({ placing: true });
+    snapTarget(header, "sheet_header", "7", rect(170, 100, 500, 100), "Header");
+    await nextTick();
+    const pin = wrapper.get("#sheet-comment-pin-12").element;
+    pointer(pin, "pointerdown", 210, 320);
+    pointer(window, "pointermove", 210, 150);
+    pointer(window, "pointerup", 210, 150, 0, true);
+    expect(lastRequest("comments_move")[1]).toMatchObject({ x: 25, y: 130, context: null });
+    await wrapper.get("#sheet-comment-magnetism-toggle").trigger("click");
+    expect(wrapper.get("#sheet-comment-magnetism-toggle").attributes("aria-pressed")).toBe("false");
+    pointer(header, "pointerdown", 210, 150);
+    expect(lastRequest("comments_place")[1]).toEqual({ x: 25, y: 130, context: null });
+  });
+
+  it.each(["Escape", "lostpointercapture", "pointercancel", "blur"])(
+    "restores the original position and context without saving after %s",
+    async (cancel) => {
+      const { wrapper, header } = setup();
+      snapTarget(header, "sheet_header", "7", rect(170, 100, 500, 100), "Header");
+      await nextTick();
+      const pin = wrapper.get("#sheet-comment-pin-12");
+      pointer(pin.element, "pointerdown", 210, 320);
+      pointer(window, "pointermove", 210, 150);
+      if (cancel === "Escape") await pin.trigger("keydown", { key: "Escape" });
+      else if (cancel === "lostpointercapture") pointer(pin.element, cancel, 210, 150);
+      else if (cancel === "blur") window.dispatchEvent(new Event("blur"));
+      else pointer(window, cancel, 210, 150);
+      pointer(window, "pointerup", 210, 150);
+      await nextTick();
+      expect(live.pushEvent).not.toHaveBeenCalled();
+      expect(pin.attributes("style")).toContain("left: 200px");
+      expect(pin.attributes("style")).toContain("top: 300px");
+      expect(wrapper.find("#sheet-comment-snap-preview").exists()).toBe(false);
+    },
+  );
+
+  it("waits for authoritative pin props after ACK and ignores an old failure during a newer move", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#sheet-comment-pin-12");
+    pointer(pin.element, "pointerdown", 210, 320);
+    pointer(window, "pointerup", 250, 320);
+    const first = lastRequest("comments_move");
+    first[2]?.({ ok: true });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    expect(pin.attributes("style")).toContain("left: 240px");
+    pointer(pin.element, "pointerdown", 250, 320);
+    pointer(window, "pointerup", 330, 320);
+    expect(
+      vi.mocked(live.pushEvent).mock.calls.filter(([event]) => event === "comments_move"),
+    ).toHaveLength(1);
+
+    const confirmed = { ...thread, revision: 4, position: { x: 30, y: 300 }, context: null };
+    await wrapper.setProps({ commentPins: [confirmed] });
+    expect(pin.attributes("aria-busy")).toBe("false");
+    pointer(pin.element, "pointerdown", 250, 320);
+    pointer(window, "pointerup", 330, 320);
+    const second = lastRequest("comments_move");
+    first[2]?.({ ok: false });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    expect(pin.attributes("style")).toContain("left: 320px");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    second[2]?.({ ok: false });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("false");
+    expect(pin.attributes("style")).toContain("left: 240px");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+  });
+
+  it("keeps draft text and disables the composer until position and context props confirm its move", async () => {
+    const draftState = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "draft-1",
+      draftPosition: { x: 25, y: 300 },
+    };
+    const storageKey = "storyarn:sheet-comment-draft:4:7";
+    const { wrapper, header } = setup(draftState, [], null, 800, null, storageKey, true);
+    snapTarget(header, "sheet_header", "7", rect(170, 100, 500, 100), "Header");
+    await flushPromises();
+    await wrapper.get("#sheet-comment-body").setValue("Preserve this observation");
+    const pin = wrapper.get("#sheet-comment-draft-pin");
+    pointer(pin.element, "pointerdown", 210, 320);
+    pointer(window, "pointermove", 210, 150);
+    await nextTick();
+    expect(wrapper.get("#sheet-comment-body").attributes("disabled")).toBeDefined();
+    expect(wrapper.get("#sheet-comment-send").attributes("disabled")).toBeDefined();
+    pointer(window, "pointerup", 210, 150);
+    const move = lastRequest("comments_place");
+    const draftContext = { type: "sheet_header", id: "7", offset: { x: 5, y: 50 } };
+    expect(move[1]).toEqual({
+      x: 25,
+      y: 130,
+      context: draftContext,
+      moving_draft: true,
+      draft_id: "draft-1",
+    });
+    move[2]?.({ ok: true });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    expect(wrapper.get("#sheet-comment-send").attributes("disabled")).toBeDefined();
+    await wrapper.setProps({
+      state: { ...draftState, draftPosition: { x: 25, y: 130 }, draftContext },
+    });
+    expect(pin.attributes("aria-busy")).toBe("false");
+    expect(wrapper.get("#sheet-comment-send").attributes("disabled")).toBeUndefined();
+    expect((wrapper.get("#sheet-comment-body").element as HTMLTextAreaElement).value).toBe(
+      "Preserve this observation",
+    );
+    expect(JSON.parse(window.sessionStorage.getItem(storageKey)!)).toMatchObject({
+      body: "Preserve this observation",
+      position: { x: 25, y: 130 },
+      context: draftContext,
+    });
+  });
+
+  it("ignores a replaced draft's late reply while its replacement is pending", async () => {
+    const draftState = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "old-draft",
+      draftPosition: { x: 25, y: 300 },
+    };
+    const { wrapper } = setup(draftState, []);
+    await flushPromises();
+    const pin = wrapper.get("#sheet-comment-draft-pin");
+    pointer(pin.element, "pointerdown", 210, 320);
+    pointer(window, "pointerup", 250, 320);
+    const old = lastRequest("comments_place");
+    await wrapper.setProps({
+      state: { ...draftState, draftId: "replacement", draftPosition: { x: 40, y: 300 } },
+    });
+    pointer(pin.element, "pointerdown", 330, 320);
+    pointer(window, "pointerup", 410, 320);
+    const replacement = lastRequest("comments_place");
+    old[2]?.({ ok: false });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    expect(pin.attributes("style")).toContain("left: 400px");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(replacement[1]).toMatchObject({ draft_id: "replacement", x: 50 });
+  });
+
+  it("follows contextual block layout changes and uses its saved fallback after removal", async () => {
+    const context = {
+      type: "sheet_block",
+      id: "42",
+      label: "Starting power",
+      status: "available" as const,
+      offset: { x: 5, y: 20 },
+    };
+    const contextual = { ...thread, context, position: { x: 60, y: 600 } };
+    const { wrapper, block, container, surfaceRect } = setup({}, [contextual]);
+    const blockRect = snapTarget(
+      block,
+      "sheet_block",
+      "42",
+      rect(170, 220, 500, 100),
+      "Starting power",
+    );
+    await refreshGeometry();
+    const pin = wrapper.get("#sheet-comment-pin-12");
+    expect(pin.attributes("style")).toContain("left: 200px");
+    expect(pin.attributes("style")).toContain("top: 220px");
+    blockRect.mockReturnValue(rect(170, 420, 500, 100));
+    container.setAttribute("data-layout-revision", "2");
+    await refreshGeometry();
+    expect(pin.attributes("style")).toContain("top: 420px");
+
+    surfaceRect.mockReturnValue(rect(10, 20, 400, 800));
+    blockRect.mockReturnValue(rect(90, 420, 260, 100));
+    window.dispatchEvent(new Event("resize"));
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 100px");
+    block.remove();
+    await refreshGeometry();
+    expect(pin.attributes("style")).toContain("left: 240px");
+    expect(pin.attributes("style")).toContain("top: 600px");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("restores context with the saved draft after a reload", async () => {
+    const storageKey = "storyarn:sheet-comment-draft:4:7";
+    const context = { type: "sheet_header", id: "7", offset: { x: 5, y: 50 } };
+    window.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({ body: "A header observation", position: { x: 25, y: 130 }, context }),
+    );
+    setup({}, [], null, 800, null, storageKey);
+    await flushPromises();
+    expect(lastRequest("comments_place")[1]).toEqual({ x: 25, y: 130, context });
+  });
+
+  it("retries a restored draft once as free placement if its context disappeared, retaining the text", async () => {
+    const storageKey = "storyarn:sheet-comment-draft:4:7";
+    const context = { type: "sheet_block", id: "42", offset: { x: 5, y: 20 } };
+    const position = { x: 25, y: 300 };
+    window.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({ body: "Keep this observation", position, context }),
+    );
+    const { wrapper } = setup({}, [], null, 800, null, storageKey);
+    await flushPromises();
+    const contextualRestore = lastRequest("comments_place");
+    expect(contextualRestore[1]).toEqual({ ...position, context });
+    contextualRestore[2]?.({ ok: false, context_unavailable: true });
+    const freeRestore = lastRequest("comments_place");
+    expect(freeRestore[1]).toEqual({ ...position, context: null });
+    expect(JSON.parse(window.sessionStorage.getItem(storageKey)!)).toMatchObject({ context });
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        draftId: "restored-draft",
+        draftPosition: position,
+        draftContext: null,
+      },
+    });
+    expect(
+      vi.mocked(live.pushEvent).mock.calls.filter(([event]) => event === "comments_place"),
+    ).toHaveLength(2);
+    expect(JSON.parse(window.sessionStorage.getItem(storageKey)!)).toMatchObject({
+      body: "Keep this observation",
+      position,
+      context: null,
+    });
+
+    const replacementPosition = { x: 60, y: 500 };
+    const replacementContext = { type: "sheet_header", id: "7", offset: { x: 5, y: 50 } };
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        draftId: "replacement-draft",
+        draftPosition: replacementPosition,
+        draftContext: replacementContext,
+      },
+    });
+    freeRestore[2]?.({ ok: true });
+    await nextTick();
+    expect(JSON.parse(window.sessionStorage.getItem(storageKey)!)).toMatchObject({
+      body: "Keep this observation",
+      position: replacementPosition,
+      context: replacementContext,
+    });
+  });
+
+  it("does not retry an old sheet's unavailable draft after navigation", async () => {
+    const firstKey = "storyarn:sheet-comment-draft:4:7";
+    const secondKey = "storyarn:sheet-comment-draft:4:8";
+    const context = { type: "sheet_block", id: "42", offset: { x: 5, y: 20 } };
+    const firstDraft = { body: "First sheet", position: { x: 25, y: 300 }, context };
+    const secondDraft = { body: "Second sheet", position: { x: 60, y: 500 }, context: null };
+    window.sessionStorage.setItem(firstKey, JSON.stringify(firstDraft));
+    window.sessionStorage.setItem(secondKey, JSON.stringify(secondDraft));
+    const { wrapper } = setup({}, [], null, 800, null, firstKey);
+    await flushPromises();
+    const firstRestore = lastRequest("comments_place");
+    await wrapper.setProps({ draftStorageKey: secondKey });
+    await flushPromises();
+    const secondRestore = lastRequest("comments_place");
+    expect(secondRestore[1]).toEqual({ ...secondDraft.position, context: null });
+    firstRestore[2]?.({ ok: false, context_unavailable: true });
+    await nextTick();
+    expect(
+      vi.mocked(live.pushEvent).mock.calls.filter(([event]) => event === "comments_place"),
+    ).toHaveLength(2);
+    expect(JSON.parse(window.sessionStorage.getItem(firstKey)!)).toEqual(firstDraft);
+    expect(JSON.parse(window.sessionStorage.getItem(secondKey)!)).toEqual(secondDraft);
+  });
+
+  it("keeps an unchanged pin busy when its ACK advances the revision until authoritative props arrive", async () => {
+    const edgeThread = { ...thread, position: { x: 98, y: 784 }, context: null };
+    const { wrapper } = setup({}, [edgeThread]);
+    await nextTick();
+    const pin = wrapper.get("#sheet-comment-pin-12");
+    pointer(pin.element, "pointerdown", 794, 804);
+    pointer(window, "pointerup", 900, 900);
+    const move = lastRequest("comments_move");
+    const confirmed = { ...edgeThread, revision: 4 };
+    move[2]?.({ ok: true, thread: confirmed });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    pointer(pin.element, "pointerdown", 794, 804);
+    pointer(window, "pointerup", 700, 700);
+    expect(
+      vi.mocked(live.pushEvent).mock.calls.filter(([event]) => event === "comments_move"),
+    ).toHaveLength(1);
+    await wrapper.setProps({ commentPins: [confirmed] });
+    expect(pin.attributes("aria-busy")).toBe("false");
+    pointer(pin.element, "pointerdown", 794, 804);
+    pointer(window, "pointerup", 700, 700);
+    expect(lastRequest("comments_move")[1]).toMatchObject({ expected_revision: 4 });
   });
 });

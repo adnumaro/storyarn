@@ -85,6 +85,20 @@ defmodule Storyarn.Projects.Comments do
     |> publish_and_read(scope, project_id)
   end
 
+  def validate_sheet_context(scope, project_id, sheet_id, input) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(sheet_id),
+         sheet when not is_nil(sheet) <- Queries.sheet_source(project_id, sheet_id),
+         {:ok, context} <- Context.normalize(input),
+         {:ok, _attributes} <-
+           Context.attributes(%{source_type: "sheet_canvas", container_id: sheet.id, project_id: project_id}, context) do
+      {:ok, context}
+    else
+      {:error, _reason} = error -> error
+      _unavailable -> {:error, :source_unavailable}
+    end
+  end
+
   def reply(scope, project_id, thread_id, attrs) do
     scope
     |> Mutations.reply(project_id, thread_id, attrs)
