@@ -332,14 +332,7 @@ defmodule Storyarn.Projects.Comments.Queries do
   defp maybe_filter_source(query, :flow, opts) do
     case opts[:node_id] do
       node_id when is_integer(node_id) and node_id > 0 ->
-        context_id = Integer.to_string(node_id)
-
-        where(
-          query,
-          [thread: t],
-          (t.source_type == "flow_node" and t.source_id == ^node_id) or
-            (t.source_type == "flow_canvas" and t.context_type == "flow_node" and t.context_id == ^context_id)
-        )
+        filter_node_threads(query, node_id)
 
       _no_node ->
         query
@@ -347,6 +340,30 @@ defmodule Storyarn.Projects.Comments.Queries do
   end
 
   defp maybe_filter_source(query, _family, _opts), do: query
+
+  defp filter_node_threads(query, node_id) do
+    identity = node_thread_identity(node_id)
+
+    from([thread: t] in query,
+      join: n in FlowNodeRecord,
+      as: :context_node,
+      on:
+        n.id == ^node_id and n.id == t.flow_node_id and n.flow_id == t.container_id and
+          is_nil(n.deleted_at),
+      where: ^identity
+    )
+  end
+
+  defp node_thread_identity(node_id) do
+    context_id = Integer.to_string(node_id)
+
+    dynamic(
+      [thread: t, context_node: n],
+      (t.source_type == "flow_node" and t.source_id == n.id and t.source_inserted_at == n.inserted_at) or
+        (t.source_type == "flow_canvas" and t.context_type == "flow_node" and
+           t.context_id == ^context_id and t.context_inserted_at == n.inserted_at)
+    )
+  end
 
   defp maybe_filter_status(query, opts) do
     case opts[:status] do

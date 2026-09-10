@@ -7,7 +7,7 @@ defmodule Storyarn.Projects.ContextualCommentsTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Projects.Comments.Context
   alias Storyarn.Projects.Comments.Thread
@@ -189,34 +189,43 @@ defmodule Storyarn.Projects.ContextualCommentsTest do
     assert {:ok, %{}} = Projects.flow_comment_counts(ctx.scope, ctx.project.id, flow.id)
   end
 
-  test "hard deleted node identities cannot bind to a reconstructed row", ctx do
+  test "deleting a moved Flow node retains the pin's final canvas position and conversation", ctx do
     flow = flow_fixture(ctx.project)
-    node = node_fixture(flow, %{data: %{"text" => "Original node"}})
 
-    assert {:ok, detail} =
-             Projects.create_flow_node_comment(ctx.scope, ctx.project.id, flow.id, node.id, %{
-               body: "Preserve this review",
-               client_request_id: Ecto.UUID.generate()
-             })
+    for deletion <- [:soft, :hard] do
+      node = node_fixture(flow, %{position_x: 100, position_y: 200})
 
-    Repo.delete!(node)
+      assert {:ok, detail} =
+               Projects.create_flow_node_comment(ctx.scope, ctx.project.id, flow.id, node.id, %{
+                 body: "Keep this discussion here",
+                 client_request_id: Ecto.UUID.generate(),
+                 position: %{x: 25, y: -10}
+               })
 
-    Repo.insert!(%FlowNode{
-      id: node.id,
-      flow_id: flow.id,
-      type: "annotation",
-      data: %{"text" => "Replacement"},
-      inserted_at: node.inserted_at,
-      updated_at: node.updated_at
-    })
+      assert {:ok, moved_node} = Flows.update_node_position(node, %{position_x: 800, position_y: 900})
 
-    assert {:ok, retained} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
-    assert retained.thread.source.status == "available"
-    assert retained.thread.context.status == "unavailable"
-    assert retained.thread.context.label == "Original node"
-    assert Repo.get!(Thread, detail.thread.id).flow_node_id == nil
-    assert {:ok, [%{id: thread_id}]} = Projects.list_flow_comment_pins(ctx.scope, ctx.project.id, flow.id)
-    assert thread_id == detail.thread.id
+      case deletion do
+        :soft ->
+          assert {:ok, deleted_node, _meta} = Flows.delete_node(moved_node)
+          assert_final_node_position(ctx, detail)
+          Repo.delete!(deleted_node)
+
+        :hard ->
+          Repo.delete!(moved_node)
+      end
+
+      assert_final_node_position(ctx, detail)
+
+      assert {:ok, replied} =
+               Projects.reply_to_comment_thread(ctx.scope, ctx.project.id, detail.thread.id, %{
+                 body: "We can continue after removing the node",
+                 parent_id: detail.thread.root_message_id,
+                 client_request_id: Ecto.UUID.generate()
+               })
+
+      assert replied.thread.message_count == 2
+      assert replied.thread.position == %{x: 825.0, y: 890.0}
+    end
   end
 
   test "Scene context supports pins, zones, connections, and annotations on the owning Scene", ctx do
@@ -224,7 +233,7 @@ defmodule Storyarn.Projects.ContextualCommentsTest do
     pin = pin_fixture(scene, %{"label" => "North gate"})
     second_pin = pin_fixture(scene)
     zone = zone_fixture(scene, %{"name" => "Market"})
-    connection = connection_fixture(scene, pin, second_pin, %{"label" => "Road"})
+    connection = Storyarn.ScenesFixtures.connection_fixture(scene, pin, second_pin, %{"label" => "Road"})
     annotation = annotation_fixture(scene, %{"text" => "Needs lighting"})
 
     for {type, target, label} <- [
@@ -299,6 +308,15 @@ defmodule Storyarn.Projects.ContextualCommentsTest do
     missing = Repo.get!(Thread, block_thread.id)
     assert Context.available_many([missing])[missing.id] == nil
     assert Context.available(missing) == nil
+  end
+
+  defp assert_final_node_position(ctx, detail) do
+    assert {:ok, retained} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+    assert retained.thread.position == %{x: 825.0, y: 890.0}
+    assert retained.thread.source.status == "available"
+    assert retained.thread.context.status == "unavailable"
+    assert retained.thread.revision == detail.thread.revision
+    assert retained.messages == detail.messages
   end
 
   defp create_sheet(ctx, context) do

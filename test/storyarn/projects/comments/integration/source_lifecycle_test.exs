@@ -45,6 +45,17 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
     assert [%{body: "Please review this line"}] = unavailable.messages
     assert Repo.get!(Thread, detail.thread.id).flow_node_id == nil
 
+    assert {:ok, [%{id: pin_thread_id}]} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert pin_thread_id == detail.thread.id
+
+    assert {:ok, %{threads: [historical]}} = Projects.list_flow_comment_threads(scope, project.id, flow.id)
+    assert historical.id == detail.thread.id
+
+    assert {:ok, %{threads: []}} =
+             Projects.list_flow_comment_threads(scope, project.id, flow.id, node_id: node.id)
+
+    assert {:ok, %{}} = Projects.flow_comment_counts(scope, project.id, flow.id)
+
     assert {:ok, %{flow_id: flow_id, node_id: nil, thread_id: thread_id}} =
              Projects.comment_destination(scope, project.id, detail.thread.root_message_id)
 
@@ -63,6 +74,17 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
              )
 
     assert replied.thread.message_count == 2
+
+    assert {:ok, replacement} =
+             Projects.create_flow_node_comment(scope, project.id, flow.id, node.id, %{
+               body: "Review the replacement",
+               client_request_id: Ecto.UUID.generate()
+             })
+
+    assert {:ok, %{threads: [current]}} =
+             Projects.list_flow_comment_threads(scope, project.id, flow.id, node_id: node.id)
+
+    assert current.id == replacement.thread.id
   end
 
   test "restoring a Flow version preserves later discussion and does not rebind a rebuilt source" do
