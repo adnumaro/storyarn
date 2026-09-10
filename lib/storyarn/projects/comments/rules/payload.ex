@@ -65,10 +65,15 @@ defmodule Storyarn.Projects.Comments.Payload do
       end
 
     case_result
+    |> contextual_fingerprint(payload)
     |> :erlang.term_to_binary()
     |> then(&:crypto.hash(:sha256, &1))
     |> Base.encode16(case: :lower)
   end
+
+  # Omitted context keeps historical request hashes valid after migration.
+  defp contextual_fingerprint(content, %{context: context}), do: {content, {:context, context}}
+  defp contextual_fingerprint(content, _payload), do: content
 
   def value(attrs, key), do: Map.get(attrs, key, Map.get(attrs, Atom.to_string(key)))
   def valid_id?(id), do: is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807

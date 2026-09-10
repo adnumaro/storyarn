@@ -14,7 +14,7 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
   alias Storyarn.Projects.Persistence.SceneRecord
   alias Storyarn.Scenes
 
-  test "hard deletion retains the discussion and never rebinds an identical reused ID" do
+  test "hard node deletion retains an available Flow discussion and never rebinds an identical reused ID" do
     owner = user_fixture()
     scope = user_scope_fixture(owner)
     project = project_fixture(owner)
@@ -37,10 +37,32 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
     })
 
     assert {:ok, unavailable} = Projects.get_comment_thread(scope, project.id, detail.thread.id)
-    assert unavailable.thread.source.status == "unavailable"
-    assert unavailable.thread.source.label == "A source worth reviewing"
+    assert unavailable.thread.source.status == "available"
+    assert unavailable.thread.source.id == flow.id
+    assert unavailable.thread.context.status == "unavailable"
+    assert unavailable.thread.context.id == to_string(node.id)
+    assert unavailable.thread.context.label == "A source worth reviewing"
     assert [%{body: "Please review this line"}] = unavailable.messages
     assert Repo.get!(Thread, detail.thread.id).flow_node_id == nil
+
+    assert {:ok, %{flow_id: flow_id, node_id: nil, thread_id: thread_id}} =
+             Projects.comment_destination(scope, project.id, detail.thread.root_message_id)
+
+    assert {flow_id, thread_id} == {flow.id, detail.thread.id}
+
+    assert {:ok, replied} =
+             Projects.reply_to_comment_thread(
+               scope,
+               project.id,
+               detail.thread.id,
+               Map.merge(attrs, %{
+                 body: "The discussion still belongs here",
+                 parent_id: detail.thread.root_message_id,
+                 client_request_id: Ecto.UUID.generate()
+               })
+             )
+
+    assert replied.thread.message_count == 2
   end
 
   test "restoring a Flow version preserves later discussion and does not rebind a rebuilt source" do
@@ -87,7 +109,10 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
     assert retained.thread.revision == resolved.revision
     assert retained.thread.resolved_at == resolved.resolved_at
     assert retained.thread.message_count == 2
-    assert retained.thread.source.status == "unavailable"
+    assert retained.thread.source.status == "available"
+    assert retained.thread.source.id == flow.id
+    assert retained.thread.context.status == "unavailable"
+    assert retained.thread.context.id == to_string(node.id)
     assert Repo.get!(Thread, original.thread.id).flow_node_id == nil
   end
 

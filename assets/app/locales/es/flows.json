@@ -578,6 +578,7 @@
       "resolve": "Resolver",
       "reopen": "Reabrir",
       "unavailable": "Este nodo ya no está disponible. Su conversación se conserva como referencia.",
+      "context_unavailable": "Contexto no disponible",
       "source_unavailable": "Nodo no disponible",
       "messages": "Mensajes del hilo",
       "reply_to": "Responder a {name}",

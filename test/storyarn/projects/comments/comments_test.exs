@@ -22,14 +22,19 @@ defmodule Storyarn.Projects.CommentsTest do
     %{owner: owner, scope: user_scope_fixture(owner), workspace: workspace, project: project, flow: flow, node: node}
   end
 
-  test "creation persists typed source, author, preview and counts", ctx do
+  test "creation persists the owning Flow and a separate node context, author, preview and counts", ctx do
     assert {:ok, detail} = create_comment(ctx)
     assert detail.thread.status == "open"
     assert detail.thread.message_count == 1
     assert detail.thread.author.id == ctx.owner.id
-    assert detail.thread.source.id == ctx.node.id
-    assert detail.thread.source.label == "A source worth reviewing"
+    assert detail.thread.source.type == "flow_canvas"
+    assert detail.thread.source.id == ctx.flow.id
+    assert detail.thread.source.label == ctx.flow.name
     assert detail.thread.source.status == "available"
+    assert detail.thread.context.type == "flow_node"
+    assert detail.thread.context.id == to_string(ctx.node.id)
+    assert detail.thread.context.label == "A source worth reviewing"
+    assert detail.thread.context.status == "available"
     assert detail.thread.preview == "Please review this line"
     assert [%{id: message_id, parent_id: nil, body: "Please review this line"}] = detail.messages
     assert detail.thread.root_message_id == message_id
@@ -51,20 +56,22 @@ defmodule Storyarn.Projects.CommentsTest do
     assert {:ok, %{threads: [_]}} = Projects.list_flow_comment_threads(member_scope, ctx.project.id, ctx.flow.id)
   end
 
-  test "the database rejects a source ID that disagrees with its node pointer", ctx do
+  test "the database rejects a context ID that disagrees with its live node pointer", ctx do
     {:ok, detail} = create_comment(ctx)
     other_node = node_fixture(ctx.flow)
 
-    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation, constraint: "comment_threads_anchor_identity"}}} =
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation, constraint: "comment_threads_context_identity"}}} =
              Repo.query(
-               "UPDATE comment_threads SET source_id = $1 WHERE id = $2",
-               [other_node.id, detail.thread.id],
+               "UPDATE comment_threads SET context_id = $1 WHERE id = $2",
+               [to_string(other_node.id), detail.thread.id],
                mode: :savepoint
              )
 
     assert {:ok, unchanged} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
-    assert unchanged.thread.source.id == ctx.node.id
+    assert unchanged.thread.source.id == ctx.flow.id
     assert unchanged.thread.source.status == "available"
+    assert unchanged.thread.context.id == to_string(ctx.node.id)
+    assert unchanged.thread.context.status == "available"
     assert {:ok, counts} = Projects.flow_comment_counts(ctx.scope, ctx.project.id, ctx.flow.id)
     assert counts == %{ctx.node.id => 1}
   end
@@ -282,37 +289,46 @@ defmodule Storyarn.Projects.CommentsTest do
            )
   end
 
-  test "soft-deleted source remains readable and becomes available on same-row restore", ctx do
+  test "soft-deleted node context preserves Flow replies and returns on same-row restore", ctx do
     {:ok, detail} = create_comment(ctx)
     assert {:ok, _node, _meta} = Flows.delete_node(ctx.node)
     assert {:ok, unavailable} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
-    assert unavailable.thread.source.status == "unavailable"
-    assert {:error, :source_unavailable} = reply(ctx, detail)
+    assert unavailable.thread.source.status == "available"
+    assert unavailable.thread.context.status == "unavailable"
+    assert {:ok, replied} = reply(ctx, detail)
 
-    assert {:error, :source_unavailable} =
+    assert {:ok, resolved} =
              Projects.set_comment_thread_status(
                ctx.scope,
                ctx.project.id,
                detail.thread.id,
                "resolved",
-               detail.thread.revision
+               replied.thread.revision
              )
 
-    assert {:error, :not_found} = Projects.comment_destination(ctx.scope, ctx.project.id, hd(detail.messages).id)
+    assert resolved.status == "resolved"
+
+    assert {:ok, %{flow_id: flow_id, node_id: nil, thread_id: thread_id}} =
+             Projects.comment_destination(ctx.scope, ctx.project.id, hd(detail.messages).id)
+
+    assert {flow_id, thread_id} == {ctx.flow.id, detail.thread.id}
     assert {:ok, %{}} = Projects.flow_comment_counts(ctx.scope, ctx.project.id, ctx.flow.id)
     assert {:ok, _node} = Flows.restore_node(ctx.flow.id, ctx.node.id)
     assert {:ok, available} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
     assert available.thread.source.status == "available"
+    assert available.thread.context.status == "available"
   end
 
-  test "source label follows current content while stored origin survives deletion", ctx do
+  test "context label follows current content while its stored origin survives deletion", ctx do
     {:ok, detail} = create_comment(ctx)
     assert {:ok, updated_node, _meta} = Flows.update_node_data(ctx.node, %{"text" => "<p>Updated source</p>"})
     assert {:ok, current} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
-    assert current.thread.source.label == "Updated source"
+    assert current.thread.context.label == "Updated source"
+    assert current.thread.source.label == ctx.flow.name
     assert {:ok, _node, _meta} = Flows.delete_node(updated_node)
     assert {:ok, missing} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
-    assert missing.thread.source.label == "A source worth reviewing"
+    assert missing.thread.context.label == "A source worth reviewing"
+    assert missing.thread.source.label == ctx.flow.name
   end
 
   test "thread and message pages preserve roots without losing older replies", ctx do

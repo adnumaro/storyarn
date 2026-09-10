@@ -174,6 +174,34 @@ describe("Flow comments panel", () => {
     expect(wrapper.get("textarea").attributes("disabled")).toBeDefined();
   });
 
+  it("preserves replies when only the optional context is unavailable", async () => {
+    const contextual: FlowCommentThread = {
+      ...thread,
+      source: { ...thread.source, type: "flow_canvas", id: 7 },
+      context: {
+        type: "flow_node",
+        id: "42",
+        label: "Guard dialogue",
+        status: "unavailable",
+        offset: null,
+      },
+    };
+    const wrapper = panel({ thread: contextual, messages: [message] });
+    expect(wrapper.text()).toContain("Flow canvas");
+    expect(wrapper.get("#flow-comment-context").text()).toContain("Guard dialogue");
+    expect(wrapper.get("#flow-comment-context").text()).toContain("Context unavailable");
+    expect(wrapper.find("#flow-comment-status").exists()).toBe(true);
+    expect(wrapper.get("textarea").attributes("disabled")).toBeUndefined();
+    await wrapper.get("textarea").setValue("The discussion can continue.");
+    await wrapper.get("form").trigger("submit");
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "comments_reply",
+      expect.objectContaining({ thread_id: 12, body: "The discussion can continue." }),
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
   it("resolves with the current revision and reports server failures", async () => {
     const wrapper = panel({ thread, messages: [message] });
     await wrapper.get("#flow-comment-status").trigger("click");

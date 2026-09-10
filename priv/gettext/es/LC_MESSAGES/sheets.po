@@ -458,17 +458,17 @@ msgstr "El audio seleccionado ya no está disponible."
 msgid "This dialogue line is no longer available. Refresh and try again."
 msgstr "Esta línea de diálogo ya no está disponible. Actualiza la página e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:436
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:440
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr "No se pudo guardar el comentario. Revisa el texto y las menciones seleccionadas."
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:431
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:435
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr "Esta conversación ha cambiado. Revisa el estado más reciente e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:434
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:438
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr "Esta conversación o su origen ya no están disponibles."

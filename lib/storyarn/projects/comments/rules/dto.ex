@@ -1,6 +1,7 @@
 defmodule Storyarn.Projects.Comments.DTO do
   @moduledoc false
   alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Projects.Comments.Context
 
   def member(nil), do: %{id: nil, display_name: "Deleted user", avatar_url: nil}
 
@@ -17,7 +18,7 @@ defmodule Storyarn.Projects.Comments.DTO do
     label || "#{String.capitalize(node.type)} ##{node.id}"
   end
 
-  def thread(thread, authors, source, root_message) do
+  def thread(thread, authors, source, root_message, context \\ nil) do
     %{
       id: thread.id,
       status: thread.status,
@@ -31,7 +32,8 @@ defmodule Storyarn.Projects.Comments.DTO do
       resolved_at: timestamp(thread.resolved_at),
       resolved_by: if(thread.resolved_by_id, do: member(authors[thread.resolved_by_id])),
       author: member(authors[thread.author_id]),
-      source: thread_source(thread, source)
+      source: thread_source(thread, source),
+      context: Context.to_dto(thread, context)
     }
   end
 

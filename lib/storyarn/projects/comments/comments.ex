@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.Comments do
   alias Phoenix.PubSub
   alias Storyarn.Platform
   alias Storyarn.Projects.Access
+  alias Storyarn.Projects.Comments.Context
   alias Storyarn.Projects.Comments.DTO
   alias Storyarn.Projects.Comments.Mutations
   alias Storyarn.Projects.Comments.Payload
@@ -99,10 +100,10 @@ defmodule Storyarn.Projects.Comments do
     end
   end
 
-  def move(scope, project_id, thread_id, position, expected_revision) do
+  def move(scope, project_id, thread_id, position, expected_revision, opts \\ []) do
     with {:ok, %{thread: thread}} <-
            scope
-           |> Mutations.move(project_id, thread_id, position, expected_revision)
+           |> Mutations.move(project_id, thread_id, position, expected_revision, opts)
            |> publish_and_read(scope, project_id) do
       {:ok, thread}
     end
@@ -231,7 +232,8 @@ defmodule Storyarn.Projects.Comments do
     authors = Queries.authors(Enum.flat_map(threads, &[&1.author_id, &1.resolved_by_id]))
     previews = Queries.root_messages(Enum.map(threads, & &1.id))
     available = Queries.available_sources(threads)
-    Enum.map(threads, &DTO.thread(&1, authors, available[&1.id], previews[&1.id]))
+    contexts = Context.available_many(threads)
+    Enum.map(threads, &DTO.thread(&1, authors, available[&1.id], previews[&1.id], contexts[&1.id]))
   end
 
   defp include_root_message(messages, nil, _opts), do: messages
@@ -269,7 +271,7 @@ defmodule Storyarn.Projects.Comments do
     %{
       surface: "flow",
       flow_id: thread.container_id,
-      node_id: if(source_type == "flow_node", do: thread.source_id),
+      node_id: destination_node_id(thread),
       thread_id: thread.id
     }
   end
@@ -281,6 +283,17 @@ defmodule Storyarn.Projects.Comments do
   defp destination(%{source_type: "sheet_canvas"} = thread) do
     %{surface: "sheet", sheet_id: thread.container_id, thread_id: thread.id}
   end
+
+  defp destination_node_id(%{source_type: "flow_node", source_id: id}), do: id
+
+  defp destination_node_id(%{context_type: "flow_node"} = thread) do
+    case Context.available(thread) do
+      %{id: id} -> id
+      _ -> nil
+    end
+  end
+
+  defp destination_node_id(_thread), do: nil
 
   defp destination_row(%{source_type: source_type} = destination) when source_type in ["flow_node", "flow_canvas"] do
     destination

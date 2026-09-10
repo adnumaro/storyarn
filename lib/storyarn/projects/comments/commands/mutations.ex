@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Access
+  alias Storyarn.Projects.Comments.Context
   alias Storyarn.Projects.Comments.DTO
   alias Storyarn.Projects.Comments.Mention
   alias Storyarn.Projects.Comments.Message
@@ -32,6 +33,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def create_canvas(scope, project_id, flow_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
+         {:ok, payload} <- contextual_payload(payload, attrs),
          {:ok, position} <- Payload.position(Payload.value(attrs, :position), required: true),
          true <- Payload.valid_id?(flow_id) do
       payload = Map.put(payload, :position, position)
@@ -47,6 +49,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def create_scene_canvas(scope, project_id, scene_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
+         {:ok, payload} <- contextual_payload(payload, attrs),
          {:ok, position} <- Payload.scene_position(Payload.value(attrs, :position)),
          true <- Payload.valid_id?(scene_id) do
       payload = Map.put(payload, :position, position)
@@ -63,6 +66,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def create_sheet_canvas(scope, project_id, sheet_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
+         {:ok, payload} <- contextual_payload(payload, attrs),
          {:ok, position} <- Payload.sheet_position(Payload.value(attrs, :position)),
          true <- Payload.valid_id?(sheet_id) do
       payload = Map.put(payload, :position, position)
@@ -119,26 +123,39 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def set_status(_scope, _project_id, _thread_id, _status, _revision), do: {:error, :invalid_status}
 
-  def move(scope, project_id, thread_id, position, expected_revision)
+  def move(scope, project_id, thread_id, position, expected_revision, opts \\ [])
+
+  def move(scope, project_id, thread_id, position, expected_revision, opts)
       when valid_thread_id?(thread_id) and is_integer(expected_revision) and expected_revision > 0 do
-    with {:ok, position} <- Payload.position(position, required: true) do
+    with {:ok, position} <- Payload.position(position, required: true),
+         {:ok, context} <- normalize_context_option(opts) do
       transact(scope, project_id, fn project, _actor_id ->
-        move_thread!(project.id, thread_id, position, expected_revision)
+        move_thread!(project.id, thread_id, position, expected_revision, context)
       end)
     end
   end
 
-  def move(_scope, _project_id, _thread_id, _position, _revision), do: {:error, :invalid_position}
+  def move(_scope, _project_id, _thread_id, _position, _revision, _opts), do: {:error, :invalid_position}
 
-  defp move_thread!(project_id, thread_id, position, expected_revision) do
-    thread = lock_available_thread!(project_id, thread_id)
+  defp move_thread!(project_id, thread_id, position, expected_revision, context) do
+    thread = Queries.thread(project_id, thread_id) || Repo.rollback(:not_found)
+    Queries.available_source(thread, lock: :share) || Repo.rollback(:source_unavailable)
     validate_position_for_thread!(thread, position)
+
+    attributes =
+      thread
+      |> context_attributes!(context)
+      |> update_flow_offset(thread, position)
+      |> Map.merge(%{position_x: position.x, position_y: position.y})
+
+    # Lock referenced content before the thread, matching FK deletion order.
+    thread = Queries.thread(project_id, thread_id, lock: :update) || Repo.rollback(:not_found)
     if thread.revision != expected_revision, do: Repo.rollback(:stale)
-    changed? = thread.position_x != position.x or thread.position_y != position.y
+    changed? = Enum.any?(attributes, fn {key, value} -> Map.get(thread, key) != value end)
 
     if changed? do
       thread
-      |> change(position_x: position.x, position_y: position.y, revision: thread.revision + 1)
+      |> change(Map.put(attributes, :revision, thread.revision + 1))
       |> Repo.update!()
     end
 
@@ -160,6 +177,56 @@ defmodule Storyarn.Projects.Comments.Mutations do
   end
 
   defp validate_position_for_thread!(_thread, _position), do: :ok
+
+  defp contextual_payload(payload, attrs) do
+    if Map.has_key?(attrs, :context) or Map.has_key?(attrs, "context") do
+      with {:ok, context} <- Context.normalize(Payload.value(attrs, :context)) do
+        {:ok, Map.put(payload, :context, context)}
+      end
+    else
+      {:ok, payload}
+    end
+  end
+
+  defp normalize_context_option(opts) do
+    case Keyword.fetch(opts, :context) do
+      :error -> {:ok, :retain}
+      {:ok, value} -> Context.normalize(value)
+    end
+  end
+
+  defp context_attributes!(_thread, :retain), do: %{}
+
+  defp context_attributes!(thread, context) do
+    case Context.attributes(thread, context, lock: :share) do
+      {:ok, attributes} -> attributes
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp update_flow_offset(attributes, thread, position) do
+    candidate = struct(thread, attributes)
+
+    case candidate.context_type == "flow_node" && Context.available(candidate, lock: :share) do
+      %{position_x: x, position_y: y} ->
+        case Payload.position(%{x: position.x - x, y: position.y - y}, required: true) do
+          {:ok, offset} -> Map.merge(attributes, %{context_offset_x: offset.x, context_offset_y: offset.y})
+          {:error, reason} -> Repo.rollback(reason)
+        end
+
+      _ ->
+        attributes
+    end
+  end
+
+  defp insert_contextual_thread!(thread, context) do
+    attributes =
+      thread
+      |> context_attributes!(context)
+      |> update_flow_offset(thread, %{x: thread.position_x, y: thread.position_y})
+
+    thread |> change(attributes) |> Repo.insert!()
+  end
 
   defp transact(scope, project_id, fun) do
     if Repo.in_transaction?() do
@@ -188,25 +255,38 @@ defmodule Storyarn.Projects.Comments.Mutations do
   end
 
   defp create_thread!(project, actor_id, flow_id, node_id, payload, request_hash) do
+    flow = Queries.flow_source(project.id, flow_id, lock: :share) || Repo.rollback(:source_unavailable)
     node = Queries.source(project.id, flow_id, node_id, lock: :share) || Repo.rollback(:source_unavailable)
     validate_mentions!(project, payload.mention_user_ids)
+    offset = payload.position || %{x: 16.0, y: 16.0}
+    position = node_comment_position!(node, offset)
 
     thread =
-      Repo.insert!(%Thread{
-        project_id: project.id,
-        author_id: actor_id,
-        source_type: "flow_node",
-        source_id: node.id,
-        flow_node_id: node.id,
-        container_id: flow_id,
-        source_inserted_at: node.inserted_at,
-        source_label: DTO.source_label(node),
-        position_x: payload.position && payload.position.x,
-        position_y: payload.position && payload.position.y,
-        last_activity_at: TimeHelpers.now()
-      })
+      insert_contextual_thread!(
+        %Thread{
+          project_id: project.id,
+          author_id: actor_id,
+          source_type: "flow_canvas",
+          source_id: flow.id,
+          flow_canvas_id: flow.id,
+          container_id: flow_id,
+          source_inserted_at: flow.inserted_at,
+          source_label: DTO.source_label(flow),
+          position_x: position.x,
+          position_y: position.y,
+          last_activity_at: TimeHelpers.now()
+        },
+        %{type: "flow_node", id: to_string(node.id), offset: offset}
+      )
 
     insert_message(thread, actor_id, nil, payload, request_hash, [])
+  end
+
+  defp node_comment_position!(node, offset) do
+    case Payload.position(%{x: node.position_x + offset.x, y: node.position_y + offset.y}, required: true) do
+      {:ok, position} -> position
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp create_canvas_thread!(project, actor_id, flow_id, payload, request_hash) do
@@ -214,19 +294,22 @@ defmodule Storyarn.Projects.Comments.Mutations do
     validate_mentions!(project, payload.mention_user_ids)
 
     thread =
-      Repo.insert!(%Thread{
-        project_id: project.id,
-        author_id: actor_id,
-        source_type: "flow_canvas",
-        source_id: flow.id,
-        flow_canvas_id: flow.id,
-        container_id: flow.id,
-        source_inserted_at: flow.inserted_at,
-        source_label: DTO.source_label(flow),
-        position_x: payload.position.x,
-        position_y: payload.position.y,
-        last_activity_at: TimeHelpers.now()
-      })
+      insert_contextual_thread!(
+        %Thread{
+          project_id: project.id,
+          author_id: actor_id,
+          source_type: "flow_canvas",
+          source_id: flow.id,
+          flow_canvas_id: flow.id,
+          container_id: flow.id,
+          source_inserted_at: flow.inserted_at,
+          source_label: DTO.source_label(flow),
+          position_x: payload.position.x,
+          position_y: payload.position.y,
+          last_activity_at: TimeHelpers.now()
+        },
+        Map.get(payload, :context)
+      )
 
     insert_message(thread, actor_id, nil, payload, request_hash, [])
   end
@@ -236,19 +319,22 @@ defmodule Storyarn.Projects.Comments.Mutations do
     validate_mentions!(project, payload.mention_user_ids)
 
     thread =
-      Repo.insert!(%Thread{
-        project_id: project.id,
-        author_id: actor_id,
-        source_type: "scene_canvas",
-        source_id: scene.id,
-        scene_canvas_id: scene.id,
-        container_id: scene.id,
-        source_inserted_at: scene.inserted_at,
-        source_label: DTO.source_label(scene),
-        position_x: payload.position.x,
-        position_y: payload.position.y,
-        last_activity_at: TimeHelpers.now()
-      })
+      insert_contextual_thread!(
+        %Thread{
+          project_id: project.id,
+          author_id: actor_id,
+          source_type: "scene_canvas",
+          source_id: scene.id,
+          scene_canvas_id: scene.id,
+          container_id: scene.id,
+          source_inserted_at: scene.inserted_at,
+          source_label: DTO.source_label(scene),
+          position_x: payload.position.x,
+          position_y: payload.position.y,
+          last_activity_at: TimeHelpers.now()
+        },
+        Map.get(payload, :context)
+      )
 
     insert_message(thread, actor_id, nil, payload, request_hash, [])
   end
@@ -258,19 +344,22 @@ defmodule Storyarn.Projects.Comments.Mutations do
     validate_mentions!(project, payload.mention_user_ids)
 
     thread =
-      Repo.insert!(%Thread{
-        project_id: project.id,
-        author_id: actor_id,
-        source_type: "sheet_canvas",
-        source_id: sheet.id,
-        sheet_canvas_id: sheet.id,
-        container_id: sheet_id,
-        source_inserted_at: sheet.inserted_at,
-        source_label: DTO.source_label(sheet),
-        position_x: payload.position.x,
-        position_y: payload.position.y,
-        last_activity_at: TimeHelpers.now()
-      })
+      insert_contextual_thread!(
+        %Thread{
+          project_id: project.id,
+          author_id: actor_id,
+          source_type: "sheet_canvas",
+          source_id: sheet.id,
+          sheet_canvas_id: sheet.id,
+          container_id: sheet_id,
+          source_inserted_at: sheet.inserted_at,
+          source_label: DTO.source_label(sheet),
+          position_x: payload.position.x,
+          position_y: payload.position.y,
+          last_activity_at: TimeHelpers.now()
+        },
+        Map.get(payload, :context)
+      )
 
     insert_message(thread, actor_id, nil, payload, request_hash, [])
   end

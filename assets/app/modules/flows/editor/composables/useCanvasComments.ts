@@ -4,6 +4,7 @@ import type { FlowAreaExtra, FlowSchemes } from "../lib/rete-schemes";
 import type { FlowCommentsPanelState, FlowCommentThread } from "../../types/comments";
 import {
   commentCanvasPoint,
+  commentNodeId,
   commentPlacement,
   commentPointFromClient,
   commentScreenPoint,
@@ -92,7 +93,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   });
   const pins = computed(() =>
     visibleThreads.value.flatMap((thread) => {
-      const position = movedPositions.value.get(thread.id)?.position ?? thread.position;
+      const position = movedPositions.value.get(thread.id)?.position;
       const point = commentCanvasPoint(thread, nodeViews.value, position);
       return point ? [{ thread, point, screen: commentScreenPoint(point, viewport.value) }] : [];
     }),
@@ -238,6 +239,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
 
   function dragPositionFor(thread: FlowCommentThread | null) {
     if (!thread) return draftPosition.value ?? options.state().draftPosition;
+    if (thread.source.type === "flow_canvas") return commentCanvasPoint(thread, area.nodeViews);
     return thread.position ?? { x: 16, y: 16 };
   }
 
@@ -291,7 +293,8 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     );
   }
 
-  function persistThreadPosition({ id, revision }: FlowCommentThread) {
+  function persistThreadPosition(thread: FlowCommentThread) {
+    const { id, revision } = thread;
     const position = movedPositions.value.get(id)?.position;
     if (!position) return;
     const rollback = () => {
@@ -301,12 +304,31 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     };
     live.pushEvent(
       "comments_move",
-      { thread_id: id, ...position, expected_revision: revision },
+      {
+        thread_id: id,
+        ...position,
+        expected_revision: revision,
+        ...movedContext(thread, position),
+      },
       (reply) => {
         if (reply.ok !== true) rollback();
       },
       rollback,
     );
+  }
+
+  function movedContext(thread: FlowCommentThread, position: CommentPoint) {
+    if (thread.source.type !== "flow_canvas") return {};
+    const nodeId = commentNodeId(thread);
+    const node = nodeId == null ? null : area.nodeViews.get(`node-${nodeId}`);
+    if (!node || !thread.context) return {};
+    return {
+      context: {
+        type: thread.context.type,
+        id: thread.context.id,
+        offset: { x: position.x - node.position.x, y: position.y - node.position.y },
+      },
+    };
   }
 
   watch(

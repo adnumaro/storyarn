@@ -51,11 +51,12 @@ defmodule Storyarn.Projects.SpatialCommentsTest do
     assert {:ok, %{}} = Projects.flow_comment_counts(ctx.scope, ctx.project.id, ctx.flow.id)
   end
 
-  test "node offsets stay relative when the node moves and omitted positions stay nil", ctx do
+  test "node offsets stay relative while the thread keeps an absolute fallback position", ctx do
     assert {:ok, legacy} =
              Projects.create_flow_node_comment(ctx.scope, ctx.project.id, ctx.flow.id, ctx.node.id, body_attrs())
 
-    assert legacy.thread.position == nil
+    assert legacy.thread.position == %{x: ctx.node.position_x + 16, y: ctx.node.position_y + 16}
+    assert legacy.thread.context.offset == %{x: 16.0, y: 16.0}
     position = %{x: 25, y: -10}
 
     assert {:ok, pinned} =
@@ -70,8 +71,10 @@ defmodule Storyarn.Projects.SpatialCommentsTest do
     assert {:ok, moved_node} = Flows.update_node_position(ctx.node, %{position_x: 700, position_y: -400})
     assert moved_node.position_x == 700
     assert {:ok, retained} = Projects.get_comment_thread(ctx.scope, ctx.project.id, pinned.thread.id)
-    assert retained.thread.position == %{x: 25.0, y: -10.0}
-    assert retained.thread.source.id == ctx.node.id
+    assert retained.thread.position == %{x: ctx.node.position_x + 25, y: ctx.node.position_y - 10}
+    assert retained.thread.context.offset == %{x: 25.0, y: -10.0}
+    assert retained.thread.context.id == to_string(ctx.node.id)
+    assert retained.thread.source.id == ctx.flow.id
   end
 
   test "canvas create retries include normalized position and reject reuse at another point", ctx do
@@ -85,7 +88,42 @@ defmodule Storyarn.Projects.SpatialCommentsTest do
     assert {:ok, node_comment} =
              Projects.create_flow_node_comment(ctx.scope, ctx.project.id, ctx.flow.id, ctx.node.id, attrs())
 
-    assert node_comment.thread.position == attrs().position
+    assert node_comment.thread.context.offset == attrs().position
+
+    assert node_comment.thread.position == %{
+             x: ctx.node.position_x + attrs().position.x,
+             y: ctx.node.position_y + attrs().position.y
+           }
+  end
+
+  test "losing a moved node context preserves the pin's last absolute position", ctx do
+    for deletion <- [:soft, :hard] do
+      node = node_fixture(ctx.flow, %{position_x: 100, position_y: 200})
+
+      assert {:ok, detail} =
+               Projects.create_flow_node_comment(
+                 ctx.scope,
+                 ctx.project.id,
+                 ctx.flow.id,
+                 node.id,
+                 Map.put(body_attrs(), :position, %{x: 25, y: -10})
+               )
+
+      assert {:ok, moved_node} = Flows.update_node_position(node, %{position_x: 700, position_y: -400})
+
+      case deletion do
+        :soft -> assert {:ok, _node, _metadata} = Flows.delete_node(moved_node)
+        :hard -> Repo.delete!(moved_node)
+      end
+
+      assert {:ok, retained} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+      assert retained.thread.source.status == "available"
+      assert retained.thread.context.status == "unavailable"
+      assert retained.thread.position == %{x: 725.0, y: -410.0}
+      assert retained.thread.context.offset == %{x: 25.0, y: -10.0}
+      assert retained.thread.revision == detail.thread.revision
+      assert retained.messages == detail.messages
+    end
   end
 
   test "legacy node requests still match their original persisted fingerprint", ctx do
