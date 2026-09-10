@@ -1,0 +1,19 @@
+test/e2e/workspaces/projects/ideation/connections_test.exs
+  s_11667293ceac35::t_ca22142983e44b 63-64,71,78-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1594245c4ad0451cb658813d75027c1937ce182f",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
