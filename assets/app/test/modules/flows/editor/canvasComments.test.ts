@@ -59,15 +59,33 @@ let wrappers: VueWrapper[] = [];
 let frames: FrameRequestCallback[] = [];
 const disconnect = vi.fn();
 
-function pointer(target: EventTarget, type: string, x: number, y: number, button = 0) {
+function pointer(
+  target: EventTarget,
+  type: string,
+  x: number,
+  y: number,
+  button = 0,
+  options: MouseEventInit & { pointerId?: number } = {},
+) {
   const event = new MouseEvent(type, {
     bubbles: true,
     cancelable: true,
     clientX: x,
     clientY: y,
     button,
+    ...options,
   });
-  Object.defineProperty(event, "pointerId", { value: 1 });
+  Object.defineProperty(event, "pointerId", { value: options.pointerId ?? 1 });
+  target.dispatchEvent(event);
+  return event;
+}
+function key(target: EventTarget, value: string, options: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent("keydown", {
+    key: value,
+    bubbles: true,
+    cancelable: true,
+    ...options,
+  });
   target.dispatchEvent(event);
   return event;
 }
@@ -103,6 +121,32 @@ function setup(
     nodeViews: new Map([["node-42", { position: { x: 150, y: 90 } }]]),
     addPipe: (pipe: (context: { type: string }) => unknown) => pipes.push(pipe),
   };
+  function addNode(id: number, position = { x: 150, y: 90 }, size = { width: 100, height: 60 }) {
+    const element = document.createElement("div");
+    element.dataset.flowCommentNode = String(id);
+    element.dataset.flowCommentLabel = id === 42 ? "Dialogue" : `Node ${id}`;
+    area.nodeViews.set(`node-${id}`, { position });
+    vi.spyOn(element, "getBoundingClientRect").mockImplementation(() => {
+      const node = area.nodeViews.get(`node-${id}`)!;
+      const { x, y, k } = area.area.transform;
+      const left = 10 + x + node.position.x * k;
+      const top = 20 + y + node.position.y * k;
+      return {
+        x: left,
+        y: top,
+        left,
+        top,
+        width: size.width * k,
+        height: size.height * k,
+        right: left + size.width * k,
+        bottom: top + size.height * k,
+        toJSON: () => ({}),
+      };
+    });
+    container.append(element);
+    return element;
+  }
+  const node = addNode(42);
   const wrapper = mount(FlowCanvasComments, {
     attachTo: surface,
     props: {
@@ -115,7 +159,7 @@ function setup(
     global: { stubs: { FlowCommentsPanel: true } },
   });
   wrappers.push(wrapper);
-  return { wrapper, area, container, pipes };
+  return { wrapper, area, container, pipes, node, addNode };
 }
 
 beforeEach(() => {
@@ -221,17 +265,19 @@ describe("spatial comment geometry and interactions", () => {
   });
 
   it("places at the actual click with zoom conversion before any graph selection or drag", async () => {
-    const { container } = setup({ placing: true });
+    const { container, node } = setup({ placing: true });
     const graphPointerDown = vi.fn();
     const graphPointerUp = vi.fn();
     container.addEventListener("pointerdown", graphPointerDown);
     container.addEventListener("pointerup", graphPointerUp);
-    const node = document.createElement("div");
-    node.dataset.flowCommentNode = "42";
-    container.append(node);
     pointer(node, "pointerdown", 500, 300);
     pointer(node, "pointerup", 500, 300);
-    expect(live.pushEvent).toHaveBeenCalledWith("comments_place", { node_id: 42, x: 45, y: 25 });
+    expect(live.pushEvent).toHaveBeenCalledWith("comments_place", {
+      node_id: null,
+      x: 195,
+      y: 115,
+      context: { type: "flow_node", id: "42", offset: { x: 45, y: 25 } },
+    });
     expect(graphPointerDown).not.toHaveBeenCalled();
     expect(graphPointerUp).not.toHaveBeenCalled();
     pointer(container, "pointerdown", 600, 400);
@@ -239,6 +285,7 @@ describe("spatial comment geometry and interactions", () => {
       node_id: null,
       x: 245,
       y: 165,
+      context: null,
     });
   });
 
@@ -312,11 +359,284 @@ describe("spatial comment geometry and interactions", () => {
     );
   });
 
+  it("recomputes the preview after zoom changes mid-gesture and commits current canvas coordinates", async () => {
+    const { wrapper, area, pipes } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointermove", 450, 300);
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 440px");
+    area.area.transform = { x: 20, y: 30, k: 0.5 };
+    pipes[0]({ type: "zoomed" });
+    await flushFrames();
+    expect(pin.attributes("style")).toContain("left: 440px");
+    expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Free");
+    pointer(window, "pointermove", 130, 110);
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 120px");
+    expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Dialogue");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    pointer(window, "pointerup", 130, 110);
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      {
+        thread_id: 12,
+        x: 200,
+        y: 120,
+        expected_revision: 3,
+        context: { type: "flow_node", id: "42", offset: { x: 50, y: 30 } },
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("uses the release coordinates and modifier even when they differ from the last pointer move", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    pointer(wrapper.get("#flow-comment-pin-12").element, "pointerdown", 430, 290);
+    pointer(window, "pointermove", 450, 300);
+    pointer(window, "pointerup", 470, 310, 0, { altKey: true });
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      { thread_id: 12, x: 180, y: 120, context: null, expected_revision: 3 },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("handles a release that crosses the drag threshold before any pointermove", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    pointer(wrapper.get("#flow-comment-pin-12").element, "pointerdown", 430, 290);
+    pointer(window, "pointerup", 470, 310);
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      {
+        thread_id: 12,
+        x: 180,
+        y: 120,
+        context: { type: "flow_node", id: "42", offset: { x: 30, y: 30 } },
+        expected_revision: 3,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it.each(["Escape", "pointercancel", "lostpointercapture", "blur"])(
+    "rolls back both the pin and context preview without writes on %s",
+    async (cancel) => {
+      const { wrapper } = setup();
+      await nextTick();
+      const pin = wrapper.get("#flow-comment-pin-12");
+      pointer(pin.element, "pointerdown", 430, 290);
+      pointer(window, "pointermove", 700, 500);
+      await nextTick();
+      expect(pin.attributes("style")).toContain("left: 690px");
+      expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Free");
+      if (cancel === "Escape") key(pin.element, "Escape");
+      else if (cancel === "blur") window.dispatchEvent(new Event("blur"));
+      else pointer(cancel === "lostpointercapture" ? pin.element : window, cancel, 700, 500);
+      await nextTick();
+      expect(pin.attributes("style")).toContain("left: 420px");
+      expect(wrapper.find("#flow-comment-snap-preview").exists()).toBe(false);
+      pointer(window, "pointerup", 700, 500);
+      expect(live.pushEvent).not.toHaveBeenCalled();
+    },
+  );
+
+  it("ignores another pointer during a drag and keeps its own preview", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointermove", 470, 310);
+    pointer(window, "pointermove", 900, 700, 0, { pointerId: 2 });
+    pointer(window, "pointerup", 900, 700, 0, { pointerId: 2 });
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 460px");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    key(pin.element, "Escape");
+  });
+
+  it("moves with arrow keys in screen pixels and commits position and context together on Enter", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    key(pin.element, "ArrowRight");
+    key(pin.element, "ArrowDown", { shiftKey: true });
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 430px");
+    expect(pin.attributes("style")).toContain("top: 271px");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    key(pin.element, "Enter");
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      {
+        thread_id: 12,
+        x: 165,
+        y: 110.5,
+        context: { type: "flow_node", id: "42", offset: { x: 15, y: 20.5 } },
+        expected_revision: 3,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("supports keyboard cancellation and explicit free positioning with magnetism disabled", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    key(pin.element, "ArrowRight");
+    key(pin.element, "Escape");
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 420px");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    await wrapper.get("#flow-comment-magnetism-toggle").trigger("click");
+    expect(wrapper.get("#flow-comment-magnetism-toggle").attributes("aria-pressed")).toBe("false");
+    key(pin.element, "ArrowRight");
+    key(pin.element, "Enter");
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      { thread_id: 12, x: 165, y: 110, context: null, expected_revision: 3 },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("cycles overlapping contexts by keyboard before committing the chosen target", async () => {
+    const free = { ...thread, context: null };
+    const { wrapper, addNode } = setup({}, [free]);
+    addNode(43, { x: 140, y: 80 }, { width: 200, height: 120 });
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    key(pin.element, "ArrowRight");
+    await nextTick();
+    expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Dialogue");
+    key(pin.element, "]");
+    await nextTick();
+    expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Node 43");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    key(pin.element, "Enter");
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      {
+        thread_id: 12,
+        x: 165,
+        y: 110,
+        context: { type: "flow_node", id: "43", offset: { x: 25, y: 30 } },
+        expected_revision: 3,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("does not let an old failed request roll back a newer pending move", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointerup", 470, 310);
+    const firstFailure = vi.mocked(live.pushEvent).mock.calls[0][3]!;
+    const updated = {
+      ...thread,
+      revision: 4,
+      position: { x: 180, y: 120 },
+      context: { ...thread.context!, offset: { x: 30, y: 30 } },
+    };
+    await wrapper.setProps({ commentPins: [updated] });
+    pointer(pin.element, "pointerdown", 470, 310);
+    pointer(window, "pointerup", 490, 330);
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    firstFailure(new Error("Late disconnect for the first request"));
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 480px");
+    expect(pin.attributes("aria-busy")).toBe("true");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(live.pushEvent).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(live.pushEvent).mock.calls[1][1]).toMatchObject({ expected_revision: 4 });
+  });
+
+  it("keeps an acknowledged move pending until authoritative props confirm the revision", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointerup", 470, 310);
+    vi.mocked(live.pushEvent).mock.calls[0][2]!({ ok: true });
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 460px");
+    expect(pin.attributes("aria-busy")).toBe("true");
+    pointer(pin.element, "pointerdown", 470, 310);
+    pointer(window, "pointerup", 490, 330);
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+
+    const confirmed = {
+      ...thread,
+      revision: 4,
+      position: { x: 180, y: 120 },
+      context: { ...thread.context!, offset: { x: 30, y: 30 } },
+    };
+    await wrapper.setProps({ commentPins: [confirmed] });
+    expect(pin.attributes("style")).toContain("left: 460px");
+    expect(pin.attributes("aria-busy")).toBe("false");
+  });
+
+  it("confirms a selected resolved thread move from its detail props even without a list pin", async () => {
+    const resolved = { ...thread, status: "resolved" as const };
+    const initialState = { ...base, open: true, presentation: "canvas" as const, thread: resolved };
+    const { wrapper } = setup(initialState, []);
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointerup", 470, 310);
+    vi.mocked(live.pushEvent).mock.calls[0][2]!({ ok: true });
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 460px");
+    expect(pin.attributes("aria-busy")).toBe("true");
+
+    await wrapper.setProps({
+      state: {
+        ...initialState,
+        thread: {
+          ...resolved,
+          revision: 4,
+          position: { x: 180, y: 120 },
+          context: { ...thread.context!, offset: { x: 30, y: 30 } },
+        },
+      },
+    });
+    expect(pin.attributes("style")).toContain("left: 460px");
+    expect(pin.attributes("aria-busy")).toBe("false");
+  });
+
+  it("rechecks deleted targets at release and preserves the final pin position while detaching", async () => {
+    const { wrapper, area, node } = setup();
+    await nextTick();
+    pointer(wrapper.get("#flow-comment-pin-12").element, "pointerdown", 430, 290);
+    pointer(window, "pointermove", 470, 310);
+    node.remove();
+    area.nodeViews.delete("node-42");
+    pointer(window, "pointerup", 470, 310);
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      { thread_id: 12, x: 180, y: 120, context: null, expected_revision: 3 },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
   it("moves a draft with an explicit preserve-draft signal", async () => {
     const { wrapper } = setup({
       open: true,
       presentation: "canvas",
       draftPosition: { x: 20, y: 30 },
+      draftId: "draft-one",
     });
     await nextTick();
     pointer(wrapper.get("#flow-comment-draft-pin").element, "pointerdown", 200, 200);
@@ -324,7 +644,7 @@ describe("spatial comment geometry and interactions", () => {
     pointer(window, "pointerup", 220, 220);
     expect(live.pushEvent).toHaveBeenCalledWith(
       "comments_place",
-      { node_id: null, x: 30, y: 40, moving_draft: true },
+      { node_id: null, x: 30, y: 40, context: null, moving_draft: true, draft_id: "draft-one" },
       expect.any(Function),
       expect.any(Function),
     );
@@ -333,19 +653,142 @@ describe("spatial comment geometry and interactions", () => {
     expect(wrapper.get("#flow-comment-draft-pin").attributes("style")).toContain("left: 140px");
   });
 
-  it("moves a pin freely when its context is unavailable without trying to reattach it", async () => {
+  it("follows a moved draft context and sends its resolved position to the embedded composer", async () => {
+    const context = { type: "flow_node", id: "42", offset: { x: 10, y: 20 } };
+    const { wrapper, area, pipes } = setup({
+      open: true,
+      presentation: "canvas",
+      draftId: "contextual-draft",
+      draftPosition: { x: 160, y: 110 },
+      draftContext: context,
+      selectedNodeId: null,
+    });
+    await nextTick();
+    area.nodeViews.get("node-42")!.position = { x: 250, y: 190 };
+    pipes[0]({ type: "nodetranslated" });
+    await flushFrames();
+
+    const pin = wrapper.get("#flow-comment-draft-pin");
+    expect(pin.attributes("style")).toContain("left: 620px");
+    expect(pin.attributes("style")).toContain("top: 470px");
+    expect(wrapper.getComponent({ name: "FlowCommentsPanel" }).props("state")).toMatchObject({
+      draftPosition: { x: 260, y: 210 },
+      draftContext: context,
+      selectedNodeId: null,
+      draftPending: false,
+    });
+    expect(live.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("keeps draft creation pending through preview and placement acknowledgement", async () => {
+    const { wrapper } = setup({
+      open: true,
+      presentation: "canvas",
+      draftPosition: { x: 20, y: 30 },
+      draftContext: null,
+      draftId: "draft-pending",
+    });
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-draft-pin");
+    const panel = wrapper.getComponent({ name: "FlowCommentsPanel" });
+    pointer(pin.element, "pointerdown", 150, 130);
+    pointer(window, "pointermove", 470, 310);
+    await nextTick();
+    expect(panel.props("state")).toMatchObject({
+      draftPending: true,
+      draftPosition: { x: 180, y: 120 },
+      draftContext: { type: "flow_node", id: "42", offset: { x: 30, y: 30 } },
+      selectedNodeId: null,
+      draftId: "draft-pending",
+    });
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    pointer(window, "pointerup", 470, 310);
+    await nextTick();
+    expect(panel.props("state").draftPending).toBe(true);
+    expect(pin.attributes("aria-busy")).toBe("true");
+    vi.mocked(live.pushEvent).mock.calls[0][2]!({ ok: false });
+    await nextTick();
+    expect(panel.props("state")).toMatchObject({
+      draftPending: false,
+      draftPosition: { x: 20, y: 30 },
+      draftContext: null,
+      draftId: "draft-pending",
+    });
+  });
+
+  it("keeps an acknowledged draft move blocked until position and context props both match", async () => {
+    const initialState = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftPosition: { x: 20, y: 30 },
+      draftContext: null,
+      draftId: "draft-ack",
+    };
+    const { wrapper } = setup(initialState);
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-draft-pin");
+    const panel = wrapper.getComponent({ name: "FlowCommentsPanel" });
+    pointer(pin.element, "pointerdown", 150, 130);
+    pointer(window, "pointerup", 470, 310);
+    const reply = vi.mocked(live.pushEvent).mock.calls[0][2]!;
+    const failure = vi.mocked(live.pushEvent).mock.calls[0][3]!;
+    reply({ ok: true });
+    await nextTick();
+    expect(panel.props("state")).toMatchObject({
+      draftPending: true,
+      draftPosition: { x: 180, y: 120 },
+      draftContext: { type: "flow_node", id: "42", offset: { x: 30, y: 30 } },
+    });
+    expect(pin.attributes("aria-busy")).toBe("true");
+
+    const positionConfirmed = { ...initialState, draftPosition: { x: 180, y: 120 } };
+    await wrapper.setProps({ state: positionConfirmed });
+    expect(panel.props("state").draftPending).toBe(true);
+    await wrapper.setProps({
+      state: {
+        ...positionConfirmed,
+        draftContext: { type: "flow_node", id: "42", offset: { x: 30, y: 30 } },
+      },
+    });
+    expect(panel.props("state").draftPending).toBe(false);
+    expect(pin.attributes("style")).toContain("left: 460px");
+    expect(pin.attributes("aria-busy")).toBe("false");
+    failure(new Error("Stale error after authoritative confirmation"));
+    await nextTick();
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it("can explicitly reattach unavailable context to a valid visible target", async () => {
     const unavailable = {
       ...thread,
       context: { ...thread.context!, status: "unavailable" as const },
     };
     const { wrapper } = setup({}, [unavailable]);
     await nextTick();
+    pointer(wrapper.get("#flow-comment-pin-12").element, "pointerdown", 430, 290);
+    pointer(window, "pointerup", 470, 310);
+    expect(vi.mocked(live.pushEvent).mock.calls[0][1]).toMatchObject({
+      x: 180,
+      y: 120,
+      context: { type: "flow_node", id: "42", offset: { x: 30, y: 30 } },
+    });
+  });
+
+  it("explicitly clears unavailable context when no visible target remains", async () => {
+    const unavailable = {
+      ...thread,
+      context: { ...thread.context!, status: "unavailable" as const },
+    };
+    const { wrapper, node } = setup({}, [unavailable]);
+    node.remove();
+    await nextTick();
     pointer(wrapper.get("#flow-comment-pin-12").element, "pointerdown", 200, 200);
     pointer(window, "pointermove", 240, 220);
     pointer(window, "pointerup", 240, 220);
     expect(live.pushEvent).toHaveBeenCalledWith(
       "comments_move",
-      { thread_id: 12, x: 180, y: 120, expected_revision: 3 },
+      { thread_id: 12, x: 180, y: 120, context: null, expected_revision: 3 },
       expect.any(Function),
       expect.any(Function),
     );

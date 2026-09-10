@@ -6,7 +6,12 @@ import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
 import { clearCommentDraft, readCommentDraft, updateCommentDraft } from "./commentDraftStorage";
-import type { CommentMember, CommentPosition, CommentUiConfig } from "./types";
+import type {
+  CommentContextReference,
+  CommentMember,
+  CommentPosition,
+  CommentUiConfig,
+} from "./types";
 
 interface Draft {
   body: string;
@@ -22,6 +27,7 @@ const {
   threadId = null,
   parentId = null,
   position = null,
+  context,
   draftId = null,
   draftStorageKey = null,
   members,
@@ -32,6 +38,7 @@ const {
   threadId?: number | null;
   parentId?: number | null;
   position?: CommentPosition | null;
+  context?: CommentContextReference | null;
   draftId?: string | null;
   draftStorageKey?: string | null;
   members: CommentMember[];
@@ -127,6 +134,18 @@ function ensureRequestIdentity(current: Draft, fingerprint: string, storageKey: 
     });
 }
 
+function createContextReference(): CommentContextReference | null | undefined {
+  if (threadId != null || context === undefined) return undefined;
+  if (context === null) return null;
+  return {
+    type: context.type,
+    id: context.id,
+    ...(context.offset === undefined
+      ? {}
+      : { offset: context.offset ? { x: context.offset.x, y: context.offset.y } : null }),
+  };
+}
+
 function submit() {
   if (!canSend.value) return;
   const current = draft.value;
@@ -138,12 +157,14 @@ function submit() {
     ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
   ].sort((left, right) => left - right);
   const createPosition = threadId == null && position ? { x: position.x, y: position.y } : null;
+  const createContext = createContextReference();
   const fingerprint = JSON.stringify({
     sourceId,
     createSourceKey: ui.createSourceKey,
     threadId,
     parentId,
     position: createPosition,
+    context: createContext,
     body,
     mentionIds,
   });
@@ -154,7 +175,11 @@ function submit() {
     mention_user_ids: mentionIds,
     client_request_id: current.requestId,
     ...(threadId == null
-      ? { ...createTarget, ...(createPosition ? { position: createPosition } : {}) }
+      ? {
+          ...createTarget,
+          ...(createPosition ? { position: createPosition } : {}),
+          ...(createContext !== undefined ? { context: createContext } : {}),
+        }
       : { thread_id: threadId, parent_id: parentId }),
   };
   current.pending = true;

@@ -6,6 +6,7 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
   import Storyarn.ProjectsFixtures
   import StoryarnWeb.E2EHelpers
 
+  alias PlaywrightEx.Page
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -135,6 +136,7 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
       |> assert_has("[data-testid='flow-canvas-comments']", timeout: 20_000)
       |> click("#flow-comments-create-mode")
       |> assert_has("#flow-comments-create-mode[aria-pressed='true']")
+      |> assert_has("#flow-comment-placement-hint")
       |> click_at("#flow-canvas-#{flow.id}", 100, 100)
       |> assert_has("#flow-comment-draft-pin")
       |> fill_in("#flow-comment-body", "New thread", with: feedback)
@@ -165,5 +167,183 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
     |> visit(path <> "?thread=#{thread.id}")
     |> assert_has("#flow-comment-popover", text: feedback, timeout: 20_000)
     |> assert_has("#flow-comment-pin-#{thread.id}[aria-expanded='true']")
+  end
+
+  test "magnetic dragging attaches context and a free keyboard move detaches it without replacing the thread",
+       %{conn: conn} do
+    user = user_fixture()
+    scope = user_scope_fixture(user)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Magnetic review"})
+
+    node =
+      node_fixture(flow, %{
+        type: "hub",
+        position_x: 480,
+        position_y: 180,
+        data: %{"label" => "Guard motivation", "hub_id" => "guard_motivation"}
+      })
+
+    feedback = "Clarify the guard's motivation here."
+
+    assert {:ok, created} =
+             Projects.create_flow_canvas_comment(scope, project.id, flow.id, %{
+               body: feedback,
+               client_request_id: Ecto.UUID.generate(),
+               position: %{x: 300, y: 120}
+             })
+
+    thread_id = created.thread.id
+    pin = "#flow-comment-pin-#{thread_id}"
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+    deep_link = path <> "?thread=#{thread_id}"
+
+    session =
+      conn
+      |> authenticate(user)
+      |> visit(path)
+      |> assert_has("#{pin}[aria-busy=false]", timeout: 20_000)
+      |> assert_has("[data-flow-comment-node='#{node.id}'][data-flow-comment-label='Guard motivation']")
+      |> assert_has("#flow-comment-magnetism-toggle[aria-pressed=true]")
+      |> drag_pin_over_node(pin, node.id)
+      |> assert_has("#flow-comment-snap-preview", text: "Guard motivation")
+
+    # Previewing a target must not save an intermediate position or association.
+    assert {:ok, previewing} = Projects.get_comment_thread(scope, project.id, thread_id)
+    assert previewing.thread.position == created.thread.position
+    assert previewing.thread.revision == created.thread.revision
+    assert is_nil(previewing.thread.context)
+
+    session =
+      session
+      |> release_pin()
+      |> assert_has("#{pin}[aria-busy=false]")
+      |> click(pin)
+      |> assert_has("#flow-comment-popover", text: feedback)
+      |> assert_has("#flow-comment-context", text: "Guard motivation")
+
+    assert {:ok, attached} = Projects.get_comment_thread(scope, project.id, thread_id)
+    assert attached.thread.source.type == "flow_canvas"
+    assert attached.thread.source.id == flow.id
+    assert attached.thread.context.type == "flow_node"
+    assert attached.thread.context.id == to_string(node.id)
+    assert attached.thread.context.status == "available"
+    assert attached.thread.revision == created.thread.revision + 1
+    assert_in_delta attached.thread.position.x, node.position_x + attached.thread.context.offset.x, 0.001
+    assert_in_delta attached.thread.position.y, node.position_y + attached.thread.context.offset.y, 0.001
+
+    session =
+      session
+      |> visit(deep_link)
+      |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)
+      |> assert_has("#flow-comment-context", text: "Guard motivation")
+      |> click("#flow-comment-popover-close")
+      |> click("#flow-comment-magnetism-toggle")
+      |> assert_has("#flow-comment-magnetism-toggle[aria-pressed=false]")
+      |> press(pin, "ArrowRight")
+
+    assert {:ok, nudging} = Projects.get_comment_thread(scope, project.id, thread_id)
+    assert nudging.thread.revision == attached.thread.revision
+    assert nudging.thread.context == attached.thread.context
+
+    session =
+      session
+      |> press(pin, "Enter")
+      |> assert_has("#{pin}[aria-busy=false]")
+      |> click(pin)
+      |> assert_has("#flow-comment-popover", text: feedback)
+      |> refute_has("#flow-comment-context")
+
+    assert {:ok, detached} = Projects.get_comment_thread(scope, project.id, thread_id)
+    assert is_nil(detached.thread.context)
+    assert detached.thread.source == attached.thread.source
+    assert detached.thread.revision == attached.thread.revision + 1
+    assert detached.thread.position.x > attached.thread.position.x
+    assert_in_delta detached.thread.position.y, attached.thread.position.y, 0.001
+
+    session
+    |> visit(deep_link)
+    |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)
+    |> assert_has("#flow-comment-message-#{created.thread.root_message_id}", text: feedback)
+    |> refute_has("#flow-comment-context")
+
+    assert {:ok, [persisted]} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert persisted.id == thread_id
+    assert persisted.message_count == 1
+    assert persisted.position == detached.thread.position
+    assert persisted.source.type == "flow_canvas"
+    assert is_nil(persisted.context)
+  end
+
+  test "a draft keeps its text when magnetically moved onto a node and saves that context", %{conn: conn} do
+    user = user_fixture()
+    scope = user_scope_fixture(user)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Draft context"})
+
+    node =
+      node_fixture(flow, %{
+        type: "hub",
+        position_x: 480,
+        position_y: 180,
+        data: %{"label" => "First encounter", "hub_id" => "first_encounter"}
+      })
+
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+    feedback = "The first encounter should establish what the guard wants."
+
+    session =
+      conn
+      |> authenticate(user)
+      |> visit(path)
+      |> assert_has("[data-flow-comment-node='#{node.id}']", timeout: 20_000)
+      |> click("#flow-comments-create-mode")
+      |> assert_has("#flow-comments-create-mode[aria-pressed=true]")
+      |> assert_has("#flow-comment-placement-hint")
+      |> click_at("#flow-canvas-#{flow.id}", 100, 100)
+      |> assert_has("#flow-comment-draft-pin")
+      |> fill_in("#flow-comment-body", "New thread", with: feedback)
+      |> drag_pin_over_node("#flow-comment-draft-pin", node.id)
+      |> assert_has("#flow-comment-snap-preview", text: "First encounter")
+      |> release_pin()
+      |> assert_has("#flow-comment-body", value: feedback)
+      |> click("#flow-comment-send")
+      |> assert_has("#flow-comment-popover", text: feedback)
+      |> assert_has("#flow-comment-context", text: "First encounter")
+
+    assert {:ok, [thread]} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert thread.source.type == "flow_canvas"
+    assert thread.context.type == "flow_node"
+    assert thread.context.id == to_string(node.id)
+    assert thread.message_count == 1
+
+    session
+    |> visit(path <> "?thread=#{thread.id}")
+    |> assert_has("#flow-comment-pin-#{thread.id}[aria-expanded=true]", timeout: 20_000)
+    |> assert_has("#flow-comment-popover", text: feedback)
+    |> assert_has("#flow-comment-context", text: "First encounter")
+  end
+
+  defp drag_pin_over_node(session, pin, node_id) do
+    selector = "[data-flow-comment-node='#{node_id}']"
+
+    session
+    |> hover_pin(pin)
+    |> evaluate("document.querySelector(#{Jason.encode!(selector)}).getBoundingClientRect().toJSON()", fn box ->
+      {:ok, _} = Page.mouse_down(session.page_id, timeout: 10_000)
+
+      {:ok, _} =
+        Page.mouse_move(session.page_id,
+          x: box["x"] + box["width"] / 2,
+          y: box["y"] + box["height"] / 2,
+          steps: 8,
+          timeout: 10_000
+        )
+    end)
+  end
+
+  defp release_pin(session) do
+    {:ok, _} = Page.mouse_up(session.page_id, timeout: 10_000)
+    session
   end
 end

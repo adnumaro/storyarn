@@ -44,7 +44,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
   def close(%{assigns: %{comments: _state}} = socket) do
     socket
-    |> put_state(%{open: false, placing: false, draftPosition: nil, draftId: nil, error: nil})
+    |> put_state(%{open: false, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
     |> assign(:comment_focus_thread_id, nil)
     |> assign(:comment_focus_node_id, nil)
   end
@@ -83,6 +83,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
           presentation: if(params["presentation"] == "workspace", do: "workspace", else: "panel"),
           placing: false,
           draftPosition: nil,
+          draftContext: nil,
           draftId: nil,
           selectedNodeId: node_id,
           thread: nil,
@@ -188,6 +189,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
         |> put_state(%{
           selectedNodeId: nil,
           draftPosition: nil,
+          draftContext: nil,
           draftId: nil,
           presentation: "panel",
           error: error_message(:source_unavailable)
@@ -204,8 +206,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   end
 
   defp mutate("place", params, socket) do
-    with {:ok, node_id} <- optional_node(socket, params["node_id"]),
-         {:ok, position} <- position(params) do
+    with :ok <- validate_draft_move(params, socket),
+         {:ok, node_id} <- optional_node(socket, params["node_id"]),
+         {:ok, position} <- position(params),
+         {:ok, context} <- draft_context(socket, node_id, params["context"]) do
       draft_id =
         if params["moving_draft"] == true && socket.assigns.comments.draftId,
           do: socket.assigns.comments.draftId,
@@ -219,6 +223,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
           presentation: "canvas",
           selectedNodeId: node_id,
           draftPosition: position,
+          draftContext: context,
           draftId: draft_id,
           thread: nil,
           messages: [],
@@ -316,7 +321,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
   defp select_thread(socket, thread_id) do
     socket
-    |> put_state(%{open: true, placing: false, draftPosition: nil, draftId: nil, error: nil})
+    |> put_state(%{open: true, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
     |> load_threads()
     |> load_members()
     |> load_detail(thread_id)
@@ -360,6 +365,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
           messageNextCursor: next_cursor,
           selectedNodeId: node_id,
           draftPosition: nil,
+          draftContext: nil,
           draftId: nil,
           presentation: presentation
         })
@@ -377,6 +383,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
             messageNextCursor: nil,
             selectedNodeId: nil,
             draftPosition: nil,
+            draftContext: nil,
             draftId: nil,
             presentation: "panel",
             error: error_message(:not_found)
@@ -414,6 +421,36 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
       _error -> {:error, :not_found}
     end
   end
+
+  defp validate_draft_move(%{"moving_draft" => true} = params, socket) do
+    if Map.has_key?(params, "context") or Map.has_key?(params, "draft_id") do
+      if matching_draft?(socket.assigns.comments, params["draft_id"]), do: :ok, else: {:error, :stale}
+    else
+      :ok
+    end
+  end
+
+  defp validate_draft_move(_params, _socket), do: :ok
+
+  defp matching_draft?(%{open: true, presentation: "canvas", thread: nil, draftId: id}, id) when is_binary(id), do: true
+  defp matching_draft?(_state, _id), do: false
+
+  defp draft_context(_socket, _node_id, nil), do: {:ok, nil}
+
+  defp draft_context(socket, nil, %{"type" => "flow_node", "id" => raw_id} = context) do
+    with node_id when is_integer(node_id) <- positive_id(raw_id),
+         {:ok, ^node_id} <- optional_node(socket, node_id),
+         {:ok, offset} <- draft_offset(context["offset"]) do
+      {:ok, %{type: "flow_node", id: to_string(node_id), offset: offset}}
+    else
+      _invalid -> {:error, :invalid_context}
+    end
+  end
+
+  defp draft_context(_socket, _node_id, _context), do: {:error, :invalid_context}
+
+  defp draft_offset(nil), do: {:ok, nil}
+  defp draft_offset(offset), do: position(offset)
 
   defp authorize_read(socket), do: Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view)
 
@@ -492,6 +529,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
       presentation: "panel",
       placing: false,
       draftPosition: nil,
+      draftContext: nil,
       draftId: nil,
       threads: [],
       nextCursor: nil,

@@ -377,12 +377,13 @@ function changeStatus(status: CommentStatus) {
       <CommentComposer
         :source-id="state.selectedSourceId"
         :position="state.draftPosition ?? null"
+        :context="state.draftContext"
         :draft-id="state.draftId ?? null"
         :draft-storage-key="draftStorageKey"
         :thread-id="state.thread?.id ?? null"
         :parent-id="replyParentId"
         :members="state.members"
-        :disabled="!composerEnabled"
+        :disabled="!composerEnabled || Boolean(state.draftPending)"
         :ui="ui"
         @sent="replyToId = null"
       />

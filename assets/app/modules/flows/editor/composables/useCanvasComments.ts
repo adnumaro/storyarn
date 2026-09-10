@@ -1,17 +1,22 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
+import type { CommentContextReference } from "@components/comments/types";
 import type { AreaPlugin } from "rete-area-plugin";
+import {
+  CommentMagneticDrag,
+  type CommentMagneticInitial,
+  type CommentMagneticPreview,
+} from "@components/comments/commentMagnetism";
 import type { FlowAreaExtra, FlowSchemes } from "../lib/rete-schemes";
 import type { FlowCommentsPanelState, FlowCommentThread } from "../../types/comments";
 import {
   commentCanvasPoint,
-  commentNodeId,
-  commentPlacement,
   commentPointFromClient,
   commentScreenPoint,
   draftCommentCanvasPoint,
   type CommentNodeView,
   type CommentPoint,
 } from "../lib/comment-geometry";
+import { flowCommentSnapAdapter } from "../lib/comment-snap-adapter";
 import { activeFlowPlacement, cancelFlowPlacement } from "../lib/flow-placement-state";
 import type { useLive } from "@shared/composables/useLive";
 
@@ -26,11 +31,21 @@ interface CanvasCommentsOptions {
 
 interface PinDrag {
   thread: FlowCommentThread | null;
-  pointerId: number;
+  draftId: string | null;
+  pointerId: number | null;
+  target: HTMLElement;
   start: CommentPoint;
-  position: CommentPoint;
-  zoom: number;
+  pointer: CommentPoint;
+  session: CommentMagneticDrag;
   moved: boolean;
+}
+interface PendingMove extends CommentMagneticInitial {
+  request: number;
+  revision: number;
+}
+interface PendingDraft extends CommentMagneticInitial {
+  request: number;
+  draftId: string | null;
 }
 
 function editableTarget(target: EventTarget | null): boolean {
@@ -43,7 +58,6 @@ function editableTarget(target: EventTarget | null): boolean {
     )
   );
 }
-
 function outsideCommentDialog(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
@@ -63,17 +77,31 @@ function ignoreCommentShortcut(event: KeyboardEvent): boolean {
     outsideCommentDialog(event.target)
   );
 }
+const keyboardDirections: Partial<Record<string, CommentPoint>> = {
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+};
+function ignorePinShortcut(event: KeyboardEvent): boolean {
+  return editableTarget(event.target) || event.ctrlKey || event.metaKey;
+}
 
 export function useCanvasComments(options: CanvasCommentsOptions) {
   const { area, container, live } = options;
+  const adapter = flowCommentSnapAdapter(area, container);
   const viewport = shallowRef({ ...area.area.transform });
   const nodeViews = shallowRef<ReadonlyMap<string, CommentNodeView>>(new Map());
-  const bounds = shallowRef({ width: 0, height: 0 });
+  const bounds = ref({ width: 1, height: 1 });
   const hoverId = ref<number | null>(null);
   const drag = shallowRef<PinDrag | null>(null);
-  const movedPositions = ref(new Map<number, { position: CommentPoint; revision: number }>());
-  const draftPosition = ref<CommentPoint | null>(null);
+  const dragPreview = shallowRef<CommentMagneticPreview | null>(null);
+  const pendingMoves = ref(new Map<number, PendingMove>());
+  const pendingDraft = shallowRef<PendingDraft | null>(null);
+  const magnetism = ref(true);
   const moveError = ref(false);
+  let request = 0;
+  let altHeld = false;
   let disposed = false;
   let frame: number | null = null;
   let suppressedClick = false;
@@ -82,35 +110,99 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   let observer: ResizeObserver | null = null;
   let surface: HTMLElement | null = null;
 
-  const placing = computed(() => options.state().canComment && Boolean(options.state().placing));
+  const placing = computed(() => options.state().canComment && options.state().placing === true);
   const selectedThread = computed(() => options.state().thread);
   const visibleThreads = computed(() => {
-    const threads = options.pins().filter((thread) => thread.status === "open");
-    const selected = selectedThread.value;
-    if (options.state().open && selected && !threads.some((thread) => thread.id === selected.id))
-      return [...threads, selected];
-    return threads;
+    const selected = options.state().open ? selectedThread.value : null;
+    const visible = options.pins().filter((thread) => thread.status === "open");
+    return selected && !visible.some((thread) => thread.id === selected.id)
+      ? [...visible, selected]
+      : visible;
   });
   const pins = computed(() =>
     visibleThreads.value.flatMap((thread) => {
-      const position = movedPositions.value.get(thread.id)?.position;
-      const point = commentCanvasPoint(thread, nodeViews.value, position);
-      return point ? [{ thread, point, screen: commentScreenPoint(point, viewport.value) }] : [];
+      const pending = pendingMoves.value.get(thread.id);
+      const moving = drag.value?.thread?.id === thread.id ? dragPreview.value : null;
+      const point =
+        moving?.position ?? pending?.position ?? commentCanvasPoint(thread, nodeViews.value);
+      return point && thread.source.status === "available"
+        ? [{ thread, point, screen: commentScreenPoint(point, viewport.value) }]
+        : [];
     }),
   );
-  const draftPoint = computed(() => {
+
+  function contextualDraftPosition(
+    position: CommentPoint,
+    context: CommentContextReference | null,
+  ) {
+    const node = context?.type === "flow_node" ? area.nodeViews.get(`node-${context.id}`) : null;
+    if (!node || !context?.offset) return position;
+    return { x: node.position.x + context.offset.x, y: node.position.y + context.offset.y };
+  }
+  function currentDraft(): CommentMagneticInitial | null {
     const state = options.state();
-    const position = draftPosition.value ?? state.draftPosition;
-    if (!state.open || state.presentation !== "canvas" || state.thread || !position) return null;
-    const point = draftCommentCanvasPoint(position, state.selectedNodeId, nodeViews.value);
-    return point ? commentScreenPoint(point, viewport.value) : null;
+    if (!state.open || state.presentation !== "canvas" || state.thread || !state.draftPosition)
+      return null;
+    const position = draftCommentCanvasPoint(
+      state.draftPosition,
+      state.selectedNodeId,
+      area.nodeViews,
+    );
+    if (!position) return null;
+    const context =
+      state.selectedNodeId == null
+        ? (state.draftContext ?? null)
+        : {
+            type: "flow_node",
+            id: String(state.selectedNodeId),
+            offset: state.draftPosition,
+          };
+    return { position: contextualDraftPosition(position, context), context };
+  }
+  const draftPoint = computed(() => {
+    // Node snapshots make legacy relative drafts reactive to canvas changes.
+    void nodeViews.value;
+    const confirmed = currentDraft();
+    if (!confirmed) return null;
+    const moving = drag.value && !drag.value.thread ? dragPreview.value : null;
+    return commentScreenPoint((moving ?? pendingDraft.value ?? confirmed).position, viewport.value);
   });
-  const activePoint = computed(() =>
-    selectedThread.value
-      ? (pins.value.find((pin) => pin.thread.id === selectedThread.value?.id)?.screen ?? null)
-      : draftPoint.value,
+  const panelState = computed<FlowCommentsPanelState>(() => {
+    const state = options.state();
+    const moving = drag.value && !drag.value.thread ? dragPreview.value : null;
+    void nodeViews.value;
+    const confirmed = state.draftContext ? currentDraft() : null;
+    const draft = moving ?? pendingDraft.value ?? confirmed;
+    return {
+      ...state,
+      ...(draft
+        ? { draftPosition: draft.position, draftContext: draft.context, selectedNodeId: null }
+        : {}),
+      draftPending: Boolean(moving || pendingDraft.value),
+    };
+  });
+  const activePoint = computed(() => {
+    const selected = selectedThread.value;
+    return selected
+      ? (pins.value.find((pin) => pin.thread.id === selected.id)?.screen ?? null)
+      : draftPoint.value;
+  });
+  const hoveredPin = computed(() =>
+    drag.value ? null : (pins.value.find((pin) => pin.thread.id === hoverId.value) ?? null),
   );
-  const hoveredPin = computed(() => pins.value.find((pin) => pin.thread.id === hoverId.value));
+  const snapOutline = computed(() => {
+    const geometry = dragPreview.value?.candidate?.geometry;
+    if (geometry?.kind !== "rect") return null;
+    const rect = container.getBoundingClientRect();
+    return {
+      left: geometry.left - rect.left,
+      top: geometry.top - rect.top,
+      width: geometry.width,
+      height: geometry.height,
+    };
+  });
+  const moving = computed(() => Boolean(drag.value?.moved));
+  const isPending = (id: number) => pendingMoves.value.has(id);
 
   function focusThread() {
     const id = options.focusThreadId();
@@ -118,30 +210,26 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
       focusedThreadId = null;
       return;
     }
-    if (id === focusedThreadId || bounds.value.width === 0) return;
+    if (id === focusedThreadId) return;
     const thread = visibleThreads.value.find((item) => item.id === id);
     const point = thread && commentCanvasPoint(thread, area.nodeViews);
     if (!point) return;
     focusedThreadId = id;
+    const rect = container.getBoundingClientRect();
     const zoom = area.area.transform.k || 1;
-    // Leave room for the conversation, without picking the node or acquiring an edit lock.
-    void area.area.translate(
-      bounds.value.width * 0.4 - point.x * zoom,
-      bounds.value.height / 2 - point.y * zoom,
-    );
+    void area.area.translate(rect.width * 0.4 - point.x * zoom, rect.height / 2 - point.y * zoom);
   }
-
   function refresh() {
     if (disposed) return;
     viewport.value = { ...area.area.transform };
     nodeViews.value = new Map(
-      [...area.nodeViews].map(([id, view]) => [id, { position: { ...view.position } }]),
+      [...area.nodeViews.entries()].map(([id, view]) => [id, { position: { ...view.position } }]),
     );
     const rect = container.getBoundingClientRect();
     bounds.value = { width: rect.width, height: rect.height };
+    if (drag.value?.moved) updatePreview();
     focusThread();
   }
-
   function scheduleRefresh() {
     if (disposed || frame != null) return;
     frame = requestAnimationFrame(() => {
@@ -150,57 +238,76 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     });
   }
 
-  function nodeIdAt(target: EventTarget | null): number | null {
-    if (!(target instanceof Element)) return null;
-    const raw = target.closest<HTMLElement>("[data-flow-comment-node]")?.dataset.flowCommentNode;
-    const id = raw == null ? NaN : Number(raw);
-    return Number.isSafeInteger(id) ? id : null;
-  }
-
   function placeAt(event: PointerEvent) {
-    if (!placing.value || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey)
-      return;
-    if (!(event.target instanceof Element) || !container.contains(event.target)) return;
+    if (!placing.value || event.button !== 0 || event.ctrlKey || event.metaKey) return;
     if (
+      event.target instanceof Element &&
       event.target.closest(
-        'button, a, input, textarea, select, [contenteditable="true"], [data-flow-interactive="true"], [data-testid="flow-context-menu"], .minimap',
+        'button, a, input, textarea, select, [contenteditable], [data-flow-interactive], [data-testid="flow-context-menu"], [data-testid="minimap"]',
       )
     )
       return;
     event.preventDefault();
     event.stopImmediatePropagation();
     placedPointer = event.pointerId;
-    const point = commentPointFromClient(
-      { x: event.clientX, y: event.clientY },
+    const pointer = { x: event.clientX, y: event.clientY };
+    const position = commentPointFromClient(
+      pointer,
       container.getBoundingClientRect(),
       area.area.transform,
     );
-    live.pushEvent(
-      "comments_place",
-      commentPlacement(point, nodeIdAt(event.target), area.nodeViews),
-    );
+    const session = new CommentMagneticDrag(adapter, { position, context: null }, pointer);
+    const preview = session.update(pointer, !magnetism.value || event.altKey);
+    live.pushEvent("comments_place", {
+      node_id: null,
+      ...preview.position,
+      context: preview.context,
+    });
   }
-
   function finishPlacement(event: PointerEvent) {
-    if (placedPointer == null || event.pointerId !== placedPointer) return;
+    if (placedPointer !== event.pointerId) return;
+    placedPointer = null;
     event.preventDefault();
     event.stopImmediatePropagation();
-    placedPointer = null;
   }
 
+  function handleDragKey(event: KeyboardEvent): boolean {
+    if (!drag.value) return false;
+    if (event.key === "Escape") {
+      cancelDrag();
+      return true;
+    }
+    if (editableTarget(event.target)) return false;
+    if (event.key === "Alt") {
+      altHeld = true;
+      updatePreview();
+    }
+    if (event.key === "[" || event.key === "]") {
+      cycleContext(event.key === "]" ? 1 : -1);
+      return true;
+    }
+    if (event.key === "Enter" && drag.value.pointerId == null) {
+      commitDrag();
+      return true;
+    }
+    return false;
+  }
+  function canvasCommentsOpen() {
+    return options.state().open && options.state().presentation === "canvas";
+  }
   function onKeyDown(event: KeyboardEvent) {
+    if (handleDragKey(event)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     if (ignoreCommentShortcut(event)) return;
     if (event.key.toLowerCase() === "c" && options.state().canComment) {
       event.preventDefault();
-      event.stopImmediatePropagation();
       cancelFlowPlacement();
       live.pushEvent("comments_mode", { active: !placing.value });
-    } else if (
-      event.key === "Escape" &&
-      (placing.value || (options.state().open && options.state().presentation === "canvas"))
-    ) {
+    } else if (event.key === "Escape" && (placing.value || canvasCommentsOpen())) {
       event.preventDefault();
-      event.stopImmediatePropagation();
       hoverId.value = null;
       live.pushEvent(
         placing.value ? "comments_mode" : "comments_close",
@@ -208,143 +315,264 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
       );
     }
   }
-
-  function selectThread(thread: FlowCommentThread, event: MouseEvent) {
-    if (suppressedClick && event.detail !== 0) {
+  function onKeyUp(event: KeyboardEvent) {
+    if (event.key === "Alt") {
+      altHeld = false;
+      if (drag.value?.moved) updatePreview();
+    }
+  }
+  function selectThread(thread: FlowCommentThread, event?: MouseEvent) {
+    if (suppressedClick && event?.detail) {
       suppressedClick = false;
       return;
     }
     suppressedClick = false;
-    hoverId.value = null;
     live.pushEvent("comments_select_thread", { thread_id: thread.id, presentation: "canvas" });
   }
-
-  function startDrag(event: PointerEvent, thread: FlowCommentThread | null) {
-    if (!options.state().canComment || event.button !== 0) return;
-    if (thread && movedPositions.value.has(thread.id)) return;
-    const position = dragPositionFor(thread);
-    if (!position) return;
-    suppressedClick = false;
-    moveError.value = false;
+  function dragInitial(thread: FlowCommentThread | null): CommentMagneticInitial | null {
+    if (!thread) return currentDraft();
+    const position = commentCanvasPoint(thread, area.nodeViews);
+    return position ? { position, context: thread.context ?? null } : null;
+  }
+  function beginDrag(
+    target: HTMLElement,
+    thread: FlowCommentThread | null,
+    pointerId: number | null,
+    pointer?: CommentPoint,
+  ) {
+    if (drag.value || !options.state().canComment) return false;
+    if (thread ? isPending(thread.id) : pendingDraft.value) return false;
+    const initial = dragInitial(thread);
+    if (!initial) return false;
+    const { position, context } = initial;
+    const start = pointer ?? adapter.toScreen(position);
     drag.value = {
       thread,
-      pointerId: event.pointerId,
-      start: { x: event.clientX, y: event.clientY },
-      position: { ...position },
-      zoom: area.area.transform.k || 1,
+      draftId: options.state().draftId ?? null,
+      pointerId,
+      target,
+      start,
+      pointer: start,
+      session: new CommentMagneticDrag(adapter, { position, context }, start),
       moved: false,
     };
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    dragPreview.value = null;
+    suppressedClick = false;
+    moveError.value = false;
+    return true;
   }
-
-  function dragPositionFor(thread: FlowCommentThread | null) {
-    if (!thread) return draftPosition.value ?? options.state().draftPosition;
-    if (thread.source.type === "flow_canvas") return commentCanvasPoint(thread, area.nodeViews);
-    return thread.position ?? { x: 16, y: 16 };
+  function startDrag(event: PointerEvent, thread: FlowCommentThread | null) {
+    if (event.button !== 0) return;
+    const target = event.currentTarget as HTMLElement;
+    if (!beginDrag(target, thread, event.pointerId, { x: event.clientX, y: event.clientY })) return;
+    event.preventDefault();
+    altHeld = event.altKey;
+    target.focus({ preventScroll: true });
+    target.setPointerCapture?.(event.pointerId);
   }
-
+  function updatePreview() {
+    const current = drag.value;
+    if (!current) return;
+    dragPreview.value = current.session.update(current.pointer, !magnetism.value || altHeld);
+    hoverId.value = null;
+  }
   function onDragMove(event: PointerEvent) {
     const current = drag.value;
     if (!current || current.pointerId !== event.pointerId) return;
-    const dx = event.clientX - current.start.x;
-    const dy = event.clientY - current.start.y;
-    if (!current.moved && Math.hypot(dx, dy) < 4) return;
-    const position = {
-      x: current.position.x + dx / current.zoom,
-      y: current.position.y + dy / current.zoom,
-    };
-    drag.value = { ...current, moved: true };
-    hoverId.value = null;
-    if (current.thread)
-      movedPositions.value.set(current.thread.id, { position, revision: current.thread.revision });
-    else draftPosition.value = position;
-  }
-
-  function onDragEnd(event: PointerEvent) {
-    const current = drag.value;
-    if (!current || current.pointerId !== event.pointerId) return;
-    drag.value = null;
-    if (!current.moved) return;
-    suppressedClick = event.type !== "pointercancel";
-    if (event.type === "pointercancel" || !options.state().canComment) {
-      if (current.thread) movedPositions.value.delete(current.thread.id);
-      draftPosition.value = null;
+    const pointer = { x: event.clientX, y: event.clientY };
+    if (!current.moved && Math.hypot(pointer.x - current.start.x, pointer.y - current.start.y) < 4)
       return;
-    }
-    if (current.thread) persistThreadPosition(current.thread);
-    else persistDraftPosition();
+    event.preventDefault();
+    altHeld = event.altKey;
+    drag.value = { ...current, pointer, moved: true };
+    updatePreview();
   }
-
-  function persistDraftPosition() {
-    const position = draftPosition.value;
-    if (!position) return;
-    const rollbackDraft = () => {
-      if (draftPosition.value !== position) return;
-      draftPosition.value = null;
+  function onPinKeyDown(event: KeyboardEvent, thread: FlowCommentThread | null) {
+    const direction = keyboardDirections[event.key];
+    if (!direction || ignorePinShortcut(event) || !options.state().canComment) return;
+    const target = event.currentTarget as HTMLElement;
+    if (!drag.value && !beginDrag(target, thread, null)) return;
+    const current = drag.value;
+    if (!current || current.pointerId != null || current.target !== target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const step = event.shiftKey ? 1 : 10;
+    altHeld = event.altKey;
+    drag.value = {
+      ...current,
+      moved: true,
+      pointer: {
+        x: current.pointer.x + direction.x * step,
+        y: current.pointer.y + direction.y * step,
+      },
+    };
+    updatePreview();
+  }
+  function onPinBlur() {
+    hoverId.value = null;
+    if (drag.value?.pointerId === null) cancelDrag();
+  }
+  function endSession() {
+    const current = drag.value;
+    drag.value = null;
+    dragPreview.value = null;
+    if (current?.pointerId != null && current.target.hasPointerCapture?.(current.pointerId))
+      current.target.releasePointerCapture(current.pointerId);
+    return current;
+  }
+  function cancelDrag() {
+    if (drag.value?.moved && drag.value.pointerId != null) suppressedClick = true;
+    drag.value?.session.cancel();
+    endSession();
+  }
+  function onLostCapture(event: PointerEvent) {
+    if (drag.value?.pointerId === event.pointerId) cancelDrag();
+  }
+  function onDragEnd(event: PointerEvent) {
+    if (!drag.value || drag.value.pointerId !== event.pointerId) return;
+    if (event.type === "pointercancel") cancelDrag();
+    else {
+      onDragMove(event);
+      commitDrag();
+    }
+  }
+  function commitDrag() {
+    const current = drag.value;
+    if (!current) return;
+    // Re-read transforms and targets at commit, including a node deleted during this gesture.
+    if (current.moved) updatePreview();
+    const preview = dragPreview.value;
+    endSession();
+    if (!current.moved || !preview || !options.state().canComment) return;
+    suppressedClick = current.pointerId != null;
+    if (current.thread) persistThread(current.thread, preview);
+    else persistDraft(current.draftId, preview);
+  }
+  function persistDraft(draftId: string | null, preview: CommentMagneticInitial) {
+    const pending = { ...preview, draftId, request: ++request };
+    pendingDraft.value = pending;
+    const rollback = () => {
+      if (disposed || pendingDraft.value?.request !== pending.request) return;
+      pendingDraft.value = null;
       moveError.value = true;
     };
     live.pushEvent(
       "comments_place",
-      { node_id: options.state().selectedNodeId, ...position, moving_draft: true },
-      (reply) => {
-        if (reply.ok !== true) rollbackDraft();
-      },
-      rollbackDraft,
-    );
-  }
-
-  function persistThreadPosition(thread: FlowCommentThread) {
-    const { id, revision } = thread;
-    const position = movedPositions.value.get(id)?.position;
-    if (!position) return;
-    const rollback = () => {
-      if (movedPositions.value.get(id)?.revision !== revision) return;
-      movedPositions.value.delete(id);
-      moveError.value = true;
-    };
-    live.pushEvent(
-      "comments_move",
       {
-        thread_id: id,
-        ...position,
-        expected_revision: revision,
-        ...movedContext(thread, position),
+        node_id: null,
+        ...preview.position,
+        context: preview.context,
+        moving_draft: true,
+        draft_id: draftId,
       },
       (reply) => {
         if (reply.ok !== true) rollback();
+        else if (pendingDraft.value?.request === pending.request) confirmDraft();
       },
       rollback,
     );
   }
-
-  function movedContext(thread: FlowCommentThread, position: CommentPoint) {
-    if (thread.source.type !== "flow_canvas") return {};
-    const nodeId = commentNodeId(thread);
-    const node = nodeId == null ? null : area.nodeViews.get(`node-${nodeId}`);
-    if (!node || !thread.context) return {};
-    return {
-      context: {
-        type: thread.context.type,
-        id: thread.context.id,
-        offset: { x: position.x - node.position.x, y: position.y - node.position.y },
-      },
+  function persistThread(thread: FlowCommentThread, preview: CommentMagneticInitial) {
+    const pending = { ...preview, request: ++request, revision: thread.revision };
+    pendingMoves.value.set(thread.id, pending);
+    const finish = (failed: boolean) => {
+      if (disposed || pendingMoves.value.get(thread.id)?.request !== pending.request) return;
+      const latest = visibleThreads.value.find((item) => item.id === thread.id);
+      if (failed || !latest || latest.revision !== pending.revision)
+        pendingMoves.value.delete(thread.id);
+      if (failed) moveError.value = true;
     };
+    // Legacy payloads are readable during rollout; canonical threads always use absolute coordinates.
+    const legacyNode =
+      thread.source.type === "flow_node" ? area.nodeViews.get(`node-${thread.source.id}`) : null;
+    const position = legacyNode
+      ? {
+          x: preview.position.x - legacyNode.position.x,
+          y: preview.position.y - legacyNode.position.y,
+        }
+      : preview.position;
+    live.pushEvent(
+      "comments_move",
+      {
+        thread_id: thread.id,
+        ...position,
+        expected_revision: thread.revision,
+        ...(thread.source.type === "flow_canvas" ? { context: preview.context } : {}),
+      },
+      (reply) => finish(reply.ok !== true),
+      () => finish(true),
+    );
+  }
+  function toggleMagnetism() {
+    magnetism.value = !magnetism.value;
+    if (drag.value?.moved) updatePreview();
+  }
+  function cycleContext(direction: 1 | -1 = 1) {
+    if (!drag.value?.moved || !magnetism.value || altHeld) return;
+    dragPreview.value = drag.value.session.cycle(direction);
   }
 
   watch(
-    () => options.pins().map((thread) => [thread.id, thread.revision]),
+    () => [
+      options.pins().map((thread) => [thread.id, thread.revision]),
+      selectedThread.value?.revision,
+    ],
     () => {
-      for (const [id, pending] of movedPositions.value) {
-        const latest = options.pins().find((thread) => thread.id === id);
-        if (!latest || latest.revision !== pending.revision) movedPositions.value.delete(id);
+      for (const [id, pending] of pendingMoves.value) {
+        const latest = visibleThreads.value.find((thread) => thread.id === id);
+        if (!latest || latest.revision !== pending.revision) pendingMoves.value.delete(id);
       }
+      const active = drag.value?.thread;
+      if (
+        active &&
+        !visibleThreads.value.some(
+          (thread) => thread.id === active.id && thread.revision === active.revision,
+        )
+      )
+        cancelDrag();
       scheduleRefresh();
     },
   );
+  function contextIdentity(context: CommentContextReference | null | undefined) {
+    return context
+      ? JSON.stringify([context.type, context.id, context.offset?.x, context.offset?.y])
+      : null;
+  }
+  function confirmDraft() {
+    const pending = pendingDraft.value;
+    if (!pending) return;
+    const state = options.state();
+    const matches =
+      state.draftId === pending.draftId &&
+      state.selectedNodeId == null &&
+      state.draftPosition?.x === pending.position.x &&
+      state.draftPosition?.y === pending.position.y &&
+      contextIdentity(state.draftContext) === contextIdentity(pending.context);
+    if (matches) pendingDraft.value = null;
+  }
+  watch(() => [options.state().draftPosition, options.state().draftContext], confirmDraft);
   watch(
-    () => [options.state().draftPosition, options.state().thread?.id],
+    () => [options.state().draftId, options.state().open, options.state().thread?.id],
     () => {
-      draftPosition.value = null;
+      if (
+        pendingDraft.value &&
+        (!options.state().open ||
+          options.state().draftId !== pendingDraft.value.draftId ||
+          options.state().thread)
+      )
+        pendingDraft.value = null;
+      if (
+        drag.value &&
+        !drag.value.thread &&
+        (!currentDraft() || options.state().draftId !== drag.value.draftId)
+      )
+        cancelDrag();
+    },
+  );
+  watch(
+    () => options.state().canComment,
+    (allowed) => {
+      if (!allowed) cancelDrag();
     },
   );
   watch(() => options.focusThreadId(), focusThread);
@@ -366,9 +594,11 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     surface?.addEventListener("pointerup", finishPlacement, true);
     surface?.addEventListener("pointercancel", finishPlacement, true);
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keyup", onKeyUp, true);
     window.addEventListener("pointermove", onDragMove);
     window.addEventListener("pointerup", onDragEnd);
     window.addEventListener("pointercancel", onDragEnd);
+    window.addEventListener("blur", cancelDrag);
     observer = new ResizeObserver(refresh);
     observer.observe(container);
     area.addPipe((context) => {
@@ -390,15 +620,18 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   });
   onUnmounted(() => {
     disposed = true;
+    cancelDrag();
     if (frame != null) cancelAnimationFrame(frame);
     observer?.disconnect();
     surface?.removeEventListener("pointerdown", placeAt, true);
     surface?.removeEventListener("pointerup", finishPlacement, true);
     surface?.removeEventListener("pointercancel", finishPlacement, true);
     document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("keyup", onKeyUp, true);
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragEnd);
     window.removeEventListener("pointercancel", onDragEnd);
+    window.removeEventListener("blur", cancelDrag);
     container.style.cursor = "";
   });
 
@@ -411,7 +644,18 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     activePoint,
     draftPoint,
     moveError,
+    panelState,
+    magnetism,
+    moving,
+    dragPreview,
+    snapOutline,
+    isPending,
     selectThread,
     startDrag,
+    onPinKeyDown,
+    onPinBlur,
+    onLostCapture,
+    toggleMagnetism,
+    cycleContext,
   };
 }
