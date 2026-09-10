@@ -27,7 +27,10 @@ describe("canvas note native undo", () => {
     const { wrapper } = await note();
     expect(wrapper.attributes("data-note-shape")).toBe("rectangle");
     expect(wrapper.get('[role="textbox"]').attributes("aria-multiline")).toBe("true");
-    expect(wrapper.get(".note-content").text()).toContain("Alex");
+    expect(wrapper.get(".note-content").text()).not.toContain("Alex");
+    const metadataId = wrapper.attributes("aria-describedby");
+    expect(wrapper.get(`#${metadataId}`).text()).toBe("Alex");
+    expect(wrapper.find("footer").exists()).toBe(false);
   });
 
   it("preserves focus, selection and native typing history while changing shapes", async () => {
@@ -37,7 +40,7 @@ describe("canvas note native undo", () => {
     editor.view.focus();
     expect(document.activeElement).toBe(editor.view.dom);
     const selection = editor.state.selection.toJSON();
-    for (const shape of ["ellipse", "diamond", "rectangle"] as NoteShape[]) {
+    for (const shape of ["plain", "ellipse", "diamond", "rectangle"] as NoteShape[]) {
       await wrapper.setProps({ note: idea({ canvas: { shape } }) });
       expect(wrapper.attributes("data-note-shape")).toBe(shape);
       expect(wrapper.getComponent(EditorContent).props("editor")).toBe(editor);
@@ -52,6 +55,32 @@ describe("canvas note native undo", () => {
     expect(editor.getHTML()).toBe("<p>Start</p>");
     expect(editor.commands.redo()).toBe(true);
     expect(editor.getHTML()).toBe("<p>Start changed</p>");
+  });
+
+  it("keeps a blank plain note editable and preserves its placeholder through shape changes", async () => {
+    const { wrapper, editor } = await note();
+    await wrapper.setProps({ body: "<p></p>", note: idea({ canvas: { shape: "plain" } }) });
+    expect(wrapper.attributes("data-note-shape")).toBe("plain");
+    expect(wrapper.get("[data-placeholder]").attributes("data-placeholder")).toBeTruthy();
+    await wrapper.setProps({ note: idea({ canvas: { shape: "ellipse" } }) });
+    expect(wrapper.getComponent(EditorContent).props("editor")).toBe(editor);
+    expect(editor.isEditable).toBe(true);
+    expect(wrapper.emitted("finish")).toBeUndefined();
+    expect(wrapper.emitted("change")).toBeUndefined();
+  });
+
+  it("keeps participant and round context outside the text being edited", async () => {
+    const { wrapper, editor } = await note();
+    await wrapper.setProps({
+      note: idea({ title: null, round_id: 8, late_contribution: true }),
+      roundNumber: 2,
+      status: "saving",
+    });
+    expect(wrapper.get(".note-metadata").text()).toContain("Alex");
+    expect(wrapper.get(".note-metadata").text()).toContain("Round 2");
+    expect(wrapper.get(".note-metadata").text()).toContain("Saving");
+    expect(wrapper.get(".note-content").text()).toBe("Start");
+    expect(editor.getHTML()).toBe("<p>Start</p>");
   });
 
   it("reacts to in-place shape patches without reporting a text edit", async () => {

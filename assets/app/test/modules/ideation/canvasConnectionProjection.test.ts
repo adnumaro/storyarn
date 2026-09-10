@@ -166,11 +166,48 @@ describe("pending connected note projection", () => {
 });
 
 describe("independent connection and movement projections", () => {
+  it("reconciles a local shape acknowledgement before a remote in-place shape change", async () => {
+    const { notes, current, replies } = setup();
+    notes.move(10, { shape: "plain" });
+    const acknowledged = { ...current.value.ideas[0].canvas!, shape: "plain" as const, version: 2 };
+    replies[0]({ status: "ok", value: acknowledged });
+    await flush();
+    expect(notes.find(10)?.canvas?.shape).toBe("plain");
+
+    Object.assign(current.value.ideas[0].canvas!, acknowledged);
+    await flush();
+    Object.assign(current.value.ideas[0].canvas!, { shape: "ellipse", version: 3 });
+    await flush();
+
+    expect(notes.find(10)?.canvas).toMatchObject({ shape: "ellipse", version: 3 });
+  });
+
+  it("retires a created-note cache on in-place confirmation so remote removal stays removed", async () => {
+    const { notes, current, replies } = setup();
+    const temporary = notes.add({ x: 1400, y: 20 }, "mint", { body: "<p>Consequence</p>" });
+    const saving = notes.save(temporary);
+    const persisted = idea({ id: 30, body: "<p>Consequence</p>" });
+    replies[0]({ status: "ok", value: persisted });
+    await saving;
+    expect(notes.find(30)).toBeDefined();
+
+    current.value.ideas.push(persisted);
+    await flush();
+    current.value.ideas.splice(
+      current.value.ideas.findIndex((note) => note.id === persisted.id),
+      1,
+    );
+    await flush();
+
+    expect(notes.find(30)).toBeUndefined();
+    expect(notes.notes.value.map((note) => note.id)).toEqual([10, 11]);
+  });
+
   it("keeps an acknowledged link when an older position reply arrives", async () => {
     const { notes, request, replies } = setup();
     notes.move(10, { x: 1400, y: 60 });
     notes.acknowledgeConnections({
-      changes: [{ source_id: 10, target_id: 11, connected: true }],
+      changes: [{ source_id: 10, target_id: 11, connected: true, direction: "both" }],
       versions: [{ id: 10, version: 1 }],
     });
     replies[0]({
@@ -183,6 +220,7 @@ describe("independent connection and movement projections", () => {
       y: 60,
       version: 2,
       links: [11],
+      link_directions: { 11: "both" },
       links_version: 1,
     });
     expect(request).toHaveBeenCalledTimes(1);
@@ -218,5 +256,6 @@ describe("independent connection and movement projections", () => {
     expect(notes.find(10)?.canvas?.links).toEqual([11, temporary]);
     await notes.save(temporary);
     expect(notes.find(10)?.canvas?.links).toEqual([11]);
+    expect(notes.find(10)?.canvas?.link_directions).not.toHaveProperty(String(temporary));
   });
 });

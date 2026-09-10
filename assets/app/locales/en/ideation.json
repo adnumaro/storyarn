@@ -172,7 +172,7 @@
       "selectHelp": "Drag on empty canvas to select notes. Hold Shift to add to your selection; Escape cancels.",
       "historyHelp": "Undo: ⌘/Ctrl+Z. Redo: ⌘/Ctrl+Shift+Z or Ctrl+Y.",
       "connectionOrigin": "Origin",
-      "connectionHelp": "Connect selected notes · L",
+      "connectionHelp": "Select notes and press L to connect. Drag one note onto another, or use the connection tool. Select a line to edit or delete it.",
       "originHelp": "Connections start from the highlighted note. Choose another origin here.",
       "useAsOrigin": "Use “{title}” as origin",
       "connectSelected": "Connect selected notes",
@@ -189,8 +189,19 @@
       "shapes": {
         "rectangle": "Rectangle",
         "ellipse": "Ellipse",
-        "diamond": "Diamond"
-      }
+        "diamond": "Diamond",
+        "plain": "Plain text"
+      },
+      "connectionLabel": "Connection between {source} and {target}",
+      "connectionDirection": "Connection style",
+      "connectionDirections": {
+        "none": "Line",
+        "forward": "Arrow to second note",
+        "backward": "Arrow to first note",
+        "both": "Arrows both ways"
+      },
+      "removeConnection": "Delete connection",
+      "resizeNote": "Resize note width"
     },
     "rounds": {
       "title": "Rounds",

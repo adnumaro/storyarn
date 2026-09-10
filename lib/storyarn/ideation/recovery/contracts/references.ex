@@ -34,6 +34,7 @@ defmodule Storyarn.Ideation.Recovery.References do
       row.canvas
       |> Map.drop(["links_receipt", "creation_links_receipt"])
       |> Map.update("links", [], &Enum.map(&1, fn id -> lookup(maps, "ideas", id) end))
+      |> remap_directions(maps)
 
     %{row | canvas: canvas}
   end
@@ -70,6 +71,18 @@ defmodule Storyarn.Ideation.Recovery.References do
   end
 
   defp rewrite_payload(row, _, _, _), do: row
+
+  defp remap_directions(%{"link_directions" => directions} = canvas, maps) do
+    remapped =
+      Map.new(directions, fn {id, direction} ->
+        {to_string(lookup(maps, "ideas", String.to_integer(id))), direction}
+      end)
+
+    Map.put(canvas, "link_directions", remapped)
+  end
+
+  defp remap_directions(canvas, _maps), do: canvas
+
   defp remap(row, field, fun), do: if(Map.has_key?(row, field), do: Map.update!(row, field, fun), else: row)
   defp lookup(_, _, nil), do: nil
   # Sources can point forward during the first insertion pass.

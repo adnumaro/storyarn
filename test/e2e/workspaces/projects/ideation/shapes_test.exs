@@ -129,8 +129,8 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
     refute before["points"] == after_shape["points"]
 
     for boundary <- [after_shape["source"], after_shape["target"]] do
-      assert boundary >= 0.99
-      assert boundary <= 1.2
+      assert boundary["radius"] >= 0.99
+      assert_in_delta boundary["gap"], 4, 2
     end
 
     browser =
@@ -161,6 +161,7 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
       |> assert_has("#brainstorming-canvas")
       |> press("#brainstorming-canvas", "n")
       |> assert_has(".canvas-note [contenteditable=true]:focus")
+      |> assert_blank_note_size()
       |> change_shape("Diamond")
       |> assert_has(".canvas-note", count: 1)
       |> assert_has("#{editor}:focus")
@@ -174,6 +175,19 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
     browser
     |> visit(path(ctx))
     |> assert_has("#canvas-note-#{saved.id}[data-note-shape=diamond]", text: "A choice with consequences.")
+  end
+
+  defp assert_blank_note_size(browser) do
+    {:ok, size} =
+      PlaywrightEx.Frame.evaluate(browser.frame_id,
+        expression:
+          "(() => {const note=document.querySelector('.canvas-note');return {width:note.offsetWidth,height:note.offsetHeight};})()",
+        timeout: 10_000
+      )
+
+    assert size["width"] >= 96, "The blank note is too narrow to find: #{inspect(size)}"
+    assert size["height"] >= 32
+    browser
   end
 
   defp assert_text_inside_diamond(browser, id) do
@@ -241,7 +255,9 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
             const point = new DOMPoint(x, y).matrixTransform(matrix);
             const dx = (point.x - box.x - box.width / 2) / (box.width / 2);
             const dy = (point.y - box.y - box.height / 2) / (box.height / 2);
-            return dx * dx + dy * dy;
+            const radius = Math.hypot(dx, dy);
+            const distance = Math.hypot(point.x - box.x - box.width / 2, point.y - box.y - box.height / 2);
+            return { radius: radius * radius, gap: distance * (1 - 1 / radius) };
           }
           return { points, source: boundary(#{source_id}, points[0], points[1]), target: boundary(#{target_id}, points[2], points[3]) };
         })()
@@ -262,7 +278,7 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
   defp select_note(browser, id, modifiers \\ []) do
     {:ok, _} =
       PlaywrightEx.Frame.click(browser.frame_id,
-        selector: "#canvas-note-#{id} footer",
+        selector: "#canvas-note-#{id} .note-content",
         modifiers: modifiers,
         timeout: 10_000
       )

@@ -15,7 +15,7 @@ defmodule Storyarn.Ideation.CanvasShapesTest do
   end
 
   test "canvas creation preserves each supported shape and its idempotent intent", ctx do
-    for shape <- ~w(rectangle ellipse diamond) do
+    for shape <- ~w(plain rectangle ellipse diamond) do
       attrs = idea_attrs(%{canvas: placement(%{"shape" => shape})})
       assert {:ok, note} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
       assert note.canvas["shape"] == shape
@@ -28,7 +28,7 @@ defmodule Storyarn.Ideation.CanvasShapesTest do
                Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, changed)
     end
 
-    assert Repo.aggregate(Idea, :count) == 3
+    assert Repo.aggregate(Idea, :count) == 4
   end
 
   test "reshaping uses the existing canvas version and supports undo and redo without changing text or links", ctx do
@@ -119,7 +119,7 @@ defmodule Storyarn.Ideation.CanvasShapesTest do
   end
 
   test "project snapshot restores all shapes and legacy canvases after physical deletion", ctx do
-    notes = Enum.map(~w(rectangle ellipse diamond), &create_note(ctx, %{"shape" => &1})) ++ [create_note(ctx)]
+    notes = Enum.map(~w(plain rectangle ellipse diamond), &create_note(ctx, %{"shape" => &1})) ++ [create_note(ctx)]
     capsule = capture(ctx)
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     assert {:ok, maps} = restore_result(ctx, capsule)

@@ -93,6 +93,16 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       Enum.all?(Map.get(canvas, "links", []), fn id ->
         target = index.ideas[id]
         is_map(target) and id != row["id"] and target["session_id"] == row["session_id"]
+      end) and valid_directions?(canvas)
+  end
+
+  defp valid_directions?(canvas) do
+    directions = Map.get(canvas, "link_directions", %{})
+    targets = Enum.map(Map.get(canvas, "links", []), &to_string/1)
+
+    is_map(directions) and
+      Enum.all?(directions, fn {target, direction} ->
+        target in targets and direction in ~w(none forward backward both)
       end)
   end
 
@@ -101,7 +111,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
     Enum.all?(["x", "y"], &optional_range?(canvas[&1], -1_000_000, 1_000_000)) and
       optional_range?(canvas["width"], 180, 800) and
       (is_nil(canvas["color"]) or canvas["color"] in ~w(yellow coral mint blue violet paper)) and
-      (not Map.has_key?(canvas, "shape") or canvas["shape"] in ~w(rectangle ellipse diamond)) and
+      (not Map.has_key?(canvas, "shape") or canvas["shape"] in ~w(plain rectangle ellipse diamond)) and
       valid_canvas_version?(canvas["version"]) and valid_canvas_version?(canvas["links_version"])
   end
 

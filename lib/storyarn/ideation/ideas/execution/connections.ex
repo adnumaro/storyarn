@@ -42,7 +42,7 @@ defmodule Storyarn.Ideation.Ideas.Execution.Connections do
           {:error, :invalid_canvas}
 
         true ->
-          persist(source, links)
+          persist(source, links, Map.take(directions(source), Enum.map(links, &to_string/1)))
           Transaction.success(%{id: source_id}, audiences(source))
       end
     end
@@ -66,7 +66,12 @@ defmodule Storyarn.Ideation.Ideas.Execution.Connections do
     acknowledgements =
       sources
       |> Enum.map(fn source ->
-        persist(source, Map.get(source.canvas, "links", []) ++ [target_id])
+        persist(
+          source,
+          Map.get(source.canvas, "links", []) ++ [target_id],
+          Map.put(directions(source), to_string(target_id), "none")
+        )
+
         %{id: source.id, before_version: version(source), version: version(source) + 1}
       end)
       |> Enum.sort_by(& &1.id)
@@ -97,9 +102,42 @@ defmodule Storyarn.Ideation.Ideas.Execution.Connections do
 
   defp prepare(source, requested) do
     previous = Map.get(source.canvas, "links", [])
-    changes = Enum.filter(requested, &(&1.target_id in previous != &1.connected))
+
+    changes =
+      requested
+      |> Enum.map(&acknowledge(source, &1))
+      |> Enum.reject(&(&1.connected == &1.previous_connected and &1.direction == &1.previous_direction))
+
     links = Enum.reduce(changes, previous, &set_link(&2, &1.target_id, &1.connected))
-    %{source: source, changes: changes, links: links, version: version(source) + if(changes == [], do: 0, else: 1)}
+
+    directions =
+      Enum.reduce(changes, directions(source), fn change, directions ->
+        key = to_string(change.target_id)
+        if change.connected, do: Map.put(directions, key, change.direction), else: Map.delete(directions, key)
+      end)
+
+    %{
+      source: source,
+      changes: changes,
+      links: links,
+      directions: directions,
+      version: version(source) + if(changes == [], do: 0, else: 1)
+    }
+  end
+
+  defp acknowledge(source, change) do
+    connected? = change.target_id in Map.get(source.canvas, "links", [])
+    previous_direction = if connected?, do: Map.get(directions(source), to_string(change.target_id), "forward")
+    direction = if change.connected, do: Map.get(change, :direction, previous_direction || "none")
+
+    %{
+      source_id: change.source_id,
+      target_id: change.target_id,
+      connected: change.connected,
+      direction: direction,
+      previous_connected: connected?,
+      previous_direction: previous_direction
+    }
   end
 
   defp persist_update(update, key, fingerprint) do
@@ -112,16 +150,18 @@ defmodule Storyarn.Ideation.Ideas.Execution.Connections do
     canvas =
       update.source.canvas
       |> Map.put("links", update.links)
+      |> Map.put("link_directions", update.directions)
       |> Map.put("links_version", update.version)
       |> Map.put("links_receipt", receipt)
 
     update.source |> change(canvas: canvas) |> Repo.update!()
   end
 
-  defp persist(source, links) do
+  defp persist(source, links, directions) do
     canvas =
       source.canvas
       |> Map.put("links", links)
+      |> Map.put("link_directions", directions)
       |> Map.put("links_version", version(source) + 1)
       |> Map.delete("links_receipt")
 
@@ -175,6 +215,7 @@ defmodule Storyarn.Ideation.Ideas.Execution.Connections do
 
   defp set_link(previous, target, true), do: Enum.uniq(previous ++ [target])
   defp set_link(previous, target, false), do: Enum.reject(previous, &(&1 == target))
+  defp directions(source), do: Map.get(source.canvas, "link_directions", %{})
   defp version(source), do: Map.get(source.canvas, "links_version", 0)
 
   defp audiences(source) do
@@ -183,9 +224,18 @@ defmodule Storyarn.Ideation.Ideas.Execution.Connections do
       else: Enum.reject([source.author_id], &is_nil/1)
   end
 
-  defp string_keys(change),
-    do: %{"source_id" => change.source_id, "target_id" => change.target_id, "connected" => change.connected}
+  defp string_keys(change), do: Map.new(change, fn {key, value} -> {Atom.to_string(key), value} end)
 
-  defp atom_keys(change),
-    do: %{source_id: change["source_id"], target_id: change["target_id"], connected: change["connected"]}
+  defp atom_keys(change) do
+    connected? = change["connected"]
+
+    %{
+      source_id: change["source_id"],
+      target_id: change["target_id"],
+      connected: connected?,
+      direction: Map.get(change, "direction", if(connected?, do: "forward")),
+      previous_connected: Map.get(change, "previous_connected", not connected?),
+      previous_direction: Map.get(change, "previous_direction", if(not connected?, do: "forward"))
+    }
+  end
 end

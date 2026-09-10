@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { Circle, Diamond, RectangleHorizontal, Shapes } from "@lucide/vue";
+import { Circle, Diamond, RectangleHorizontal, Shapes, Type } from "@lucide/vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useBoardText } from "../composables/useBoardText";
@@ -17,6 +17,7 @@ const open = ref(false);
 const trigger = ref<HTMLButtonElement>();
 let chosen = false;
 const shapes = [
+  { id: "plain", icon: Type },
   { id: "rectangle", icon: RectangleHorizontal },
   { id: "ellipse", icon: Circle },
   { id: "diamond", icon: Diamond },
@@ -60,22 +61,22 @@ function restoreFocus(event: Event) {
     </ToolbarTooltip>
     <PopoverContent
       :reference="trigger"
-      class="w-72 p-3"
+      class="w-72 p-2"
       :aria-label="t('ideation.canvas.shape')"
       @close-auto-focus="restoreFocus"
     >
-      <p class="mb-3 text-xs font-medium text-muted-foreground">
+      <p class="px-1 pb-2 pt-1 text-xs font-medium text-muted-foreground">
         {{
           count > 1 ? t("ideation.canvas.shapeSelection", { count }) : t("ideation.canvas.shape")
         }}
       </p>
-      <div class="grid grid-cols-3 gap-2">
+      <div class="grid grid-cols-4 gap-1">
         <button
           v-for="shape in shapes"
           :id="`note-shape-${shape.id}`"
           :key="shape.id"
           type="button"
-          class="flex flex-col items-center gap-2 rounded-md border px-2 py-3 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+          class="flex min-w-0 flex-col items-center gap-1.5 rounded-md border px-1 py-2 text-[11px] transition-colors focus-visible:ring-2 focus-visible:ring-ring"
           :class="
             value === shape.id
               ? 'border-primary bg-primary/10 text-primary'
@@ -88,7 +89,7 @@ function restoreFocus(event: Event) {
         >
           <component
             :is="shape.icon"
-            class="size-7"
+            class="size-5"
             :class="shape.id === 'ellipse' && 'scale-x-125 scale-y-90'"
           />
           {{ t(`ideation.canvas.shapes.${shape.id}`) }}

@@ -29,6 +29,7 @@ function workspace(overrides: Partial<Board> = {}, deferConnections = false) {
     ...overrides,
   });
   const calls = vi.fn();
+  let nextId = 30;
   const replies: Array<(value?: ConnectionReply) => void> = [];
   vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
     calls(event, payload);
@@ -47,11 +48,16 @@ function workspace(overrides: Partial<Board> = {}, deferConnections = false) {
       const reply = (value: ConnectionReply = result) => callback?.(value);
       if (deferConnections) replies.push(reply);
       else reply();
+    } else if (event === "delete_idea") {
+      callback?.({
+        status: "ok",
+        value: { id: Number(payload!.idea_id), revision: 2, deleted_at: "2026-09-10T12:00:00Z" },
+      });
     } else if (event === "create_idea") {
       callback?.({
         status: "ok",
         value: idea({
-          id: 30,
+          id: nextId++,
           title: null,
           body: String(payload!.body),
           canvas: payload!.canvas as Idea["canvas"],
@@ -84,6 +90,31 @@ afterEach(() => {
 });
 
 describe("workspace connections", () => {
+  it("duplicates notes with their line styles and removes the whole copy in one undo", async () => {
+    const { canvas, calls } = workspace({
+      ideas: [idea({ canvas: { links: [11], link_directions: { 11: "both" } } }), idea({ id: 11 })],
+    });
+    canvas.vm.$emit("duplicate", [10, 11]);
+    await flushPromises();
+    expect(calls).toHaveBeenCalledWith(
+      "update_idea_connections",
+      expect.objectContaining({
+        changes: [{ source_id: 30, target_id: 31, connected: true, direction: "both" }],
+      }),
+    );
+    expect(canvas.props("notes").find((note: Idea) => note.id === 30).canvas).toMatchObject({
+      links: [31],
+      link_directions: { 31: "both" },
+    });
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("notes").map((note: Idea) => note.id)).toEqual([10, 11]);
+    expect(canvas.props("historyState").canUndo).toBe(false);
+    expect(calls.mock.calls.filter(([event]) => event === "update_idea_connections")).toHaveLength(
+      1,
+    );
+  });
+
   it("executes undo pressed during an ordinary connection write after its acknowledgement", async () => {
     const { canvas, calls, reply } = workspace({}, true);
     canvas.vm.$emit("connect", 10, 11, true);
@@ -176,8 +207,8 @@ describe("workspace connections", () => {
       "update_idea_connections",
       expect.objectContaining({
         changes: [
-          { source_id: 11, target_id: 10, connected: true },
-          { source_id: 11, target_id: 12, connected: true },
+          { source_id: 11, target_id: 10, connected: true, direction: "none" },
+          { source_id: 11, target_id: 12, connected: true, direction: "none" },
         ],
       }),
     );

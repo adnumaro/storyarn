@@ -50,10 +50,16 @@ defmodule Storyarn.Ideation.Ideas.Rules.Connections do
     source = Input.get(attrs, :source_id)
     target = Input.get(attrs, :target_id)
     connected = Input.get(attrs, :connected)
+    direction = Input.get(attrs, :direction)
+    explicit_direction? = Map.has_key?(attrs, :direction) or Map.has_key?(attrs, "direction")
 
-    if valid_id(source) and valid_id(target) and source != target and is_boolean(connected),
-      do: {:ok, %{source_id: source, target_id: target, connected: connected}},
-      else: {:error, :invalid_connections}
+    if valid_id(source) and valid_id(target) and source != target and is_boolean(connected) and
+         (not explicit_direction? or direction in ~w(none forward backward both)) do
+      change = %{source_id: source, target_id: target, connected: connected}
+      {:ok, if(explicit_direction?, do: Map.put(change, :direction, direction), else: change)}
+    else
+      {:error, :invalid_connections}
+    end
   end
 
   defp change(_), do: {:error, :invalid_connections}

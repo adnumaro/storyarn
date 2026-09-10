@@ -111,44 +111,56 @@ const color = computed(
     :id="`canvas-note-${note.id}`"
     tabindex="0"
     :aria-label="note.title || note.preview || t('ideation.untitled')"
+    :aria-describedby="`canvas-note-meta-${note.id}`"
     :aria-selected="selected"
     :data-round-id="note.round_id"
     :data-late-contribution="note.late_contribution"
     :data-note-shape="shape"
-    class="canvas-note relative grid min-h-60 text-[#292d35] outline-none"
-    :class="[`canvas-note--${shape}`, { 'canvas-note--selected': selected }]"
+    class="canvas-note relative grid text-foreground outline-none"
+    :class="[
+      `canvas-note--${shape}`,
+      { 'canvas-note--selected': selected, 'canvas-note--editing': editing },
+    ]"
     :style="{ '--note-color': color }"
   >
     <span aria-hidden="true" class="note-outline" />
     <span aria-hidden="true" class="note-surface" />
-    <div class="note-content relative z-10 flex min-w-0 flex-col p-5">
-      <p v-if="note.title" class="mb-3 text-base font-semibold leading-snug">{{ note.title }}</p>
+    <div class="note-content relative z-10 min-w-0">
+      <p v-if="note.title" class="mb-1.5 text-[15px] font-semibold leading-snug">
+        {{ note.title }}
+      </p>
       <EditorContent
         :editor="editor"
-        class="note-text min-w-0 flex-1 text-[17px] leading-relaxed"
+        class="note-text min-w-0 text-[15px] leading-normal"
         :class="editing ? 'cursor-text' : 'pointer-events-none select-none'"
         @pointerdown="editing && $event.stopPropagation()"
       />
-      <footer
-        class="mt-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] opacity-65"
-      >
-        <span class="min-w-0">
-          <span class="block truncate">{{ author }}</span>
-          <span v-if="note.round_id" class="mt-1 block"
-            >{{
-              roundNumber
-                ? t("ideation.rounds.number", { number: roundNumber })
-                : t("ideation.rounds.assigned")
-            }}<span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span></span
-          > </span
-        ><span>{{ editing && status !== "saved" ? t(`ideation.saveStatus.${status}`) : "" }}</span>
-      </footer>
+    </div>
+    <div
+      :id="`canvas-note-meta-${note.id}`"
+      class="note-metadata pointer-events-none absolute left-1/2 top-full z-10 flex -translate-x-1/2 items-center gap-1.5 pt-1.5 text-[10px] leading-4 text-muted-foreground"
+    >
+      <span class="truncate">{{ author }}</span>
+      <span v-if="note.round_id" class="shrink-0">
+        ·
+        {{
+          roundNumber
+            ? t("ideation.rounds.number", { number: roundNumber })
+            : t("ideation.rounds.assigned")
+        }}<span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span>
+      </span>
+      <span v-if="editing && status !== 'saved'" class="shrink-0">
+        · {{ t(`ideation.saveStatus.${status}`) }}
+      </span>
     </div>
   </article>
 </template>
 <style scoped>
 .note-text :deep(p) {
-  margin: 0 0 0.4em;
+  margin: 0 0 0.35em;
+}
+.note-text :deep(p:last-child) {
+  margin-bottom: 0;
 }
 .note-text :deep(ul) {
   padding-left: 1.2em;
@@ -162,12 +174,19 @@ const color = computed(
   content: attr(data-placeholder);
   float: left;
   height: 0;
-  color: #59606b;
+  color: hsl(var(--muted-foreground));
   pointer-events: none;
 }
 .canvas-note {
-  --note-outline: inset(0 round 2px);
+  --note-outline: inset(0 round 4px);
+  --note-fill: color-mix(in srgb, var(--note-color) 13%, hsl(var(--background)));
+  --note-border: color-mix(in srgb, var(--note-color) 35%, hsl(var(--border)));
+  width: fit-content;
+  max-width: 100%;
   overflow-wrap: anywhere;
+}
+.note-content {
+  padding: 10px 12px;
 }
 .note-outline,
 .note-surface,
@@ -177,7 +196,7 @@ const color = computed(
   pointer-events: none;
 }
 .note-outline {
-  inset: -6px;
+  inset: -3px;
   background: hsl(var(--primary));
   clip-path: var(--note-outline);
   opacity: 0;
@@ -185,53 +204,72 @@ const color = computed(
 }
 .note-outline::after {
   content: "";
-  inset: 2px;
+  inset: 1.5px;
   background: hsl(var(--background));
   clip-path: var(--note-outline);
 }
 .canvas-note--selected .note-outline,
+.canvas-note--editing .note-outline,
 .canvas-note:focus-visible .note-outline {
   opacity: 1;
 }
 .note-surface {
   inset: 0;
-  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.16));
-  transition: filter 120ms ease;
+  background: var(--note-border);
+  clip-path: var(--note-outline);
 }
 .note-surface::before {
   content: "";
-  inset: 0;
-  background: var(--note-color);
+  inset: 1px;
+  background: var(--note-fill);
   clip-path: var(--note-outline);
 }
-.canvas-note--selected .note-surface,
-.canvas-note:hover .note-surface {
-  filter: drop-shadow(0 6px 7px rgb(0 0 0 / 0.2));
+.canvas-note--plain .note-surface {
+  background: transparent;
 }
-.canvas-note--rectangle .note-text :deep(.tiptap) {
-  min-height: 9rem;
+.canvas-note--plain .note-surface::before {
+  background: transparent;
 }
-/* The center cell is an inscribed rectangle. Fractional rows grow with its
-   content, keeping all text inside the outline without clipping the editor. */
+.canvas-note--plain.canvas-note--selected .note-surface::before,
+.canvas-note--plain.canvas-note--editing .note-surface::before {
+  background: color-mix(in srgb, var(--note-color) 5%, hsl(var(--background)));
+}
+/* The persisted width limits writing space. Expand the outline around that
+   space instead of narrowing the text when its shape changes. Metadata stays
+   outside the measured note, and there is no minimum card height. */
 .canvas-note--ellipse {
   --note-outline: ellipse(50% 50% at 50% 50%);
+  width: max-content;
+  max-width: 141.421356%;
   grid-template-columns: minmax(0, 0.207107fr) minmax(0, 1fr) minmax(0, 0.207107fr);
   grid-template-rows: 0.207107fr 1fr 0.207107fr;
 }
 .canvas-note--diamond {
   --note-outline: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-  min-height: 280px;
+  width: max-content;
+  max-width: 200%;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   grid-template-rows: 1fr 2fr 1fr;
 }
 .canvas-note--ellipse .note-content,
 .canvas-note--diamond .note-content {
   grid-area: 2 / 2;
-  padding: 12px;
+  padding: 8px 10px;
+}
+.note-metadata {
+  width: max-content;
+  max-width: 320px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.canvas-note:hover .note-metadata,
+.canvas-note--selected .note-metadata,
+.canvas-note:focus-within .note-metadata {
+  opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .note-outline,
-  .note-surface {
+  .note-metadata {
     transition: none;
   }
 }

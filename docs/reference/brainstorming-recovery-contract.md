@@ -69,9 +69,12 @@ The inventory covers:
 - Every idea, current creative state, authorship, publication consent,
   configuration version, source idea/revision and immutable creation-request
   source identity, immutable round membership and late-contribution flag.
-- Note placement and directed canvas connections, including their independent
-  link versions and optional rectangle/ellipse/diamond shape. Older inventories
-  without shape retain the rectangular default. Endpoints are remapped during restoration. The bounded
+- Note placement and canvas connections, including their independent link
+  versions, optional plain/rectangle/ellipse/diamond shape and per-edge direction
+  (`none`, `forward`, `backward`, `both`). Older inventories without shape retain
+  the rectangular default; missing legacy direction metadata retains forward
+  arrows. Endpoints and direction-map keys are remapped during restoration.
+  Direction keys must name an actual outgoing endpoint of that source. The bounded
   `links_receipt` and `creation_links_receipt` acknowledgements are excluded from capture and stripped on
   restore because its request refers to the previous canvas identities. Missing
   link versions in older inventories mean version zero.

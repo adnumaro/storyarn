@@ -16,7 +16,7 @@ defmodule Storyarn.Ideation.CanvasConnectionsTest do
     assert :ok = Ideation.subscribe_ideas(ctx.author, ctx.project.id, ctx.session.id)
 
     assert {:ok, result} = apply_batch(ctx, request)
-    assert result.changes == [edge(first, third, true), edge(second, third, true)]
+    assert result.changes == [ack(first, third, true), ack(second, third, true)]
     assert result.versions == [%{id: first.id, version: 2}, %{id: second.id, version: 1}]
     assert links(first) == [second.id, third.id]
     assert links(second) == [third.id]
@@ -150,7 +150,7 @@ defmodule Storyarn.Ideation.CanvasConnectionsTest do
     assert {:ok, _} = connect(ctx, source, private, true)
     request = command([{source, public, true}], [{source, 1}])
     assert {:ok, %{changes: changes}} = apply_batch(%{ctx | author: ctx.peer}, request)
-    assert changes == [edge(source, public, true)]
+    assert changes == [ack(source, public, true)]
     assert links(source) == [private.id, public.id]
     assert {:ok, peer_view} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, source.id)
     assert peer_view.canvas["links"] == [public.id]
@@ -200,6 +200,14 @@ defmodule Storyarn.Ideation.CanvasConnectionsTest do
   defp links(idea), do: Repo.get!(Idea, idea.id).canvas["links"] || []
 
   defp edge(source, target, connected), do: %{source_id: source.id, target_id: target.id, connected: connected}
+
+  defp ack(source, target, connected),
+    do:
+      Map.merge(edge(source, target, connected), %{
+        direction: if(connected, do: "none"),
+        previous_connected: not connected,
+        previous_direction: if(not connected, do: "none")
+      })
 
   defp command(edges, versions) do
     %{

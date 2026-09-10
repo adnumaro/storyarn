@@ -39,7 +39,6 @@ import { readNotes, writeNotes, type NoteCopy } from "./lib/clipboard";
 import { useBoardText } from "./composables/useBoardText";
 import { sameBody } from "./lib/paste";
 import { notePosition } from "./lib/placement";
-import { reshapedWidth } from "./lib/noteShapes";
 import type { Point } from "./composables/useCanvasViewport";
 import type {
   Board,
@@ -47,6 +46,7 @@ import type {
   IdeaContent,
   CanvasPlacement,
   NoteShape,
+  ConnectionChange,
   RoundFilter as RoundSelection,
 } from "./types";
 const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
@@ -520,10 +520,9 @@ function shape(value: NoteShape) {
   for (const note of selectedNotes(selectedIds.value)) {
     const before = note.canvas?.shape ?? "rectangle";
     if (before === value) continue;
-    const width = note.canvas?.width ?? 280;
-    const after = { shape: value, width: reshapedWidth(width, before, value) };
+    const after = { shape: value };
     notes.move(note.id, { ...notePosition(note), ...after });
-    commands.push(placementCommand(note.id, { shape: before, width }, after));
+    commands.push(placementCommand(note.id, { shape: before }, after));
   }
   if (commands.length) history.push(group(commands));
 }
@@ -557,30 +556,40 @@ function changeState(value: "active" | "parked" | "discarded") {
   history.push(contentCommand(note.id, { state: note.state }, { state: value }));
   select([]);
 }
-async function setConnection(source: number, target: number, connected: boolean) {
-  const reply = await request("connect_ideas", {
-    source_id: notes.resolveId(source),
-    target_id: notes.resolveId(target),
-    connected,
-  });
-  if (reply.status !== "ok") {
-    failure.value = reply.status === "error" ? reply.code : "unavailable";
-    return false;
-  }
-  return true;
-}
 async function connect(source: number, target: number, connected: boolean) {
   if (!writable.value || mutationBusy.value) return;
   finish();
-  await connections.change([{ source_id: source, target_id: target, connected }]);
+  if (connected && related(source, target)) return;
+  await connections.change([
+    {
+      source_id: source,
+      target_id: target,
+      connected,
+      ...(connected ? { direction: "none" } : {}),
+    },
+  ]);
+}
+function related(source: number, target: number) {
+  return (
+    notes.find(source)?.canvas?.links?.includes(target) ||
+    notes.find(target)?.canvas?.links?.includes(source)
+  );
+}
+async function changeConnections(changes: ConnectionChange[]) {
+  if (!writable.value || mutationBusy.value) return;
+  finish();
+  await connections.change(changes);
 }
 async function connectSelection(ids: number[], connected: boolean) {
   if (!writable.value || mutationBusy.value) return;
   const available = new Set(visible.value.map((note) => note.id));
   const selected = [...new Set(ids)].filter((id) => available.has(id));
   if (selected.length < 2) return;
-  const changes = connected
-    ? selected.slice(1).map((id) => ({ source_id: selected[0], target_id: id, connected }))
+  const changes: ConnectionChange[] = connected
+    ? selected
+        .slice(1)
+        .filter((id) => !related(selected[0], id))
+        .map((id) => ({ source_id: selected[0], target_id: id, connected, direction: "none" }))
     : selected.flatMap((id) =>
         (notes.find(id)?.canvas?.links ?? [])
           .filter((target) => selected.includes(target))
@@ -646,6 +655,10 @@ function cut(event: ClipboardEvent, ids: number[]) {
 }
 async function insert(copies: NoteCopy[], point: Point) {
   if (!canCreate.value || mutationBusy.value || !copies.length) return;
+  if (copies.reduce((count, note) => count + (note.connections?.length ?? 0), 0) > 100) {
+    failure.value = "selection_too_large";
+    return;
+  }
   finish();
   showNewContributions();
   const at = context();
@@ -671,14 +684,21 @@ async function insert(copies: NoteCopy[], point: Point) {
       if (!valid()) return;
       await notes.settle(id);
     }
-    for (let index = 0; index < copies.length; index++) {
-      for (const target of copies[index].connections ?? []) {
-        if (!valid()) return;
-        if (notes.resolveId(ids[index]) > 0 && notes.resolveId(ids[target]) > 0)
-          await setConnection(ids[index], ids[target], true);
-      }
-    }
   });
+  if (valid() && ids.every((id) => notes.find(id))) await copyConnections(copies, ids);
+}
+async function copyConnections(copies: NoteCopy[], ids: number[]) {
+  const changes: ConnectionChange[] = copies.flatMap((copy, source) =>
+    (copy.connections ?? []).map((target) => ({
+      source_id: ids[source],
+      target_id: ids[target],
+      connected: true,
+      direction: copy.directions?.[target] ?? "forward",
+    })),
+  );
+  // The notes' presence command already owns undo for this paste. Preserve the
+  // same retryable connection batch without adding a second history entry.
+  await connections.change(changes, { recordHistory: false });
 }
 function duplicate(ids: number[]) {
   const originals = selectedNotes(ids);
@@ -687,10 +707,21 @@ function duplicate(ids: number[]) {
     (note): NoteCopy => ({
       title: note.title,
       body: note.body,
-      canvas: { ...note.canvas, ...notePosition(note), links: undefined },
+      canvas: {
+        ...notePosition(note),
+        width: note.canvas?.width ?? 280,
+        color: note.canvas?.color,
+        shape: note.canvas?.shape ?? "rectangle",
+      },
       connections: (note.canvas?.links ?? [])
         .map((id) => originals.findIndex((n) => n.id === id))
         .filter((index) => index >= 0),
+      directions: Object.fromEntries(
+        (note.canvas?.links ?? []).flatMap((id) => {
+          const index = originals.findIndex((other) => other.id === id);
+          return index < 0 ? [] : [[index, note.canvas?.link_directions?.[id] ?? "forward"]];
+        }),
+      ),
     }),
   );
   void insert(copies, {
@@ -914,6 +945,7 @@ onUnmounted(() => {
         @move="move"
         @connect="connect"
         @connect-selection="connectSelection"
+        @change-connections="changeConnections"
         @add-connected="addConnected"
         @remove="remove"
         @duplicate="duplicate"

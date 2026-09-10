@@ -384,8 +384,8 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
   end
 
   defp select_note(browser, id) do
-    # The note footer is outside the Tiptap textbox and selects without entering text editing.
-    {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: "#canvas-note-#{id} footer", timeout: 10_000)
+    # A single click selects the note without opening the inline editor.
+    {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: "#canvas-note-#{id} .note-content", timeout: 10_000)
     assert_has(browser, "#canvas-note-#{id}[aria-selected=true]")
   end
 

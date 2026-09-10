@@ -64,6 +64,7 @@ defmodule StoryarnWeb.E2E.IdeationConnectionsTest do
       browser
       |> press("#brainstorming-canvas", "ControlOrMeta+z")
       |> refute_has("#canvas-note-#{created.id}")
+      |> assert_has("#brainstorming-workspace[data-persisted-note-count='2']")
       |> assert_edges(incoming, 0)
       |> assert_edges(edge)
 
@@ -71,9 +72,14 @@ defmodule StoryarnWeb.E2E.IdeationConnectionsTest do
       browser
       |> press("#brainstorming-canvas", "ControlOrMeta+Shift+z")
       |> assert_has("#canvas-note-#{created.id}")
+      |> assert_has("#brainstorming-workspace[data-persisted-note-count='3']")
       |> assert_edges(incoming, 2)
 
-    browser |> visit(path(ctx)) |> assert_edges(incoming, 2) |> assert_edges(edge)
+    browser
+    |> assert_has("#brainstorming-workspace[aria-busy=false]")
+    |> visit(path(ctx))
+    |> assert_edges(incoming, 2)
+    |> assert_edges(edge)
   end
 
   test "contextual creation can be cancelled empty without persisting a note or link", %{conn: conn} do
@@ -117,7 +123,7 @@ defmodule StoryarnWeb.E2E.IdeationConnectionsTest do
   defp select_note(browser, id, modifiers \\ []) do
     {:ok, _} =
       PlaywrightEx.Frame.click(browser.frame_id,
-        selector: "#canvas-note-#{id} footer",
+        selector: "#canvas-note-#{id} .note-content",
         modifiers: modifiers,
         timeout: 10_000
       )

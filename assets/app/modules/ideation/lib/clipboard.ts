@@ -1,4 +1,4 @@
-import type { CanvasPlacement, Idea } from "../types";
+import type { CanvasPlacement, Idea, LinkDirection } from "../types";
 import { notePosition } from "./placement";
 import { pasteContent } from "./paste";
 import { validNoteShape } from "./noteShapes";
@@ -17,6 +17,7 @@ export interface NoteCopy {
   canvas: CanvasPlacement;
   /** Selection-local indices, never persisted idea IDs. */
   connections?: number[];
+  directions?: { [target: number]: LinkDirection };
 }
 
 function sized(value: string, maximum: number): boolean {
@@ -47,6 +48,7 @@ interface NoteInput {
   body?: unknown;
   canvas?: unknown;
   connections?: unknown;
+  directions?: unknown;
 }
 interface ClipboardInput {
   version?: unknown;
@@ -98,6 +100,23 @@ function readConnections(value: unknown, index: number, count: number): number[]
     ),
   ].slice(0, MAX_NOTES);
 }
+function readDirections(
+  value: unknown,
+  connections: number[],
+): NonNullable<NoteCopy["directions"]> {
+  const directions: NonNullable<NoteCopy["directions"]> = {};
+  if (!object(value)) return directions;
+  for (const [key, direction] of Object.entries(value)) {
+    const target = Number(key);
+    if (
+      connections.includes(target) &&
+      typeof direction === "string" &&
+      ["none", "forward", "backward", "both"].includes(direction)
+    )
+      directions[target] = direction as LinkDirection;
+  }
+  return directions;
+}
 function readNote(value: unknown, index: number, count: number): NoteCopy | null {
   if (!object(value)) return null;
   const input = value as NoteInput;
@@ -109,11 +128,13 @@ function readNote(value: unknown, index: number, count: number): NoteCopy | null
     return null;
   const body = pasteContent(input.body);
   if (!textOf(body) || !sized(body, MAX_BODY_BYTES)) return null;
+  const connections = readConnections(input.connections, index, count);
   return {
     title: input.title,
     body,
-    canvas: readPlacement(input.canvas),
-    connections: readConnections(input.connections, index, count),
+    canvas: { shape: "rectangle", ...readPlacement(input.canvas) },
+    connections,
+    directions: readDirections(input.directions, connections),
   };
 }
 /** Synchronous native clipboard writing keeps browser copy/cut permissions intact. */
@@ -123,11 +144,23 @@ export function writeNotes(event: ClipboardEvent, notes: Idea[]): boolean {
   const content: NoteCopy[] = notes.map((note) => ({
     title: note.title,
     body: pasteContent(note.body),
-    canvas: readPlacement({ ...note.canvas, ...notePosition(note) }),
+    canvas: readPlacement({
+      ...note.canvas,
+      ...notePosition(note),
+      shape: note.canvas?.shape ?? "rectangle",
+    }),
     connections: (note.canvas?.links ?? []).flatMap((id) => {
       const index = indices.get(id);
       return index === undefined || id === note.id ? [] : [index];
     }),
+    directions: Object.fromEntries(
+      (note.canvas?.links ?? []).flatMap((id) => {
+        const index = indices.get(id);
+        return index === undefined || id === note.id
+          ? []
+          : [[index, note.canvas?.link_directions?.[id] ?? "forward"]];
+      }),
+    ),
   }));
   if (content.some((note) => !sized(note.body, MAX_BODY_BYTES))) return false;
   const payload = JSON.stringify({ version: 1, notes: content });

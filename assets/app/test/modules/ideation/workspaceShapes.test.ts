@@ -36,7 +36,7 @@ function workspace(defer = false) {
       x: placement.x,
       y: placement.y,
       shape: placement.shape,
-      width: placement.width,
+      width: placement.width ?? current.ideas.find((n) => n.id === id)?.canvas?.width ?? 280,
       version: Number(payload!.version) + 1,
     };
     const reply = () => callback?.({ status: "ok", value: result });
@@ -66,7 +66,6 @@ describe("canvas shape actions", () => {
       expect.objectContaining({
         x: 0,
         y: 580,
-        width: 528,
         shape: "diamond",
       }),
     );
@@ -95,7 +94,7 @@ describe("canvas shape actions", () => {
     expect(moves).toHaveBeenCalledTimes(2);
     expect(canvas.props("notes").map((n: Idea) => n.canvas?.shape)).toEqual(["diamond", "diamond"]);
     expect(wrapper.getComponent(CanvasShapePicker).props("value")).toBe("diamond");
-    expect(canvas.props("notes")[0].canvas.width).toBe(528);
+    expect(canvas.props("notes")[0].canvas.width).toBe(280);
     wrapper.getComponent(CanvasShapePicker).vm.$emit("change", "diamond");
     await flushPromises();
     expect(moves).toHaveBeenCalledTimes(2);

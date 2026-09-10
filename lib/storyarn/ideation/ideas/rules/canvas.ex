@@ -1,7 +1,7 @@
 defmodule Storyarn.Ideation.Ideas.Rules.Canvas do
   @moduledoc false
   @colors ~w(yellow coral mint blue violet paper)
-  @shapes ~w(rectangle ellipse diamond)
+  @shapes ~w(plain rectangle ellipse diamond)
 
   def normalize(attrs) when is_map(attrs) do
     attrs |> Map.put_new("width", 280) |> Map.put_new("color", "yellow") |> validate()

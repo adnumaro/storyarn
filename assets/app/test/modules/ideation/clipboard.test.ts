@@ -15,7 +15,21 @@ function clipboard(contents: { [format: string]: string } = {}) {
   return { event, data };
 }
 describe("canvas clipboard", () => {
-  it.each(["rectangle", "ellipse", "diamond"] as const)(
+  it("remaps connection styles only within the copied selection", () => {
+    const { event, data } = clipboard();
+    writeNotes(event, [
+      idea({
+        id: 813,
+        canvas: { links: [814, 999], link_directions: { 814: "both", 999: "backward" } },
+      }),
+      idea({ id: 814 }),
+    ]);
+    expect(readNotes(event)?.[0].directions).toEqual({ 1: "both" });
+    expect(data.get(mime)).not.toContain("999");
+    expect(data.get(mime)).not.toContain("814");
+  });
+
+  it.each(["plain", "rectangle", "ellipse", "diamond"] as const)(
     "preserves %s through native copy and paste",
     (shape) => {
       const { event } = clipboard();
@@ -38,10 +52,17 @@ describe("canvas clipboard", () => {
       {
         title: "A motive",
         body: "<p>Original text</p>",
-        canvas: { x: 12, y: 34, width: 350, color: "mint" },
+        canvas: { x: 12, y: 34, width: 350, color: "mint", shape: "rectangle" },
         connections: [1],
+        directions: { 1: "forward" },
       },
-      { title: null, body: "<p>Alternative</p>", canvas: { x: 430, y: 54 }, connections: [] },
+      {
+        title: null,
+        body: "<p>Alternative</p>",
+        canvas: { x: 430, y: 54, shape: "rectangle" },
+        connections: [],
+        directions: {},
+      },
     ]);
     const payload = data.get(mime)!;
     for (const field of [
@@ -136,8 +157,9 @@ describe("canvas clipboard", () => {
     expect(readNotes(event)?.[0]).toEqual({
       title: null,
       body: "<p>Valid</p>",
-      canvas: { y: 4 },
+      canvas: { y: 4, shape: "rectangle" },
       connections: [1],
+      directions: {},
     });
   });
   it("keeps portable content if the browser rejects custom MIME data", () => {
