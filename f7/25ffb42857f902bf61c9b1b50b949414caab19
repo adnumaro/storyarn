@@ -1,0 +1,68 @@
+assets/app/test/components/comments/commentMagnetism.test.ts
+  s_11667293ceac35::t_44da0ff87bc096 1-300
+  s_11667293ceac35::t_8a890cba96f8c4 301-428
+assets/app/components/comments/commentMagnetism.ts
+  s_11667293ceac35::t_f47598eafcc43d 77-80,120,122-124,131,139-147,149-160,165-184,198-199,202-204,223,226-228,273,280-283,285-287,306-311,324-326,330-345
+  s_11667293ceac35::t_4fc913d6e3fa7a 1,3
+  s_11667293ceac35::t_21e253f615dbef 2,4-76,81-119,121,125-130,132-138,148,161-164,185-197,200-201,205-222,224-225,229-272,274-279,284,288-305,312-323,327-329,346-357
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair_test.exs
+  s_11667293ceac35::t_9a95e72210f4bb 946-950
+  s_11667293ceac35::t_2362bf2461182e 945
+assets/app/test/components/comments/CommentComposer.test.ts
+  s_11667293ceac35::t_e9d34c9bd29f61 8,19-26,47,131
+  s_11667293ceac35::t_9a299e413adb9f 1-7,9-18,27-46,48-130,132-152
+assets/app/components/comments/CommentComposer.vue
+  s_11667293ceac35::t_9758f1c734bd16 9-14,30,41,137-148,160,167,178-182
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_11667293ceac35::t_959763aeb6f50b 139,302
+  s_11667293ceac35::t_12b576d9f6de13 9,171-300,303-348
+  s_11667293ceac35::t_2bf38bfc181ce0 301
+test/e2e/workspaces/projects/projects_test.exs
+  s_11667293ceac35::t_959763aeb6f50b 242-243
+assets/app/components/comments/CommentConversation.vue
+  s_11667293ceac35::t_9758f1c734bd16 380,386
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_11667293ceac35::t_8c9b3f9e9a8f41 191-315
+assets/app/components/comments/types.ts
+  s_11667293ceac35::t_9758f1c734bd16 22-28,70-71
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_82a9c3217d5348 47,86,192,209-212,226,324,368,386,425-454,532
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_11667293ceac35::t_5aa1e7e742218a 362-564,618-633,683-715,753,760-762,769-776
+  s_11667293ceac35::t_9f78db8c248cb0 62-69,76-87,125-149,162,268,275-280,288,639,647,778-785,791
+  s_11667293ceac35::t_c82b3af789c7b1 656-682
+  s_11667293ceac35::t_87eac41c944650 124,565-617,716-752,754-759
+  s_11667293ceac35::t_f4f1885acad52d 777
+assets/app/locales/en/flows.json
+  s_11667293ceac35::t_90d86b69c1e84e 559-566
+assets/app/locales/es/flows.json
+  s_11667293ceac35::t_feef4f93489e0a 559-566
+assets/app/modules/flows/editor/components/chrome/FlowCanvasComments.vue
+  s_11667293ceac35::t_643cf55496869d 2,30-40,92-146,149,174-179,183-184,188,201-202,204-206,246
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  s_11667293ceac35::t_b0c0997bfff2e5 158
+assets/app/modules/flows/editor/components/entities/rete/FlowNode.vue
+  s_11667293ceac35::t_2cb4bde00efe96 109-111
+assets/app/modules/flows/editor/composables/useCanvasComments.ts
+  s_11667293ceac35::t_a62df613d3a15e 2,4-8,19,34-36,38-39,42-49,80-88,92,95,98-101,103-104,113,116-120,124-130,133-161,163-170,172-182,184-191,193-205,213,218,220,226,230,242,244,246,253-255,259-265,268-269,274-297,299-303,309,318-325,332-348,351-356,359-362,364-377,382-407,409-411,413,415,418-436,439-456,461-467,469-470,472,475-483,485-493,497,499-500,502-503,506-512,516-519,521-523,525-532,536-553,555,557-575,597,601,623,630,634,647-652,655-659
+assets/app/modules/flows/editor/lib/comment-snap-adapter.ts
+  s_11667293ceac35::t_893762ca5875db 1-73
+priv/gettext/flows.pot
+  s_11667293ceac35::t_1fa04835de1b9c 467,472,477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f725ffb42857f902bf61c9b1b50b949414caab19",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
