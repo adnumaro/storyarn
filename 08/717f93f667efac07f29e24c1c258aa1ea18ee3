@@ -1,0 +1,100 @@
+assets/app/modules/sheets/composables/useSheetCanvasComments.ts
+  s_11667293ceac35::t_9d0b7cd45e2b14 7-17,22,43-45,48,51-64,143-144,146-149,185-186,211-218,248-254,259,261-283,285-307,313-315,333-334,337-350,376-378,384-390,414,419-421,423,442,471-472,481,509-529,531-535,545,549,559-562,573-581,583-594,597-602,605-608,610-617,619-620,623-628,631-647,651-653,655-671,673-676,709-716,741,747,751-761,764,771-775,777-784,786-787,792,795,800-802,814-821,823-824,826-833,837,839-841,843-844,847-859,861-864,867,870-878,882-891,897-898,903-906,908-909,913,920-922,943-963,975-976,988-1006,1018-1019,1032-1033,1058-1062,1064
+  s_11667293ceac35::t_b2bb69c0742217 195,232,363-365,367,369-375,379-383,767-770,803-813,822,825,838
+  s_11667293ceac35::t_34d5c4c8b6067a 1063
+  s_11667293ceac35::t_c11a30fa29c7df 1065-1067
+assets/app/modules/sheets/components/chrome/header/SheetMetadata.vue
+  s_11667293ceac35::t_bc7bee8ed6f2e2 84-89,91,99-106
+test/e2e/workspaces/projects/sheets/comments_test.exs
+  s_11667293ceac35::t_4d3c89c792855e 9,12,65-66,84-101,103-109,115-336,338-413
+  s_11667293ceac35::t_52208e135214eb 68-69
+  s_11667293ceac35::t_e7894eb2352aae 110-114
+  s_11667293ceac35::t_a1ef8528d7aca7 39-40,102,337
+test/storyarn/projects/comments/contextual_comments_test.exs
+  s_11667293ceac35::t_9b509db48afa96 167-243
+assets/app/test/modules/sheets/lib/comment-snap-adapter.test.ts
+  s_11667293ceac35::t_a9fba5939d00ed 20-24,81-85,142-145,153-157,201-204,213-218,225-228,235-240,243-245,256-257,264-274
+  s_11667293ceac35::t_831bc34ae8ebe0 1-19,25-80,86-141,146-152,158-200,205-212,219-224,229-234,241-242,246-255,258-263,275-302
+assets/app/test/live/sheet/show/SheetCanvasComments.test.ts
+  s_11667293ceac35::t_ed127aaa33f7ac 1000-1004,1011-1024,1029-1048,1069-1071,1090-1092
+  s_11667293ceac35::t_206a1f3992cf6e 59-71,76-79,108,133,172,402,436,477-480,483,650,750,755-847,851-870,878-891,899-902,906-907,916-918,926-931,935-946,954-955,963-986,991-993
+  s_11667293ceac35::t_3bb1d21a9fc370 52-58,72-75,94-101,289-293,298-302,328-332,347-351,380-384,848-850,871-877,892-898,903-905,908-915,919-925,932-934,947-953,956-962,987-990,994-999,1005-1010,1025-1028,1049-1068,1072-1089,1093-1098
+test/storyarn_web/live/sheet_live/comments_test.exs
+  s_11667293ceac35::t_38e7b21f7e2521 147-273
+  s_11667293ceac35::t_b0de525eea1c8a 11
+assets/app/modules/sheets/components/chrome/header/SheetContentHeader.vue
+  s_11667293ceac35::t_bc7bee8ed6f2e2 112-115,164-170
+assets/app/modules/sheets/components/entities/dnd/BlockDndRoot.vue
+  s_11667293ceac35::t_bc7bee8ed6f2e2 278-284,329-336,347-349
+  s_11667293ceac35::t_4dcbad98b9f9e7 350-351
+lib/storyarn_web/live/sheet_live/show.ex
+  s_11667293ceac35::t_1723268d1006ad 1223,1254
+lib/storyarn/projects.ex
+  s_11667293ceac35::t_504082f3215a1e 1020-1024
+assets/app/modules/sheets/lib/comment-geometry.ts
+  s_11667293ceac35::t_38c8ccfbdd1929 5-13,76
+assets/app/modules/sheets/lib/comment-snap-adapter.ts
+  s_11667293ceac35::t_bc7bee8ed6f2e2 1-5,10,12-81,96-98,105,107-199
+  s_11667293ceac35::t_38c8ccfbdd1929 6-9
+  s_11667293ceac35::t_51f086acd2919f 11,82-95,99-104,106
+assets/app/live/sheet/show/SheetSurface.vue
+  s_11667293ceac35::t_bc7bee8ed6f2e2 122
+lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_1723268d1006ad 50,92,142,185-197,199-213,215-217,305,347,362,414-425,475
+  s_11667293ceac35::t_cfef689629ef10 458-459
+  s_11667293ceac35::t_4374ecefa565d8 426
+  s_11667293ceac35::t_cf7d27ed2723a4 457
+assets/app/components/comments/commentDraftStorage.ts
+  s_11667293ceac35::t_c21c85b46e7c58 1,5,16,24-25,35-42,47,54,58
+  s_11667293ceac35::t_5337d8ce96d5a1 43-46
+  s_11667293ceac35::t_aeef400fc4ad2a 48-53
+  s_11667293ceac35::t_467247ba91c694 55-57
+  s_11667293ceac35::t_2c7ea964641d24 59-60
+lib/storyarn/projects/comments/rules/context.ex
+  s_11667293ceac35::t_504082f3215a1e 223,227
+  s_11667293ceac35::t_66cdfbc551919f 228
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_11667293ceac35::t_decc626f6aa39d 284
+assets/app/modules/sheets/components/chrome/SheetCanvasComments.vue
+  s_11667293ceac35::t_cfef689629ef10 2,50-59,282-335,374,381-382,396,399-400,456,467
+lib/storyarn/projects/comments/comments.ex
+  s_11667293ceac35::t_504082f3215a1e 88-101
+assets/app/locales/es/sheets.json
+  s_11667293ceac35::t_bc7bee8ed6f2e2 107-111
+  s_0ee599ebf7d909::t_f7f0f4ced63db4 121,157-164
+assets/app/locales/en/sheets.json
+  s_11667293ceac35::t_bc7bee8ed6f2e2 107-111
+  s_0ee599ebf7d909::t_5509eac02c8e3c 121,157-164
+assets/app/modules/sheets/components/entities/blocks/BlockList.vue
+  s_11667293ceac35::t_bc7bee8ed6f2e2 247-251
+assets/app/test/components/comments/commentDraftStorage.test.ts
+  s_11667293ceac35::t_891b55bc395014 1-34
+  s_11667293ceac35::t_8b785beab9027f 35-37
+  s_0ee599ebf7d909::t_b194ecd2e994d6 38-43
+priv/gettext/sheets.pot
+  s_0ee599ebf7d909::t_8225afdde97ac4 461,466,471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "08717f93f667efac07f29e24c1c258aa1ea18ee3",
+  "prompts": {},
+  "sessions": {
+    "s_0ee599ebf7d909": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08a4b-eefe-7641-a480-c2150448ba61",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
