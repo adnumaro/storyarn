@@ -164,6 +164,83 @@ defmodule Storyarn.Projects.ContextualCommentsTest do
     assert moved.context == nil
   end
 
+  test "draft context validation uses the same exact Sheet boundary without writing comments", ctx do
+    block = block_fixture(ctx.sheet)
+    outsider = user_scope_fixture(user_fixture())
+    other_sheet = sheet_fixture(ctx.project)
+
+    assert {:ok, %{type: "sheet_block", id: id, offset: %{x: -3.0, y: 12.0}}} =
+             Projects.validate_sheet_comment_context(ctx.scope, ctx.project.id, ctx.sheet.id, %{
+               type: "sheet_block",
+               id: block.id,
+               offset: %{x: -3, y: 12},
+               label: "Forged label"
+             })
+
+    assert id == to_string(block.id)
+    assert {:ok, nil} = Projects.validate_sheet_comment_context(ctx.scope, ctx.project.id, ctx.sheet.id, nil)
+
+    assert {:error, :not_found} =
+             Projects.validate_sheet_comment_context(outsider, ctx.project.id, ctx.sheet.id, nil)
+
+    assert {:error, :context_unavailable} =
+             Projects.validate_sheet_comment_context(ctx.scope, ctx.project.id, other_sheet.id, %{
+               type: "sheet_block",
+               id: block.id
+             })
+
+    assert {:ok, _deleted} = Sheets.delete_sheet(ctx.sheet)
+
+    assert {:error, :source_unavailable} =
+             Projects.validate_sheet_comment_context(ctx.scope, ctx.project.id, ctx.sheet.id, nil)
+
+    assert Repo.aggregate(Thread, :count) == 0
+  end
+
+  test "row context follows its UUID through reordering and survives dissolution as unavailable", ctx do
+    blocks = for index <- 1..3, do: block_fixture(ctx.sheet, %{config: %{"label" => "Field #{index}"}})
+    assert {:ok, group_id} = Sheets.create_column_group(ctx.sheet.id, Enum.map(blocks, & &1.id))
+    assert {:ok, detail} = create_sheet(ctx, %{type: "sheet_column_group", id: group_id, offset: %{x: 2, y: 8}})
+
+    layout =
+      blocks
+      |> Enum.reverse()
+      |> Enum.with_index()
+      |> Enum.map(fn {block, index} -> %{id: block.id, column_group_id: group_id, column_index: index} end)
+
+    assert {:ok, _} = Sheets.reorder_blocks_with_columns(ctx.sheet.id, layout)
+    assert {:ok, reordered} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+    assert reordered.thread.context == detail.thread.context
+
+    [first, second, _third] = blocks
+    assert {:ok, _} = Sheets.delete_block(first)
+    assert {:ok, reduced} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+    assert reduced.thread.context.status == "available"
+    assert reduced.thread.context.label == "Row of 2 blocks"
+
+    assert {:ok, _} = Sheets.delete_block(second)
+    assert {:ok, dissolved} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+    assert dissolved.thread.context.status == "unavailable"
+    assert dissolved.thread.context.id == group_id
+    assert dissolved.thread.position == detail.thread.position
+    assert dissolved.messages == detail.messages
+    assert dissolved.thread.source == detail.thread.source
+    assert {:ok, [pin]} = Projects.list_sheet_comment_pins(ctx.scope, ctx.project.id, ctx.sheet.id)
+    assert pin.context == dissolved.thread.context
+
+    assert {:ok, %{surface: "sheet", sheet_id: sheet_id, thread_id: thread_id}} =
+             Projects.comment_destination(ctx.scope, ctx.project.id, detail.thread.root_message_id)
+
+    assert sheet_id == ctx.sheet.id
+    assert thread_id == detail.thread.id
+
+    assert {:error, :context_unavailable} =
+             Projects.validate_sheet_comment_context(ctx.scope, ctx.project.id, ctx.sheet.id, %{
+               type: "sheet_column_group",
+               id: group_id
+             })
+  end
+
   test "Flow node creation keeps relative offset while ownership and position use its canvas", ctx do
     flow = flow_fixture(ctx.project)
     node = node_fixture(flow, %{position_x: 400, position_y: 200})

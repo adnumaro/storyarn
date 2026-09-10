@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageCircle, Plus } from "@lucide/vue";
+import { Magnet, MessageCircle, Plus, Repeat2, Unlink } from "@lucide/vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import { useLive } from "@shared/composables/useLive";
@@ -47,6 +47,16 @@ const {
   moveError,
   contextMenuPoint,
   dragging,
+  panelState,
+  magnetism,
+  moving,
+  dragPreview,
+  snapOutline,
+  isPending,
+  toggleMagnetism,
+  cycleContext,
+  onPinBlur,
+  onLostCapture,
   selectThread,
   startDrag,
   movePinWithKeyboard,
@@ -269,6 +279,60 @@ onUnmounted(() => {
     @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
+    <div
+      v-if="state.canComment && (pins.length || placing || draftPoint)"
+      class="pointer-events-auto absolute right-4 z-10 flex items-center gap-2"
+      :style="{ top: `${visibleBounds.top + 16}px` }"
+      @pointerdown.stop
+    >
+      <button
+        id="sheet-comment-magnetism-toggle"
+        type="button"
+        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        :aria-pressed="magnetism"
+        :title="$t('sheets.comments.magnetism_hint')"
+        @click.stop="toggleMagnetism"
+      >
+        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
+        {{ $t(magnetism ? "sheets.comments.magnetism_on" : "sheets.comments.magnetism_off") }}
+      </button>
+    </div>
+    <div
+      v-if="moving && snapOutline"
+      class="absolute rounded-lg border-2 border-primary bg-primary/5"
+      :style="{
+        left: `${snapOutline.left}px`,
+        top: `${snapOutline.top}px`,
+        width: `${snapOutline.width}px`,
+        height: `${snapOutline.height}px`,
+      }"
+    />
+    <div
+      v-if="moving"
+      id="sheet-comment-snap-preview"
+      role="status"
+      aria-live="polite"
+      class="absolute left-1/2 z-20 flex max-w-[90%] -translate-x-1/2 items-center gap-2 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
+      :style="{ top: `${visibleBounds.top + Math.max(12, visibleBounds.height - 64)}px` }"
+    >
+      <span class="truncate">{{
+        dragPreview?.candidate
+          ? $t("sheets.comments.snap_context", { label: dragPreview.candidate.label })
+          : $t("sheets.comments.free_position")
+      }}</span>
+      <button
+        v-if="(dragPreview?.candidates.length ?? 0) > 1"
+        type="button"
+        class="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+        @pointerdown.stop.prevent
+        @click.stop="cycleContext(1)"
+      >
+        <Repeat2 class="size-3.5" />{{ $t("sheets.comments.next_context") }}
+      </button>
+      <span class="hidden text-muted-foreground sm:inline">{{
+        $t("sheets.comments.drag_hint")
+      }}</span>
+    </div>
     <p id="sheet-comment-pin-keyboard-instructions" class="sr-only">
       {{ $t("sheets.comments.keyboard_move_hint") }}
     </p>
@@ -307,13 +371,15 @@ onUnmounted(() => {
           ? 'sheet-comment-preview sheet-comment-pin-keyboard-instructions'
           : 'sheet-comment-pin-keyboard-instructions'
       "
+      :aria-busy="isPending(pin.thread.id)"
       :aria-expanded="state.thread?.id === pin.thread.id && popupOpen"
       aria-haspopup="dialog"
       @pointerdown.stop="startDrag($event, pin.thread)"
       @pointerenter="hoverId = pin.thread.id"
       @pointerleave="hoverId = null"
       @focus="hoverId = pin.thread.id"
-      @blur="hoverId = null"
+      @blur="onPinBlur"
+      @lostpointercapture="onLostCapture"
       @click.stop="selectThread(pin.thread, $event)"
       @keydown="movePinWithKeyboard($event, pin.thread)"
     >
@@ -327,8 +393,11 @@ onUnmounted(() => {
       class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40 active:cursor-grabbing"
       :style="{ left: `${draftPoint.x}px`, top: `${draftPoint.y}px` }"
       :aria-label="$t('sheets.comments.move_pin')"
+      :aria-busy="panelState.draftPending"
       aria-describedby="sheet-comment-pin-keyboard-instructions"
       @pointerdown.stop="startDrag($event, null)"
+      @blur="onPinBlur"
+      @lostpointercapture="onLostCapture"
       @keydown="movePinWithKeyboard($event, null)"
     >
       <Plus class="size-4" />
@@ -384,7 +453,7 @@ onUnmounted(() => {
       role="dialog"
       tabindex="-1"
       :aria-label="$t('sheets.comments.title')"
-      class="pointer-events-auto absolute flex flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
+      class="pointer-events-auto absolute z-30 flex flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
       :style="{
         left: `${popupPosition.x}px`,
         top: `${popupPosition.y}px`,
@@ -395,7 +464,7 @@ onUnmounted(() => {
       @wheel.stop
       @contextmenu.stop
     >
-      <SheetCommentsPanel :state="state" :draft-storage-key="draftStorageKey" embedded />
+      <SheetCommentsPanel :state="panelState" :draft-storage-key="draftStorageKey" embedded />
     </div>
   </div>
 </template>

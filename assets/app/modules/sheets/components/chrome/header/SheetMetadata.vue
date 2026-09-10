@@ -81,8 +81,14 @@ function onShortcutKeydown(e: KeyboardEvent): void {
 <template>
   <div class="flex-1 min-w-0 pt-1">
     <!-- Name -->
-    <div v-if="canEdit && editingName">
+    <div
+      data-sheet-comment-region="title"
+      data-sheet-comment-type="sheet_title"
+      :data-sheet-comment-id="sheet.id"
+      :data-sheet-comment-label="$t('sheets.comments.context_title')"
+    >
       <input
+        v-if="canEdit && editingName"
         ref="nameInput"
         v-model="localName"
         class="text-3xl font-bold w-full bg-transparent outline-none border-none px-0"
@@ -90,15 +96,15 @@ function onShortcutKeydown(e: KeyboardEvent): void {
         @blur="saveName"
         @keydown="onNameKeydown"
       />
+      <h1
+        v-else
+        class="text-3xl font-bold"
+        :class="canEdit && 'cursor-text hover:bg-accent/30 rounded px-1 -mx-1 transition-colors'"
+        @click="startEditName"
+      >
+        {{ localName || $t("sheets.metadata.untitled") }}
+      </h1>
     </div>
-    <h1
-      v-else
-      class="text-3xl font-bold"
-      :class="canEdit && 'cursor-text hover:bg-accent/30 rounded px-1 -mx-1 transition-colors'"
-      @click="startEditName"
-    >
-      {{ localName || $t("sheets.metadata.untitled") }}
-    </h1>
 
     <!-- Shortcut -->
     <div class="mt-1 flex items-center gap-1">

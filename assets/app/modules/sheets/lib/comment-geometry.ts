@@ -2,6 +2,15 @@ import type { SheetCommentPosition, SheetCommentThread } from "../types/comments
 
 export const SHEET_COMMENT_PIN_RADIUS = 16;
 
+/** Layout dimensions stay in CSS pixels when the sheet is visually scaled. */
+export function sheetCommentSurfaceSize(container: HTMLElement): { width: number; height: number } {
+  const rect = container.getBoundingClientRect();
+  return {
+    width: container.offsetWidth || rect.width,
+    height: container.offsetHeight || rect.height,
+  };
+}
+
 export function clampSheetCommentPosition(position: SheetCommentPosition): SheetCommentPosition {
   return {
     x: Math.max(0, Math.min(100, position.x)),
@@ -64,7 +73,7 @@ export function sheetCommentPositionForSurface(
   inset = SHEET_COMMENT_PIN_RADIUS,
 ): SheetCommentPosition {
   const normalized = clampSheetCommentPosition(position);
-  const surfaceRect = container.getBoundingClientRect();
+  const surfaceRect = sheetCommentSurfaceSize(container);
 
   return {
     x: clampCenter((surfaceRect.width * normalized.x) / 100, surfaceRect.width, inset),

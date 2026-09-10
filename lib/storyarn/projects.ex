@@ -1017,6 +1017,11 @@ defmodule Storyarn.Projects do
     to: Comments,
     as: :create_sheet_canvas
 
+  @doc "Validates optional draft context against the exact owning Sheet without creating a conversation."
+  defdelegate validate_sheet_comment_context(scope, project_id, sheet_id, context),
+    to: Comments,
+    as: :validate_sheet_context
+
   @doc "Moves a comment pin, preserving its source identity and checking the expected revision."
   defdelegate move_comment_thread(scope, project_id, thread_id, position, expected_revision, opts \\ []),
     to: Comments,

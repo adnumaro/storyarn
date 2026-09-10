@@ -275,6 +275,13 @@ makeDroppable(
         v-if="item.type === 'full_width'"
         :id="`sheet-block-${(item as FullWidthLayoutItem).block.id}`"
         :data-sheet-block-id="(item as FullWidthLayoutItem).block.id"
+        data-sheet-comment-type="sheet_block"
+        :data-sheet-comment-id="(item as FullWidthLayoutItem).block.id"
+        :data-sheet-comment-label="
+          (item as FullWidthLayoutItem).block.config?.label ||
+          (item as FullWidthLayoutItem).block.variable_name ||
+          $t('sheets.comments.context_block')
+        "
         kind="full_width"
         :block-id="(item as FullWidthLayoutItem).block.id"
         :can-edit="canEdit"
@@ -319,6 +326,14 @@ makeDroppable(
       <!-- Column group: draggable as a whole (via wrapper) + each child draggable -->
       <BlockDndItem
         v-else-if="item.type === 'column_group'"
+        :data-sheet-comment-row="(item as ColumnGroupLayoutItem).group_id"
+        data-sheet-comment-type="sheet_column_group"
+        :data-sheet-comment-id="(item as ColumnGroupLayoutItem).group_id"
+        :data-sheet-comment-label="
+          $t('sheets.comments.context_row', {
+            count: (item as ColumnGroupLayoutItem).blocks.length,
+          })
+        "
         kind="group"
         :group-id="(item as ColumnGroupLayoutItem).group_id"
         :can-edit="canEdit"
@@ -329,6 +344,11 @@ makeDroppable(
             v-for="block in (item as ColumnGroupLayoutItem).blocks"
             :id="`sheet-block-${block.id}`"
             :data-sheet-block-id="block.id"
+            data-sheet-comment-type="sheet_block"
+            :data-sheet-comment-id="block.id"
+            :data-sheet-comment-label="
+              block.config?.label || block.variable_name || $t('sheets.comments.context_block')
+            "
             :key="block.id"
             kind="column_child"
             :block-id="block.id"

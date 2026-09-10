@@ -109,6 +109,10 @@ function updateAvatarNotes(id: number | string, value: string): void {
   <div>
     <!-- Banner -->
     <div
+      data-sheet-comment-region="cover"
+      data-sheet-comment-type="sheet_cover"
+      :data-sheet-comment-id="sheet.id"
+      :data-sheet-comment-label="$t('sheets.comments.context_cover')"
       class="relative group h-48 sm:h-56 lg:h-64 overflow-hidden rounded-2xl mb-6"
       :style="sheet.bannerUrl ? {} : { backgroundColor: localColor }"
     >
@@ -157,7 +161,13 @@ function updateAvatarNotes(id: number | string, value: string): void {
     </div>
 
     <!-- Avatar + Title row -->
-    <div class="flex items-start gap-4 mb-8 px-2">
+    <div
+      data-sheet-comment-region="header"
+      data-sheet-comment-type="sheet_header"
+      :data-sheet-comment-id="sheet.id"
+      :data-sheet-comment-label="$t('sheets.comments.context_header')"
+      class="flex items-start gap-4 mb-8 px-2"
+    >
       <!-- Avatar -->
       <SheetAvatarSection
         :sheet="sheet"

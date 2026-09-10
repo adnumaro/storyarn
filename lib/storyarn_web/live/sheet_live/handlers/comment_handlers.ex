@@ -47,6 +47,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
       open: false,
       placing: false,
       draftPosition: nil,
+      draftContext: nil,
       draftId: nil,
       error: nil
     })
@@ -88,6 +89,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
             presentation: "panel",
             placing: false,
             draftPosition: nil,
+            draftContext: nil,
             draftId: nil,
             thread: nil,
             messages: [],
@@ -137,6 +139,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   def handle("refresh", _params, socket), do: {:noreply, refresh(socket)}
   def handle(_action, _params, socket), do: failure(socket, :invalid_request)
 
+  def refresh(%{assigns: %{compact: true}} = socket), do: socket
   def refresh(%{assigns: %{sheet: nil}} = socket), do: socket
 
   def refresh(socket) do
@@ -179,32 +182,39 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   end
 
   defp mutate("place", params, socket) do
-    case position(params) do
-      {:ok, position} ->
-        draft_id =
-          if params["moving_draft"] == true && socket.assigns.comments.draftId,
-            do: socket.assigns.comments.draftId,
-            else: Ecto.UUID.generate()
+    with :ok <- validate_draft_move(params, socket),
+         {:ok, position} <- position(params),
+         {:ok, context} <-
+           Projects.validate_sheet_comment_context(
+             socket.assigns.current_scope,
+             socket.assigns.project.id,
+             socket.assigns.sheet.id,
+             params["context"]
+           ) do
+      draft_id =
+        if params["moving_draft"] == true && socket.assigns.comments.draftId,
+          do: socket.assigns.comments.draftId,
+          else: Ecto.UUID.generate()
 
-        socket =
-          socket
-          |> close()
-          |> assign(:current_tab, "content")
-          |> put_state(%{
-            open: true,
-            presentation: "canvas",
-            draftPosition: position,
-            draftId: draft_id,
-            thread: nil,
-            messages: [],
-            messageNextCursor: nil
-          })
-          |> refresh()
+      socket =
+        socket
+        |> close()
+        |> assign(:current_tab, "content")
+        |> put_state(%{
+          open: true,
+          presentation: "canvas",
+          draftPosition: position,
+          draftContext: context,
+          draftId: draft_id,
+          thread: nil,
+          messages: [],
+          messageNextCursor: nil
+        })
+        |> refresh()
 
-        {:reply, %{ok: true}, socket}
-
-      {:error, reason} ->
-        failure(socket, reason)
+      {:reply, %{ok: true}, socket}
+    else
+      {:error, reason} -> failure(socket, reason)
     end
   end
 
@@ -292,7 +302,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
 
   defp select_thread(socket, thread_id) do
     socket
-    |> put_state(%{open: true, placing: false, draftPosition: nil, draftId: nil, error: nil})
+    |> put_state(%{open: true, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
     |> load_threads()
     |> load_members()
     |> load_detail(thread_id)
@@ -334,6 +344,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
           messages: messages,
           messageNextCursor: next_cursor,
           draftPosition: nil,
+          draftContext: nil,
           draftId: nil,
           presentation: presentation
         })
@@ -348,6 +359,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
             messages: [],
             messageNextCursor: nil,
             draftPosition: nil,
+            draftContext: nil,
             draftId: nil,
             presentation: "panel",
             error: error_message(:not_found)
@@ -399,6 +411,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
 
   defp position(_params), do: {:error, :invalid_position}
 
+  defp validate_draft_move(%{"moving_draft" => true} = params, socket) do
+    if Map.has_key?(params, "context") or Map.has_key?(params, "draft_id") do
+      if matching_draft?(socket.assigns.comments, params["draft_id"]), do: :ok, else: {:error, :stale}
+    else
+      :ok
+    end
+  end
+
+  defp validate_draft_move(_params, _socket), do: :ok
+
+  defp matching_draft?(%{open: true, presentation: "canvas", thread: nil, draftId: id}, id) when is_binary(id), do: true
+  defp matching_draft?(_state, _id), do: false
+
   defp context_options(%{"context" => context}), do: [context: context]
   defp context_options(_params), do: []
 
@@ -429,7 +454,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   defp failure(socket, reason) do
     socket = if match?({:ok, _, _}, authorize_read(socket)), do: socket, else: clear(socket)
     message = error_message(reason)
-    {:reply, %{ok: false, error: message}, put_state(socket, %{error: message})}
+
+    {:reply, %{ok: false, error: message, context_unavailable: reason in [:context_unavailable, :invalid_context]},
+     put_state(socket, %{error: message})}
   end
 
   defp error_message(:stale), do: dgettext("sheets", "This conversation changed. Review the latest state and try again.")
@@ -445,6 +472,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
       presentation: "panel",
       placing: false,
       draftPosition: nil,
+      draftContext: nil,
       draftId: nil,
       threads: [],
       nextCursor: nil,

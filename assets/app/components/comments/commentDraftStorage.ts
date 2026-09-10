@@ -1,7 +1,8 @@
-import type { CommentPosition } from "./types";
+import type { CommentContextReference, CommentPosition } from "./types";
 
 export interface StoredCommentDraft {
   position?: CommentPosition;
+  context?: CommentContextReference | null;
   body?: string;
   mentionIds?: number[];
   requestId?: string;
@@ -12,6 +13,7 @@ function normalizedDraft(value: unknown): StoredCommentDraft | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as {
     position?: unknown;
+    context?: unknown;
     body?: unknown;
     mentionIds?: unknown;
     requestId?: unknown;
@@ -19,9 +21,8 @@ function normalizedDraft(value: unknown): StoredCommentDraft | null {
   };
   const draft: StoredCommentDraft = {
     ...(validPosition(candidate.position) ? { position: candidate.position } : {}),
-    ...(typeof candidate.body === "string" && candidate.body.length <= 10_000
-      ? { body: candidate.body }
-      : {}),
+    ...(validContext(candidate.context) ? { context: candidate.context } : {}),
+    ...(validBody(candidate.body) ? { body: candidate.body } : {}),
     ...(validMentionIds(candidate.mentionIds)
       ? { mentionIds: [...new Set(candidate.mentionIds)] }
       : {}),
@@ -29,6 +30,32 @@ function normalizedDraft(value: unknown): StoredCommentDraft | null {
     ...(validFingerprint(candidate.fingerprint) ? { fingerprint: candidate.fingerprint } : {}),
   };
   return Object.keys(draft).length ? draft : null;
+}
+
+function validBody(value: unknown): value is string {
+  return typeof value === "string" && value.length <= 10_000;
+}
+function validOffsetCoordinate(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 10_000_000;
+}
+function validOffset(value: unknown): boolean {
+  if (value == null) return true;
+  if (typeof value !== "object") return false;
+  const offset = value as { x?: unknown; y?: unknown };
+  return validOffsetCoordinate(offset.x) && validOffsetCoordinate(offset.y);
+}
+function validContext(value: unknown): value is CommentContextReference | null {
+  if (value === null) return true;
+  if (!value || typeof value !== "object") return false;
+  const context = value as { type?: unknown; id?: unknown; offset?: unknown };
+  return (
+    typeof context.type === "string" &&
+    /^[a-z_]{1,60}$/.test(context.type) &&
+    typeof context.id === "string" &&
+    context.id.length > 0 &&
+    context.id.length <= 100 &&
+    validOffset(context.offset)
+  );
 }
 
 function validRequestId(value: unknown): value is string {

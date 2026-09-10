@@ -244,6 +244,11 @@ function resolveComponent(type: string): typeof TextBlock | null {
             :id="`sheet-block-${block.id}`"
             :key="block.id"
             :data-sheet-block-id="block.id"
+            data-sheet-comment-type="sheet_block"
+            :data-sheet-comment-id="block.id"
+            :data-sheet-comment-label="
+              block.config?.label || block.variable_name || $t('sheets.comments.context_block')
+            "
             class="relative scroll-mt-8 transition-shadow"
           >
             <component

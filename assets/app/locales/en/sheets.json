@@ -104,6 +104,11 @@
       }
     },
     "comments": {
+      "context_cover": "Cover",
+      "context_header": "Header",
+      "context_title": "Title",
+      "context_block": "Block",
+      "context_row": "Row of {count} blocks",
       "new_comment_tool": "New comment",
       "add_comment": "Add comment",
       "context_menu": "Sheet actions",
@@ -113,7 +118,7 @@
       "place_hint": "Place a comment on this sheet (C)",
       "placing_hint": "Click anywhere on the sheet surface, or focus it and press Enter, to place a comment. Press Esc to cancel.",
       "keyboard_place_hint": "Press Enter to place the comment in the center of this sheet.",
-      "keyboard_move_hint": "Use the arrow keys to move this comment. Hold Shift for smaller steps.",
+      "keyboard_move_hint": "Use arrow keys to move, Shift for precision, Enter to save, Escape to cancel. Use [ and ] to choose an overlapping context. Hold Alt for free placement.",
       "pin_label": "Comment by {author}",
       "move_pin": "Move comment on this sheet",
       "title": "Comments",
@@ -149,7 +154,14 @@
       "empty_hint": "Choose New comment or right-click the sheet background to start a conversation.",
       "readonly_hint": "You can read discussions. Editing access is required to comment.",
       "threads": "Comment threads",
-      "load_threads": "Load more threads"
+      "load_threads": "Load more threads",
+      "magnetism_on": "Magnetism",
+      "magnetism_off": "Free placement",
+      "magnetism_hint": "Toggle magnetism. Hold Alt while moving for free placement.",
+      "snap_context": "Context: {label}",
+      "free_position": "Free position · no context",
+      "next_context": "Next context",
+      "drag_hint": "Alt: free · [ ]: context · Esc: cancel"
     },
     "metadata": {
       "untitled": "Untitled",

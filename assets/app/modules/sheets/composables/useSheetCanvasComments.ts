@@ -4,11 +4,22 @@ import {
   readCommentDraft,
   updateCommentDraft,
 } from "@components/comments/commentDraftStorage";
+import {
+  CommentMagneticDrag,
+  type CommentMagneticInitial,
+  type CommentMagneticPreview,
+} from "@components/comments/commentMagnetism";
+import type { CommentContextReference } from "@components/comments/types";
+import {
+  resolveSheetCommentPosition,
+  sheetCommentSnapAdapter,
+  SHEET_COMMENT_TARGET_SELECTOR,
+} from "../lib/comment-snap-adapter";
 import type { useLive } from "@shared/composables/useLive";
 import {
   constrainSheetCommentPositionToSurface,
   sheetCommentCanvasPoint,
-  sheetCommentPointFromClient,
+  sheetCommentSurfaceSize,
   sheetCommentPositionForSurface,
   sheetCommentScreenPoint,
 } from "../lib/comment-geometry";
@@ -29,12 +40,28 @@ interface SheetCanvasCommentsOptions {
 
 interface PinDrag {
   thread: SheetCommentThread | null;
-  pointerId: number;
+  draftId: string | null;
+  pointerId: number | null;
+  target: HTMLElement;
   start: SheetCommentPosition;
-  grabOffset: SheetCommentPosition;
   lastClient: SheetCommentPosition;
+  session: CommentMagneticDrag;
   moved: boolean;
 }
+interface PendingMove extends CommentMagneticInitial {
+  request: number;
+  revision: number;
+}
+interface PendingDraft extends CommentMagneticInitial {
+  request: number;
+  draftId: string | null;
+}
+const keyboardDirections: Partial<Record<string, SheetCommentPosition>> = {
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+};
 
 const AUTO_SCROLL_EDGE = 64;
 const AUTO_SCROLL_MAX_STEP = 20;
@@ -113,38 +140,13 @@ function ignoreCommentShortcut(event: KeyboardEvent): boolean {
   );
 }
 
-function keyboardPosition(
-  event: KeyboardEvent,
-  current: SheetCommentPosition,
-  surface: { width: number; height: number },
-): SheetCommentPosition | null {
-  const step = event.shiftKey ? 1 : 8;
-  const xStep = surface.width > 0 ? (step / surface.width) * 100 : 0;
-  let offset: SheetCommentPosition;
-  switch (event.key) {
-    case "ArrowLeft":
-      offset = { x: -xStep, y: 0 };
-      break;
-    case "ArrowRight":
-      offset = { x: xStep, y: 0 };
-      break;
-    case "ArrowUp":
-      offset = { x: 0, y: -step };
-      break;
-    case "ArrowDown":
-      offset = { x: 0, y: step };
-      break;
-    default:
-      return null;
-  }
-  return constrainSheetCommentPositionToSurface(
-    { x: current.x + offset.x, y: current.y + offset.y },
-    surface,
-  );
+function samePosition(left: SheetCommentPosition | null | undefined, right: SheetCommentPosition) {
+  return left?.x === right.x && left.y === right.y;
 }
-
-function samePosition(left: SheetCommentPosition, right: SheetCommentPosition): boolean {
-  return left.x === right.x && left.y === right.y;
+function contextIdentity(context: CommentContextReference | null | undefined) {
+  return context
+    ? JSON.stringify([context.type, context.id, context.offset?.x, context.offset?.y])
+    : null;
 }
 
 function verticalScrollOwner(element: HTMLElement): HTMLElement | null {
@@ -180,7 +182,8 @@ function visibleCenterPosition(element: HTMLElement): SheetCommentPosition {
       ? (visibleTop + visibleBottom) / 2
       : surface.top + surface.height / 2;
 
-  return sheetCommentPointFromClient({ x: surface.left + surface.width / 2, y: clientY }, surface);
+  const adapter = sheetCommentSnapAdapter(element);
+  return adapter.clamp(adapter.fromScreen({ x: surface.left + surface.width / 2, y: clientY }));
 }
 
 function canRestoreDraft(
@@ -189,6 +192,7 @@ function canRestoreDraft(
 ): boolean {
   return (
     state.canComment &&
+    !state.placing &&
     !state.open &&
     !state.thread &&
     !state.draftPosition &&
@@ -204,10 +208,14 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
   const visibleBounds = shallowRef<VisibleSurfaceBounds>({ width: 0, height: 0, top: 0 });
   const hoverId = ref<number | null>(null);
   const drag = shallowRef<PinDrag | null>(null);
-  const movedPositions = ref(
-    new Map<number, { position: SheetCommentPosition; revision: number }>(),
-  );
-  const draftPosition = ref<SheetCommentPosition | null>(null);
+  const movedPositions = ref(new Map<number, PendingMove>());
+  const pendingDraft = shallowRef<PendingDraft | null>(null);
+  const dragPreview = shallowRef<CommentMagneticPreview | null>(null);
+  const magnetism = ref(true);
+  let request = 0;
+  let altHeld = false;
+  let geometryObserver: MutationObserver | null = null;
+  let geometryFrame: number | null = null;
   const contextPosition = ref<SheetCommentPosition | null>(null);
   const contextMenuPoint = ref<SheetCommentPosition | null>(null);
   const moveError = ref(false);
@@ -221,6 +229,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
   let scrollOwnerElement: HTMLElement | null = null;
   let autoScrollFrame: number | null = null;
   let restoringDraftKey: string | null = null;
+  let restoreRequest = 0;
 
   const placing = computed(() => options.state().canComment && Boolean(options.state().placing));
   const selectedThread = computed(() => options.state().thread);
@@ -236,26 +245,74 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     const currentContainer = container;
     if (!currentContainer) return [];
     return visibleThreads.value.flatMap((thread) => {
-      const position = movedPositions.value.get(thread.id)?.position ?? thread.position;
+      const moving = drag.value?.thread?.id === thread.id ? dragPreview.value : null;
+      const position =
+        moving?.position ??
+        movedPositions.value.get(thread.id)?.position ??
+        (thread.position
+          ? resolveSheetCommentPosition(thread.position, thread.context, currentContainer)
+          : null);
       const screen = sheetCommentScreenPoint(thread, currentContainer, position);
       return screen ? [{ thread, screen }] : [];
     });
   });
-  const draftPoint = computed(() => {
-    void bounds.value;
-    const currentContainer = container;
-    if (!currentContainer) return null;
+  function currentDraft(): CommentMagneticInitial | null {
     const state = options.state();
-    const position = draftPosition.value ?? state.draftPosition;
-    if (!state.open || state.presentation !== "canvas" || state.thread || !position) return null;
-    return sheetCommentPositionForSurface(position, currentContainer);
+    if (
+      !container ||
+      !state.open ||
+      state.presentation !== "canvas" ||
+      state.thread ||
+      !state.draftPosition
+    )
+      return null;
+    return {
+      position: resolveSheetCommentPosition(state.draftPosition, state.draftContext, container),
+      context: state.draftContext ?? null,
+    };
+  }
+  const draftPlacement = computed(() => {
+    void bounds.value;
+    const confirmed = currentDraft();
+    if (!confirmed) return null;
+    const moving = drag.value && !drag.value.thread ? dragPreview.value : null;
+    return moving ?? pendingDraft.value ?? confirmed;
   });
+  const draftPoint = computed(() => {
+    const draft = draftPlacement.value;
+    return draft && container ? sheetCommentPositionForSurface(draft.position, container) : null;
+  });
+  const panelState = computed<SheetCommentsPanelState>(() => ({
+    ...options.state(),
+    ...(draftPlacement.value
+      ? { draftPosition: draftPlacement.value.position, draftContext: draftPlacement.value.context }
+      : {}),
+    draftPending: Boolean((drag.value && !drag.value.thread) || pendingDraft.value),
+  }));
+  const moving = computed(() => Boolean(drag.value?.moved));
+  const snapOutline = computed(() => {
+    const geometry = dragPreview.value?.candidate?.geometry;
+    if (geometry?.kind !== "rect" || !container) return null;
+    const rect = container.getBoundingClientRect();
+    const size = sheetCommentSurfaceSize(container);
+    const sx = rect.width / size.width || 1;
+    const sy = rect.height / size.height || 1;
+    return {
+      left: (geometry.left - rect.left) / sx,
+      top: (geometry.top - rect.top) / sy,
+      width: geometry.width / sx,
+      height: geometry.height / sy,
+    };
+  });
+  const isPending = (id: number) => movedPositions.value.has(id);
   const activePoint = computed(() =>
     selectedThread.value
       ? (pins.value.find((pin) => pin.thread.id === selectedThread.value?.id)?.screen ?? null)
       : draftPoint.value,
   );
-  const hoveredPin = computed(() => pins.value.find((pin) => pin.thread.id === hoverId.value));
+  const hoveredPin = computed(() =>
+    drag.value ? null : pins.value.find((pin) => pin.thread.id === hoverId.value),
+  );
   const dragging = computed(() => drag.value != null);
 
   function surfaceTarget(event: MouseEvent): boolean {
@@ -273,14 +330,24 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
 
   function pointFromClient(clientX: number, clientY: number): SheetCommentPosition {
     if (!container) return { x: 0, y: 0 };
-    return sheetCommentPointFromClient(
-      { x: clientX, y: clientY },
-      container.getBoundingClientRect(),
-    );
+    const adapter = sheetCommentSnapAdapter(container);
+    return adapter.clamp(adapter.fromScreen({ x: clientX, y: clientY }));
   }
 
-  function storeDraftPosition(position: SheetCommentPosition): void {
-    updateCommentDraft(options.draftStorageKey(), { position });
+  function storeDraft(preview: CommentMagneticInitial): void {
+    updateCommentDraft(options.draftStorageKey(), preview);
+  }
+
+  function placeAt(position: SheetCommentPosition, suppress = false): void {
+    if (!container) return;
+    const adapter = sheetCommentSnapAdapter(container);
+    const pointer = adapter.toScreen(position);
+    const preview = new CommentMagneticDrag(adapter, { position, context: null }, pointer).update(
+      pointer,
+      !magnetism.value || suppress,
+    );
+    storeDraft(preview);
+    live.pushEvent("comments_place", { ...preview.position, context: preview.context });
   }
 
   function restoreStoredDraft(): void {
@@ -293,10 +360,34 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     if (!stored?.position) return;
     const position = constrainSheetCommentPositionToSurface(stored.position, bounds.value);
     restoringDraftKey = storageKey;
+    const restoreId = ++restoreRequest;
+    const activeRestore = () =>
+      !disposed && restoreId === restoreRequest && options.draftStorageKey() === storageKey;
     const finishRestore = () => {
-      if (restoringDraftKey === storageKey) restoringDraftKey = null;
+      if (activeRestore()) restoringDraftKey = null;
     };
-    live.pushEvent("comments_place", { ...position }, finishRestore, finishRestore);
+    const restoreFree = () => {
+      if (!activeRestore() || !canRestoreDraft(options.state(), bounds.value)) {
+        finishRestore();
+        return;
+      }
+      live.pushEvent(
+        "comments_place",
+        { ...position, context: null },
+        finishRestore,
+        finishRestore,
+      );
+    };
+    live.pushEvent(
+      "comments_place",
+      { ...position, context: stored.context ?? null },
+      (reply) => {
+        if (reply.ok !== true && reply.context_unavailable === true && stored.context)
+          restoreFree();
+        else finishRestore();
+      },
+      finishRestore,
+    );
   }
 
   function focusThread(): void {
@@ -320,15 +411,16 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
   function refreshBounds(): void {
     if (disposed || !container) return;
     const rect = container.getBoundingClientRect();
-    bounds.value = { width: rect.width, height: rect.height };
+    bounds.value = sheetCommentSurfaceSize(container);
     const viewport = scrollViewport(container);
     const top = viewport ? Math.max(0, viewport.top - rect.top) : 0;
     const bottom = viewport ? Math.min(rect.height, viewport.bottom - rect.top) : rect.height;
     visibleBounds.value = {
-      width: rect.width,
-      height: Math.max(0, bottom - top),
-      top,
+      width: bounds.value.width,
+      height: Math.max(0, bottom - top) / (rect.height / bounds.value.height || 1),
+      top: top / (rect.height / bounds.value.height || 1),
     };
+    if (drag.value?.moved) updatePreview();
     focusThread();
   }
 
@@ -336,7 +428,6 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     if (
       !placing.value ||
       event.button !== 0 ||
-      event.altKey ||
       event.ctrlKey ||
       event.metaKey ||
       !surfaceTarget(event)
@@ -348,8 +439,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     placedPointer = event.pointerId;
     consumePlacedClick = true;
     const position = pointFromClient(event.clientX, event.clientY);
-    storeDraftPosition(position);
-    live.pushEvent("comments_place", { ...position });
+    placeAt(position, event.altKey);
   }
 
   function finishSurfacePointer(event: PointerEvent): void {
@@ -378,8 +468,8 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     const rect = container.getBoundingClientRect();
     contextPosition.value = pointFromClient(event.clientX, event.clientY);
     contextMenuPoint.value = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: ((event.clientX - rect.left) * bounds.value.width) / rect.width,
+      y: ((event.clientY - rect.top) * bounds.value.height) / rect.height,
     };
   }
 
@@ -388,8 +478,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
       closeContextMenu();
       return;
     }
-    storeDraftPosition(contextPosition.value);
-    live.pushEvent("comments_place", contextPosition.value);
+    placeAt(contextPosition.value);
     closeContextMenu();
   }
 
@@ -417,7 +506,33 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     );
   }
 
+  function handleDragKey(event: KeyboardEvent): boolean {
+    if (!drag.value) return false;
+    if (event.key === "Escape") {
+      cancelActiveDrag();
+      return true;
+    }
+    if (editableTarget(event.target)) return false;
+    if (event.key === "Alt") {
+      altHeld = true;
+      updatePreview();
+    }
+    if (event.key === "[" || event.key === "]") {
+      cycleContext(event.key === "]" ? 1 : -1);
+      return true;
+    }
+    if (event.key === "Enter" && drag.value.pointerId == null) {
+      commitDrag();
+      return true;
+    }
+    return false;
+  }
   function onKeyDown(event: KeyboardEvent): void {
+    if (handleDragKey(event)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     if (ignoreCommentShortcut(event)) return;
     if (event.key === "Escape") {
       if (contextMenuPoint.value) {
@@ -427,12 +542,11 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
       } else closeActiveComments(event);
       return;
     }
-    if (event.key === "Enter" && placing.value && container && event.target === container) {
+    if (event.key === "Enter" && container && keyboardPlacementTarget(event)) {
       event.preventDefault();
       event.stopImmediatePropagation();
       const position = visibleCenterPosition(container);
-      storeDraftPosition(position);
-      live.pushEvent("comments_place", { ...position });
+      placeAt(position);
       return;
     }
     if (event.key.toLowerCase() === "c" && options.state().canComment) {
@@ -440,6 +554,10 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
       event.stopImmediatePropagation();
       live.pushEvent("comments_mode", { active: !placing.value });
     }
+  }
+
+  function keyboardPlacementTarget(event: KeyboardEvent): boolean {
+    return placing.value && event.target === container;
   }
 
   function selectThread(thread: SheetCommentThread, event: MouseEvent): void {
@@ -452,99 +570,111 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     live.pushEvent("comments_select_thread", { thread_id: thread.id, presentation: "canvas" });
   }
 
-  function initialDragPosition(thread: SheetCommentThread | null): SheetCommentPosition | null {
-    if (thread) return thread.position ?? null;
-    return draftPosition.value ?? options.state().draftPosition ?? null;
+  function dragInitial(thread: SheetCommentThread | null): CommentMagneticInitial | null {
+    if (!container) return null;
+    if (!thread) return currentDraft();
+    return thread.position && thread.source.status === "available"
+      ? {
+          position: resolveSheetCommentPosition(thread.position, thread.context, container),
+          context: thread.context ?? null,
+        }
+      : null;
   }
-
-  function startDrag(event: PointerEvent, thread: SheetCommentThread | null): void {
-    if (!options.state().canComment || event.button !== 0) return;
-    if (thread && movedPositions.value.has(thread.id)) return;
-    const position = initialDragPosition(thread);
-    if (!position) return;
-
-    if (!container) return;
-    const surfaceRect = container.getBoundingClientRect();
-    const screen = sheetCommentPositionForSurface(position, container);
-
-    suppressedClick = false;
-    moveError.value = false;
+  function beginDrag(
+    target: HTMLElement,
+    thread: SheetCommentThread | null,
+    pointerId: number | null,
+    pointer?: SheetCommentPosition,
+  ): boolean {
+    if (!container || drag.value || !options.state().canComment) return false;
+    if (thread ? isPending(thread.id) : pendingDraft.value) return false;
+    const initial = dragInitial(thread);
+    if (!initial) return false;
+    const adapter = sheetCommentSnapAdapter(container);
+    const start = pointer ?? adapter.toScreen(initial.position);
     drag.value = {
       thread,
-      pointerId: event.pointerId,
-      start: { x: event.clientX, y: event.clientY },
-      grabOffset: {
-        x: event.clientX - surfaceRect.left - screen.x,
-        y: event.clientY - surfaceRect.top - screen.y,
-      },
-      lastClient: { x: event.clientX, y: event.clientY },
+      draftId: options.state().draftId ?? null,
+      pointerId,
+      target,
+      start,
+      lastClient: start,
+      session: new CommentMagneticDrag(adapter, initial, start),
       moved: false,
     };
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    dragPreview.value = null;
+    suppressedClick = false;
+    moveError.value = false;
+    return true;
   }
-
-  function positionForKeyboardMove(
-    thread: SheetCommentThread | null,
-    state: SheetCommentsPanelState,
-  ): SheetCommentPosition | null {
-    if (!thread) return draftPosition.value ?? state.draftPosition ?? null;
-    if (movedPositions.value.has(thread.id)) return null;
-    return thread.position ?? null;
+  function startDrag(event: PointerEvent, thread: SheetCommentThread | null): void {
+    if (event.button !== 0) return;
+    const target = event.currentTarget as HTMLElement;
+    if (!beginDrag(target, thread, event.pointerId, { x: event.clientX, y: event.clientY })) return;
+    event.preventDefault();
+    altHeld = event.altKey;
+    target.focus({ preventScroll: true });
+    target.setPointerCapture?.(event.pointerId);
   }
-
-  function persistKeyboardMove(
-    thread: SheetCommentThread | null,
-    position: SheetCommentPosition,
-  ): void {
-    if (thread) {
-      movedPositions.value.set(thread.id, { position, revision: thread.revision });
-      persistThreadPosition(thread);
-      return;
-    }
-    draftPosition.value = position;
-    persistDraftPosition();
+  function ignorePinShortcut(event: KeyboardEvent): boolean {
+    return editableTarget(event.target) || event.ctrlKey || event.metaKey;
   }
-
   function movePinWithKeyboard(event: KeyboardEvent, thread: SheetCommentThread | null): void {
-    if (!options.state().canComment) return;
-    const current = positionForKeyboardMove(thread, options.state());
-    if (!current) return;
-
-    const position = keyboardPosition(event, current, bounds.value);
-    if (!position) return;
+    const direction = keyboardDirections[event.key];
+    if (!direction || ignorePinShortcut(event) || !options.state().canComment) return;
+    const target = event.currentTarget as HTMLElement;
+    if (!drag.value && !beginDrag(target, thread, null)) return;
+    const current = drag.value;
+    if (!current || current.pointerId != null || current.target !== target) return;
     event.preventDefault();
     event.stopPropagation();
-    if (samePosition(position, current)) return;
-
-    moveError.value = false;
-    persistKeyboardMove(thread, position);
+    const step = event.shiftKey ? 1 : 8;
+    altHeld = event.altKey;
+    drag.value = {
+      ...current,
+      moved: true,
+      lastClient: {
+        x: current.lastClient.x + direction.x * step,
+        y: current.lastClient.y + direction.y * step,
+      },
+    };
+    updatePreview();
   }
-
+  function updatePreview(): void {
+    const current = drag.value;
+    if (!current) return;
+    dragPreview.value = current.session.update(current.lastClient, !magnetism.value || altHeld);
+    hoverId.value = null;
+  }
   function updateDraggedPosition(client: SheetCommentPosition): void {
     const current = drag.value;
-    if (!current || !container) return;
-
-    const delta = { x: client.x - current.start.x, y: client.y - current.start.y };
-    if (!current.moved && Math.hypot(delta.x, delta.y) < 4) return;
-
-    const rect = container.getBoundingClientRect();
-    const position = sheetCommentPointFromClient(
-      {
-        x: client.x - current.grabOffset.x,
-        y: client.y - current.grabOffset.y,
-      },
-      rect,
-    );
+    if (!current) return;
+    if (!current.moved && Math.hypot(client.x - current.start.x, client.y - current.start.y) < 4)
+      return;
     drag.value = { ...current, lastClient: client, moved: true };
-    hoverId.value = null;
-    if (current.thread)
-      movedPositions.value.set(current.thread.id, {
-        position,
-        revision: current.thread.revision,
-      });
-    else draftPosition.value = position;
+    updatePreview();
   }
-
+  function toggleMagnetism(): void {
+    magnetism.value = !magnetism.value;
+    if (drag.value?.moved) updatePreview();
+  }
+  function cycleContext(direction: 1 | -1 = 1): void {
+    if (!drag.value?.moved || !magnetism.value || altHeld) return;
+    dragPreview.value = drag.value.session.cycle(direction);
+  }
+  function onKeyUp(event: KeyboardEvent): void {
+    if (event.key === "Alt") {
+      altHeld = false;
+      if (drag.value?.moved) updatePreview();
+    }
+  }
+  function onPinBlur(): void {
+    hoverId.value = null;
+    if (drag.value?.pointerId === null) cancelActiveDrag();
+  }
+  function onLostCapture(event: PointerEvent): void {
+    if (drag.value?.pointerId === event.pointerId) cancelActiveDrag();
+  }
   function autoScrollStep(clientY: number, viewport: ScrollViewport): number {
     const height = viewport.bottom - viewport.top;
     if (height <= 0) return 0;
@@ -576,7 +706,14 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
 
   function scheduleAutoScroll(): void {
     const current = drag.value;
-    if (!current || autoScrollFrame != null || !container) return;
+    if (
+      !current ||
+      current.pointerId == null ||
+      !current.moved ||
+      autoScrollFrame != null ||
+      !container
+    )
+      return;
     const viewport = scrollViewport(container);
     if (!viewport) return;
     const step = autoScrollStep(current.lastClient.y, viewport);
@@ -601,126 +738,188 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     const current = drag.value;
     if (!current || current.pointerId !== event.pointerId) return;
     const client = { x: event.clientX, y: event.clientY };
+    altHeld = event.altKey;
     drag.value = { ...current, lastClient: client };
     updateDraggedPosition(client);
     scheduleAutoScroll();
   }
 
-  function onDragEnd(event: PointerEvent): void {
+  function endSession(): PinDrag | null {
     const current = drag.value;
-    if (!current || current.pointerId !== event.pointerId) return;
     stopAutoScroll();
     drag.value = null;
-    if (!current.moved) return;
-    suppressedClick = event.type !== "pointercancel";
-    if (event.type === "pointercancel" || !options.state().canComment) {
-      if (current.thread) movedPositions.value.delete(current.thread.id);
-      else draftPosition.value = null;
-      return;
-    }
-    if (current.thread) {
-      hoverId.value = current.thread.id;
-      persistThreadPosition(current.thread);
-    } else persistDraftPosition();
+    dragPreview.value = null;
+    if (current?.pointerId != null && current.target.hasPointerCapture?.(current.pointerId))
+      current.target.releasePointerCapture(current.pointerId);
+    return current;
   }
-
-  function cancelActiveDrag(): void {
+  function onDragEnd(event: PointerEvent): void {
+    if (!drag.value || drag.value.pointerId !== event.pointerId) return;
+    if (event.type === "pointercancel") cancelActiveDrag();
+    else {
+      onDragMove(event);
+      commitDrag();
+    }
+  }
+  function commitDrag(): void {
     const current = drag.value;
     if (!current) return;
-    stopAutoScroll();
-    drag.value = null;
-    suppressedClick = current.moved;
-    if (current.thread) movedPositions.value.delete(current.thread.id);
-    else draftPosition.value = null;
+    if (current.moved) updatePreview();
+    const preview = dragPreview.value;
+    endSession();
+    if (!current.moved || !preview || !options.state().canComment) return;
+    suppressedClick = current.pointerId != null;
+    if (current.thread) {
+      if (current.pointerId != null) hoverId.value = current.thread.id;
+      persistThreadPosition(current.thread, preview);
+    } else persistDraftPosition(current.draftId, preview);
   }
-
-  function persistDraftPosition(): void {
-    const position = draftPosition.value;
-    if (!position) return;
-    storeDraftPosition(position);
+  function cancelActiveDrag(): void {
+    if (drag.value?.moved && drag.value.pointerId != null) suppressedClick = true;
+    drag.value?.session.cancel();
+    endSession();
+  }
+  function persistDraftPosition(draftId: string | null, preview: CommentMagneticInitial): void {
+    const pending = { ...preview, draftId, request: ++request };
+    pendingDraft.value = pending;
     const rollback = () => {
-      if (draftPosition.value !== position) return;
-      draftPosition.value = null;
+      if (disposed || pendingDraft.value?.request !== pending.request) return;
+      pendingDraft.value = null;
       moveError.value = true;
     };
     live.pushEvent(
       "comments_place",
-      { ...position, moving_draft: true },
+      { ...preview.position, context: preview.context, moving_draft: true, draft_id: draftId },
       (reply) => {
         if (reply.ok !== true) rollback();
+        else if (pendingDraft.value?.request === pending.request) confirmDraft();
       },
       rollback,
     );
   }
-
-  function persistThreadPosition({ id, revision }: SheetCommentThread): void {
-    const position = movedPositions.value.get(id)?.position;
-    if (!position) return;
-    const rollback = () => {
-      if (movedPositions.value.get(id)?.revision !== revision) return;
-      movedPositions.value.delete(id);
-      moveError.value = true;
+  function samePlacement(
+    thread: SheetCommentThread | undefined,
+    placement: CommentMagneticInitial,
+  ): boolean {
+    return Boolean(
+      thread &&
+      samePosition(thread.position, placement.position) &&
+      contextIdentity(thread.context) === contextIdentity(placement.context),
+    );
+  }
+  function acknowledgedUnchanged(
+    returned: SheetCommentThread | undefined,
+    pending: PendingMove,
+    latest: SheetCommentThread | undefined,
+  ): boolean {
+    return (
+      returned?.revision === pending.revision &&
+      samePlacement(returned, pending) &&
+      samePlacement(latest, pending)
+    );
+  }
+  function persistThreadPosition(
+    thread: SheetCommentThread,
+    preview: CommentMagneticInitial,
+  ): void {
+    const pending = { ...preview, request: ++request, revision: thread.revision };
+    movedPositions.value.set(thread.id, pending);
+    const finish = (failed: boolean, returned?: SheetCommentThread) => {
+      if (disposed || movedPositions.value.get(thread.id)?.request !== pending.request) return;
+      const latest = visibleThreads.value.find((item) => item.id === thread.id);
+      const unchanged = acknowledgedUnchanged(returned, pending, latest);
+      if (failed || !latest || latest.revision !== pending.revision || unchanged)
+        movedPositions.value.delete(thread.id);
+      if (failed) moveError.value = true;
     };
     live.pushEvent(
       "comments_move",
-      { thread_id: id, ...position, expected_revision: revision },
-      (reply) => {
-        if (reply.ok !== true) {
-          rollback();
-          return;
-        }
-
-        const returnedThread = reply.thread;
-        if (!returnedThread || typeof returnedThread !== "object") return;
-        const returned = returnedThread as {
-          position?: { x?: unknown; y?: unknown } | null;
-          revision?: unknown;
-        };
-        if (
-          returned.revision === revision &&
-          returned.position?.x === position.x &&
-          returned.position.y === position.y &&
-          movedPositions.value.get(id)?.revision === revision
-        )
-          movedPositions.value.delete(id);
+      {
+        thread_id: thread.id,
+        ...preview.position,
+        context: preview.context,
+        expected_revision: thread.revision,
       },
-      rollback,
+      (reply) => finish(reply.ok !== true, reply.thread as SheetCommentThread | undefined),
+      () => finish(true),
     );
   }
-
+  function confirmDraft(): void {
+    const pending = pendingDraft.value;
+    if (!pending) return;
+    const state = options.state();
+    if (
+      state.draftId === pending.draftId &&
+      samePosition(state.draftPosition, pending.position) &&
+      contextIdentity(state.draftContext) === contextIdentity(pending.context)
+    ) {
+      storeDraft(pending);
+      pendingDraft.value = null;
+    }
+  }
   watch(
-    () => options.pins().map((thread) => [thread.id, thread.revision]),
+    () => [
+      options.pins().map((thread) => [thread.id, thread.revision]),
+      selectedThread.value?.revision,
+    ],
     () => {
       for (const [id, pending] of movedPositions.value) {
-        const latest = options.pins().find((thread) => thread.id === id);
+        const latest = visibleThreads.value.find((thread) => thread.id === id);
         if (!latest || latest.revision !== pending.revision) movedPositions.value.delete(id);
       }
+      const active = drag.value?.thread;
+      if (
+        active &&
+        !visibleThreads.value.some(
+          (thread) => thread.id === active.id && thread.revision === active.revision,
+        )
+      )
+        cancelActiveDrag();
+      scheduleGeometryRefresh();
       focusThread();
     },
   );
+  function cancelInvalidDraft(): void {
+    const state = options.state();
+    const pending = pendingDraft.value;
+    if (pending && (!currentDraft() || state.draftId !== pending.draftId))
+      pendingDraft.value = null;
+    const current = drag.value;
+    if (current && !current.thread && (!currentDraft() || state.draftId !== current.draftId))
+      cancelActiveDrag();
+  }
+  watch(() => [options.state().draftPosition, options.state().draftContext], confirmDraft);
   watch(
     () => ({
       storageKey: options.draftStorageKey(),
       open: options.state().open,
       draftPosition: options.state().draftPosition ?? null,
+      draftContext: options.state().draftContext ?? null,
+      draftId: options.state().draftId ?? null,
       threadId: options.state().thread?.id ?? null,
     }),
     (current, previous) => {
       if (current.draftPosition)
-        updateCommentDraft(current.storageKey, { position: current.draftPosition });
+        updateCommentDraft(current.storageKey, {
+          position: current.draftPosition,
+          context: current.draftContext,
+        });
       if (previous && current.storageKey !== previous.storageKey) {
-        draftPosition.value = null;
+        pendingDraft.value = null;
+        cancelActiveDrag();
         return;
       }
       if (draftConversationClosed(current, previous)) clearCommentDraft(current.storageKey);
-      draftPosition.value = null;
+      cancelInvalidDraft();
     },
   );
   watch(
     () => options.draftStorageKey(),
     async () => {
       restoringDraftKey = null;
-      draftPosition.value = null;
+      restoreRequest++;
+      pendingDraft.value = null;
+      cancelActiveDrag();
       await nextTick();
       refreshBounds();
       restoreStoredDraft();
@@ -741,6 +940,27 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     { immediate: true },
   );
 
+  watch(
+    () => options.state().canComment,
+    (allowed) => {
+      if (!allowed) cancelActiveDrag();
+    },
+  );
+  function scheduleGeometryRefresh(): void {
+    if (disposed || geometryFrame != null) return;
+    geometryFrame = requestAnimationFrame(() => {
+      geometryFrame = null;
+      refreshBounds();
+    });
+  }
+  function observeTargets(): void {
+    resizeObserver?.disconnect();
+    if (!container) return;
+    resizeObserver?.observe(container);
+    if (scrollOwnerElement) resizeObserver?.observe(scrollOwnerElement);
+    for (const target of container.querySelectorAll(SHEET_COMMENT_TARGET_SELECTOR))
+      resizeObserver?.observe(target);
+  }
   onMounted(() => {
     container = options.container();
     if (!container) return;
@@ -752,6 +972,8 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     container.addEventListener("contextmenu", onContextMenu, true);
     document.addEventListener("pointerdown", closeContextMenuFromOutside, true);
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keyup", onKeyUp, true);
+    window.addEventListener("blur", cancelActiveDrag);
     window.addEventListener("pointermove", onDragMove);
     window.addEventListener("pointerup", onDragEnd);
     window.addEventListener("pointercancel", onDragEnd);
@@ -763,6 +985,25 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
       scrollOwnerElement.addEventListener("scroll", refreshBounds, { passive: true });
       resizeObserver.observe(scrollOwnerElement);
     }
+    observeTargets();
+    geometryObserver = new MutationObserver((mutations) => {
+      if (
+        !mutations.some(
+          (mutation) =>
+            mutation.target instanceof Element &&
+            !mutation.target.closest('[data-sheet-comment-ui="true"]'),
+        )
+      )
+        return;
+      observeTargets();
+      scheduleGeometryRefresh();
+    });
+    geometryObserver.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
     window.addEventListener("resize", refreshBounds);
     refreshBounds();
     restoreStoredDraft();
@@ -774,6 +1015,8 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     stopAutoScroll();
     cancelActiveDrag();
     resizeObserver?.disconnect();
+    geometryObserver?.disconnect();
+    if (geometryFrame != null) cancelAnimationFrame(geometryFrame);
     scrollOwnerElement?.removeEventListener("scroll", refreshBounds);
     window.removeEventListener("resize", refreshBounds);
     if (container) {
@@ -786,6 +1029,8 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     }
     document.removeEventListener("pointerdown", closeContextMenuFromOutside, true);
     document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("keyup", onKeyUp, true);
+    window.removeEventListener("blur", cancelActiveDrag);
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragEnd);
     window.removeEventListener("pointercancel", onDragEnd);
@@ -810,5 +1055,15 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     movePinWithKeyboard,
     placeContextComment,
     closeContextMenu,
+    panelState,
+    dragPreview,
+    snapOutline,
+    moving,
+    magnetism,
+    isPending,
+    toggleMagnetism,
+    cycleContext,
+    onPinBlur,
+    onLostCapture,
   };
 }
