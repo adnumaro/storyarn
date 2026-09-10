@@ -1,0 +1,171 @@
+lib/storyarn/ideation/recovery/contracts/references.ex
+  s_5af6a6d0a150f1::t_960bc43a54be35 35
+  s_5af6a6d0a150f1::t_1e290e346af440 31-34,36
+  s_5af6a6d0a150f1::t_b1bc816a2c4d39 37
+assets/app/modules/ideation/lib/connectionGeometry.ts
+  s_5af6a6d0a150f1::t_444f982ddea7c9 1-15,33-43,51-56,58-99
+  s_5af6a6d0a150f1::t_58e873970ce884 16-32,44-50,57
+lib/storyarn_web/live/ideation_live/handlers/idea_handlers.ex
+  s_5af6a6d0a150f1::t_440a4679ce9c0f 37-41
+lib/storyarn_web/live/ideation_live/board.ex
+  s_5af6a6d0a150f1::t_440a4679ce9c0f 24
+lib/storyarn/ideation/ideas/commands/update_canvas.ex
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 10
+  s_5af6a6d0a150f1::t_52bb8b8f72571b 52
+test/storyarn/ideation/canvas_connections_test.exs
+  s_5af6a6d0a150f1::t_6d5a8706dd38de 18,26,35-36,44,47-48,54-55,62,65,68,75,80-81,91-100,104,110,112,117,133,138-141,143,152,163,165,188,192,195,202
+  s_5af6a6d0a150f1::t_d246d232a72153 1-17,19-25,27-34,37-43,45-46,49-53,56-61,63-64,66-67,69-74,76-79,82-90,101-103,105-109,111,113-116,118-132,134-137,142,144-151,153-162,164,166-187,189-191,193-194,196-201,203-211
+lib/storyarn/ideation/ideas/contracts/view.ex
+  s_5af6a6d0a150f1::t_960bc43a54be35 42
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 10,40-41,43-44
+  s_5af6a6d0a150f1::t_4c50711a857368 45-46
+assets/app/modules/ideation/composables/useCanvasNotes.ts
+  s_5af6a6d0a150f1::t_833bc8b624a890 38-39,88,97,202-203,212,521-523
+  s_5af6a6d0a150f1::t_ef1bc550fe410c 104
+  s_5af6a6d0a150f1::t_c54b4485f162e2 11-13,24,36,46,54,78,81-87,89-96,98-103,105-109,213,223-232,236,335-341,545
+  s_5af6a6d0a150f1::t_8ef771892edd32 37,125,159,186,195,201,209,402,481,520,544
+docs/reference/brainstorming-recovery-contract.md
+  s_5af6a6d0a150f1::t_960bc43a54be35 74
+  s_5af6a6d0a150f1::t_1e290e346af440 72-73,75-76
+assets/app/test/modules/ideation/canvasConnectionTools.test.ts
+  s_5af6a6d0a150f1::t_d60522495ed0a6 1-60
+  s_5af6a6d0a150f1::t_ac15bc224f79bb 61-77
+test/storyarn_web/live/ideation_live/connection_board_test.exs
+  s_5af6a6d0a150f1::t_6fb5e9460f5128 1-251
+assets/app/modules/ideation/composables/useCanvasConnections.ts
+  s_5af6a6d0a150f1::t_364ee68a327384 13,19,63,73-74,117-120,184-186
+  s_5af6a6d0a150f1::t_d5abf9f5c5faba 1-12,14-18,20-62,64-72,75-116,121-183,187-199
+lib/storyarn/ideation/recovery/execution/restore.ex
+  s_5af6a6d0a150f1::t_6d5a8706dd38de 77-86
+assets/app/test/modules/ideation/canvasHistory.test.ts
+  s_5af6a6d0a150f1::t_1a2f89532546ec 43-171,173-176,178-185
+  s_5af6a6d0a150f1::t_6e77c8eec786e9 172,177
+lib/storyarn/ideation/README.md
+  s_5af6a6d0a150f1::t_0f6bbd161404ac 34-40
+assets/app/test/modules/ideation/workspaceConnections.test.ts
+  s_5af6a6d0a150f1::t_3272e82caa5cdd 64-68,123-125
+  s_5af6a6d0a150f1::t_57b25c10b0b770 129-131
+  s_5af6a6d0a150f1::t_49268dd0b04b53 1-63,69-122,126-128,132-153,171-276
+  s_5af6a6d0a150f1::t_6e9ea3cfac70e2 154-170
+docs/features/brainstorming-board.md
+  s_5af6a6d0a150f1::t_6e9ea3cfac70e2 4,38-49,62-64
+lib/storyarn_web/live/ideation_live/helpers/params.ex
+  s_5af6a6d0a150f1::t_440a4679ce9c0f 26
+assets/app/modules/ideation/types.ts
+  s_5af6a6d0a150f1::t_c54b4485f162e2 34-40
+  s_5af6a6d0a150f1::t_440a4679ce9c0f 12,19-33
+lib/storyarn/ideation/ideas/commands/update_connections.ex
+  s_5af6a6d0a150f1::t_31aa6066661549 1-12
+assets/app/modules/ideation/components/CanvasConnectionTools.vue
+  s_5af6a6d0a150f1::t_92d4aa1a4d475f 23-26,40,43-48,65,89,101
+  s_5af6a6d0a150f1::t_444f982ddea7c9 1,3-22,33-39,41-42,49-52,54,64,66,68-77,84-88,96-100,108-110,114-120,127-130
+  s_5af6a6d0a150f1::t_2c270c238a55c1 27-32,55-63,67,78-83,90-95,102-107,111-113,121-126
+  s_5af6a6d0a150f1::t_0b1f7500c31f2c 2,53
+  s_5af6a6d0a150f1::t_3f705da5b194b7 131-139
+test/storyarn/ideation/connected_creation_test.exs
+  s_5af6a6d0a150f1::t_a6065f57af1cc5 96
+  s_5af6a6d0a150f1::t_6d5a8706dd38de 19,22,34,44,46,57,59,72,81,83,90-95,100,109,121-124,132-140,142,150
+  s_5af6a6d0a150f1::t_918cf6cd4c2e66 99
+  s_5af6a6d0a150f1::t_5fa0abf37e0659 1-18,20-21,23-33,35-43,45,47-56,58,60-71,73-80,82,84-89,97-98,101-108,110-120,125-131,141,143-149,151
+test/storyarn/ideation/idea_concurrency_test.exs
+  s_5af6a6d0a150f1::t_a6065f57af1cc5 106-175
+  s_5af6a6d0a150f1::t_a63081bacde7e8 176-178
+assets/app/test/modules/ideation/connectionHistory.test.ts
+  s_5af6a6d0a150f1::t_f1795867ba69dd 3,14
+  s_5af6a6d0a150f1::t_b18d4ea08c168b 1-2,4-13,15-159,171
+  s_5af6a6d0a150f1::t_2f2a94619b82bd 160-170
+  s_5af6a6d0a150f1::t_aee36a51de98ff 172-287
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_5af6a6d0a150f1::t_58e873970ce884 241,243-245,247-253,281-288,290-294,726,731-734,833
+  s_5af6a6d0a150f1::t_9df1a04a37a067 242,270-271
+  s_5af6a6d0a150f1::t_f612000d451a88 26-31,94-95,206-218,229,246,254-259,261-264,266-269,272-278,280,289,295-301,314-315,320,703-704,727-729,737-740,834,978-989
+  s_5af6a6d0a150f1::t_0b1f7500c31f2c 234-240,260,265,279,730,735-736,879-881
+  s_5af6a6d0a150f1::t_a456916aa41839 705-706,741-748,805-808,832,835-836,873,876-878,888-890,942-943,993-994,999,1036-1045,1071,1094-1096,1201
+assets/app/test/modules/ideation/canvasConnections.test.ts
+  s_5af6a6d0a150f1::t_552df23d164122 1-11,21-24,29-34,48-52,58-60,73-86,91-107,118-120,128-148,152,157-170,176-195,200,219-228,232-236
+  s_5af6a6d0a150f1::t_d60522495ed0a6 12-20,25-28,35-47,53-57,61-72,87-90,108-117,121-127,149-151,153-156,171-175,196-199,203-218,229-231
+  s_5af6a6d0a150f1::t_58e873970ce884 201-202
+  s_5af6a6d0a150f1::t_c1375ab9183304 237-244
+assets/app/modules/ideation/composables/useCanvasHistory.ts
+  s_5af6a6d0a150f1::t_b7e7a58a596a74 85-90,100
+  s_5af6a6d0a150f1::t_d8989c96387aaf 65-71,75-84,103
+  s_5af6a6d0a150f1::t_564e977f29f1b4 14-16,26-29,31,35,37,39-48,50-57,59-64,91-99,101-102,108-110
+  s_5af6a6d0a150f1::t_b308516a398a5a 104
+lib/storyarn/ideation/ideas/commands/connect.ex
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 3,5,10-11
+lib/storyarn/ideation.ex
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 144-147
+lib/storyarn/ideation/ideas/ideas.ex
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 27-28
+assets/app/test/modules/ideation/connectionGeometry.test.ts
+  s_5af6a6d0a150f1::t_552df23d164122 1-62
+  s_5af6a6d0a150f1::t_ed408c4e0750b1 63-88
+lib/storyarn/ideation/ideas/rules/connections.ex
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 11-12
+  s_5af6a6d0a150f1::t_31aa6066661549 1-10,13-26,28-92
+  s_5af6a6d0a150f1::t_5fa0abf37e0659 27
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 160
+lib/storyarn/ideation/ideas/commands/create.ex
+  s_5af6a6d0a150f1::t_960bc43a54be35 60-63,101,103-134
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 6,13,39-40,73,102
+  s_5af6a6d0a150f1::t_556cfc109264c5 74,135-137
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_5af6a6d0a150f1::t_960bc43a54be35 62-63
+  s_5af6a6d0a150f1::t_396cf6f84bb1bd 59-61,64-72
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_5af6a6d0a150f1::t_1e290e346af440 104
+lib/storyarn/ideation/ideas/execution/revisions.ex
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 5,46
+test/storyarn/ideation/recovery_test.exs
+  s_5af6a6d0a150f1::t_1e290e346af440 492
+  s_5af6a6d0a150f1::t_a6065f57af1cc5 511-534,542-545,547-557,561-575,580-584
+  s_5af6a6d0a150f1::t_6d5a8706dd38de 535-541,546,558-560,576-579
+lib/storyarn/ideation/ideas/execution/connections.ex
+  s_5af6a6d0a150f1::t_31aa6066661549 1-37,44,46-65,75-84,86-91,96-99,101-120,122-176,178-191
+  s_5af6a6d0a150f1::t_3db65437b8a5a5 45,121
+  s_5af6a6d0a150f1::t_960bc43a54be35 66-74
+  s_5af6a6d0a150f1::t_05792709ad847f 177
+  s_5af6a6d0a150f1::t_768abe7476052e 38-43,85,92-95,100
+assets/app/test/modules/ideation/canvasConnectionProjection.test.ts
+  s_5af6a6d0a150f1::t_f1795867ba69dd 69
+  s_5af6a6d0a150f1::t_b18d4ea08c168b 1-68,70-129
+  s_5af6a6d0a150f1::t_d3382cb6a657e5 130-222
+docs/reference/brainstorming-ideas-contract.md
+  s_5af6a6d0a150f1::t_1e290e346af440 56-93,99-102,105-107
+  s_5af6a6d0a150f1::t_960bc43a54be35 94-98,103-104
+assets/app/locales/en/ideation.json
+  s_5af6a6d0a150f1::t_d29d3b6b945e96 117-120,173-186
+assets/app/locales/es/ideation.json
+  s_5af6a6d0a150f1::t_508188c2e33464 117-120,173-186
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_5af6a6d0a150f1::t_8c3905f6f7822c 21-22,81,115-116,118,121-131,154,199,243,254-260,348,414,424,485,499,507,527,549-571,574-577,579-610,619,624,678,686,692,731,741,771-772,789-797,873,892-893,920,927,931,957
+test/e2e/workspaces/projects/ideation/connections_test.exs
+  s_5af6a6d0a150f1::t_2ef5e73b8b602c 1-151
+assets/app/test/modules/ideation/canvasInteractions.test.ts
+  s_181e024ec0f179::t_205765193e97aa 203,220-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cd5ef6ee854cb299de78b74d30e1867a9d186d7d",
+  "prompts": {},
+  "sessions": {
+    "s_181e024ec0f179": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08a5c-111c-7480-b1d6-283f1ecd2f36",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
