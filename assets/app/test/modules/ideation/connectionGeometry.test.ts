@@ -4,6 +4,7 @@ import {
   connectionEndpoints,
   readableViewport,
 } from "@modules/ideation/lib/connectionGeometry";
+import type { NoteShape } from "@modules/ideation/types";
 
 describe("connected note placement", () => {
   const source = { x: 100, y: 200, width: 280, height: 600 };
@@ -59,6 +60,49 @@ describe("visible connection direction", () => {
     const note = { x: 0, y: 0, width: 280, height: 260 };
     expect(connectionEndpoints(note, note)).toBeNull();
     expect(connectionEndpoints(note, { ...note, x: 20 })).toBeNull();
+  });
+
+  it.each<NoteShape>(["rectangle", "ellipse", "diamond"])(
+    "meets both %s outlines along diagonal connections with different dimensions",
+    (shape) => {
+      const source = { x: 50, y: -100, width: 280, height: 600, shape };
+      const target = { x: 600, y: 1000, width: 480, height: 260, shape };
+      const line = connectionEndpoints(source, target, 0)!;
+      const boundary = (x: number, y: number, note: typeof source) => {
+        const dx = Math.abs((x - note.x - note.width / 2) / (note.width / 2));
+        const dy = Math.abs((y - note.y - note.height / 2) / (note.height / 2));
+        if (shape === "ellipse") return dx * dx + dy * dy;
+        if (shape === "diamond") return dx + dy;
+        return Math.max(dx, dy);
+      };
+      expect(boundary(line.x1, line.y1, source)).toBeCloseTo(1, 10);
+      expect(boundary(line.x2, line.y2, target)).toBeCloseTo(1, 10);
+
+      const spaced = connectionEndpoints(source, target, 12)!;
+      expect(Math.hypot(spaced.x1 - line.x1, spaced.y1 - line.y1)).toBeCloseTo(12, 10);
+      expect(Math.hypot(spaced.x2 - line.x2, spaced.y2 - line.y2)).toBeCloseTo(12, 10);
+    },
+  );
+
+  it("uses each endpoint's shape independently", () => {
+    const source = { x: 0, y: 0, width: 200, height: 200, shape: "ellipse" as const };
+    const target = { x: 400, y: 400, width: 200, height: 200, shape: "diamond" as const };
+    const line = connectionEndpoints(source, target, 0)!;
+    expect(line.x1).toBeCloseTo(100 + 100 / Math.sqrt(2), 10);
+    expect(line.y1).toBeCloseTo(line.x1, 10);
+    expect(line.x2).toBeCloseTo(450, 10);
+    expect(line.y2).toBeCloseTo(450, 10);
+  });
+
+  it("keeps a diagonal connection visible when only the shapes' bounding boxes overlap", () => {
+    const note = { x: 0, y: 0, width: 200, height: 200, shape: "diamond" as const };
+    expect(connectionEndpoints(note, { ...note, x: 150, y: 150 }, 0)).toEqual({
+      x1: 150,
+      y1: 150,
+      x2: 200,
+      y2: 200,
+    });
+    expect(connectionEndpoints(note, { ...note, x: 50, y: 50 }, 0)).toBeNull();
   });
 });
 

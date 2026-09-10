@@ -19,6 +19,7 @@ import LiveLink from "@components/navigation/LiveLink.vue";
 import { useLive } from "@shared/composables/useLive";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
 import CanvasConnectionTools from "./components/CanvasConnectionTools.vue";
+import CanvasShapePicker from "./components/CanvasShapePicker.vue";
 import { useCanvasConnections } from "./composables/useCanvasConnections";
 import GroupSelectionTools from "./components/GroupSelectionTools.vue";
 import { useCanvasGroups } from "./composables/useCanvasGroups";
@@ -38,12 +39,14 @@ import { readNotes, writeNotes, type NoteCopy } from "./lib/clipboard";
 import { useBoardText } from "./composables/useBoardText";
 import { sameBody } from "./lib/paste";
 import { notePosition } from "./lib/placement";
+import { reshapedWidth } from "./lib/noteShapes";
 import type { Point } from "./composables/useCanvasViewport";
 import type {
   Board,
   Idea,
   IdeaContent,
   CanvasPlacement,
+  NoteShape,
   RoundFilter as RoundSelection,
 } from "./types";
 const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
@@ -81,6 +84,12 @@ const notes = useCanvasNotes(
   (idea) => connections.created(idea),
 );
 const current = computed(() => notes.notes.value.find((n) => n.id === selected.value));
+const selectionShape = computed(() => {
+  const shapes = new Set(
+    selectedNotes(selectedIds.value).map((note) => note.canvas?.shape ?? "rectangle"),
+  );
+  return shapes.size === 1 ? [...shapes][0] : null;
+});
 const writable = computed(() => board.can_edit && board.session?.status === "open");
 const canCreate = computed(() => writable.value && board.session?.contributions_open !== false);
 const own = computed(() => current.value?.author_id === board.current_user_id);
@@ -434,22 +443,24 @@ function placementCommand(
   before: CanvasPlacement,
   after: CanvasPlacement,
 ): CanvasCommand {
+  function matches(canvas: CanvasPlacement | undefined, expected: CanvasPlacement) {
+    const placement = {
+      ...canvas,
+      shape: canvas?.shape ?? "rectangle",
+      width: canvas?.width ?? 280,
+    };
+    return Object.entries(expected).every(
+      ([key, value]) => placement[key as keyof CanvasPlacement] === value,
+    );
+  }
   async function apply(expected: CanvasPlacement, value: CanvasPlacement) {
     if (!(await notes.settle(id))) return false;
     const note = notes.find(id);
-    if (
-      !note ||
-      Object.entries(expected).some(
-        ([key, value]) => note.canvas?.[key as keyof CanvasPlacement] !== value,
-      )
-    )
-      return false;
+    if (!note || !matches(note.canvas, expected)) return false;
     notes.move(note.id, value);
     if (!(await notes.settle(note.id))) return false;
     const saved = notes.find(note.id)?.canvas;
-    return Object.entries(value).every(
-      ([key, value]) => saved?.[key as keyof CanvasPlacement] === value,
-    );
+    return matches(saved, value);
   }
   return {
     targets: () => [{ id: notes.resolveId(id) }],
@@ -502,6 +513,19 @@ function color(value: string) {
   const id = current.value.id;
   notes.move(id, { color: value });
   history.push(placementCommand(id, { color: before }, { color: value }));
+}
+function shape(value: NoteShape) {
+  if (!writable.value || mutationBusy.value) return;
+  const commands: CanvasCommand[] = [];
+  for (const note of selectedNotes(selectedIds.value)) {
+    const before = note.canvas?.shape ?? "rectangle";
+    if (before === value) continue;
+    const width = note.canvas?.width ?? 280;
+    const after = { shape: value, width: reshapedWidth(width, before, value) };
+    notes.move(note.id, { ...notePosition(note), ...after });
+    commands.push(placementCommand(note.id, { shape: before, width }, after));
+  }
+  if (commands.length) history.push(group(commands));
 }
 async function remove(ids: number[]) {
   if (!writable.value || mutationBusy.value) return;
@@ -929,6 +953,14 @@ onUnmounted(() => {
               @membership="groupMembership"
             />
             <CanvasConnectionTools v-if="writable" v-bind="connectionTools" />
+            <CanvasShapePicker
+              v-if="writable"
+              :value="selectionShape"
+              :count="selectedIds.length"
+              :disabled="mutationBusy"
+              @change="shape"
+              @close="canvas?.focusEditing()"
+            />
             <template v-if="writable"
               ><Popover
                 ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"

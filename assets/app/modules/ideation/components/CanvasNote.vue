@@ -40,7 +40,7 @@ const editor = useEditor({
       role: "textbox",
       "aria-label": t("ideation.body"),
       "aria-multiline": "true",
-      class: "min-h-36 outline-none",
+      class: "outline-none",
     },
     transformPastedHTML: pasteContent,
     handleKeyDown: (_, event) => {
@@ -93,6 +93,7 @@ watch(
   },
 );
 onMounted(focus);
+const shape = computed(() => note.canvas?.shape ?? "rectangle");
 const color = computed(
   () =>
     ({
@@ -113,35 +114,36 @@ const color = computed(
     :aria-selected="selected"
     :data-round-id="note.round_id"
     :data-late-contribution="note.late_contribution"
-    class="canvas-note flex min-h-60 flex-col rounded-sm p-5 text-[#292d35] shadow-md outline-none transition-shadow"
-    :class="
-      selected
-        ? 'ring-2 ring-primary ring-offset-4 ring-offset-background shadow-lg'
-        : 'hover:shadow-lg'
-    "
-    :style="{ backgroundColor: color }"
+    :data-note-shape="shape"
+    class="canvas-note relative grid min-h-60 text-[#292d35] outline-none"
+    :class="[`canvas-note--${shape}`, { 'canvas-note--selected': selected }]"
+    :style="{ '--note-color': color }"
   >
-    <p v-if="note.title" class="mb-3 text-base font-semibold leading-snug">{{ note.title }}</p>
-    <EditorContent
-      :editor="editor"
-      class="note-text flex-1 text-[17px] leading-relaxed"
-      :class="editing ? 'cursor-text' : 'pointer-events-none select-none'"
-      @pointerdown="editing && $event.stopPropagation()"
-    />
-    <footer class="mt-5 flex items-center justify-between gap-3 text-[11px] opacity-65">
-      <span class="min-w-0">
-        <span class="block truncate">{{ author }}</span>
-        <span v-if="note.round_id" class="mt-1 block"
-          >{{
-            roundNumber
-              ? t("ideation.rounds.number", { number: roundNumber })
-              : t("ideation.rounds.assigned")
-          }}<span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span></span
-        > </span
-      ><span class="flex shrink-0 items-center gap-1">{{
-        editing && status !== "saved" ? t(`ideation.saveStatus.${status}`) : ""
-      }}</span>
-    </footer>
+    <span aria-hidden="true" class="note-outline" />
+    <span aria-hidden="true" class="note-surface" />
+    <div class="note-content relative z-10 flex min-w-0 flex-col p-5">
+      <p v-if="note.title" class="mb-3 text-base font-semibold leading-snug">{{ note.title }}</p>
+      <EditorContent
+        :editor="editor"
+        class="note-text min-w-0 flex-1 text-[17px] leading-relaxed"
+        :class="editing ? 'cursor-text' : 'pointer-events-none select-none'"
+        @pointerdown="editing && $event.stopPropagation()"
+      />
+      <footer
+        class="mt-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] opacity-65"
+      >
+        <span class="min-w-0">
+          <span class="block truncate">{{ author }}</span>
+          <span v-if="note.round_id" class="mt-1 block"
+            >{{
+              roundNumber
+                ? t("ideation.rounds.number", { number: roundNumber })
+                : t("ideation.rounds.assigned")
+            }}<span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span></span
+          > </span
+        ><span>{{ editing && status !== "saved" ? t(`ideation.saveStatus.${status}`) : "" }}</span>
+      </footer>
+    </div>
   </article>
 </template>
 <style scoped>
@@ -164,6 +166,73 @@ const color = computed(
   pointer-events: none;
 }
 .canvas-note {
+  --note-outline: inset(0 round 2px);
   overflow-wrap: anywhere;
+}
+.note-outline,
+.note-surface,
+.note-outline::after,
+.note-surface::before {
+  position: absolute;
+  pointer-events: none;
+}
+.note-outline {
+  inset: -6px;
+  background: hsl(var(--primary));
+  clip-path: var(--note-outline);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.note-outline::after {
+  content: "";
+  inset: 2px;
+  background: hsl(var(--background));
+  clip-path: var(--note-outline);
+}
+.canvas-note--selected .note-outline,
+.canvas-note:focus-visible .note-outline {
+  opacity: 1;
+}
+.note-surface {
+  inset: 0;
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.16));
+  transition: filter 120ms ease;
+}
+.note-surface::before {
+  content: "";
+  inset: 0;
+  background: var(--note-color);
+  clip-path: var(--note-outline);
+}
+.canvas-note--selected .note-surface,
+.canvas-note:hover .note-surface {
+  filter: drop-shadow(0 6px 7px rgb(0 0 0 / 0.2));
+}
+.canvas-note--rectangle .note-text :deep(.tiptap) {
+  min-height: 9rem;
+}
+/* The center cell is an inscribed rectangle. Fractional rows grow with its
+   content, keeping all text inside the outline without clipping the editor. */
+.canvas-note--ellipse {
+  --note-outline: ellipse(50% 50% at 50% 50%);
+  grid-template-columns: minmax(0, 0.207107fr) minmax(0, 1fr) minmax(0, 0.207107fr);
+  grid-template-rows: 0.207107fr 1fr 0.207107fr;
+}
+.canvas-note--diamond {
+  --note-outline: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  min-height: 280px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-rows: 1fr 2fr 1fr;
+}
+.canvas-note--ellipse .note-content,
+.canvas-note--diamond .note-content {
+  grid-area: 2 / 2;
+  padding: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-outline,
+  .note-surface {
+    transition: none;
+  }
 }
 </style>

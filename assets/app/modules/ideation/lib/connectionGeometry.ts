@@ -1,4 +1,5 @@
 import type { NoteBounds, Point } from "../composables/useCanvasViewport";
+import type { NoteShape } from "../types";
 
 export type ConnectionDirection = "up" | "right" | "down" | "left";
 
@@ -59,21 +60,28 @@ export function connectedPlacement(
   return null;
 }
 
-/** Arrow tips sit outside the destination, including when notes grow while typing. */
-export function connectionEndpoints(source: NoteBounds, target: NoteBounds, gap = 6) {
+interface ShapedNoteBounds extends NoteBounds {
+  shape?: NoteShape;
+}
+
+function outlineIntersection(note: ShapedNoteBounds, dx: number, dy: number) {
+  const x = Math.abs(dx) / (note.width / 2);
+  const y = Math.abs(dy) / (note.height / 2);
+  if (note.shape === "ellipse") return 1 / Math.hypot(x, y);
+  if (note.shape === "diamond") return 1 / (x + y);
+  return 1 / Math.max(x, y);
+}
+
+/** Arrow tips sit outside each visible shape, including when notes grow while typing. */
+export function connectionEndpoints(source: ShapedNoteBounds, target: ShapedNoteBounds, gap = 6) {
   const a = { x: source.x + source.width / 2, y: source.y + source.height / 2 };
   const b = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const distance = Math.hypot(dx, dy);
   if (!distance) return null;
-  const edge = (rect: NoteBounds) =>
-    Math.min(
-      dx ? rect.width / 2 / Math.abs(dx) : Infinity,
-      dy ? rect.height / 2 / Math.abs(dy) : Infinity,
-    );
-  const from = edge(source) + gap / distance;
-  const to = 1 - edge(target) - gap / distance;
+  const from = outlineIntersection(source, dx, dy) + gap / distance;
+  const to = 1 - outlineIntersection(target, dx, dy) - gap / distance;
   if (from >= to) return null;
   return { x1: a.x + dx * from, y1: a.y + dy * from, x2: a.x + dx * to, y2: a.y + dy * to };
 }

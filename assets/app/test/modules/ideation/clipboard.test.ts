@@ -15,6 +15,14 @@ function clipboard(contents: { [format: string]: string } = {}) {
   return { event, data };
 }
 describe("canvas clipboard", () => {
+  it.each(["rectangle", "ellipse", "diamond"] as const)(
+    "preserves %s through native copy and paste",
+    (shape) => {
+      const { event } = clipboard();
+      expect(writeNotes(event, [idea({ canvas: { shape, x: 20, y: 30 } })])).toBe(true);
+      expect(readNotes(event)?.[0].canvas).toEqual({ shape, x: 20, y: 30 });
+    },
+  );
   it("round-trips content and internal connections without identity or unrelated references", () => {
     const { event, data } = clipboard();
     const notes = [
@@ -110,7 +118,15 @@ describe("canvas clipboard", () => {
           {
             title: null,
             body: "<p>Valid</p>",
-            canvas: { x: 1e20, y: 4, width: 30, color: "red;bad", links: [77], version: 89 },
+            canvas: {
+              x: 1e20,
+              y: 4,
+              width: 30,
+              color: "red;bad",
+              shape: "polygon(0 0)",
+              links: [77],
+              version: 89,
+            },
             connections: [-1, 0, 1, 1, 2, 3.1, "1"],
           },
           { title: null, body: "<p>Other</p>", canvas: {} },

@@ -70,7 +70,8 @@ The inventory covers:
   configuration version, source idea/revision and immutable creation-request
   source identity, immutable round membership and late-contribution flag.
 - Note placement and directed canvas connections, including their independent
-  link versions. Endpoints are remapped during restoration. The bounded
+  link versions and optional rectangle/ellipse/diamond shape. Older inventories
+  without shape retain the rectangular default. Endpoints are remapped during restoration. The bounded
   `links_receipt` and `creation_links_receipt` acknowledgements are excluded from capture and stripped on
   restore because its request refers to the previous canvas identities. Missing
   link versions in older inventories mean version zero.

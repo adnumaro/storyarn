@@ -207,6 +207,7 @@ function center(note: Idea) {
 }
 function noteBounds(note: Idea) {
   return {
+    shape: note.canvas?.shape,
     ...position(note),
     width: note.canvas?.width ?? 280,
     height: noteHeights.value.get(note.id) ?? 260,
@@ -226,7 +227,31 @@ function summaryAnchor(id: number): Point | undefined {
     ? { x: frame.x + frame.synthesisX - 28, y: frame.y + frame.synthesisY - 64 }
     : undefined;
 }
-defineExpose({ center, fitAll, focus, summaryAnchor, revealNote });
+async function focusEditing() {
+  await nextTick();
+  measureNotes();
+  const selection = notes.filter((note) => selectedIds.includes(note.id)).map(noteBounds);
+  if (
+    selection.some(
+      (bounds) =>
+        view.x + bounds.x * view.zoom < 48 ||
+        view.y + bounds.y * view.zoom < 80 ||
+        view.x + (bounds.x + bounds.width) * view.zoom > view.width - 48 ||
+        view.y + (bounds.y + bounds.height) * view.zoom > view.height - 80,
+    )
+  ) {
+    const zoom = view.zoom;
+    fit(selection);
+    if (view.zoom > zoom) zoomTo(zoom);
+  }
+  const editor =
+    editingId === null
+      ? null
+      : root.value?.querySelector<HTMLElement>(`#canvas-note-${editingId} [contenteditable=true]`);
+  if (editor) editor.focus({ preventScroll: true });
+  else focus();
+}
+defineExpose({ center, fitAll, focus, focusEditing, summaryAnchor, revealNote });
 const visibleSelection = computed(() =>
   selectedIds.filter((id) => notes.some((note) => note.id === id)),
 );

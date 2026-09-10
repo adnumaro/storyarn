@@ -34,6 +34,10 @@ endpoints; it does not create text revisions. Connecting notes preserves the las
 placement version and request receipt, so a delayed move can still be retried.
 Position writes default omitted width/color to the canvas defaults (280/yellow)
 so notes created before canvas placement existed can be moved.
+Optional `canvas.shape` accepts `rectangle`, `ellipse` or `diamond`. Absence means
+rectangle; an existing note's shape is preserved when a placement request omits it.
+Shape changes use the placement version and receipt, participate in local undo/redo,
+and never create a text revision. Group projections and clipboard appearance retain it.
 
 `restore_idea/6` is the bounded inverse of deleting a note, not historical revision
 restoration. It accepts an idea identity, revision and deletion marker. It

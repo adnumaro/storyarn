@@ -1,6 +1,7 @@
 import type { CanvasPlacement, Idea } from "../types";
 import { notePosition } from "./placement";
 import { pasteContent } from "./paste";
+import { validNoteShape } from "./noteShapes";
 
 const MIME = "application/x-storyarn-brainstorming+json";
 const MAX_NOTES = 100;
@@ -39,6 +40,7 @@ interface PlacementInput {
   y?: unknown;
   width?: unknown;
   color?: unknown;
+  shape?: unknown;
 }
 interface NoteInput {
   title?: unknown;
@@ -78,6 +80,7 @@ function readPlacement(value: unknown): CanvasPlacement {
   if (coordinate(input.y)) canvas.y = input.y;
   if (validWidth(input.width)) canvas.width = input.width;
   if (validColor(input.color)) canvas.color = input.color;
+  if (validNoteShape(input.shape)) canvas.shape = input.shape;
   return canvas;
 }
 function readConnections(value: unknown, index: number, count: number): number[] {

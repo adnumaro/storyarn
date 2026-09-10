@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { mount, type VueWrapper } from "@vue/test-utils";
-import { nextTick } from "vue";
+import { nextTick, reactive } from "vue";
 import { EditorContent, type Editor } from "@tiptap/vue-3";
 import CanvasNote from "@modules/ideation/components/CanvasNote.vue";
 import { idea } from "./fixtures";
+import type { NoteShape } from "@modules/ideation/types";
 
 const mounted: VueWrapper[] = [];
 async function note() {
@@ -22,6 +23,47 @@ afterEach(() => {
 });
 
 describe("canvas note native undo", () => {
+  it("defaults legacy notes to the original rectangular appearance", async () => {
+    const { wrapper } = await note();
+    expect(wrapper.attributes("data-note-shape")).toBe("rectangle");
+    expect(wrapper.get('[role="textbox"]').attributes("aria-multiline")).toBe("true");
+    expect(wrapper.get(".note-content").text()).toContain("Alex");
+  });
+
+  it("preserves focus, selection and native typing history while changing shapes", async () => {
+    const { wrapper, editor } = await note();
+    editor.commands.setTextSelection(6);
+    editor.commands.insertContent(" changed");
+    editor.view.focus();
+    expect(document.activeElement).toBe(editor.view.dom);
+    const selection = editor.state.selection.toJSON();
+    for (const shape of ["ellipse", "diamond", "rectangle"] as NoteShape[]) {
+      await wrapper.setProps({ note: idea({ canvas: { shape } }) });
+      expect(wrapper.attributes("data-note-shape")).toBe(shape);
+      expect(wrapper.getComponent(EditorContent).props("editor")).toBe(editor);
+      expect(editor.state.selection.toJSON()).toEqual(selection);
+      expect(editor.isEditable).toBe(true);
+      expect(wrapper.get('[role="textbox"]').element).toBe(editor.view.dom);
+      expect(document.activeElement).toBe(editor.view.dom);
+    }
+    // jsdom has no range geometry for ProseMirror's focused-selection scrolling.
+    editor.view.dom.blur();
+    expect(editor.commands.undo()).toBe(true);
+    expect(editor.getHTML()).toBe("<p>Start</p>");
+    expect(editor.commands.redo()).toBe(true);
+    expect(editor.getHTML()).toBe("<p>Start changed</p>");
+  });
+
+  it("reacts to in-place shape patches without reporting a text edit", async () => {
+    const { wrapper } = await note();
+    const shaped = reactive(idea({ canvas: { shape: "ellipse" } }));
+    await wrapper.setProps({ note: shaped });
+    shaped.canvas!.shape = "diamond";
+    await nextTick();
+    expect(wrapper.attributes("data-note-shape")).toBe("diamond");
+    expect(wrapper.emitted("change")).toBeUndefined();
+  });
+
   it("keeps the current editor and local undo when quick-create is unavailable", async () => {
     const { wrapper, editor } = await note();
     await wrapper.setProps({ canCreate: false });

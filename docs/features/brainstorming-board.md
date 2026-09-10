@@ -1,7 +1,7 @@
 # Brainstorming canvas
 
 > Last reviewed: 2026-09-10
-> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165 and ENG-182
+> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165, ENG-166 and ENG-182
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
@@ -16,6 +16,14 @@ an existing authored note to edit that same note. Notes autosave, can be dragged
 freely, colored and connected without imposing a tree. Shift-click toggles notes
 in the selection; Command/Ctrl+A selects the visible notes when the canvas has
 focus. These canvas shortcuts do not intercept text editing or other input fields.
+
+The selection toolbar's **Note shape** picker offers rectangle, ellipse and diamond.
+Changing a selection applies the chosen shape to every selected note as one undo
+step. Text stays editable in place and grows within the outline; connections meet
+the visible boundary. Shapes carry no prescribed narrative meaning and do not
+change the note's content, author, visibility or creative state. Duplicate,
+copy/paste, group movement and project recovery retain each note's shape. Existing
+notes keep their rectangular appearance until someone changes it.
 
 With the select tool, drag empty canvas to select every visible note touched by
 the rectangle, including notes inside groups. Shift adds to the initial selection;
@@ -175,7 +183,6 @@ remain readable. Group recovery is described in the
 
 - [ENG-163](https://linear.app/sunset/issue/ENG-163/evaluar-recuperacion-de-versiones-anteriores-desde-la-sesion-de) evaluates historical recovery from a secondary session surface, without per-card history controls or replacing undo.
 - [ENG-164](https://linear.app/sunset/issue/ENG-164/spike-definir-el-valor-y-la-experiencia-de-desarrollar-una-idea) is a product spike for developing ideas with value beyond duplication; it is not an implementation commitment.
-- [ENG-166](https://linear.app/sunset/issue/ENG-166/permitir-cambiar-la-forma-de-las-notas-del-canvas-de-brainstorming) covers note shapes independently of their content.
 
 ## Interaction references
 

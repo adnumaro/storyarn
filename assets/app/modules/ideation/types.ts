@@ -1,6 +1,7 @@
 export type IdeaState = "active" | "parked" | "discarded";
 export type Visibility = "private" | "shared";
 export type PublicationPolicy = "author_only" | "facilitator_assisted";
+export type NoteShape = "rectangle" | "ellipse" | "diamond";
 
 export interface IdeaContent {
   title: string | null;
@@ -14,6 +15,7 @@ export interface CanvasPlacement {
   y?: number;
   width?: number;
   color?: string;
+  shape?: NoteShape;
   version?: number;
 }
 export interface ConnectionChange {

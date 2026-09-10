@@ -183,6 +183,13 @@
         "right": "Añadir a la derecha",
         "down": "Añadir abajo",
         "left": "Añadir a la izquierda"
+      },
+      "shape": "Forma de la nota",
+      "shapeSelection": "Forma para {count} notas",
+      "shapes": {
+        "rectangle": "Rectángulo",
+        "ellipse": "Elipse",
+        "diamond": "Rombo"
       }
     },
     "rounds": {

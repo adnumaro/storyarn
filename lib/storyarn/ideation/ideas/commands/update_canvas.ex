@@ -27,7 +27,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.UpdateCanvas do
       current = idea.canvas
 
       cond do
-        current["request_key"] == key and Map.take(current, ~w(x y width color)) == placement ->
+        current["request_key"] == key and Map.take(current, Map.keys(placement)) == placement ->
           Transaction.success(projection(idea, access.user_id))
 
         current["request_key"] == key ->
