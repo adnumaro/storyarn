@@ -1,6 +1,8 @@
 export type IdeaState = "active" | "parked" | "discarded";
 export type Visibility = "private" | "shared";
 export type PublicationPolicy = "author_only" | "facilitator_assisted";
+export type NoteShape = "plain" | "rectangle" | "ellipse" | "diamond";
+export type LinkDirection = "none" | "forward" | "backward" | "both";
 
 export interface IdeaContent {
   title: string | null;
@@ -9,24 +11,32 @@ export interface IdeaContent {
 }
 export interface CanvasPlacement {
   links?: number[];
+  link_directions?: { [target: number]: LinkDirection };
   links_version?: number;
   x?: number;
   y?: number;
   width?: number;
   color?: string;
+  shape?: NoteShape;
   version?: number;
 }
 export interface ConnectionChange {
   source_id: number;
   target_id: number;
   connected: boolean;
+  direction?: LinkDirection;
+}
+export interface ConnectionAcknowledgement extends Omit<ConnectionChange, "direction"> {
+  direction?: LinkDirection | null;
+  previous_connected?: boolean;
+  previous_direction?: LinkDirection | null;
 }
 export interface ConnectionVersion {
   id: number;
   version: number;
 }
 export interface ConnectionResult {
-  changes: ConnectionChange[];
+  changes: ConnectionAcknowledgement[];
   versions: ConnectionVersion[];
 }
 export interface NoteConnection {

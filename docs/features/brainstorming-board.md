@@ -1,7 +1,7 @@
 # Brainstorming canvas
 
 > Last reviewed: 2026-09-10
-> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165 and ENG-182
+> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165, ENG-166 and ENG-182
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
@@ -16,6 +16,17 @@ an existing authored note to edit that same note. Notes autosave, can be dragged
 freely, colored and connected without imposing a tree. Shift-click toggles notes
 in the selection; Command/Ctrl+A selects the visible notes when the canvas has
 focus. These canvas shortcuts do not intercept text editing or other input fields.
+
+New notes start as compact text. The selection toolbar's **Note shape** picker
+offers plain text, rectangle, ellipse and diamond.
+Changing a selection applies the chosen shape to every selected note as one undo
+step, preserving the viewport and writing width. Notes size to their text; author
+and round details appear outside the outline on hover or selection. Text stays
+editable in place and grows within the outline; connections meet
+the visible boundary. Shapes carry no prescribed narrative meaning and do not
+change the note's content, author, visibility or creative state. Duplicate,
+copy/paste, group movement and project recovery retain each note's shape. Existing
+notes keep their rectangular appearance until someone changes it.
 
 With the select tool, drag empty canvas to select every visible note touched by
 the rectangle, including notes inside groups. Shift adds to the initial selection;
@@ -35,17 +46,25 @@ connections within the copied selection are remapped to the new note identities.
 They do not copy authorship, publication receipts or publication metadata. New
 notes belong to the acting participant and follow the session's current mode.
 
-Select two or more notes and press `L` to connect the highlighted origin to the
-others. The origin badge and contextual connection menu make the direction explicit;
-choose a different origin in that menu. `Shift+L` removes only the connections within
-the current selection, including reverse connections. Links to other notes remain.
-With zero or one selected note, `L` activates the existing click-to-connect tool.
+Select two or more notes and press `L` to associate the first selected note with
+the others. New relations use a simple line. `Shift+L` removes only the connections
+within the current selection. With zero or one selected note, `L` activates the
+connection tool, which previews a line to the pointer and highlights valid targets.
+Dragging one note onto another also connects them and returns the dragged note to
+its original position. Escape cancels the gesture; dragging several notes still
+moves the selection.
+
+Click a connection to select it. Its compact toolbar offers a line, an arrow in
+either direction, or arrows at both ends. Delete/Backspace removes the selected
+connection; ordinary undo/redo restores the relation and its precise arrow style.
+Reciprocal legacy relations render as one connection without losing their stored
+meaning. Existing relations without style metadata retain their forward arrow.
 
 `Alt/Option+Shift+Arrow` creates a note in that direction, connected from every
 selected note, and opens it for writing. The contextual menu offers the same four
 directions. The new note and its links save together after writing; cancelling an
 empty note saves neither. `Cmd/Ctrl+Enter` while writing still creates an independent
-note. Connections show arrows between note edges, and new notes avoid occupied space.
+note. Connections meet the visible note outlines, and new notes avoid occupied space.
 
 There is no **Develop this idea** action. Duplicating a note is presented as
 duplication; any future development workflow needs a distinct, demonstrated
@@ -175,7 +194,6 @@ remain readable. Group recovery is described in the
 
 - [ENG-163](https://linear.app/sunset/issue/ENG-163/evaluar-recuperacion-de-versiones-anteriores-desde-la-sesion-de) evaluates historical recovery from a secondary session surface, without per-card history controls or replacing undo.
 - [ENG-164](https://linear.app/sunset/issue/ENG-164/spike-definir-el-valor-y-la-experiencia-de-desarrollar-una-idea) is a product spike for developing ideas with value beyond duplication; it is not an implementation commitment.
-- [ENG-166](https://linear.app/sunset/issue/ENG-166/permitir-cambiar-la-forma-de-las-notas-del-canvas-de-brainstorming) covers note shapes independently of their content.
 
 ## Interaction references
 

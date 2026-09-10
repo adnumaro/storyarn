@@ -30,21 +30,11 @@ afterEach(() => {
 });
 
 describe("contextual connection actions", () => {
-  it("changes origin inside the same open menu and shows the choice before connecting", async () => {
+  it("connects the selected notes directly without an origin configuration step", async () => {
     const wrapper = tools();
     await wrapper.get("#brainstorming-connection-tools").trigger("click");
     await flushPromises();
-    expect(button("connection-origin-10").getAttribute("aria-pressed")).toBe("true");
-    button("connection-origin-11").click();
-    await flushPromises();
-    expect(wrapper.emitted("origin")).toEqual([[11]]);
-    await wrapper.setProps({
-      selection: [
-        { id: 11, label: "A consequence" },
-        { id: 10, label: "The first thought" },
-      ],
-    });
-    expect(button("connection-origin-11").getAttribute("aria-pressed")).toBe("true");
+    expect(document.getElementById("connection-origin-10")).toBeNull();
     button("connect-selected-ideas").click();
     await flushPromises();
     expect(wrapper.emitted("connect")).toEqual([[]]);

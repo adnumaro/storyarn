@@ -3,7 +3,7 @@ import { defineComponent, h, nextTick, reactive, ref } from "vue";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import BrainstormingCanvas from "@modules/ideation/components/BrainstormingCanvas.vue";
 import CanvasConnectionTools from "@modules/ideation/components/CanvasConnectionTools.vue";
-import { idea } from "./fixtures";
+import { idea, ideaGroup } from "./fixtures";
 
 let view: { x: number; y: number; zoom: number; width: number; height: number };
 vi.mock("@modules/ideation/composables/useCanvasViewport", () => ({
@@ -79,9 +79,9 @@ afterEach(() => {
 });
 
 describe("canvas connection shortcuts", () => {
-  it("connects from the highlighted origin and disconnects only the visible selection", () => {
+  it("connects and disconnects the visible selection without adding an origin badge", () => {
     const wrapper = canvas({ selectedIds: [12, 10, 11, 999] });
-    expect(wrapper.find("#connection-origin-badge-12").exists()).toBe(true);
+    expect(wrapper.find("#connection-origin-badge-12").exists()).toBe(false);
     key(wrapper, "l");
     key(wrapper, "L", { shiftKey: true });
     expect(wrapper.emitted("connectSelection")).toEqual([
@@ -89,20 +89,6 @@ describe("canvas connection shortcuts", () => {
       [[12, 10, 11], false],
     ]);
     expect(wrapper.emitted("connect")).toBeUndefined();
-  });
-
-  it("changes the origin without losing selection or moving the contextual toolbar", async () => {
-    const wrapper = canvas();
-    const tools = wrapper.getComponent(CanvasConnectionTools);
-    tools.vm.$emit("origin", 11);
-    await nextTick();
-    expect(wrapper.find("#connection-origin-badge-11").exists()).toBe(true);
-    expect(wrapper.emitted("select")).toBeUndefined();
-    expect(tools.props("selection").map((note: { id: number }) => note.id)).toEqual([11, 10, 12]);
-    key(wrapper, "l");
-    expect(wrapper.emitted("connectSelection")).toEqual([[[11, 10, 12], true]]);
-    await wrapper.setProps({ selectedIds: [10, 12] });
-    expect(wrapper.find("#connection-origin-badge-10").exists()).toBe(true);
   });
 
   it.each([{ selectedIds: [] }, { selectedIds: [10] }])(
@@ -180,7 +166,7 @@ describe("canvas connection shortcuts", () => {
     view.x = -300;
     view.y = 200;
     key(wrapper, "ArrowDown", { altKey: true, shiftKey: true });
-    expect(wrapper.emitted("addConnected")).toEqual([[[10, 11, 12], { x: 255, y: 784 }]]);
+    expect(wrapper.emitted("addConnected")).toEqual([[[10, 11, 12], { x: 315, y: 784 }]]);
     expect(wrapper.emitted("move")).toBeUndefined();
     key(wrapper, "ArrowDown", { altKey: true, shiftKey: true, repeat: true });
     expect(wrapper.emitted("addConnected")).toHaveLength(1);
@@ -199,7 +185,7 @@ describe("canvas connection shortcuts", () => {
     ]);
     expect(wrapper.emitted("addConnected")?.[0][0]).toEqual([10, 11, 12]);
     const created = wrapper.emitted("addConnected")!;
-    expect((created[0][1] as { x: number }).x).toBe(-334);
+    expect((created[0][1] as { x: number }).x).toBe(-214);
   });
 
   it("does not write connections during a marquee or a note drag", async () => {
@@ -231,8 +217,8 @@ describe("canvas connection shortcuts", () => {
     await nextTick();
     await nextTick();
     const line = wrapper.get("svg line");
-    expect(line.attributes("x1")).toBe("296");
-    expect(line.attributes("x2")).toBe("494");
+    expect(line.attributes("x1")).toBe("294");
+    expect(line.attributes("x2")).toBe("496");
     expect(line.attributes("marker-end")).toBe("url(#brainstorming-connection-arrow)");
     await (
       wrapper.vm as unknown as { revealNote: (note: ReturnType<typeof idea>) => Promise<void> }
@@ -240,5 +226,194 @@ describe("canvas connection shortcuts", () => {
     expect(view.x).toBe(-344);
     expect(view.y).toBe(0);
     expect(view.zoom).toBe(1);
+  });
+});
+
+async function pointer(target: Element, type: string, point: { x: number; y: number }) {
+  target.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 9,
+      button: 0,
+      clientX: point.x,
+      clientY: point.y,
+    }),
+  );
+  await nextTick();
+}
+
+function dragSurface(wrapper: VueWrapper, id: number) {
+  const element = wrapper.get(`[data-note-id="${id}"]`).element;
+  Object.assign(element, { setPointerCapture: vi.fn(), hasPointerCapture: () => false });
+  return element;
+}
+
+describe("direct connection manipulation", () => {
+  it("places selectable connections above group frames and below notes", async () => {
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: {
+        groups: [ideaGroup()],
+        selectedId: null,
+        save: vi.fn(async () => true),
+        move: vi.fn(async () => undefined),
+      },
+    });
+    await nextTick();
+    const frame = wrapper.get("#canvas-group-40").element;
+    const svg = wrapper.get("#canvas-connection-10-11").element.closest("svg")!;
+    const note = wrapper.get('[data-note-id="10"]').element;
+    expect(frame.parentElement).toBe(svg.parentElement);
+    const layers = [...frame.parentElement!.children];
+    expect(layers.indexOf(frame)).toBeLessThan(layers.indexOf(svg));
+    expect(layers.indexOf(svg)).toBeLessThan(layers.indexOf(note));
+    await wrapper.get("#canvas-connection-10-11").trigger("click");
+    expect(wrapper.find("#brainstorming-connection-toolbar").exists()).toBe(true);
+  });
+
+  it("keeps connection actions inside the viewport when a long line's midpoint is off screen", async () => {
+    const wrapper = canvas({
+      selectedIds: [],
+      notes: [
+        idea({ canvas: { x: 100, y: 0, width: 280, links: [11] } }),
+        idea({ id: 11, canvas: { x: 100, y: 2200, width: 280 } }),
+      ],
+    });
+    await nextTick();
+    await wrapper.get("#canvas-connection-10-11").trigger("click");
+    const toolbar = wrapper.get("#brainstorming-connection-toolbar").element as HTMLElement;
+    expect(Number.parseFloat(toolbar.style.top)).toBeLessThanOrEqual(view.height - 80);
+    view.height = 360;
+    await nextTick();
+    expect(Number.parseFloat(toolbar.style.top)).toBeLessThanOrEqual(view.height - 80);
+    view.y = -2200;
+    await nextTick();
+    expect(Number.parseFloat(toolbar.style.top)).toBeGreaterThanOrEqual(48);
+  });
+
+  it("selects an association, changes its direction and deletes all reciprocal records together", async () => {
+    const wrapper = canvas({
+      selectedIds: [],
+      notes: [
+        idea({ canvas: { x: 10, y: 20, width: 280, links: [11] } }),
+        idea({ id: 11, canvas: { x: 500, y: 20, width: 280, links: [10] } }),
+      ],
+    });
+    await nextTick();
+    expect(wrapper.findAll("[data-connection-source]")).toHaveLength(1);
+    const hit = wrapper.get("#canvas-connection-10-11");
+    expect(hit.attributes("role")).toBe("button");
+    expect(hit.attributes("stroke-width")).toBe("12");
+    await hit.trigger("keydown", { key: "Enter" });
+    expect(wrapper.emitted("select")?.at(-1)).toEqual([[]]);
+    expect(wrapper.get("#brainstorming-connection-toolbar").attributes("role")).toBe("toolbar");
+    await wrapper.get("#connection-direction-none").trigger("click");
+    expect(wrapper.emitted("changeConnections")).toEqual([
+      [
+        [
+          { source_id: 10, target_id: 11, connected: true, direction: "none" },
+          { source_id: 11, target_id: 10, connected: false, direction: "forward" },
+        ],
+      ],
+    ]);
+    key(wrapper, "Delete");
+    expect(wrapper.emitted("changeConnections")?.at(-1)).toEqual([
+      [
+        { source_id: 10, target_id: 11, connected: false, direction: "forward" },
+        { source_id: 11, target_id: 10, connected: false, direction: "forward" },
+      ],
+    ]);
+    key(wrapper, "z", { metaKey: true });
+    expect(wrapper.emitted("undo")).toHaveLength(1);
+    expect(wrapper.emitted("remove")).toBeUndefined();
+  });
+
+  it("previews the connection tool and highlights the destination before committing", async () => {
+    const wrapper = canvas({ selectedIds: [] });
+    key(wrapper, "l");
+    await nextTick();
+    await pointer(dragSurface(wrapper, 10), "pointerdown", { x: 40, y: 40 });
+    await pointer(wrapper.element, "pointermove", { x: 350, y: 60 });
+    expect(wrapper.find("#brainstorming-connection-preview").exists()).toBe(true);
+    await pointer(wrapper.element, "pointermove", { x: 540, y: 40 });
+    expect(wrapper.find("#connection-target-11").exists()).toBe(true);
+    expect(wrapper.emitted("connect")).toBeUndefined();
+    key(wrapper, "Escape");
+    await nextTick();
+    expect(wrapper.find("#brainstorming-connection-preview").exists()).toBe(false);
+    expect(wrapper.find("#connection-target-11").exists()).toBe(false);
+  });
+
+  it("connects a dragged note on a target and returns the note to its original position", async () => {
+    const wrapper = canvas({ selectedIds: [10] });
+    const source = dragSurface(wrapper, 10);
+    await pointer(source, "pointerdown", { x: 40, y: 40 });
+    // Events still target the source under pointer capture, not the destination.
+    await pointer(source, "pointermove", { x: 540, y: 40 });
+    expect(wrapper.find("#connection-target-11").exists()).toBe(true);
+    expect(wrapper.find("#brainstorming-connection-preview").exists()).toBe(true);
+    await pointer(source, "pointerup", { x: 540, y: 40 });
+    expect(wrapper.emitted("connect")).toEqual([[10, 11, true]]);
+    expect(wrapper.emitted("move")).toBeUndefined();
+    expect(wrapper.get('[data-note-id="10"]').attributes("style")).toContain(
+      "translate(10px, 20px)",
+    );
+    expect(wrapper.find("#connection-target-11").exists()).toBe(false);
+  });
+
+  it("cancels a pending drop connection with Escape without moving either note", async () => {
+    const wrapper = canvas({ selectedIds: [10] });
+    const source = dragSurface(wrapper, 10);
+    await pointer(source, "pointerdown", { x: 40, y: 40 });
+    await pointer(source, "pointermove", { x: 540, y: 40 });
+    key(wrapper, "Escape");
+    await pointer(source, "pointerup", { x: 540, y: 40 });
+    expect(wrapper.emitted("connect")).toBeUndefined();
+    expect(wrapper.emitted("move")).toBeUndefined();
+    expect(wrapper.get('[data-note-id="10"]').attributes("style")).toContain(
+      "translate(10px, 20px)",
+    );
+    expect(wrapper.find("#brainstorming-connection-preview").exists()).toBe(false);
+  });
+
+  it("keeps movement for free space and multiple selected notes", async () => {
+    for (const selectedIds of [[10], [10, 12]]) {
+      const wrapper = canvas({ selectedIds });
+      const source = dragSurface(wrapper, 10);
+      await pointer(source, "pointerdown", { x: 40, y: 40 });
+      const point = selectedIds.length === 1 ? { x: 1000, y: 40 } : { x: 540, y: 40 };
+      await pointer(source, "pointermove", point);
+      await pointer(source, "pointerup", point);
+      expect(wrapper.emitted("connect")).toBeUndefined();
+      expect(wrapper.emitted("move")).toHaveLength(1);
+    }
+  });
+
+  it("uses measured text width for connectors and preserves the viewport when restoring editing focus", async () => {
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(
+      function (this: HTMLElement) {
+        return this.id === "canvas-note-10" ? 120 : 160;
+      },
+    );
+    const wrapper = canvas({ selectedIds: [10] });
+    await nextTick();
+    await nextTick();
+    const line = wrapper.get('[data-connection-source="10"]');
+    expect(line.attributes("x1")).toBe("134");
+    view.x = -500;
+    view.y = -400;
+    view.zoom = 0.7;
+    await (wrapper.vm as unknown as { focusEditing: () => Promise<void> }).focusEditing();
+    expect(view).toMatchObject({ x: -500, y: -400, zoom: 0.7 });
+  });
+
+  it("allows read-only inspection but never writes a connection", async () => {
+    const wrapper = canvas({ selectedIds: [], permissions: { edit: false, create: false } });
+    await wrapper.get("#canvas-connection-10-11").trigger("click");
+    expect(wrapper.find("#brainstorming-connection-toolbar").exists()).toBe(false);
+    key(wrapper, "Delete");
+    expect(wrapper.emitted("changeConnections")).toBeUndefined();
+    expect(wrapper.emitted("remove")).toBeUndefined();
   });
 });

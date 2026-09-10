@@ -93,6 +93,10 @@ export function useCanvasNotes(
       ...idea.canvas,
       ...placement,
       links: [...new Set([...(links?.links ?? []), ...pending])],
+      link_directions: {
+        ...links?.link_directions,
+        ...Object.fromEntries(pending.map((id) => [id, "none" as const])),
+      },
       links_version: connectionVersion(links),
     };
   }
@@ -100,12 +104,33 @@ export function useCanvasNotes(
     for (const version of result.versions) {
       const note = find(version.id);
       if (!note || (note.canvas?.links_version ?? 0) > version.version) continue;
-      const links = new Set((note.canvas?.links ?? []).filter((id) => id > 0));
-      for (const change of result.changes.filter((change) => change.source_id === version.id))
-        if (change.connected) links.add(change.target_id);
-        else links.delete(change.target_id);
-      connections.set(version.id, { links: [...links], links_version: version.version });
+      connections.set(version.id, {
+        ...applyConnections(
+          note.canvas,
+          result.changes.filter((change) => change.source_id === version.id),
+        ),
+        links_version: version.version,
+      });
     }
+  }
+  function applyConnections(
+    canvas: CanvasPlacement | undefined,
+    changes: ConnectionResult["changes"],
+  ) {
+    const links = new Set((canvas?.links ?? []).filter((id) => id > 0));
+    const directions = Object.fromEntries(
+      Object.entries(canvas?.link_directions ?? {}).filter(([id]) => links.has(Number(id))),
+    );
+    for (const change of changes) {
+      if (change.connected) {
+        links.add(change.target_id);
+        if (change.direction) directions[change.target_id] = change.direction;
+      } else {
+        links.delete(change.target_id);
+        delete directions[change.target_id];
+      }
+    }
+    return { links: [...links], link_directions: directions };
   }
   function resolveId(id: number): number {
     while (aliases.has(id)) id = aliases.get(id)!;
@@ -146,7 +171,7 @@ export function useCanvasNotes(
       source_idea_id: null,
       source_revision: null,
       inserted_at: new Date().toISOString(),
-      canvas: { width: 280, color, ...point },
+      canvas: { width: 280, color, shape: "plain", ...point },
     };
     keys.set(id, crypto.randomUUID());
     newNotes.set(id, {
@@ -226,6 +251,7 @@ export function useCanvasNotes(
           source_id: source.id,
           target_id: idea.id,
           connected: true,
+          direction: "none",
         })),
         versions: connected_from,
       });
@@ -503,6 +529,9 @@ export function useCanvasNotes(
           placements.delete(idea.id);
       }
     },
+    // LiveVue patches this array and its note fields in place. A receipt cache
+    // must retire when authoritative content arrives without a new array identity.
+    { deep: true },
   );
   watch(
     () =>

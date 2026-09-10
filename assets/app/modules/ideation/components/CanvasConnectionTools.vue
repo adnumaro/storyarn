@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { Cable, Unplug, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, Check } from "@lucide/vue";
+import { Cable, Unplug, ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from "@lucide/vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useBoardText } from "../composables/useBoardText";
@@ -16,7 +16,6 @@ const emit = defineEmits<{
   connect: [];
   disconnect: [];
   create: [direction: ConnectionDirection];
-  origin: [id: number];
 }>();
 const { t } = useBoardText();
 const open = ref(false);
@@ -69,28 +68,10 @@ function connect(connected: boolean) {
     <PopoverContent
       :reference="trigger"
       :aria-label="t('ideation.canvas.connections')"
-      class="w-80 p-2"
+      class="w-72 p-2"
       @close-auto-focus="!restoreFocus && $event.preventDefault()"
     >
       <template v-if="selection.length >= 2">
-        <p class="px-2 py-1 text-xs text-muted-foreground">{{ t("ideation.canvas.originHelp") }}</p>
-        <div class="max-h-36 overflow-auto">
-          <button
-            v-for="(note, index) in selection"
-            :id="`connection-origin-${note.id}`"
-            :key="note.id"
-            type="button"
-            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
-            :aria-pressed="index === 0"
-            :aria-label="t('ideation.canvas.useAsOrigin', { title: note.label })"
-            @click="emit('origin', note.id)"
-          >
-            <Check
-              class="size-3.5 shrink-0"
-              :class="index === 0 ? 'text-primary' : 'invisible'"
-            /><span class="truncate">{{ note.label }}</span>
-          </button>
-        </div>
         <button
           id="connect-selected-ideas"
           type="button"

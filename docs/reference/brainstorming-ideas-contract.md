@@ -34,6 +34,10 @@ endpoints; it does not create text revisions. Connecting notes preserves the las
 placement version and request receipt, so a delayed move can still be retried.
 Position writes default omitted width/color to the canvas defaults (280/yellow)
 so notes created before canvas placement existed can be moved.
+Optional `canvas.shape` accepts `plain`, `rectangle`, `ellipse` or `diamond`. Absence means
+rectangle; an existing note's shape is preserved when a placement request omits it.
+Shape changes use the placement version and receipt, participate in local undo/redo,
+and never create a text revision. Group projections and clipboard appearance retain it.
 
 `restore_idea/6` is the bounded inverse of deleting a note, not historical revision
 restoration. It accepts an idea identity, revision and deletion marker. It
@@ -56,7 +60,7 @@ and receipts do not constitute a product history browser: there are no
 ## Connection commands (ENG-165)
 
 `update_idea_connections/4` accepts a UUID `request_key`, a `changes` list of
-`{source_id, target_id, connected}` maps, and a `versions` list of `{id, version}`
+`{source_id, target_id, connected, direction?}` maps, and a `versions` list of `{id, version}`
 maps for exactly the distinct sources. One request contains 1–100 distinct
 directed edges and at most 100 sources. Both endpoints must remain readable,
 live notes in the same open session. The entire batch is checked before any
@@ -64,10 +68,22 @@ write, and each source keeps its limit of 100 outgoing connections. Unrelated
 and private connections are preserved. Duplicate pairs, conflicting operations
 for one pair, invalid identities and mismatched version sets are rejected.
 
+Each edge supports `none`, `forward`, `backward` or `both` for its visible arrow
+heads. Membership remains in `canvas.links`; optional `canvas.link_directions`
+uses string target IDs as keys. Missing metadata on an existing legacy edge
+means `forward`. New batch connections and connected creation use `none`.
+Omitting direction on an existing edge preserves its appearance; explicitly
+invalid values, including null, are rejected. Removing an edge removes its
+metadata. Authorized projections filter both membership and direction keys to
+readable endpoints, including placement replies.
+
 Connections have a `links_version` per source, independent of text and placement
-versions. A batch advances each changed source once. Its response contains only
-the edges actually changed and the acknowledged versions of all sources. The
-last request key, actor-bound fingerprint and actual changes are retained per
+versions. A batch advances each changed source once for either membership or
+direction changes. Its response contains only
+the edges actually changed and the acknowledged versions of all sources. Each
+changed edge carries its resulting `connected` and `direction`, plus
+`previous_connected` and `previous_direction` for exact reversal. An absent
+edge has null direction. The last request key, actor-bound fingerprint and actual changes are retained per
 source in an internal `links_receipt`; a retry returns the same response without
 changing links or emitting another invalidation. Reusing that retained key with
 different input fails with `idempotency_conflict`. A superseded source fails with
@@ -99,8 +115,9 @@ projections and has no history API. Undoing the creation uses the existing exact
 delete/restore protocol; deleted endpoints disappear from connection projections,
 and restored endpoints only reveal connections that still exist.
 
-Snapshots preserve connection state and link versions, remapping endpoints with
-the note identities. They exclude the ephemeral `links_receipt` and
+Snapshots preserve connection state, direction metadata and link versions,
+remapping endpoints and direction keys with the note identities. Recovery rejects
+metadata pointing outside the source's links or using an unsupported direction. They exclude the ephemeral `links_receipt` and
 `creation_links_receipt`; a restore never
 replays an acknowledgement containing pre-restore canvas IDs. Older snapshots
 without `links_version` continue with version zero.

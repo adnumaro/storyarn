@@ -18,6 +18,6 @@ defmodule Storyarn.Ideation.Ideas.Queries.GroupSources do
       select: %{idea_id: i.id, source_revision: i.published_revision, canvas: i.canvas}
     )
     |> Repo.all()
-    |> Enum.map(fn source -> %{source | canvas: Map.take(source.canvas, ~w(x y width color version))} end)
+    |> Enum.map(fn source -> %{source | canvas: Map.take(source.canvas, ~w(x y width color shape version))} end)
   end
 end

@@ -7,6 +7,7 @@ import { useCanvasNotes } from "@modules/ideation/composables/useCanvasNotes";
 import { useCanvasHistory } from "@modules/ideation/composables/useCanvasHistory";
 import type {
   ConnectionChange,
+  ConnectionAcknowledgement,
   ConnectionResult,
   CreatedIdea,
   Reply,
@@ -20,7 +21,11 @@ const link = (target = 11, connected = true, source = 10): ConnectionChange => (
   target_id: target,
   connected,
 });
-const result = (changes: ConnectionChange[], version: number, source = 10): ConnectionResult => ({
+const result = (
+  changes: ConnectionAcknowledgement[],
+  version: number,
+  source = 10,
+): ConnectionResult => ({
   changes,
   versions: [{ id: source, version }],
 });
@@ -83,6 +88,87 @@ afterEach(() => {
 });
 
 describe("acknowledged connection history", () => {
+  it("retries pasted connections as one exact batch without adding a second undo step", async () => {
+    const state = setup();
+    const changes: ConnectionChange[] = [
+      { ...link(11), direction: "none" },
+      { ...link(12), direction: "both" },
+    ];
+    await state.reply(state.connections.change(changes, { recordHistory: false }), {
+      status: "error",
+      code: "offline",
+    });
+    const attempted = structuredClone(state.request.mock.calls[0]);
+    expect(state.connections.pending.value).not.toBeNull();
+    await state.reply(state.connections.retry(), { status: "ok", value: result(changes, 1) });
+    expect(state.request.mock.calls[1]).toEqual(attempted);
+    expect(state.notes.find(10)?.canvas).toMatchObject({
+      links: [11, 12],
+      link_directions: { 11: "none", 12: "both" },
+    });
+    expect(state.history.canUndo.value).toBe(false);
+    expect(state.connections.pending.value).toBeNull();
+  });
+
+  it("undoes and redoes a direction change without deleting the relation", async () => {
+    const state = setup();
+    Object.assign(state.current.value.ideas[0].canvas!, {
+      links: [11],
+      link_directions: { 11: "none" },
+    });
+    const changed: ConnectionAcknowledgement = {
+      ...link(),
+      direction: "both",
+      previous_connected: true,
+      previous_direction: "none",
+    };
+    await state.reply(state.connections.change([{ ...link(), direction: "both" }]), {
+      status: "ok",
+      value: result([changed], 1),
+    });
+    expect(state.notes.find(10)?.canvas?.link_directions).toEqual({ 11: "both" });
+    await state.reply(state.history.undo(), {
+      status: "ok",
+      value: result([{ ...link(), direction: "none" }], 2),
+    });
+    expect(state.request.mock.calls[1][1].changes).toEqual([{ ...link(), direction: "none" }]);
+    expect(state.notes.find(10)?.canvas?.links).toEqual([11]);
+    await state.reply(state.history.redo(), {
+      status: "ok",
+      value: result([{ ...link(), direction: "both" }], 3),
+    });
+    expect(state.request.mock.calls[2][1].changes).toEqual([{ ...link(), direction: "both" }]);
+    expect(state.notes.find(10)?.canvas?.link_directions).toEqual({ 11: "both" });
+  });
+  it("restores the exact arrow style after deleting a connection", async () => {
+    const state = setup();
+    Object.assign(state.current.value.ideas[0].canvas!, {
+      links: [11],
+      link_directions: { 11: "backward" },
+    });
+    await state.reply(state.connections.change([link(11, false)]), {
+      status: "ok",
+      value: result(
+        [
+          {
+            ...link(11, false),
+            direction: null,
+            previous_connected: true,
+            previous_direction: "backward",
+          },
+        ],
+        1,
+      ),
+    });
+    expect(state.notes.find(10)?.canvas?.link_directions).toEqual({});
+    await state.reply(state.history.undo(), {
+      status: "ok",
+      value: result([{ ...link(), direction: "backward" }], 2),
+    });
+    expect(state.request.mock.calls[1][1].changes).toEqual([{ ...link(), direction: "backward" }]);
+    expect(state.notes.find(10)?.canvas?.link_directions).toEqual({ 11: "backward" });
+  });
+
   it("shares restored tokens across undo B, undo A, redo A and redo B", async () => {
     const state = setup();
     await state.reply(state.connections.change([link(11)]), {

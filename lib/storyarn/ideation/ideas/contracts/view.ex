@@ -42,6 +42,13 @@ defmodule Storyarn.Ideation.Ideas.View do
     |> Map.drop(["request_key", "links_receipt", "creation_links_receipt"])
     |> Map.put_new("links_version", 0)
     |> Map.put("links", visible_links)
+    |> filter_directions(visible_links)
+  end
+
+  defp filter_directions(canvas, visible_links) do
+    if Map.has_key?(canvas, "link_directions"),
+      do: Map.update!(canvas, "link_directions", &Map.take(&1, Enum.map(visible_links, fn id -> to_string(id) end))),
+      else: canvas
   end
 
   def edit(edit) do

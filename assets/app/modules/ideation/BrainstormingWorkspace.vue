@@ -19,6 +19,7 @@ import LiveLink from "@components/navigation/LiveLink.vue";
 import { useLive } from "@shared/composables/useLive";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
 import CanvasConnectionTools from "./components/CanvasConnectionTools.vue";
+import CanvasShapePicker from "./components/CanvasShapePicker.vue";
 import { useCanvasConnections } from "./composables/useCanvasConnections";
 import GroupSelectionTools from "./components/GroupSelectionTools.vue";
 import { useCanvasGroups } from "./composables/useCanvasGroups";
@@ -44,6 +45,8 @@ import type {
   Idea,
   IdeaContent,
   CanvasPlacement,
+  NoteShape,
+  ConnectionChange,
   RoundFilter as RoundSelection,
 } from "./types";
 const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
@@ -81,6 +84,12 @@ const notes = useCanvasNotes(
   (idea) => connections.created(idea),
 );
 const current = computed(() => notes.notes.value.find((n) => n.id === selected.value));
+const selectionShape = computed(() => {
+  const shapes = new Set(
+    selectedNotes(selectedIds.value).map((note) => note.canvas?.shape ?? "rectangle"),
+  );
+  return shapes.size === 1 ? [...shapes][0] : null;
+});
 const writable = computed(() => board.can_edit && board.session?.status === "open");
 const canCreate = computed(() => writable.value && board.session?.contributions_open !== false);
 const own = computed(() => current.value?.author_id === board.current_user_id);
@@ -434,22 +443,24 @@ function placementCommand(
   before: CanvasPlacement,
   after: CanvasPlacement,
 ): CanvasCommand {
+  function matches(canvas: CanvasPlacement | undefined, expected: CanvasPlacement) {
+    const placement = {
+      ...canvas,
+      shape: canvas?.shape ?? "rectangle",
+      width: canvas?.width ?? 280,
+    };
+    return Object.entries(expected).every(
+      ([key, value]) => placement[key as keyof CanvasPlacement] === value,
+    );
+  }
   async function apply(expected: CanvasPlacement, value: CanvasPlacement) {
     if (!(await notes.settle(id))) return false;
     const note = notes.find(id);
-    if (
-      !note ||
-      Object.entries(expected).some(
-        ([key, value]) => note.canvas?.[key as keyof CanvasPlacement] !== value,
-      )
-    )
-      return false;
+    if (!note || !matches(note.canvas, expected)) return false;
     notes.move(note.id, value);
     if (!(await notes.settle(note.id))) return false;
     const saved = notes.find(note.id)?.canvas;
-    return Object.entries(value).every(
-      ([key, value]) => saved?.[key as keyof CanvasPlacement] === value,
-    );
+    return matches(saved, value);
   }
   return {
     targets: () => [{ id: notes.resolveId(id) }],
@@ -503,6 +514,18 @@ function color(value: string) {
   notes.move(id, { color: value });
   history.push(placementCommand(id, { color: before }, { color: value }));
 }
+function shape(value: NoteShape) {
+  if (!writable.value || mutationBusy.value) return;
+  const commands: CanvasCommand[] = [];
+  for (const note of selectedNotes(selectedIds.value)) {
+    const before = note.canvas?.shape ?? "rectangle";
+    if (before === value) continue;
+    const after = { shape: value };
+    notes.move(note.id, { ...notePosition(note), ...after });
+    commands.push(placementCommand(note.id, { shape: before }, after));
+  }
+  if (commands.length) history.push(group(commands));
+}
 async function remove(ids: number[]) {
   if (!writable.value || mutationBusy.value) return;
   finish();
@@ -533,30 +556,40 @@ function changeState(value: "active" | "parked" | "discarded") {
   history.push(contentCommand(note.id, { state: note.state }, { state: value }));
   select([]);
 }
-async function setConnection(source: number, target: number, connected: boolean) {
-  const reply = await request("connect_ideas", {
-    source_id: notes.resolveId(source),
-    target_id: notes.resolveId(target),
-    connected,
-  });
-  if (reply.status !== "ok") {
-    failure.value = reply.status === "error" ? reply.code : "unavailable";
-    return false;
-  }
-  return true;
-}
 async function connect(source: number, target: number, connected: boolean) {
   if (!writable.value || mutationBusy.value) return;
   finish();
-  await connections.change([{ source_id: source, target_id: target, connected }]);
+  if (connected && related(source, target)) return;
+  await connections.change([
+    {
+      source_id: source,
+      target_id: target,
+      connected,
+      ...(connected ? { direction: "none" } : {}),
+    },
+  ]);
+}
+function related(source: number, target: number) {
+  return (
+    notes.find(source)?.canvas?.links?.includes(target) ||
+    notes.find(target)?.canvas?.links?.includes(source)
+  );
+}
+async function changeConnections(changes: ConnectionChange[]) {
+  if (!writable.value || mutationBusy.value) return;
+  finish();
+  await connections.change(changes);
 }
 async function connectSelection(ids: number[], connected: boolean) {
   if (!writable.value || mutationBusy.value) return;
   const available = new Set(visible.value.map((note) => note.id));
   const selected = [...new Set(ids)].filter((id) => available.has(id));
   if (selected.length < 2) return;
-  const changes = connected
-    ? selected.slice(1).map((id) => ({ source_id: selected[0], target_id: id, connected }))
+  const changes: ConnectionChange[] = connected
+    ? selected
+        .slice(1)
+        .filter((id) => !related(selected[0], id))
+        .map((id) => ({ source_id: selected[0], target_id: id, connected, direction: "none" }))
     : selected.flatMap((id) =>
         (notes.find(id)?.canvas?.links ?? [])
           .filter((target) => selected.includes(target))
@@ -622,6 +655,10 @@ function cut(event: ClipboardEvent, ids: number[]) {
 }
 async function insert(copies: NoteCopy[], point: Point) {
   if (!canCreate.value || mutationBusy.value || !copies.length) return;
+  if (copies.reduce((count, note) => count + (note.connections?.length ?? 0), 0) > 100) {
+    failure.value = "selection_too_large";
+    return;
+  }
   finish();
   showNewContributions();
   const at = context();
@@ -647,14 +684,21 @@ async function insert(copies: NoteCopy[], point: Point) {
       if (!valid()) return;
       await notes.settle(id);
     }
-    for (let index = 0; index < copies.length; index++) {
-      for (const target of copies[index].connections ?? []) {
-        if (!valid()) return;
-        if (notes.resolveId(ids[index]) > 0 && notes.resolveId(ids[target]) > 0)
-          await setConnection(ids[index], ids[target], true);
-      }
-    }
   });
+  if (valid() && ids.every((id) => notes.find(id))) await copyConnections(copies, ids);
+}
+async function copyConnections(copies: NoteCopy[], ids: number[]) {
+  const changes: ConnectionChange[] = copies.flatMap((copy, source) =>
+    (copy.connections ?? []).map((target) => ({
+      source_id: ids[source],
+      target_id: ids[target],
+      connected: true,
+      direction: copy.directions?.[target] ?? "forward",
+    })),
+  );
+  // The notes' presence command already owns undo for this paste. Preserve the
+  // same retryable connection batch without adding a second history entry.
+  await connections.change(changes, { recordHistory: false });
 }
 function duplicate(ids: number[]) {
   const originals = selectedNotes(ids);
@@ -663,10 +707,21 @@ function duplicate(ids: number[]) {
     (note): NoteCopy => ({
       title: note.title,
       body: note.body,
-      canvas: { ...note.canvas, ...notePosition(note), links: undefined },
+      canvas: {
+        ...notePosition(note),
+        width: note.canvas?.width ?? 280,
+        color: note.canvas?.color,
+        shape: note.canvas?.shape ?? "rectangle",
+      },
       connections: (note.canvas?.links ?? [])
         .map((id) => originals.findIndex((n) => n.id === id))
         .filter((index) => index >= 0),
+      directions: Object.fromEntries(
+        (note.canvas?.links ?? []).flatMap((id) => {
+          const index = originals.findIndex((other) => other.id === id);
+          return index < 0 ? [] : [[index, note.canvas?.link_directions?.[id] ?? "forward"]];
+        }),
+      ),
     }),
   );
   void insert(copies, {
@@ -890,6 +945,7 @@ onUnmounted(() => {
         @move="move"
         @connect="connect"
         @connect-selection="connectSelection"
+        @change-connections="changeConnections"
         @add-connected="addConnected"
         @remove="remove"
         @duplicate="duplicate"
@@ -929,6 +985,14 @@ onUnmounted(() => {
               @membership="groupMembership"
             />
             <CanvasConnectionTools v-if="writable" v-bind="connectionTools" />
+            <CanvasShapePicker
+              v-if="writable"
+              :value="selectionShape"
+              :count="selectedIds.length"
+              :disabled="mutationBusy"
+              @change="shape"
+              @close="canvas?.focusEditing()"
+            />
             <template v-if="writable"
               ><Popover
                 ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"

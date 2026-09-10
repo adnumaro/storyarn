@@ -2,6 +2,7 @@ import { shallowRef } from "vue";
 import type {
   BoardContext,
   ConnectionChange,
+  ConnectionAcknowledgement,
   ConnectionResult,
   ConnectionVersion,
   CreatedIdea,
@@ -21,6 +22,7 @@ interface Attempt {
 interface PendingConnection {
   attempt: Attempt;
   before: Map<number, VersionToken>;
+  recordHistory: boolean;
 }
 interface Options {
   notes: ReturnType<typeof useCanvasNotes>;
@@ -79,7 +81,7 @@ export function useCanvasConnections(options: Options) {
     return reply.value;
   }
   function command(
-    changes: ConnectionChange[],
+    changes: ConnectionAcknowledgement[],
     before: Map<number, VersionToken>,
     after: Map<number, VersionToken>,
   ): CanvasCommand {
@@ -87,10 +89,18 @@ export function useCanvasConnections(options: Options) {
     async function apply(undo: boolean) {
       const expected = undo ? after : before;
       const destination = undo ? before : after;
-      const mutation = changes.map((change) => ({
-        ...change,
-        connected: undo ? !change.connected : change.connected,
-      }));
+      const mutation = changes.map((change): ConnectionChange => {
+        const connected = undo
+          ? (change.previous_connected ?? !change.connected)
+          : change.connected;
+        const direction = undo ? change.previous_direction : change.direction;
+        return {
+          source_id: change.source_id,
+          target_id: change.target_id,
+          connected,
+          ...(connected && direction ? { direction } : {}),
+        };
+      });
       uncertain ??= attempt(mutation, [...expected.values()]);
       const result = await send(uncertain);
       if (!result) return false;
@@ -128,10 +138,10 @@ export function useCanvasConnections(options: Options) {
       current.set(version.id, next);
       after.set(version.id, next);
     }
-    history.push(command(result.changes, before, after));
+    if (write.recordHistory) history.push(command(result.changes, before, after));
     return true;
   }
-  async function change(changes: ConnectionChange[]) {
+  async function change(changes: ConnectionChange[], { recordHistory = true } = {}) {
     if (!allowed() || history.busy.value || !changes.length) return;
     if (pending.value) {
       notify("connections_pending");
@@ -167,6 +177,7 @@ export function useCanvasConnections(options: Options) {
       const write: PendingConnection = {
         attempt: attempt(resolved, versions),
         before: new Map(versions.map(({ id, version }) => [id, token(id, version)])),
+        recordHistory,
       };
       pending.value = write;
       await submit(write);

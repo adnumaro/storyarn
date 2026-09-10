@@ -172,7 +172,7 @@
       "selectHelp": "Arrastra sobre el canvas vacío para seleccionar notas. Mantén Shift para añadir a la selección; Escape cancela.",
       "historyHelp": "Deshacer: ⌘/Ctrl+Z. Rehacer: ⌘/Ctrl+Shift+Z o Ctrl+Y.",
       "connectionOrigin": "Origen",
-      "connectionHelp": "Conectar las notas seleccionadas · L",
+      "connectionHelp": "Selecciona notas y pulsa L para conectarlas. Arrastra una nota sobre otra o usa la herramienta de conexión. Selecciona una línea para editarla o eliminarla.",
       "originHelp": "Los enlaces salen de la nota destacada. Puedes elegir otro origen aquí.",
       "useAsOrigin": "Usar «{title}» como origen",
       "connectSelected": "Conectar selección",
@@ -183,7 +183,25 @@
         "right": "Añadir a la derecha",
         "down": "Añadir abajo",
         "left": "Añadir a la izquierda"
-      }
+      },
+      "shape": "Forma de la nota",
+      "shapeSelection": "Forma para {count} notas",
+      "shapes": {
+        "rectangle": "Rectángulo",
+        "ellipse": "Elipse",
+        "diamond": "Rombo",
+        "plain": "Texto"
+      },
+      "connectionLabel": "Conexión entre {source} y {target}",
+      "connectionDirection": "Estilo de conexión",
+      "connectionDirections": {
+        "none": "Línea",
+        "forward": "Flecha hacia la segunda nota",
+        "backward": "Flecha hacia la primera nota",
+        "both": "Flechas en ambos sentidos"
+      },
+      "removeConnection": "Eliminar conexión",
+      "resizeNote": "Ajustar el ancho de la nota"
     },
     "rounds": {
       "title": "Rondas",

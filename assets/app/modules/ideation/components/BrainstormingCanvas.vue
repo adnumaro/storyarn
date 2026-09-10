@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useElementSize } from "@vueuse/core";
 import {
   MousePointer2,
   Hand,
@@ -11,6 +12,10 @@ import {
   List,
   Search,
   X,
+  ArrowRight,
+  ArrowLeft,
+  ArrowLeftRight,
+  Trash2,
 } from "@lucide/vue";
 import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
@@ -26,6 +31,9 @@ import { notePosition } from "../lib/placement";
 import {
   connectedPlacement,
   connectionEndpoints,
+  displayConnections,
+  connectionStyleChanges,
+  noteContainsPoint,
   readableViewport,
   type ConnectionDirection,
 } from "../lib/connectionGeometry";
@@ -37,6 +45,8 @@ import type {
   IdeaGroup,
   GroupText,
   GroupVersions,
+  ConnectionChange,
+  LinkDirection,
 } from "../types";
 interface HistoryState {
   canUndo: boolean;
@@ -91,6 +101,7 @@ const emit = defineEmits<{
   finish: [];
   move: [moves: Array<{ id: number; point: Point }>];
   connect: [source: number, target: number, connected: boolean];
+  changeConnections: [changes: ConnectionChange[]];
   connectSelection: [ids: number[], connected: boolean];
   addConnected: [sourceIds: number[], point: Point];
   remove: [ids: number[]];
@@ -111,6 +122,15 @@ const searchOpen = ref(false);
 const positions = ref(new Map<number, Point>());
 const linkSource = ref<number | null>(null);
 const ghost = ref<Point | null>(null);
+const selectedConnectionKey = ref<string | null>(null);
+const connectionTarget = ref<number | null>(null);
+const dragConnectionSource = ref<number | null>(null);
+const connectionDirections = [
+  { value: "none", icon: Minus },
+  { value: "forward", icon: ArrowRight },
+  { value: "backward", icon: ArrowLeft },
+  { value: "both", icon: ArrowLeftRight },
+] as const;
 interface CanvasDrag {
   pointer: number;
   id: number | null;
@@ -128,6 +148,7 @@ function position(note: Idea): Point {
   return positions.value.get(note.id) ?? notePosition(note);
 }
 const noteHeights = ref(new Map<number, number>());
+const noteWidths = ref(new Map<number, number>());
 const marquee = useCanvasMarquee({
   root,
   world,
@@ -135,8 +156,8 @@ const marquee = useCanvasMarquee({
     notes.map((note) => ({
       id: note.id,
       ...position(note),
-      width: note.canvas?.width ?? 280,
-      height: noteHeights.value.get(note.id) ?? 260,
+      width: noteWidths.value.get(note.id) ?? note.canvas?.width ?? 280,
+      height: noteHeights.value.get(note.id) ?? 96,
     })),
   selection: () => ({ ids: visibleSelection.value, groupId: selectedGroupId.value }),
   select: ({ ids, groupId }) => {
@@ -153,7 +174,11 @@ const layouts = computed(() => {
   const visibleIds = notes.map((note) => note.id);
   const loaded: MemberGeometry[] = notes.map((note) => ({
     id: note.id,
-    canvas: { ...note.canvas, ...position(note) },
+    canvas: {
+      ...note.canvas,
+      ...position(note),
+      width: noteWidths.value.get(note.id) ?? note.canvas?.width,
+    },
     height: noteHeights.value.get(note.id),
   }));
   return groups.value.map((group) => {
@@ -167,7 +192,10 @@ const layouts = computed(() => {
       .filter((member) => !visibleIds.includes(member.idea_id))
       .map((member) => ({
         id: member.idea_id,
-        canvas: member.canvas,
+        canvas: {
+          ...member.canvas,
+          width: noteWidths.value.get(member.idea_id) ?? member.canvas.width,
+        },
         height: noteHeights.value.get(member.idea_id),
       }));
     const geometry = unseen.length ? [...loaded, ...unseen] : loaded;
@@ -184,32 +212,32 @@ function measureNotes() {
   for (const element of root.value?.querySelectorAll<HTMLElement>("[data-note-id]") ?? []) {
     const id = Number(element.dataset.noteId);
     const note = element.querySelector<HTMLElement>(`#canvas-note-${id}`);
-    if (note) {
-      noteHeights.value.set(id, note.offsetHeight || 260);
-      noteObserver?.observe(note);
-    }
+    if (note) recordNoteSize(note, id);
   }
 }
+function recordNoteSize(note: HTMLElement, id: number) {
+  const canvasWidth = notes.find((note) => note.id === id)?.canvas?.width ?? 280;
+  noteHeights.value.set(id, note.offsetHeight || 96);
+  noteWidths.value.set(id, note.offsetWidth || canvasWidth);
+  noteObserver?.observe(note);
+}
 function bounds() {
-  return notes.map((n) => ({
-    ...position(n),
-    width: n.canvas?.width ?? 280,
-    height: root.value?.querySelector<HTMLElement>(`#canvas-note-${n.id}`)?.offsetHeight ?? 260,
-  }));
+  return notes.map(noteBounds);
 }
 function fitAll() {
   fit([...bounds(), ...layouts.value.map((layout) => layout.bounds)]);
 }
 function center(note: Idea) {
-  const point = position(note);
-  view.x = view.width / 2 - (point.x + (note.canvas?.width ?? 280) / 2) * view.zoom;
-  view.y = view.height / 2 - (point.y + (noteHeights.value.get(note.id) ?? 260) / 2) * view.zoom;
+  const rect = noteBounds(note);
+  view.x = view.width / 2 - (rect.x + rect.width / 2) * view.zoom;
+  view.y = view.height / 2 - (rect.y + rect.height / 2) * view.zoom;
 }
 function noteBounds(note: Idea) {
   return {
+    shape: note.canvas?.shape,
     ...position(note),
-    width: note.canvas?.width ?? 280,
-    height: noteHeights.value.get(note.id) ?? 260,
+    width: noteWidths.value.get(note.id) ?? note.canvas?.width ?? 280,
+    height: noteHeights.value.get(note.id) ?? 96,
   };
 }
 async function revealNote(note: Idea) {
@@ -226,22 +254,37 @@ function summaryAnchor(id: number): Point | undefined {
     ? { x: frame.x + frame.synthesisX - 28, y: frame.y + frame.synthesisY - 64 }
     : undefined;
 }
-defineExpose({ center, fitAll, focus, summaryAnchor, revealNote });
+async function focusEditing() {
+  await nextTick();
+  measureNotes();
+  const editor =
+    editingId === null
+      ? null
+      : root.value?.querySelector<HTMLElement>(`#canvas-note-${editingId} [contenteditable=true]`);
+  if (editor) editor.focus({ preventScroll: true });
+  else focus();
+}
+defineExpose({ center, fitAll, focus, focusEditing, summaryAnchor, revealNote });
 const visibleSelection = computed(() =>
   selectedIds.filter((id) => notes.some((note) => note.id === id)),
 );
 const selectedId = computed(() => selectedIds[0] ?? null);
-const chosenOrigin = ref<number | null>(null);
-const connectionSelection = computed(() => {
-  const origin = chosenOrigin.value;
-  return origin !== null && visibleSelection.value.includes(origin)
-    ? [origin, ...visibleSelection.value.filter((id) => id !== origin)]
-    : visibleSelection.value;
-});
-const connectionOrigin = computed(() => {
-  if (!permissions.edit) return null;
-  if (tool.value === "connect") return linkSource.value;
-  return connectionSelection.value.length >= 2 ? connectionSelection.value[0] : null;
+const selectionToolbar = ref<HTMLElement | null>(null);
+const { width: selectionToolbarWidth, height: selectionToolbarHeight } =
+  useElementSize(selectionToolbar);
+const selectionToolbarPosition = computed(() => {
+  const note = notes.find((note) => note.id === selectedId.value);
+  if (!note) return {};
+  const bounds = noteBounds(note);
+  const width = selectionToolbarWidth.value || 320;
+  const height = selectionToolbarHeight.value || 44;
+  const x = view.x + (bounds.x + bounds.width / 2) * view.zoom - width / 2;
+  const above = view.y + bounds.y * view.zoom - height - 12;
+  const y = above >= 64 ? above : view.y + (bounds.y + bounds.height) * view.zoom + 12;
+  return {
+    left: `${Math.max(8, Math.min(view.width - width - 8, x))}px`,
+    top: `${Math.max(64, Math.min(view.height - height - 80, y))}px`,
+  };
 });
 function connectionWriteBlocked() {
   return (
@@ -257,12 +300,8 @@ function connectSelection(connected: boolean) {
   emit("finish");
   tool.value = "select";
   linkSource.value = null;
-  emit("connectSelection", [...connectionSelection.value], connected);
+  emit("connectSelection", [...visibleSelection.value], connected);
   focus();
-}
-function useConnectionOrigin(id: number) {
-  if (connectionWriteBlocked() || !visibleSelection.value.includes(id)) return;
-  chosenOrigin.value = id;
 }
 function addConnected(direction: ConnectionDirection) {
   if (connectionWriteBlocked() || !canCreate.value || !visibleSelection.value.length) return;
@@ -276,7 +315,7 @@ function addConnected(direction: ConnectionDirection) {
   emit("addConnected", [...visibleSelection.value], point);
 }
 const connectionTools = computed(() => ({
-  selection: connectionSelection.value.map((id) => {
+  selection: visibleSelection.value.map((id) => {
     const note = notes.find((note) => note.id === id)!;
     return {
       id,
@@ -297,7 +336,6 @@ const connectionTools = computed(() => ({
   onConnect: () => connectSelection(true),
   onDisconnect: () => connectSelection(false),
   onCreate: addConnected,
-  onOrigin: useConnectionOrigin,
 }));
 const matches = computed(() =>
   notes.filter((n) =>
@@ -307,26 +345,76 @@ const matches = computed(() =>
   ),
 );
 const links = computed(() =>
-  notes.flatMap((source) =>
-    (source.canvas?.links ?? []).flatMap((id) => {
-      const target = notes.find((n) => n.id === id);
-      if (!target) return [];
-      const endpoints = connectionEndpoints(noteBounds(source), noteBounds(target), 6 / view.zoom);
-      if (!endpoints) return [];
-      return [
-        {
-          source: source.id,
-          target: id,
-          ...endpoints,
-        },
-      ];
-    }),
-  ),
+  displayConnections(notes).flatMap((connection) => {
+    const source = notes.find((note) => note.id === connection.source)!;
+    const target = notes.find((note) => note.id === connection.target)!;
+    const endpoints = connectionEndpoints(noteBounds(source), noteBounds(target), 4 / view.zoom);
+    return endpoints ? [{ ...connection, ...endpoints }] : [];
+  }),
 );
+const selectedConnection = computed(() =>
+  links.value.find((link) => link.key === selectedConnectionKey.value),
+);
+const previewConnection = computed(() => {
+  const sourceId = dragConnectionSource.value ?? linkSource.value;
+  const source = notes.find((note) => note.id === sourceId);
+  if (!source || !ghost.value) return null;
+  const target = notes.find((note) => note.id === connectionTarget.value);
+  const sourceBounds = noteBounds(source);
+  if (dragConnectionSource.value !== null && drag) Object.assign(sourceBounds, drag.origin);
+  const targetBounds = target ? noteBounds(target) : { ...ghost.value, width: 1, height: 1 };
+  return connectionEndpoints(sourceBounds, targetBounds, 4 / view.zoom);
+});
+function noteLabel(id: number) {
+  const note = notes.find((note) => note.id === id);
+  return (
+    note?.title ||
+    note?.preview ||
+    note?.body.replace(/<[^>]*>/g, " ").trim() ||
+    t("ideation.untitled")
+  );
+}
+function selectConnection(key: string) {
+  if (historyState.busy) return;
+  emit("finish");
+  emit("select", []);
+  emit("selectGroup", null);
+  selectedConnectionKey.value = key;
+  tool.value = "select";
+  linkSource.value = null;
+  connectionTarget.value = null;
+  focus();
+}
+function changeConnectionDirection(direction: LinkDirection) {
+  const connection = selectedConnection.value;
+  if (!connection || connectionWriteBlocked() || connection.direction === direction) return;
+  emit("changeConnections", connectionStyleChanges(connection, direction));
+  focus();
+}
+function removeConnection() {
+  const connection = selectedConnection.value;
+  if (!connection || connectionWriteBlocked()) return;
+  emit(
+    "changeConnections",
+    connection.edges.map((edge) => ({ ...edge, connected: false })),
+  );
+  selectedConnectionKey.value = null;
+  focus();
+}
+function connectionTargetAt(point: Point, sourceId: number): number | null {
+  // Pointer capture keeps event.target on the dragged note, so hit-test world geometry.
+  for (const note of [...notes].reverse()) {
+    if (note.id === sourceId) continue;
+    if (noteContainsPoint(noteBounds(note), point)) return note.id;
+  }
+  return null;
+}
 function chooseTool(value: string) {
   marquee.cancel();
   emit("finish");
   tool.value = value;
+  selectedConnectionKey.value = null;
+  connectionTarget.value = null;
   linkSource.value = null;
   root.value?.focus();
 }
@@ -339,10 +427,12 @@ function selectionForNote(id: number, shift: boolean): number[] {
   return included ? [...visibleSelection.value] : [id];
 }
 function selectNote(id: number, shift: boolean): number[] {
+  selectedConnectionKey.value = null;
   if (tool.value === "connect" && permissions.edit) {
     if (linkSource.value !== null && linkSource.value !== id) {
       emit("connect", linkSource.value, id, true);
       linkSource.value = null;
+      connectionTarget.value = null;
       tool.value = "select";
     } else linkSource.value = id;
   }
@@ -414,6 +504,7 @@ function ensureGroupReadability(id: number, field: "title" | "synthesis") {
   }
 }
 function selectGroup(id: number | null) {
+  selectedConnectionKey.value = null;
   emit("finish");
   emit("select", []);
   emit("selectGroup", id);
@@ -473,6 +564,7 @@ function beginGroupDrag(event: PointerEvent, group: IdeaGroup) {
   capture?.setPointerCapture(event.pointerId);
 }
 function selectBackground(event: PointerEvent) {
+  selectedConnectionKey.value = null;
   emit("selectGroup", null);
   emit("finish");
   emit("select", []);
@@ -483,6 +575,7 @@ function selectBackground(event: PointerEvent) {
   }
 }
 function beginMarquee(event: PointerEvent, clickGroup?: number) {
+  selectedConnectionKey.value = null;
   marquee.begin(event, clickGroup);
   emit("finish");
   focus();
@@ -516,6 +609,7 @@ function beginDrag(event: PointerEvent, id: number | null, ids: number[]) {
 }
 function pointerMove(event: PointerEvent) {
   ghost.value = world(event.clientX, event.clientY);
+  updateToolTarget(ghost.value);
   if (selectingArea.value) {
     marquee.move(event);
     return;
@@ -525,6 +619,7 @@ function pointerMove(event: PointerEvent) {
     dy = event.clientY - drag.start.y;
   if (Math.hypot(dx, dy) > 3) drag.moved = true;
   if (!drag.moved) return;
+  updateDropTarget(drag, ghost.value);
   if (drag.groupId !== undefined) {
     groupAnchors.value.set(drag.groupId, {
       x: drag.origin.x + dx / view.zoom,
@@ -546,6 +641,26 @@ function pointerMove(event: PointerEvent) {
       });
   }
 }
+function updateToolTarget(point: Point) {
+  if (tool.value === "connect" && linkSource.value !== null)
+    connectionTarget.value = connectionTargetAt(point, linkSource.value);
+}
+function updateDropTarget(current: CanvasDrag, point: Point) {
+  if (current.id === null || current.notes.length !== 1 || current.groupId !== undefined) return;
+  connectionTarget.value = connectionTargetAt(point, current.id);
+  dragConnectionSource.value = connectionTarget.value === null ? null : current.id;
+}
+function finishNoteDrag(current: CanvasDrag) {
+  if (dragConnectionSource.value !== null && connectionTarget.value !== null) {
+    emit("connect", current.id!, connectionTarget.value, true);
+  } else {
+    emit(
+      "move",
+      current.notes.map((note) => ({ id: note.id, point: positions.value.get(note.id)! })),
+    );
+  }
+  for (const note of current.notes) positions.value.delete(note.id);
+}
 async function pointerUp(event: PointerEvent) {
   if (marquee.finish(event)) return;
   if (!drag || drag.pointer !== event.pointerId) return;
@@ -553,13 +668,9 @@ async function pointerUp(event: PointerEvent) {
     await finishGroupDrag(event, drag);
     return;
   }
-  if (drag.id !== null && drag.moved) {
-    emit(
-      "move",
-      drag.notes.map((note) => ({ id: note.id, point: positions.value.get(note.id)! })),
-    );
-    for (const note of drag.notes) positions.value.delete(note.id);
-  }
+  if (drag.id !== null && drag.moved) finishNoteDrag(drag);
+  connectionTarget.value = null;
+  dragConnectionSource.value = null;
   if (drag.capture?.hasPointerCapture(event.pointerId))
     drag.capture.releasePointerCapture(event.pointerId);
   drag = null;
@@ -579,10 +690,23 @@ async function finishGroupDrag(event: PointerEvent, finished: CanvasDrag) {
 }
 function cancelDrag(event: PointerEvent) {
   marquee.cancel(event);
+  connectionTarget.value = null;
+  dragConnectionSource.value = null;
   if (!drag || drag.pointer !== event.pointerId) return;
   if (drag?.groupId !== undefined) groupAnchors.value.delete(drag.groupId);
   for (const note of drag?.notes ?? []) positions.value.delete(note.id);
   drag = null;
+}
+function cancelActiveDrag() {
+  const current = drag;
+  if (!current) return;
+  drag = null;
+  for (const note of current.notes) positions.value.delete(note.id);
+  if (current.groupId !== undefined) groupAnchors.value.delete(current.groupId);
+  connectionTarget.value = null;
+  dragConnectionSource.value = null;
+  if (current.capture?.hasPointerCapture(current.pointer))
+    current.capture.releasePointerCapture(current.pointer);
 }
 function doubleClick(event: MouseEvent) {
   if (interactiveTarget(event.target) || historyState.busy) return;
@@ -709,6 +833,7 @@ function keydown(event: KeyboardEvent) {
     return;
   }
   if (event.key === "Escape") {
+    cancelActiveDrag();
     chooseTool("select");
     emit("select", []);
     emit("selectGroup", null);
@@ -769,6 +894,11 @@ function removeGroupShortcut(event: KeyboardEvent) {
   return true;
 }
 function removeShortcut(event: KeyboardEvent) {
+  if (["Delete", "Backspace"].includes(event.key) && selectedConnection.value) {
+    event.preventDefault();
+    removeConnection();
+    return true;
+  }
   if (removeGroupShortcut(event)) return true;
   if (
     !["Delete", "Backspace"].includes(event.key) ||
@@ -886,7 +1016,11 @@ watch(
   },
 );
 watch(visibleSelection, (ids) => {
-  if (chosenOrigin.value !== null && !ids.includes(chosenOrigin.value)) chosenOrigin.value = null;
+  if (ids.length) selectedConnectionKey.value = null;
+});
+watch(links, (current) => {
+  if (!current.some((link) => link.key === selectedConnectionKey.value))
+    selectedConnectionKey.value = null;
 });
 // Controls, resizes and navigation may change the viewport mid-gesture.
 watch(
@@ -909,8 +1043,11 @@ onMounted(async () => {
     noteObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const id = Number((entry.target as HTMLElement).id.replace("canvas-note-", ""));
-        const height = (entry.target as HTMLElement).offsetHeight;
+        const note = entry.target as HTMLElement;
+        const height = note.offsetHeight;
+        const width = note.offsetWidth;
         if (height && noteHeights.value.get(id) !== height) noteHeights.value.set(id, height);
+        if (width && noteWidths.value.get(id) !== width) noteWidths.value.set(id, width);
       }
     });
   await nextTick();
@@ -966,39 +1103,12 @@ onUnmounted(() => {
     @copy="clipboard($event, 'copy')"
     @cut="clipboard($event, 'cut')"
     @paste="clipboard($event, 'paste')"
-    @pointerleave="ghost = null"
+    @pointerleave="
+      ghost = null;
+      connectionTarget = null;
+    "
   >
     <div class="absolute left-0 top-0 origin-top-left" :style="{ transform }">
-      <svg
-        class="pointer-events-none absolute overflow-visible"
-        width="1"
-        height="1"
-        aria-hidden="true"
-      >
-        <defs>
-          <marker
-            id="brainstorming-connection-arrow"
-            markerWidth="7"
-            markerHeight="7"
-            refX="7"
-            refY="3.5"
-            orient="auto"
-          >
-            <path d="M0,0 L7,3.5 L0,7" fill="none" stroke="currentColor" stroke-linejoin="round" />
-          </marker>
-        </defs>
-        <line
-          v-for="link in links"
-          :key="`${link.source}-${link.target}`"
-          :data-connection-source="link.source"
-          :data-connection-target="link.target"
-          v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
-          stroke="currentColor"
-          class="text-muted-foreground/50"
-          :stroke-width="2 / view.zoom"
-          marker-end="url(#brainstorming-connection-arrow)"
-        />
-      </svg>
       <CanvasGroup
         v-for="layout in layouts"
         :key="layout.group.id"
@@ -1022,28 +1132,97 @@ onUnmounted(() => {
         @remove="emit('deleteGroup', $event)"
         @reveal="emit('revealGroup', $event)"
       />
+      <svg class="pointer-events-none absolute overflow-visible" width="1" height="1">
+        <defs>
+          <marker
+            id="brainstorming-connection-arrow"
+            markerWidth="6"
+            markerHeight="6"
+            refX="6"
+            refY="3"
+            orient="auto-start-reverse"
+          >
+            <path d="M0,0 L6,3 L0,6" fill="none" stroke="context-stroke" stroke-linejoin="round" />
+          </marker>
+        </defs>
+        <g
+          v-for="link in links"
+          :key="link.key"
+          class="transition-colors hover:text-primary focus-within:text-primary"
+          :class="selectedConnectionKey === link.key ? 'text-primary' : 'text-muted-foreground/65'"
+        >
+          <line
+            :data-connection-source="link.source"
+            :data-connection-target="link.target"
+            v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
+            stroke="currentColor"
+            :stroke-width="(selectedConnectionKey === link.key ? 1.75 : 1.25) / view.zoom"
+            :marker-start="
+              ['backward', 'both'].includes(link.direction)
+                ? 'url(#brainstorming-connection-arrow)'
+                : undefined
+            "
+            :marker-end="
+              ['forward', 'both'].includes(link.direction)
+                ? 'url(#brainstorming-connection-arrow)'
+                : undefined
+            "
+          />
+          <line
+            :id="`canvas-connection-${link.key}`"
+            data-canvas-chrome
+            role="button"
+            tabindex="0"
+            :aria-label="
+              t('ideation.canvas.connectionLabel', {
+                source: noteLabel(link.source),
+                target: noteLabel(link.target),
+              })
+            "
+            :aria-pressed="selectedConnectionKey === link.key"
+            class="pointer-events-auto cursor-pointer outline-none"
+            v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
+            stroke="transparent"
+            :stroke-width="12 / view.zoom"
+            @pointerdown.stop="selectConnection(link.key)"
+            @click.stop="selectConnection(link.key)"
+            @dblclick.stop
+            @keydown.enter.prevent.stop="selectConnection(link.key)"
+            @keydown.space.prevent.stop="selectConnection(link.key)"
+          />
+        </g>
+        <line
+          v-if="previewConnection"
+          id="brainstorming-connection-preview"
+          v-bind="previewConnection"
+          stroke="currentColor"
+          class="text-primary"
+          :stroke-width="1.5 / view.zoom"
+          :stroke-dasharray="`${4 / view.zoom} ${4 / view.zoom}`"
+        />
+      </svg>
       <div
         v-for="note in notes"
         :key="noteKey(note.id)"
         :data-note-id="note.id"
-        class="absolute left-0 top-0"
+        class="pointer-events-none absolute left-0 top-0"
         :class="selectedIds.includes(note.id) ? 'z-10' : ''"
         :style="{
           transform: `translate(${position(note).x}px, ${position(note).y}px)`,
           width: `${note.canvas?.width ?? 280}px`,
         }"
       >
-        <span
-          v-if="connectionOrigin === note.id"
-          :id="`connection-origin-badge-${note.id}`"
-          class="pointer-events-none absolute bottom-0 right-2 z-10 translate-y-1/2 rounded-full border border-primary/30 bg-background px-2 py-0.5 text-[11px] font-medium text-primary shadow-sm"
+        <div
+          v-if="connectionTarget === note.id"
+          :id="`connection-target-${note.id}`"
+          class="pointer-events-none absolute -inset-1 rounded-md border border-primary bg-primary/5"
           :style="{
-            transform: `translateY(50%) scale(${1 / view.zoom})`,
-            transformOrigin: 'right center',
+            width: `${noteBounds(note).width + 8}px`,
+            height: `${noteBounds(note).height + 8}px`,
           }"
-          >{{ t("ideation.canvas.connectionOrigin") }}</span
-        >
+        />
         <CanvasNote
+          class="pointer-events-auto"
           :note="note"
           :can-create="canCreate"
           :round-number="note.round_number"
@@ -1057,25 +1236,73 @@ onUnmounted(() => {
           @quick-create="
             emit('finish');
             emit('add', {
-              x: position(note).x + (note.canvas?.width ?? 280) + 40,
+              x: position(note).x + noteBounds(note).width + 40,
               y: position(note).y,
             });
           "
         />
-        <div
-          v-if="selectedId === note.id && !selectionArea"
-          data-canvas-chrome
-          class="absolute bottom-full left-1/2 z-20 mb-4 -translate-x-1/2"
-          :style="{ transform: `scale(${1 / view.zoom})`, transformOrigin: 'bottom center' }"
-        >
-          <slot name="selection" :connection-tools="connectionTools" />
-        </div>
       </div>
       <div
         v-if="tool === 'note' && ghost"
-        class="pointer-events-none absolute h-60 w-70 rounded-sm border-2 border-dashed border-primary bg-primary/5"
+        class="pointer-events-none absolute h-12 w-40 rounded-md border border-dashed border-primary/70 bg-primary/5"
         :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
       />
+    </div>
+    <div
+      v-if="selectedId !== null && !selectionArea"
+      id="brainstorming-note-toolbar"
+      ref="selectionToolbar"
+      data-canvas-chrome
+      class="absolute z-30 max-w-[calc(100%-16px)]"
+      :style="selectionToolbarPosition"
+    >
+      <slot name="selection" :connection-tools="connectionTools" />
+    </div>
+    <div
+      v-if="selectedConnection && permissions.edit"
+      id="brainstorming-connection-toolbar"
+      data-canvas-chrome
+      class="surface-panel absolute z-30 flex -translate-x-1/2 -translate-y-full items-center gap-0.5 p-1"
+      :style="{
+        left: `${Math.min(view.width - 100, Math.max(100, view.x + ((selectedConnection.x1 + selectedConnection.x2) / 2) * view.zoom))}px`,
+        top: `${Math.max(48, Math.min(view.height - 80, view.y + ((selectedConnection.y1 + selectedConnection.y2) / 2) * view.zoom - 12))}px`,
+      }"
+      role="toolbar"
+      :aria-label="t('ideation.canvas.connectionDirection')"
+    >
+      <ToolbarTooltip
+        v-for="direction in connectionDirections"
+        :key="direction.value"
+        :label="t(`ideation.canvas.connectionDirections.${direction.value}`)"
+      >
+        <button
+          :id="`connection-direction-${direction.value}`"
+          type="button"
+          class="toolbar-btn"
+          :class="
+            selectedConnection.direction === direction.value ? 'bg-primary/10 text-primary' : ''
+          "
+          :aria-label="t(`ideation.canvas.connectionDirections.${direction.value}`)"
+          :aria-pressed="selectedConnection.direction === direction.value"
+          :disabled="historyState.busy"
+          @click="changeConnectionDirection(direction.value)"
+        >
+          <component :is="direction.icon" class="size-4" />
+        </button>
+      </ToolbarTooltip>
+      <span class="mx-1 h-4 w-px bg-border" />
+      <ToolbarTooltip :label="t('ideation.canvas.removeConnection')">
+        <button
+          id="delete-canvas-connection"
+          type="button"
+          class="toolbar-btn hover:text-destructive"
+          :disabled="historyState.busy"
+          :aria-label="t('ideation.canvas.removeConnection')"
+          @click="removeConnection"
+        >
+          <Trash2 class="size-4" />
+        </button>
+      </ToolbarTooltip>
     </div>
     <div
       v-if="selectionArea"

@@ -115,7 +115,13 @@ defmodule Storyarn.Ideation.IdeaConcurrencyTest do
     execute = fn -> Ideation.update_idea_connections(ctx.author, ctx.project.id, ctx.session.id, attrs) end
     [{:ok, first}, {:ok, second}] = race([execute, execute])
     assert first == second
-    assert first.changes == attrs.changes
+
+    assert first.changes ==
+             Enum.map(
+               attrs.changes,
+               &Map.merge(&1, %{direction: "none", previous_connected: false, previous_direction: nil})
+             )
+
     assert first.versions == [%{id: ctx.idea.id, version: 1}]
   end
 

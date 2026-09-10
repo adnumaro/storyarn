@@ -20,7 +20,13 @@ defmodule StoryarnWeb.IdeationLive.ConnectionBoardTest do
 
     render_hook(author, "update_idea_connections", payload(author, attrs))
     assert_reply(author, %{status: "ok", value: result})
-    assert result.changes == [edge(first, target, true), edge(second, target, true)]
+
+    assert result.changes ==
+             Enum.map(
+               [edge(first, target, true), edge(second, target, true)],
+               &Map.merge(&1, %{direction: "none", previous_connected: false, previous_direction: nil})
+             )
+
     assert result.versions == [%{id: first.id, version: 1}, %{id: second.id, version: 1}]
 
     for view <- [author, peer] do
