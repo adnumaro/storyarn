@@ -1,0 +1,90 @@
+assets/app/modules/ideation/lib/clipboard.ts
+  s_5af6a6d0a150f1::t_9126a48a73cd83 4,43,83
+docs/reference/brainstorming-ideas-contract.md
+  s_5af6a6d0a150f1::t_b69704be2567cb 37-40
+docs/features/brainstorming-board.md
+  s_5af6a6d0a150f1::t_b69704be2567cb 4,20-27
+assets/app/modules/ideation/lib/noteShapes.ts
+  s_5af6a6d0a150f1::t_9126a48a73cd83 1-5
+  s_5af6a6d0a150f1::t_9b03b14c8fbb1a 6-14
+  s_5af6a6d0a150f1::t_61aaadfd361f47 15-17
+assets/app/test/modules/ideation/canvasShapePicker.test.ts
+  s_5af6a6d0a150f1::t_b69704be2567cb 1-43
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_5af6a6d0a150f1::t_ecaef0752854b7 88-90,448,958
+  s_5af6a6d0a150f1::t_9b03b14c8fbb1a 42,519-520,522
+  s_5af6a6d0a150f1::t_bf6d07e607dfb7 447,449
+  s_5af6a6d0a150f1::t_a59aca005c5bf1 521
+  s_5af6a6d0a150f1::t_9126a48a73cd83 22,49,87,91-92,446,450-455,459,463,517-518,523-529,956-957,959
+  s_5af6a6d0a150f1::t_07e22fcd553694 960-963
+test/e2e/workspaces/projects/ideation/shapes_test.exs
+  s_5af6a6d0a150f1::t_1efe2ecebe2522 1-290
+test/storyarn/ideation/canvas_shapes_test.exs
+  s_5af6a6d0a150f1::t_4bfad2a84998d1 73,84,139,143-145,150,155-156
+  s_5af6a6d0a150f1::t_ee5d9fb7710643 154
+  s_5af6a6d0a150f1::t_fe950d013a1c97 1-72,74-83,85-138,140-142,146-149,151-153,157-188
+assets/app/test/modules/ideation/clipboard.test.ts
+  s_5af6a6d0a150f1::t_84b0863f448f88 18-22
+  s_5af6a6d0a150f1::t_01c015238c56f0 23-25,121-129
+assets/app/test/modules/ideation/connectionGeometry.test.ts
+  s_5af6a6d0a150f1::t_ce635f4441fa82 7,64-106
+lib/storyarn/ideation/ideas/queries/group_sources.ex
+  s_5af6a6d0a150f1::t_612e336c87a971 21
+assets/app/test/modules/ideation/canvasNoteEditing.test.ts
+  s_5af6a6d0a150f1::t_3732fab8963cd1 3,59,61-62
+  s_5af6a6d0a150f1::t_e70c2437e1920a 37-38
+  s_5af6a6d0a150f1::t_d88205036394cd 47
+  s_5af6a6d0a150f1::t_6ce5be95477345 49-50
+  s_5af6a6d0a150f1::t_ce635f4441fa82 7,26-36,39-46,48,51-58,60,63-66
+docs/reference/brainstorming-recovery-contract.md
+  s_5af6a6d0a150f1::t_b69704be2567cb 73-74
+assets/app/modules/ideation/components/CanvasShapePicker.vue
+  s_5af6a6d0a150f1::t_9e6008d1ee4c8b 1-13,15-17,19-24,31-32,34-36,43-60,62,66-73,79-83,89-94
+  s_5af6a6d0a150f1::t_ecaef0752854b7 14,18,25-30,33,37-42,61,63-65,74-78,84-88
+  s_5af6a6d0a150f1::t_aad8796749d3d2 95-99
+assets/app/modules/ideation/lib/connectionGeometry.ts
+  s_5af6a6d0a150f1::t_0418e235dabe53 2,63-76,83-84
+lib/storyarn/ideation/ideas/rules/canvas.ex
+  s_5af6a6d0a150f1::t_612e336c87a971 4,15-19
+assets/app/modules/ideation/types.ts
+  s_5af6a6d0a150f1::t_9126a48a73cd83 4,18
+assets/app/test/modules/ideation/workspaceShapes.test.ts
+  s_5af6a6d0a150f1::t_84b0863f448f88 1-20,27-33,42,45-51,56-57,83-92,94-98,104-123,127-128,134-141,148-164
+  s_5af6a6d0a150f1::t_ecaef0752854b7 21-26,34-35,38,40-41,43-44,52-55,69-77,81-82,99-102,124-126,129-133,142-147
+  s_5af6a6d0a150f1::t_9b03b14c8fbb1a 39,78-80
+  s_5af6a6d0a150f1::t_a59aca005c5bf1 36-37,58-68
+  s_5af6a6d0a150f1::t_e0fef648ca9293 93,103
+  s_5af6a6d0a150f1::t_94e6575ea47e8b 165-169
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_5af6a6d0a150f1::t_ecaef0752854b7 248-251
+  s_5af6a6d0a150f1::t_9126a48a73cd83 210
+  s_5af6a6d0a150f1::t_c2ec392625b912 230-247
+  s_5af6a6d0a150f1::t_e7c1eaff0eca74 252-254
+assets/app/modules/ideation/components/CanvasNote.vue
+  s_5af6a6d0a150f1::t_0386ad176bc055 132-134,144,181,189
+  s_5af6a6d0a150f1::t_0418e235dabe53 43,96,117-120,122-131,135-143,145-146,169,172-180,182-188,190-237
+lib/storyarn/ideation/ideas/commands/update_canvas.ex
+  s_5af6a6d0a150f1::t_612e336c87a971 30
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_5af6a6d0a150f1::t_612e336c87a971 104
+assets/app/locales/en/ideation.json
+  s_5af6a6d0a150f1::t_38a1ea84920bc1 186-192
+assets/app/locales/es/ideation.json
+  s_5af6a6d0a150f1::t_bb760735b639fc 186-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "100da33c163dd35a2eb6eced74859e675e0b9167",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
