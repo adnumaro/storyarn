@@ -69,6 +69,11 @@ The inventory covers:
 - Every idea, current creative state, authorship, publication consent,
   configuration version, source idea/revision and immutable creation-request
   source identity, immutable round membership and late-contribution flag.
+- Note placement and directed canvas connections, including their independent
+  link versions. Endpoints are remapped during restoration. The bounded
+  `links_receipt` and `creation_links_receipt` acknowledgements are excluded from capture and stripped on
+  restore because its request refers to the previous canvas identities. Missing
+  link versions in older inventories mean version zero.
 - All authored revisions and successful/conflicting edit receipts.
 - Prepared/completed reveal operations, exact selections/manifests, and the
   immutable publication ledger.

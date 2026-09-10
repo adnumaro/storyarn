@@ -157,6 +157,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       subscribe_ideas: 3,
       unsubscribe_ideas: 3,
       connect_ideas: 6,
+      update_idea_connections: 4,
       update_idea_canvas: 6,
       update_idea: 6
     ]

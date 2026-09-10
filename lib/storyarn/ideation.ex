@@ -141,6 +141,10 @@ defmodule Storyarn.Ideation do
   @spec connect_ideas(map(), integer(), integer(), integer(), integer(), boolean()) :: {:ok, map()} | {:error, term()}
   defdelegate connect_ideas(scope, project_id, session_id, source_id, target_id, connected?), to: Ideas
 
+  @doc "Atomically updates readable canvas connections using independent source versions and a bounded retry receipt."
+  @spec update_idea_connections(map(), pos_integer(), pos_integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate update_idea_connections(scope, project_id, session_id, attrs), to: Ideas
+
   @doc "Updates an authorized idea's canvas placement, independently of its text revision."
   @spec update_idea_canvas(map(), integer(), integer(), integer(), non_neg_integer(), map()) ::
           {:ok, map()} | {:error, term()}

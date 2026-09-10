@@ -103,6 +103,79 @@ defmodule Storyarn.Ideation.IdeaConcurrencyTest do
     end)
   end
 
+  test "simultaneous connection retries retain one delta and one source version", ctx do
+    target = Sandbox.unboxed_run(Repo, fn -> idea_fixture(ctx) end)
+
+    attrs = %{
+      request_key: Ecto.UUID.generate(),
+      changes: [%{source_id: ctx.idea.id, target_id: target.id, connected: true}],
+      versions: [%{id: ctx.idea.id, version: 0}]
+    }
+
+    execute = fn -> Ideation.update_idea_connections(ctx.author, ctx.project.id, ctx.session.id, attrs) end
+    [{:ok, first}, {:ok, second}] = race([execute, execute])
+    assert first == second
+    assert first.changes == attrs.changes
+    assert first.versions == [%{id: ctx.idea.id, version: 1}]
+  end
+
+  test "competing source edits cannot overwrite one another or leave a partial batch", ctx do
+    [second, target] = Sandbox.unboxed_run(Repo, fn -> for _ <- 1..2, do: idea_fixture(ctx) end)
+
+    first = %{
+      request_key: Ecto.UUID.generate(),
+      changes: [%{source_id: ctx.idea.id, target_id: target.id, connected: true}],
+      versions: [%{id: ctx.idea.id, version: 0}]
+    }
+
+    second_request = %{
+      request_key: Ecto.UUID.generate(),
+      changes: [
+        %{source_id: ctx.idea.id, target_id: second.id, connected: true},
+        %{source_id: second.id, target_id: target.id, connected: true}
+      ],
+      versions: [%{id: ctx.idea.id, version: 0}, %{id: second.id, version: 0}]
+    }
+
+    results =
+      race(
+        for attrs <- [first, second_request],
+            do: fn ->
+              Ideation.update_idea_connections(ctx.author, ctx.project.id, ctx.session.id, attrs)
+            end
+      )
+
+    assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+    assert Enum.count(results, &match?({:error, :stale_connections}, &1)) == 1
+
+    Sandbox.unboxed_run(Repo, fn ->
+      {:ok, source_view} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id)
+      {:ok, second_view} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, second.id)
+      assert source_view.canvas["links_version"] == 1
+
+      if source_view.canvas["links"] == [target.id] do
+        assert second_view.canvas["links"] == []
+      else
+        assert source_view.canvas["links"] == [second.id]
+        assert second_view.canvas["links"] == [target.id]
+      end
+    end)
+  end
+
+  test "simultaneous connected creation retries append once and keep the first acknowledgement", ctx do
+    attrs = idea_attrs(%{connection: %{source_ids: [ctx.idea.id]}})
+    execute = fn -> Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, attrs) end
+    [{:ok, first}, {:ok, second}] = race([execute, execute])
+    assert first == second
+    assert first.connected_from == [%{id: ctx.idea.id, before_version: 0, version: 1}]
+
+    Sandbox.unboxed_run(Repo, fn ->
+      {:ok, source} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id)
+      assert source.canvas["links"] == [first.id]
+      assert source.canvas["links_version"] == 1
+    end)
+  end
+
   test "simultaneous prepare retries share one durable frozen manifest", ctx do
     key = Ecto.UUID.generate()
     prepare = fn -> Ideation.prepare_idea_reveal(ctx.owner, ctx.project.id, ctx.session.id, key) end

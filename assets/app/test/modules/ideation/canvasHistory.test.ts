@@ -28,8 +28,6 @@ describe("canvas local command history", () => {
     expect(history.busy.value).toBe(true);
     expect(history.canUndo.value).toBe(true);
     expect(history.canRedo.value).toBe(false);
-    await history.undo();
-    await history.redo();
     expect(action.undo).toHaveBeenCalledTimes(1);
     expect(action.redo).not.toHaveBeenCalled();
     undo.resolve(true);
@@ -41,6 +39,149 @@ describe("canvas local command history", () => {
     expect(action.redo).toHaveBeenCalledTimes(1);
     expect(history.canUndo.value).toBe(true);
     expect(history.canRedo.value).toBe(false);
+  });
+  it("queues rapid undo and redo intentions using the stack at each turn", async () => {
+    const history = useCanvasHistory(vi.fn());
+    const gate = pending();
+    const calls: string[] = [];
+    const first = {
+      targets: () => [],
+      undo: vi.fn(async () => {
+        calls.push("undo first");
+        return true;
+      }),
+      redo: vi.fn(async () => {
+        calls.push("redo first");
+        return true;
+      }),
+    };
+    const second = {
+      targets: () => [],
+      undo: vi.fn(async () => {
+        calls.push("undo second");
+        return gate.promise;
+      }),
+      redo: vi.fn(async () => {
+        calls.push("redo second");
+        return true;
+      }),
+    };
+    history.push(first);
+    history.push(second);
+    const running = [history.undo(), history.undo(), history.redo(), history.redo()];
+    expect(calls).toEqual(["undo second"]);
+    expect(history.busy.value).toBe(true);
+    expect(history.canRedo.value).toBe(false);
+    gate.resolve(true);
+    await Promise.all(running);
+    expect(calls).toEqual(["undo second", "undo first", "redo first", "redo second"]);
+    expect(history.busy.value).toBe(false);
+    expect(history.canUndo.value).toBe(true);
+    expect(history.canRedo.value).toBe(false);
+  });
+  it("waits for a normal write to record its command before executing queued undo", async () => {
+    const history = useCanvasHistory(vi.fn());
+    const gate = pending();
+    const action = command();
+    const writing = history
+      .run(() => gate.promise)
+      .then((saved) => {
+        if (saved) history.push(action);
+      });
+    const undoing = history.undo();
+    expect(action.undo).not.toHaveBeenCalled();
+    gate.resolve(true);
+    await Promise.all([writing, undoing]);
+    expect(action.undo).toHaveBeenCalledTimes(1);
+    expect(history.canUndo.value).toBe(false);
+    expect(history.canRedo.value).toBe(true);
+  });
+  it("preserves a new action recorded while undo awaits acknowledgement and invalidates redo", async () => {
+    const history = useCanvasHistory(vi.fn());
+    const gate = pending();
+    const older = command();
+    older.undo.mockImplementation(() => gate.promise);
+    const newer = command();
+    history.push(older);
+    const undoing = history.undo();
+    history.push(newer);
+    gate.resolve(true);
+    await undoing;
+    expect(history.canUndo.value).toBe(true);
+    expect(history.canRedo.value).toBe(false);
+    await history.undo();
+    expect(newer.undo).toHaveBeenCalledTimes(1);
+    expect(older.undo).toHaveBeenCalledTimes(1);
+  });
+  it("keeps an acknowledged redo behind actions recorded while it was in flight", async () => {
+    const history = useCanvasHistory(vi.fn());
+    const gate = pending();
+    const older = command();
+    older.redo.mockImplementation(() => gate.promise);
+    const newer = command();
+    history.push(older);
+    await history.undo();
+    const redoing = history.redo();
+    history.push(newer);
+    gate.resolve(true);
+    await redoing;
+    await history.undo();
+    expect(newer.undo).toHaveBeenCalledTimes(1);
+    expect(older.undo).toHaveBeenCalledTimes(1);
+    await history.undo();
+    expect(older.undo).toHaveBeenCalledTimes(2);
+  });
+  it("cancels queued intentions after reset even if an old acknowledgement arrives later", async () => {
+    const history = useCanvasHistory(vi.fn());
+    const gate = pending();
+    const old = command();
+    old.undo.mockImplementation(() => gate.promise);
+    history.push(old);
+    const running = [history.undo(), history.redo(), history.undo()];
+    history.clear();
+    const fresh = command();
+    history.push(fresh);
+    gate.resolve(true);
+    await Promise.all(running);
+    expect(old.undo).toHaveBeenCalledTimes(1);
+    expect(old.redo).not.toHaveBeenCalled();
+    expect(fresh.undo).not.toHaveBeenCalled();
+    expect(history.canUndo.value).toBe(true);
+    expect(history.canRedo.value).toBe(false);
+    expect(history.busy.value).toBe(false);
+  });
+  it("stops queued intentions on offline uncertainty and permits an explicit later retry", async () => {
+    const error = vi.fn();
+    const history = useCanvasHistory(error, () => true);
+    const gate = pending();
+    const action = command();
+    action.undo.mockImplementationOnce(() => gate.promise);
+    history.push(action);
+    const running = [history.undo(), history.undo(), history.redo(), history.undo()];
+    gate.resolve(false);
+    await Promise.all(running);
+    expect(action.undo).toHaveBeenCalledTimes(1);
+    expect(action.redo).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(history.canUndo.value).toBe(true);
+    await history.undo();
+    expect(action.undo).toHaveBeenCalledTimes(2);
+    expect(history.canRedo.value).toBe(true);
+  });
+  it("continues queued undo after a definitive rejection without repeating the rejected action", async () => {
+    const error = vi.fn();
+    const history = useCanvasHistory(error);
+    const previous = command();
+    const rejected = command();
+    rejected.undo.mockResolvedValue(false);
+    history.push(previous);
+    history.push(rejected);
+    await Promise.all([history.undo(), history.undo()]);
+    expect(rejected.undo).toHaveBeenCalledTimes(1);
+    expect(previous.undo).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(history.canUndo.value).toBe(false);
+    expect(history.canRedo.value).toBe(true);
   });
   it("drops a rejected command so the next undo reaches the previous action", async () => {
     const error = vi.fn();

@@ -11,9 +11,9 @@ export interface CanvasCommand {
   redo: () => Promise<boolean>;
 }
 
-/** Session-local commands, acknowledged before moving between stacks. The shared
- * useUndoRedo dispatches fire-and-forget server events and cannot acknowledge
- * these composed, asynchronous canvas operations. No version history is stored. */
+/** Session-local commands, acknowledged before moving between stacks. Like the
+ * Flow editor's history queue, keyboard intentions execute in order after writes
+ * settle. Text editors keep their own native history. No version history is stored. */
 export function useCanvasHistory(
   onError: () => void,
   shouldRetry = () => false,
@@ -23,48 +23,91 @@ export function useCanvasHistory(
   const future = shallowRef<CanvasCommand[]>([]);
   const busy = ref(false);
   let generation = 0;
+  let intentions = 0;
+  let additions = 0;
+  let pending = 0;
+  let tail: Promise<void> | undefined;
   function push(command: CanvasCommand) {
+    additions++;
     past.value = [...past.value.slice(-49), command];
     future.value = [];
   }
-  async function run<T>(operation: () => Promise<T>): Promise<T | undefined> {
-    if (busy.value) return undefined;
+  function enqueue<T>(operation: () => Promise<T>): Promise<T | undefined> {
     const started = generation;
+    pending++;
     busy.value = true;
-    try {
-      const value = await operation();
-      return started === generation ? value : undefined;
-    } catch {
-      if (started === generation) onError();
-      return undefined;
-    } finally {
-      if (started === generation) busy.value = false;
-    }
-  }
-  async function step(undo: boolean) {
-    const source = undo ? past : future;
-    const destination = undo ? future : past;
-    const command = source.value.at(-1);
-    if (!command || busy.value) return;
-    const started = generation;
-    const result = await run(async () => {
-      if (prepare && (!(await prepare(command.targets(undo))) || started !== generation))
+    const execute = async () => {
+      if (started !== generation) return undefined;
+      try {
+        const value = await operation();
+        return started === generation ? value : undefined;
+      } catch {
+        if (started === generation) {
+          intentions++;
+          onError();
+        }
         return undefined;
-      return undo ? command.undo() : command.redo();
+      }
+    };
+    const operationResult = tail ? tail.then(execute) : execute();
+    const settled = operationResult.finally(() => {
+      if (started !== generation) return;
+      pending--;
+      busy.value = pending > 0;
+      if (!pending) tail = undefined;
     });
-    if (result === undefined) return;
-    if (!result) {
-      // A rejected command is no longer applicable. Keep uncertain offline
-      // writes retryable, but never let an invalid command block older ones.
-      if (!shouldRetry()) source.value = source.value.slice(0, -1);
+    tail = settled.then(() => undefined);
+    return settled;
+  }
+  function run<T>(operation: () => Promise<T>): Promise<T | undefined> {
+    return busy.value ? Promise.resolve(undefined) : enqueue(operation);
+  }
+  function complete(command: CanvasCommand, undo: boolean, added: number, succeeded: boolean) {
+    const source = undo ? past : future;
+    if (!succeeded) {
+      // Stop queued intentions after an uncertain write instead of replaying
+      // it repeatedly offline. Definitive rejections let older actions proceed.
+      if (shouldRetry()) intentions++;
+      else source.value = source.value.filter((entry) => entry !== command);
       onError();
       return;
     }
-    source.value = source.value.slice(0, -1);
-    destination.value = [...destination.value, command];
+    // A write can record a new action while this acknowledgement is pending.
+    // Remove the executed command itself, never whichever action is now last.
+    source.value = source.value.filter((entry) => entry !== command);
+    if (undo) {
+      if (added === additions) future.value = [...future.value, command];
+    } else {
+      const index = Math.max(0, past.value.length - (additions - added));
+      past.value = [...past.value.slice(0, index), command, ...past.value.slice(index)].slice(-50);
+    }
+  }
+  async function prepareCommand(command: CanvasCommand, undo: boolean, started: number) {
+    const ready = await prepare!(command.targets(undo));
+    if (started !== generation) return false;
+    if (!ready && shouldRetry()) intentions++;
+    return ready;
+  }
+  function step(undo: boolean) {
+    const intention = intentions;
+    return enqueue(async () => {
+      if (intention !== intentions) return;
+      const source = undo ? past : future;
+      const command = source.value.at(-1);
+      if (!command) return;
+      const started = generation;
+      const added = additions;
+      if (prepare && !(await prepareCommand(command, undo, started))) return;
+      const result = await (undo ? command.undo() : command.redo());
+      if (started !== generation) return;
+      complete(command, undo, added, result);
+    });
   }
   function clear() {
     generation++;
+    intentions++;
+    pending = 0;
+    tail = undefined;
     past.value = [];
     future.value = [];
     busy.value = false;

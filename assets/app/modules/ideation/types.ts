@@ -9,11 +9,34 @@ export interface IdeaContent {
 }
 export interface CanvasPlacement {
   links?: number[];
+  links_version?: number;
   x?: number;
   y?: number;
   width?: number;
   color?: string;
   version?: number;
+}
+export interface ConnectionChange {
+  source_id: number;
+  target_id: number;
+  connected: boolean;
+}
+export interface ConnectionVersion {
+  id: number;
+  version: number;
+}
+export interface ConnectionResult {
+  changes: ConnectionChange[];
+  versions: ConnectionVersion[];
+}
+export interface NoteConnection {
+  source_ids: number[];
+}
+export interface CreatedConnection extends ConnectionVersion {
+  before_version: number;
+}
+export interface CreatedIdea extends Idea {
+  connected_from?: CreatedConnection[];
 }
 export interface Idea extends IdeaContent {
   round_id: number | null;

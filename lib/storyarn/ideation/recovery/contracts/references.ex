@@ -28,7 +28,13 @@ defmodule Storyarn.Ideation.Recovery.References do
   # draft must not give a destination owner permission to publish/read it.
   defp rewrite_payload(row, "ideas", _, maps) do
     row = if maps["review_assisted_consent"], do: %{row | publication_consent: "author_only"}, else: row
-    canvas = Map.update(row.canvas, "links", [], &Enum.map(&1, fn id -> lookup(maps, "ideas", id) end))
+    # A browser command receipt belongs to the pre-restore canvas identities.
+    # Preserve the links and their version, never replay an old ID-bearing ack.
+    canvas =
+      row.canvas
+      |> Map.drop(["links_receipt", "creation_links_receipt"])
+      |> Map.update("links", [], &Enum.map(&1, fn id -> lookup(maps, "ideas", id) end))
+
     %{row | canvas: canvas}
   end
 

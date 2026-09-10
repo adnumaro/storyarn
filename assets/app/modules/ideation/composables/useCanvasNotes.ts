@@ -8,6 +8,9 @@ import type {
   IdeaContent,
   Request,
   Reply,
+  NoteConnection,
+  CreatedIdea,
+  ConnectionResult,
 } from "../types";
 import type { Point } from "./useCanvasViewport";
 interface NewNote {
@@ -18,6 +21,7 @@ interface NewNote {
   pending: boolean;
   error: string | null;
   attempt?: Idea;
+  connection?: NoteConnection;
 }
 interface PlacementAttempt {
   canvas: CanvasPlacement;
@@ -29,12 +33,17 @@ export interface RemovedNote {
   revision: number;
   deleted_at: string | null;
   idea: Idea;
+  connection?: NoteConnection;
+}
+function connectionVersion(canvas?: CanvasPlacement): number {
+  return canvas?.links_version ?? 0;
 }
 export function useCanvasNotes(
   board: () => Board,
   request: Request,
   context: () => BoardContext,
   replaceSelection: (from: number, to: number) => void,
+  onCreated: (idea: CreatedIdea) => void = () => {},
 ) {
   const activeRoundId = computed(() => board().active_round?.id ?? null);
   const canWrite = () => board().can_edit && board().session?.status === "open";
@@ -42,6 +51,7 @@ export function useCanvasNotes(
   const newNotes = reactive(new Map<number, NewNote>());
   const created = reactive(new Map<number, Idea>());
   const placements = reactive(new Map<number, CanvasPlacement>());
+  const connections = reactive(new Map<number, CanvasPlacement>());
   const removed = reactive(new Set<number>());
   const deleting = reactive(new Set<number>());
   const deleteRequests = reactive(new Set<number>());
@@ -65,9 +75,38 @@ export function useCanvasNotes(
       .filter((idea) => !removed.has(idea.id) && !idea.deleted_at)
       .map((idea) => ({
         ...idea,
-        canvas: { ...idea.canvas, ...placements.get(idea.id) },
+        canvas: projectedCanvas(idea),
       }));
   });
+  function projectedCanvas(idea: Idea): CanvasPlacement {
+    const placement = placements.get(idea.id);
+    const acknowledged = connections.get(idea.id);
+    // Placement and links have independent clocks. A delayed move reply cannot
+    // overwrite a newer connection acknowledgement or board projection.
+    let links = idea.canvas;
+    for (const candidate of [placement, acknowledged])
+      if (candidate && connectionVersion(candidate) > connectionVersion(links)) links = candidate;
+    const pending = [...newNotes.values()]
+      .filter((entry) => entry.connection?.source_ids.includes(idea.id))
+      .map((entry) => entry.idea.id);
+    return {
+      ...idea.canvas,
+      ...placement,
+      links: [...new Set([...(links?.links ?? []), ...pending])],
+      links_version: connectionVersion(links),
+    };
+  }
+  function acknowledgeConnections(result: ConnectionResult) {
+    for (const version of result.versions) {
+      const note = find(version.id);
+      if (!note || (note.canvas?.links_version ?? 0) > version.version) continue;
+      const links = new Set((note.canvas?.links ?? []).filter((id) => id > 0));
+      for (const change of result.changes.filter((change) => change.source_id === version.id))
+        if (change.connected) links.add(change.target_id);
+        else links.delete(change.target_id);
+      connections.set(version.id, { links: [...links], links_version: version.version });
+    }
+  }
   function resolveId(id: number): number {
     while (aliases.has(id)) id = aliases.get(id)!;
     return id;
@@ -83,6 +122,7 @@ export function useCanvasNotes(
     color = "yellow",
     seed?: Partial<IdeaContent>,
     roundId: number | null = activeRoundId.value,
+    connection?: NoteConnection,
   ): number {
     const id = nextId--;
     const initial: Partial<IdeaContent> = seed ?? {
@@ -116,6 +156,7 @@ export function useCanvasNotes(
       version: board().session!.configuration_version,
       pending: false,
       error: null,
+      connection: connection ? { source_ids: [...connection.source_ids] } : undefined,
     });
     return id;
   }
@@ -142,7 +183,7 @@ export function useCanvasNotes(
     const started = generation;
     const snapshot = entry.attempt ?? { ...entry.idea, canvas: { ...entry.idea.canvas } };
     entry.attempt = snapshot;
-    const reply = await request<Idea>(
+    const reply = await request<CreatedIdea>(
       "create_idea",
       {
         request_key: entry.key,
@@ -151,20 +192,25 @@ export function useCanvasNotes(
         body: snapshot.body,
         configuration_version: entry.version,
         canvas: snapshot.canvas,
+        ...(entry.connection ? { connection: entry.connection } : {}),
       },
       entry.context,
     );
     if (started !== generation) return;
     entry.pending = false;
+    acceptCreation(id, entry, snapshot, reply);
+  }
+  function acceptCreation(id: number, entry: NewNote, snapshot: Idea, reply: Reply<CreatedIdea>) {
     if (reply.status === "ok") {
       acceptCreated(id, entry, snapshot, reply.value);
     } else {
       entry.error = reply.status === "error" ? reply.code : "unavailable";
       errors.set(id, entry.error);
-      if (entry.error !== "offline") entry.attempt = undefined;
+      if (!["offline", "unavailable"].includes(entry.error)) entry.attempt = undefined;
     }
   }
-  function acceptCreated(id: number, entry: NewNote, snapshot: Idea, idea: Idea) {
+  function acceptCreated(id: number, entry: NewNote, snapshot: Idea, reply: CreatedIdea) {
+    const { connected_from, ...idea } = reply;
     keys.set(idea.id, key(id));
     aliases.set(id, idea.id);
     created.set(idea.id, idea);
@@ -174,9 +220,20 @@ export function useCanvasNotes(
     if (deleteRequests.delete(id)) deleteRequests.add(idea.id);
     const latestCanvas = { ...entry.idea.canvas };
     newNotes.delete(id);
+    if (connected_from?.length) {
+      acknowledgeConnections({
+        changes: connected_from.map((source) => ({
+          source_id: source.id,
+          target_id: idea.id,
+          connected: true,
+        })),
+        versions: connected_from,
+      });
+    }
     if (JSON.stringify(latestCanvas) !== JSON.stringify(snapshot.canvas))
       move(idea.id, latestCanvas);
     replaceSelection(id, idea.id);
+    onCreated(reply);
     if (deleteRequests.has(idea.id)) void flushDelete(idea.id);
   }
   async function save(id: number) {
@@ -275,7 +332,13 @@ export function useCanvasNotes(
       if (started !== generation || newNotes.has(id)) return null;
       return remove(resolveId(id));
     }
-    const result = { id, revision: 0, deleted_at: null, idea: { ...entry.idea } };
+    const result = {
+      id,
+      revision: 0,
+      deleted_at: null,
+      idea: { ...entry.idea },
+      connection: entry.connection,
+    };
     newNotes.delete(id);
     errors.delete(id);
     return result;
@@ -336,6 +399,7 @@ export function useCanvasNotes(
       previous.canvas?.color,
       previous,
       previous.round_id,
+      deletion.connection,
     );
     aliases.set(deletion.id, id);
     return id;
@@ -414,6 +478,7 @@ export function useCanvasNotes(
     newNotes.clear();
     created.clear();
     placements.clear();
+    connections.clear();
     removed.clear();
     deleting.clear();
     deleteRequests.clear();
@@ -452,6 +517,10 @@ export function useCanvasNotes(
       timers.clear();
     }
   });
+  watch(
+    () => board().session?.configuration.private_mode,
+    () => connections.clear(),
+  );
   onUnmounted(() => reset(false));
   return {
     notes,
@@ -472,5 +541,7 @@ export function useCanvasNotes(
     resolveId,
     key,
     find,
+    acknowledgeConnections,
+    connection: (id: number) => newNotes.get(resolveId(id))?.connection,
   };
 }

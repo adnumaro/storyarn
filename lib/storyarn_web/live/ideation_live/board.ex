@@ -21,7 +21,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
-  @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas prepare_reveal reveal_ideas)
+  @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas update_idea_connections prepare_reveal reveal_ideas)
   @round_writes ~w(create_round update_round cancel_round start_round close_round)
   @timer_writes ~w(start_timer pause_timer resume_timer extend_timer cancel_timer set_contributions_open)
   @group_writes ~w(create_group update_group move_group delete_group restore_group)

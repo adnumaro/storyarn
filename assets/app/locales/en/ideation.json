@@ -114,7 +114,10 @@
       "stale_group_canvas": "Some notes moved elsewhere. Refresh and try moving the group again.",
       "invalid_group_members": "Some selected notes are no longer shared or available. Refresh and choose the notes again.",
       "group_limit_reached": "This session has reached the maximum number of groups. Delete a group before creating another.",
-      "idempotency_conflict": "This request was already used for a different change. Refresh and try again."
+      "idempotency_conflict": "This request was already used for a different change. Refresh and try again.",
+      "stale_connections": "These connections changed elsewhere. Refresh the board before trying again.",
+      "connections_pending": "A connection has not been confirmed yet. Retry it to continue.",
+      "invalid_connections": "Some selected connections are no longer valid. Select the notes again."
     },
     "saveStatus": {
       "saved": "Saved",
@@ -167,7 +170,20 @@
       "duplicate": "Duplicate note",
       "duplicateHelp": "Duplicate · ⌘/Ctrl+D",
       "selectHelp": "Drag on empty canvas to select notes. Hold Shift to add to your selection; Escape cancels.",
-      "historyHelp": "Undo: ⌘/Ctrl+Z. Redo: ⌘/Ctrl+Shift+Z or Ctrl+Y."
+      "historyHelp": "Undo: ⌘/Ctrl+Z. Redo: ⌘/Ctrl+Shift+Z or Ctrl+Y.",
+      "connectionOrigin": "Origin",
+      "connectionHelp": "Connect selected notes · L",
+      "originHelp": "Connections start from the highlighted note. Choose another origin here.",
+      "useAsOrigin": "Use “{title}” as origin",
+      "connectSelected": "Connect selected notes",
+      "disconnectSelected": "Disconnect selected notes",
+      "addConnectedHelp": "Add a note connected from this note | Add a note connected from these {count} notes",
+      "addConnected": {
+        "up": "Add above",
+        "right": "Add to the right",
+        "down": "Add below",
+        "left": "Add to the left"
+      }
     },
     "rounds": {
       "title": "Rounds",

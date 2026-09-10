@@ -56,11 +56,20 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     Map.new(row, fn {key, value} ->
       encoded =
         cond do
-          is_nil(value) -> nil
-          key in @dates -> NaiveDateTime.to_iso8601(value)
-          binary_field?(collection, key) -> Base.encode64(value)
-          collection == "ideas" and key == :canvas -> Map.put_new(value, "links", [])
-          true -> value
+          is_nil(value) ->
+            nil
+
+          key in @dates ->
+            NaiveDateTime.to_iso8601(value)
+
+          binary_field?(collection, key) ->
+            Base.encode64(value)
+
+          collection == "ideas" and key == :canvas ->
+            value |> Map.drop(["links_receipt", "creation_links_receipt"]) |> Map.put_new("links", [])
+
+          true ->
+            value
         end
 
       {Atom.to_string(key), encoded}

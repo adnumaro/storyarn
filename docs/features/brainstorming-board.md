@@ -1,7 +1,7 @@
 # Brainstorming canvas
 
 > Last reviewed: 2026-09-10
-> Scope: ENG-134, ENG-136, ENG-137, ENG-138 and ENG-182
+> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165 and ENG-182
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
@@ -35,6 +35,18 @@ connections within the copied selection are remapped to the new note identities.
 They do not copy authorship, publication receipts or publication metadata. New
 notes belong to the acting participant and follow the session's current mode.
 
+Select two or more notes and press `L` to connect the highlighted origin to the
+others. The origin badge and contextual connection menu make the direction explicit;
+choose a different origin in that menu. `Shift+L` removes only the connections within
+the current selection, including reverse connections. Links to other notes remain.
+With zero or one selected note, `L` activates the existing click-to-connect tool.
+
+`Alt/Option+Shift+Arrow` creates a note in that direction, connected from every
+selected note, and opens it for writing. The contextual menu offers the same four
+directions. The new note and its links save together after writing; cancelling an
+empty note saves neither. `Cmd/Ctrl+Enter` while writing still creates an independent
+note. Connections show arrows between note edges, and new notes avoid occupied space.
+
 There is no **Develop this idea** action. Duplicating a note is presented as
 duplication; any future development workflow needs a distinct, demonstrated
 benefit. There is also no per-note history menu or API for browsing/restoring
@@ -47,7 +59,9 @@ them; Ctrl+Y also redoes on Windows/Linux. Undo/redo use shortcuts instead of do
 buttons, with a reminder in the select tool's help. While editing rich text, the text
 editor handles its own undo/redo. Canvas
 history covers completed text edits, movement, color, creative state, creation
-and deletion. Connection undo belongs to ENG-165. Undoing another participant's
+and deletion, plus connecting or disconnecting notes. A selection-wide connection
+change is one undo step; creating a connected note is also one step. Rapid undo/redo
+shortcuts are processed in order, as in the other project tools. Undoing another participant's
 work is not supported.
 
 The canvas keeps up to 50 operations in a local, ephemeral stack. It waits for
@@ -161,7 +175,6 @@ remain readable. Group recovery is described in the
 
 - [ENG-163](https://linear.app/sunset/issue/ENG-163/evaluar-recuperacion-de-versiones-anteriores-desde-la-sesion-de) evaluates historical recovery from a secondary session surface, without per-card history controls or replacing undo.
 - [ENG-164](https://linear.app/sunset/issue/ENG-164/spike-definir-el-valor-y-la-experiencia-de-desarrollar-una-idea) is a product spike for developing ideas with value beyond duplication; it is not an implementation commitment.
-- [ENG-165](https://linear.app/sunset/issue/ENG-165/anadir-atajos-para-conectar-notas-y-crear-notas-conectadas-en-el) covers advanced keyboard connections and creating connected notes.
 - [ENG-166](https://linear.app/sunset/issue/ENG-166/permitir-cambiar-la-forma-de-las-notas-del-canvas-de-brainstorming) covers note shapes independently of their content.
 
 ## Interaction references

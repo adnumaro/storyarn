@@ -34,6 +34,11 @@ defmodule StoryarnWeb.IdeationLive.Handlers.IdeaHandlers do
     end
   end
 
+  def run("update_idea_connections", scope, project_id, session_id, params) do
+    attrs = Params.fields(params, [:request_key, :changes, :versions])
+    Ideation.update_idea_connections(scope, project_id, session_id, attrs)
+  end
+
   def run("move_idea", scope, project_id, session_id, params) do
     with {:ok, id} <- Params.positive(params["idea_id"]),
          version when is_integer(version) and version >= 0 <- params["version"] do
