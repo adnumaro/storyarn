@@ -156,7 +156,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       conn: conn,
       user: user
     } do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
       old_session_token = get_session(conn, :user_token)
       handoff = UserAuth.issue_sudo_handoff(user, old_session_token)
@@ -190,7 +190,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
     end
 
     test "consumes a handoff exactly once", %{conn: conn, user: user} do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       original_conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
       old_session_token = get_session(original_conn, :user_token)
       handoff = UserAuth.issue_sudo_handoff(user, old_session_token)
@@ -223,7 +223,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       conn: conn,
       user: user
     } do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
       current_session_token = get_session(conn, :user_token)
       other_session_token = Accounts.generate_user_session_token(user)
@@ -264,7 +264,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       conn: conn,
       user: user
     } do
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -19)
       new_password = valid_user_password() <> " changed"
 
       conn =
@@ -287,7 +287,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       conn: conn,
       user: user
     } do
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
 
       conn =
         conn
@@ -308,7 +308,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
     end
 
     test "accepts a signed grant bound to the stale current session", %{conn: conn, user: user} do
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       new_password = valid_user_password() <> " granted"
       conn = log_in_user(conn, user, token_authenticated_at: authenticated_at)
       session_token = get_session(conn, :user_token)
@@ -332,7 +332,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       conn: conn,
       user: user
     } do
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       conn = log_in_user(conn, user, token_authenticated_at: authenticated_at)
       session_token = get_session(conn, :user_token)
       grant = UserAuth.issue_sudo_grant(user, session_token)
@@ -357,7 +357,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
     end
 
     test "rejects a grant issued for another session", %{conn: conn, user: user} do
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
       conn = log_in_user(conn, user, token_authenticated_at: authenticated_at)
       other_session_token = Accounts.generate_user_session_token(user)
       grant = UserAuth.issue_sudo_grant(user, other_session_token)
@@ -396,7 +396,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       for _ <- 1..5, do: assert(:ok = Accounts.check_login_rate(ip_address))
       assert {:error, :rate_limited} = Accounts.check_login_rate(ip_address)
 
-      authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
+      authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -19)
       new_password = valid_user_password() <> " replacement"
 
       conn =

@@ -965,8 +965,8 @@ defmodule Storyarn.Sheets.Editor.Commands.Inheritance do
     lock_active_project!(project_id)
 
     deleted_at = parent_block.deleted_at || TimeHelpers.now()
-    lower_threshold = DateTime.add(deleted_at, -2, :second)
-    upper_threshold = DateTime.add(deleted_at, 2, :second)
+    lower_threshold = DateTime.shift(deleted_at, second: -2)
+    upper_threshold = DateTime.shift(deleted_at, second: 2)
 
     metadata =
       Repo.all(

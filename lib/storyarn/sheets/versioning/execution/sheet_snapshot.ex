@@ -1850,8 +1850,8 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
   defp cascade_deleted_instance?(%Block{deleted_at: nil}, _source_deleted_at), do: false
 
   defp cascade_deleted_instance?(%Block{deleted_at: instance_deleted_at}, source_deleted_at) do
-    lower_bound = DateTime.add(source_deleted_at, -2, :second)
-    upper_bound = DateTime.add(source_deleted_at, 2, :second)
+    lower_bound = DateTime.shift(source_deleted_at, second: -2)
+    upper_bound = DateTime.shift(source_deleted_at, second: 2)
 
     DateTime.compare(instance_deleted_at, lower_bound) != :lt and
       DateTime.compare(instance_deleted_at, upper_bound) != :gt

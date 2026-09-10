@@ -39,7 +39,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetailTest do
 
   test "mounts locked with public provider metadata only and issues a handoff on confirmation", %{conn: conn} do
     user = with_ai_flag(user_fixture())
-    stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+    stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
     conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
 
     {:ok, view, _html} = live(conn, ~p"/users/settings/integrations/openai")

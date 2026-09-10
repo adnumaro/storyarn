@@ -1225,7 +1225,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       {:ok, attrs}
     else
       now = database_clock_now()
-      minimum_not_before = DateTime.add(now, Storage.multipart_cleanup_quiescence_seconds(), :second)
+      minimum_not_before = DateTime.shift(now, second: Storage.multipart_cleanup_quiescence_seconds())
 
       not_before = cleanup_not_before(Map.get(attrs, :multipart_quiescence_not_before), minimum_not_before)
 

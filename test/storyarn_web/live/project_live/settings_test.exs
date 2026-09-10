@@ -1466,8 +1466,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       StorageReservation
       |> Repo.get_by!(project_snapshot_id_snapshot: snapshot.id, kind: "snapshot_export")
       |> Ecto.Changeset.change(
-        accounting_measured_at: DateTime.add(now, -120, :second),
-        expires_at: DateTime.add(now, -60, :second)
+        accounting_measured_at: DateTime.shift(now, minute: -2),
+        expires_at: DateTime.shift(now, minute: -1)
       )
       |> Repo.update!()
 

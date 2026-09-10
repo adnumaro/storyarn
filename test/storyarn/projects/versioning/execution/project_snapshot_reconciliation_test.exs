@@ -324,7 +324,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     |> SnapshotObjectPublicationClaim.create_changeset(
       String.duplicate("a", 64),
       Ecto.UUID.generate(),
-      DateTime.add(TimeHelpers.now(), 3_600, :second),
+      DateTime.shift(TimeHelpers.now(), hour: 1),
       reservation.id,
       reservation.lease_token
     )
@@ -357,8 +357,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     snapshot.storage_reservation_id
     |> then(&Repo.get!(StorageReservation, &1))
     |> Ecto.Changeset.change(
-      expires_at: DateTime.add(TimeHelpers.now(), -1, :second),
-      accounting_measured_at: DateTime.add(TimeHelpers.now(), -2, :second)
+      expires_at: DateTime.shift(TimeHelpers.now(), second: -1),
+      accounting_measured_at: DateTime.shift(TimeHelpers.now(), second: -2)
     )
     |> Repo.update!()
 
@@ -388,8 +388,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
 
     reservation
     |> Ecto.Changeset.change(
-      expires_at: DateTime.add(now, -1, :second),
-      accounting_measured_at: DateTime.add(now, -2, :second)
+      expires_at: DateTime.shift(now, second: -1),
+      accounting_measured_at: DateTime.shift(now, second: -2)
     )
     |> Repo.update!()
 
@@ -417,13 +417,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
              })
 
     now = TimeHelpers.now()
-    old = %{DateTime.add(now, -86_400, :second) | microsecond: {0, 6}}
+    old = %{DateTime.shift(now, day: -1) | microsecond: {0, 6}}
 
     snapshot.storage_reservation_id
     |> then(&Repo.get!(StorageReservation, &1))
     |> Ecto.Changeset.change(
-      expires_at: DateTime.add(now, -1, :second),
-      accounting_measured_at: DateTime.add(now, -2, :second)
+      expires_at: DateTime.shift(now, second: -1),
+      accounting_measured_at: DateTime.shift(now, second: -2)
     )
     |> Repo.update!()
 
@@ -451,13 +451,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
              })
 
     now = TimeHelpers.now()
-    old = %{DateTime.add(now, -86_400, :second) | microsecond: {0, 6}}
+    old = %{DateTime.shift(now, day: -1) | microsecond: {0, 6}}
 
     snapshot.storage_reservation_id
     |> then(&Repo.get!(StorageReservation, &1))
     |> Ecto.Changeset.change(
-      expires_at: DateTime.add(now, -1, :second),
-      accounting_measured_at: DateTime.add(now, -2, :second)
+      expires_at: DateTime.shift(now, second: -1),
+      accounting_measured_at: DateTime.shift(now, second: -2)
     )
     |> Repo.update!()
 
@@ -657,7 +657,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
       |> SnapshotObjectPublicationClaim.create_changeset(
         String.duplicate("a", 64),
         Ecto.UUID.generate(),
-        DateTime.add(TimeHelpers.now(), -1, :second),
+        DateTime.shift(TimeHelpers.now(), second: -1),
         reservation.id,
         reservation.lease_token
       )
@@ -754,7 +754,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
       |> SnapshotObjectPublicationClaim.create_changeset(
         String.duplicate("a", 64),
         claim_token,
-        DateTime.add(TimeHelpers.now(), 3_600, :second),
+        DateTime.shift(TimeHelpers.now(), hour: 1),
         started.id,
         started.lease_token
       )
@@ -1265,7 +1265,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     |> SnapshotObjectPublicationClaim.create_changeset(
       String.duplicate("a", 64),
       Ecto.UUID.generate(),
-      DateTime.add(TimeHelpers.now(), 3_600, :second),
+      DateTime.shift(TimeHelpers.now(), hour: 1),
       reservation.id,
       reservation.lease_token
     )
@@ -1637,7 +1637,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     |> Ecto.Changeset.change(
       state: "executing",
       attempt: 1,
-      attempted_at: DateTime.add(now, -16 * 60, :second)
+      attempted_at: DateTime.shift(now, minute: -16)
     )
     |> Repo.update!()
 
@@ -1652,7 +1652,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   test "a stale executing final-attempt delivery is replaced for the active generation" do
     assert {:ok, run} = start_run()
     original = reconciliation_job!(run.id, run.cursor_generation)
-    attempted_at = DateTime.add(database_clock_now(), -16 * 60, :second)
+    attempted_at = DateTime.shift(database_clock_now(), minute: -16)
 
     original
     |> Ecto.Changeset.change(
@@ -1673,7 +1673,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
 
   test "active-run recovery does not requeue a stale delivery for another contract" do
     assert {:ok, run} = start_run()
-    attempted_at = DateTime.add(database_clock_now(), -16 * 60, :second)
+    attempted_at = DateTime.shift(database_clock_now(), minute: -16)
 
     wrong_contract =
       %{
@@ -1790,14 +1790,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
              })
 
     now = TimeHelpers.now()
-    old = %{DateTime.add(now, -86_400, :second) | microsecond: {0, 6}}
+    old = %{DateTime.shift(now, day: -1) | microsecond: {0, 6}}
 
     stale_reservation =
       stale_snapshot.storage_reservation_id
       |> then(&Repo.get!(StorageReservation, &1))
       |> Ecto.Changeset.change(
-        expires_at: DateTime.add(now, -1, :second),
-        accounting_measured_at: DateTime.add(now, -2, :second)
+        expires_at: DateTime.shift(now, second: -1),
+        accounting_measured_at: DateTime.shift(now, second: -2)
       )
       |> Repo.update!()
 
@@ -1827,8 +1827,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
 
     cleanup_request
     |> StorageCleanupRequest.multipart_quiescence_changeset(
-      DateTime.add(now, -2, :second),
-      DateTime.add(now, -1, :second)
+      DateTime.shift(now, second: -2),
+      DateTime.shift(now, second: -1)
     )
     |> Repo.update!()
 
@@ -1985,14 +1985,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
       |> SnapshotObjectPublicationClaim.create_changeset(
         String.duplicate("a", 64),
         claim_token,
-        DateTime.add(now, 3_600, :second),
+        DateTime.shift(now, hour: 1),
         started.id,
         started.lease_token
       )
       |> Repo.insert!()
       |> SnapshotObjectPublicationClaim.status_changeset("staged")
       |> Repo.update!()
-      |> SnapshotObjectPublicationClaim.status_changeset("publishing", DateTime.add(now, 3_600, :second))
+      |> SnapshotObjectPublicationClaim.status_changeset("publishing", DateTime.shift(now, hour: 1))
       |> Repo.update!()
 
     if claim_status == "published" do
@@ -2024,7 +2024,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     |> SnapshotObjectPublicationClaim.create_changeset(
       String.duplicate("a", 64),
       Ecto.UUID.generate(),
-      DateTime.add(TimeHelpers.now(), 3_600, :second),
+      DateTime.shift(TimeHelpers.now(), hour: 1),
       reservation.id,
       reservation.lease_token
     )
@@ -2037,7 +2037,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     existing_claim = Repo.get!(SnapshotObjectPublicationClaim, snapshot.object_prefix)
     reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
     now = TimeHelpers.now()
-    old_enough = DateTime.add(now, -3_600, :second)
+    old_enough = DateTime.shift(now, hour: -1)
 
     Repo.delete!(existing_claim)
 
@@ -2056,14 +2056,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
       |> SnapshotObjectPublicationClaim.create_changeset(
         SnapshotObjectPublicationClaim.inventory_digest(snapshot),
         claim_token,
-        DateTime.add(now, 3_600, :second),
+        DateTime.shift(now, hour: 1),
         reservation.id,
         reservation_lease_token
       )
       |> Repo.insert!()
       |> SnapshotObjectPublicationClaim.status_changeset("staged")
       |> Repo.update!()
-      |> SnapshotObjectPublicationClaim.status_changeset("publishing", DateTime.add(now, 3_600, :second))
+      |> SnapshotObjectPublicationClaim.status_changeset("publishing", DateTime.shift(now, hour: 1))
       |> Repo.update!()
       |> SnapshotObjectPublicationClaim.status_changeset("published")
       |> Repo.update!()

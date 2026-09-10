@@ -146,7 +146,7 @@ defmodule Storyarn.Projects.Imports.Replacement do
           more?: boolean()
         }
   def cleanup_terminal_recovery_snapshots(opts \\ []) when is_list(opts) do
-    cutoff = DateTime.add(TimeHelpers.now(), -@terminal_cleanup_retry_seconds, :second)
+    cutoff = DateTime.shift(TimeHelpers.now(), second: -@terminal_cleanup_retry_seconds)
     limit = terminal_cleanup_batch_size(opts)
 
     {cleaned_count, failure_count} =

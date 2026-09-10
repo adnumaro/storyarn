@@ -11,7 +11,7 @@ defmodule Storyarn.Workspaces.Invitations.Rules.Policy do
   def validity_in_days, do: @invitation_validity_in_days
 
   def expires_at(now) do
-    DateTime.add(now, @invitation_validity_in_days, :day)
+    DateTime.shift(now, day: @invitation_validity_in_days)
   end
 
   def remaining_days(expires_at, now) do

@@ -166,10 +166,8 @@
       "sharedModeHelp": "Todos ven las aportaciones. El facilitador puede activar el modo privado para todos.",
       "duplicate": "Duplicar nota",
       "duplicateHelp": "Duplicar · ⌘/Ctrl+D",
-      "undo": "Deshacer",
-      "redo": "Rehacer",
-      "undoHelp": "Deshacer · ⌘/Ctrl+Z",
-      "redoHelp": "Rehacer · ⇧⌘/Ctrl+Z"
+      "selectHelp": "Arrastra sobre el canvas vacío para seleccionar notas. Mantén Shift para añadir a la selección; Escape cancela.",
+      "historyHelp": "Deshacer: ⌘/Ctrl+Z. Rehacer: ⌘/Ctrl+Shift+Z o Ctrl+Y."
     },
     "rounds": {
       "title": "Rondas",

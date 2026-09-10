@@ -288,7 +288,7 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
         {:ok, task, _route} = delivery_contract
         result = Repo.get_by!(Result, operation_id: locked.id)
         encoded_output = Storyarn.AI.Operations.Rules.CanonicalJSON.encode!(output)
-        expires_at = DateTime.add(now, task.result_ttl_seconds, :second)
+        expires_at = DateTime.shift(now, second: task.result_ttl_seconds)
         result |> Result.output_changeset(encoded_output, expires_at) |> Repo.update!()
         transition!(locked, "succeeded", %{completed_at: now})
       else

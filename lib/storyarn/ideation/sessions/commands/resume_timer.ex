@@ -16,7 +16,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ResumeTimer do
             actor_id: access.user_id,
             configuration_version: session.configuration_version,
             status: :running,
-            deadline_at: DateTime.add(TimerMutation.now(), timer.remaining_seconds, :second)
+            deadline_at: DateTime.shift(TimerMutation.now(), second: timer.remaining_seconds)
           },
           :timer_resumed
         )

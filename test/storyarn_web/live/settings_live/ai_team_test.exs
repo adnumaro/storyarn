@@ -64,7 +64,7 @@ defmodule StoryarnWeb.SettingsLive.AITeamTest do
   test "mounts the routing screens locked until the password is confirmed", %{conn: conn} do
     user = with_ai_flag(user_fixture())
     workspace = workspace_fixture(user)
-    stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+    stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
 
     conn =
       log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)

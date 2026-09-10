@@ -147,7 +147,7 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
     job = latest_job()
 
     invitation
-    |> Ecto.Changeset.change(expires_at: DateTime.add(DateTime.utc_now(:second), 12 * 60 * 60, :second))
+    |> Ecto.Changeset.change(expires_at: DateTime.shift(DateTime.utc_now(:second), hour: 12))
     |> Repo.update!()
 
     assert :ok = perform_job(DeliverWorkspaceInvitationWorker, job.args)

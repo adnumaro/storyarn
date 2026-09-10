@@ -302,6 +302,7 @@ function keydown(event: KeyboardEvent) {
     <div
       v-if="synthesisOpen"
       ref="synthesisCard"
+      data-group-content
       class="group-synthesis absolute rounded-lg border border-violet-300/30 bg-background/95 p-5 shadow-xs"
       :style="{
         left: `${displayBounds.synthesisX}px`,

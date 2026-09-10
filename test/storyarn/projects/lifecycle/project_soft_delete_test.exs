@@ -133,7 +133,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       assert item.deletion_generation == trashed.deletion_generation
       assert item.size == 2_048
       assert item.content_type == "image/jpeg"
-      assert item.purge_at == DateTime.add(item.deleted_at, 24 * 60 * 60, :second)
+      assert item.purge_at == DateTime.shift(item.deleted_at, day: 1)
     end
 
     test "loads retention plans once across workspaces and defaults missing subscriptions" do
@@ -160,7 +160,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
                MapSet.new([first_project.id, second_project.id])
 
       assert Enum.all?(items, fn item ->
-               item.purge_at == DateTime.add(item.deleted_at, 24 * 60 * 60, :second)
+               item.purge_at == DateTime.shift(item.deleted_at, day: 1)
              end)
 
       assert length(subscription_queries(queries)) == 1
@@ -177,7 +177,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       {[item], queries} = capture_queries(&Projects.list_deleted_items_for_retention/0)
 
-      assert item.purge_at == DateTime.add(item.deleted_at, 720 * 60 * 60, :second)
+      assert item.purge_at == DateTime.shift(item.deleted_at, day: 30)
       assert subscription_queries(queries) == []
     end
 
@@ -247,7 +247,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       expired_at =
         DateTime.utc_now()
-        |> DateTime.add(-48 * 60 * 60, :second)
+        |> DateTime.shift(day: -2)
         |> DateTime.truncate(:second)
 
       Repo.update_all(

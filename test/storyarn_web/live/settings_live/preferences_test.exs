@@ -41,7 +41,7 @@ defmodule StoryarnWeb.SettingsLive.PreferencesTest do
     end
 
     test "does not require sudo mode", %{conn: conn} do
-      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
 
       {:ok, view, _html} =
         conn

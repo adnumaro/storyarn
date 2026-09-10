@@ -188,7 +188,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
 
   defp build_recovery_followup_result(_orphaned_count, now, failure_count) do
     scheduled_at =
-      DateTime.add(now, Projects.project_snapshot_build_recovery_quarantine_seconds(), :second)
+      DateTime.shift(now, second: Projects.project_snapshot_build_recovery_quarantine_seconds())
 
     %{build_recovery_followup: true}
     |> new(scheduled_at: scheduled_at)
@@ -336,10 +336,9 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
       )
 
     default_cutoff =
-      DateTime.add(
+      DateTime.shift(
         now,
-        -Projects.project_snapshot_export_lease_retention_seconds(),
-        :second
+        second: -Projects.project_snapshot_export_lease_retention_seconds()
       )
 
     {normalize_export_lease_after_id(after_id), normalize_export_lease_cutoff(cutoff, default_cutoff)}

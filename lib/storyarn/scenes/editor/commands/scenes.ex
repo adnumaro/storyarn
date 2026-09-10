@@ -294,7 +294,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Scenes do
   end
 
   defp lock_scene_restore_children(project_id, parent_id, since) do
-    since_threshold = DateTime.add(since, -1, :second)
+    since_threshold = DateTime.shift(since, second: -1)
 
     children =
       Repo.all(

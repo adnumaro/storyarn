@@ -300,7 +300,7 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
 
       {:ok, timer} = Ideation.get_timer(ctx.scope, ctx.project.id, ctx.session.id)
       now = %{TimeHelpers.now() | microsecond: {0, 6}}
-      timer |> Ecto.Changeset.change(deadline_at: DateTime.add(now, -1, :second)) |> Repo.update!()
+      timer |> Ecto.Changeset.change(deadline_at: DateTime.shift(now, second: -1)) |> Repo.update!()
       parent = self()
 
       tasks =
@@ -349,7 +349,7 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
       {:ok, _} = Ideation.start_timer(ctx.scope, ctx.project.id, ctx.session.id, 1, %{seconds: 60})
       {:ok, timer} = Ideation.get_timer(ctx.scope, ctx.project.id, ctx.session.id)
       now = %{TimeHelpers.now() | microsecond: {0, 6}}
-      timer |> Ecto.Changeset.change(deadline_at: DateTime.add(now, -1, :second), actor_id: nil) |> Repo.update!()
+      timer |> Ecto.Changeset.change(deadline_at: DateTime.shift(now, second: -1), actor_id: nil) |> Repo.update!()
       parent = self()
 
       capture =

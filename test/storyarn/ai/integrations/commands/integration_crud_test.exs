@@ -107,7 +107,7 @@ defmodule Storyarn.AI.IntegrationCrudTest do
       {:ok, integration} =
         AI.connect(user, :anthropic, "sk-ant-api03-original-abcd")
 
-      old_validated_at = DateTime.add(TimeHelpers.now(), -60, :second)
+      old_validated_at = DateTime.shift(TimeHelpers.now(), minute: -1)
 
       integration =
         integration

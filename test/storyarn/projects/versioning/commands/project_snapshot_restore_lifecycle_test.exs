@@ -1107,7 +1107,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycleTest do
 
   defp stale_delivery_time do
     TimeHelpers.now()
-    |> DateTime.add(-Versioning.project_snapshot_restore_delivery_recovery_quarantine_seconds() - 5, :second)
+    |> DateTime.shift(second: -Versioning.project_snapshot_restore_delivery_recovery_quarantine_seconds() - 5)
     |> DateTime.truncate(:second)
   end
 

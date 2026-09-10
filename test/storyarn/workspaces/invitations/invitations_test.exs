@@ -30,7 +30,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
 
   defp expired_datetime do
     DateTime.utc_now()
-    |> DateTime.add(-1, :day)
+    |> DateTime.shift(day: -1)
     |> DateTime.truncate(:second)
   end
 

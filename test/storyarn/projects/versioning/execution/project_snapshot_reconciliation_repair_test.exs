@@ -591,7 +591,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
       |> SnapshotObjectPublicationClaim.create_changeset(
         String.duplicate("a", 64),
         Ecto.UUID.generate(),
-        DateTime.add(TimeHelpers.now(), -1, :second),
+        DateTime.shift(TimeHelpers.now(), second: -1),
         reservation.id,
         reservation.lease_token
       )
@@ -978,13 +978,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              })
 
     now = TimeHelpers.now()
-    old = %{DateTime.add(now, -86_400, :second) | microsecond: {0, 6}}
+    old = %{DateTime.shift(now, day: -1) | microsecond: {0, 6}}
 
     snapshot.storage_reservation_id
     |> then(&Repo.get!(StorageReservation, &1))
     |> Ecto.Changeset.change(
-      expires_at: DateTime.add(now, -1, :second),
-      accounting_measured_at: DateTime.add(now, -2, :second)
+      expires_at: DateTime.shift(now, second: -1),
+      accounting_measured_at: DateTime.shift(now, second: -2)
     )
     |> Repo.update!()
 
@@ -1047,8 +1047,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
       Repo.update_all(
         from(request in StorageCleanupRequest, where: request.id == ^cleanup_request_id),
         set: [
-          multipart_quiescence_started_at: DateTime.add(now, -2, :second),
-          multipart_quiescence_not_before: DateTime.add(now, -1, :second)
+          multipart_quiescence_started_at: DateTime.shift(now, second: -2),
+          multipart_quiescence_not_before: DateTime.shift(now, second: -1)
         ]
       )
   end

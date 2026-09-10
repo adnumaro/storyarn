@@ -62,7 +62,7 @@ defmodule Storyarn.Ideation.TimersTest do
 
   test "pause, resume, extend and cancel fence old deadlines and preserve a single timer", ctx do
     timer = start(ctx)
-    timer |> change(deadline_at: DateTime.add(now(), 8, :second)) |> Repo.update!()
+    timer |> change(deadline_at: DateTime.shift(now(), second: 8)) |> Repo.update!()
     assert {:ok, _} = Ideation.pause_timer(ctx.facilitator, ctx.project.id, ctx.session.id, 2, timer.version)
     paused = timer(ctx)
     assert paused.status == :paused
@@ -101,7 +101,7 @@ defmodule Storyarn.Ideation.TimersTest do
     timer = start(ctx, %{seconds: 60})
 
     # Persist the same deadline-to-now gap a clock moving back one minute creates.
-    timer |> change(deadline_at: DateTime.add(now(), 120, :second)) |> Repo.update!()
+    timer |> change(deadline_at: DateTime.shift(now(), minute: 2)) |> Repo.update!()
 
     assert {:ok, _} = Ideation.pause_timer(ctx.owner, ctx.project.id, ctx.session.id, 2, timer.version)
     paused = timer(ctx)
@@ -114,7 +114,7 @@ defmodule Storyarn.Ideation.TimersTest do
   @tag :timer_clock_regression
   test "extending after a backward clock adjustment preserves the timer duration bound", ctx do
     timer = start(ctx, %{seconds: 60})
-    timer |> change(deadline_at: DateTime.add(now(), 120, :second)) |> Repo.update!()
+    timer |> change(deadline_at: DateTime.shift(now(), minute: 2)) |> Repo.update!()
 
     assert {:ok, _} = Ideation.extend_timer(ctx.owner, ctx.project.id, ctx.session.id, 2, timer.version, 30)
     extended = timer(ctx)
@@ -394,10 +394,10 @@ defmodule Storyarn.Ideation.TimersTest do
 
   defp assert_terminal_clock_recovery(ctx, action) do
     timer = start(ctx, %{seconds: 60})
-    original_start = DateTime.add(now(), 60, :second)
+    original_start = DateTime.shift(now(), minute: 1)
 
     timer
-    |> change(started_at: original_start, deadline_at: DateTime.add(now(), 120, :second))
+    |> change(started_at: original_start, deadline_at: DateTime.shift(now(), minute: 2))
     |> Repo.update!()
 
     case action do
@@ -449,6 +449,6 @@ defmodule Storyarn.Ideation.TimersTest do
     assert {:ok, _} = Ideation.set_private_mode(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, true)
   end
 
-  defp due(timer), do: timer |> change(deadline_at: DateTime.add(now(), -1, :second)) |> Repo.update!()
+  defp due(timer), do: timer |> change(deadline_at: DateTime.shift(now(), second: -1)) |> Repo.update!()
   defp now, do: %{TimeHelpers.now() | microsecond: {0, 6}}
 end

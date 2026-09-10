@@ -372,7 +372,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
     claim
     |> SnapshotObjectPublicationClaim.status_changeset(
       "publishing",
-      DateTime.utc_now() |> DateTime.add(3_600, :second) |> DateTime.truncate(:second)
+      DateTime.utc_now() |> DateTime.shift(hour: 1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 
@@ -397,7 +397,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
     assert drain_messages([]) == []
 
     claim
-    |> Ecto.Changeset.change(lease_expires_at: DateTime.add(TimeHelpers.now(), -1, :second))
+    |> Ecto.Changeset.change(lease_expires_at: DateTime.shift(TimeHelpers.now(), second: -1))
     |> Repo.update!()
 
     assert {:ok, recovered_stage} =
@@ -449,7 +449,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
       storage_reservation_id_snapshot: claim.storage_reservation_id_snapshot,
       storage_reservation_lease_token: claim.storage_reservation_lease_token,
       status: "staging",
-      lease_expires_at: DateTime.add(TimeHelpers.now(), 3_600, :second)
+      lease_expires_at: DateTime.shift(TimeHelpers.now(), hour: 1)
     })
 
     assert {:error, :snapshot_object_namespace_in_progress} =
@@ -464,7 +464,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
     claim = Repo.get!(SnapshotObjectPublicationClaim, staged.object_prefix)
 
     claim
-    |> Ecto.Changeset.change(lease_expires_at: DateTime.add(TimeHelpers.now(), -1, :second))
+    |> Ecto.Changeset.change(lease_expires_at: DateTime.shift(TimeHelpers.now(), second: -1))
     |> Repo.update!()
 
     assert {:ok, recovered} =
@@ -504,7 +504,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
       storage_reservation_id_snapshot: claim.storage_reservation_id_snapshot,
       storage_reservation_lease_token: claim.storage_reservation_lease_token,
       status: "staging",
-      lease_expires_at: DateTime.add(TimeHelpers.now(), -1, :second)
+      lease_expires_at: DateTime.shift(TimeHelpers.now(), second: -1)
     })
 
     assert {:ok, archive} = Storage.download(staged.archive_staging_key)
@@ -569,7 +569,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
       storage_reservation_id_snapshot: claim.storage_reservation_id_snapshot,
       storage_reservation_lease_token: claim.storage_reservation_lease_token,
       status: "staging",
-      lease_expires_at: DateTime.add(TimeHelpers.now(), -1, :second)
+      lease_expires_at: DateTime.shift(TimeHelpers.now(), second: -1)
     })
 
     install_read_switch()
@@ -623,7 +623,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
     claim
     |> SnapshotObjectPublicationClaim.status_changeset(
       "publishing",
-      DateTime.add(TimeHelpers.now(), -1, :second)
+      DateTime.shift(TimeHelpers.now(), second: -1)
     )
     |> Repo.update!()
 
@@ -674,7 +674,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
     claim
     |> SnapshotObjectPublicationClaim.status_changeset(
       "publishing",
-      DateTime.add(TimeHelpers.now(), -1, :second)
+      DateTime.shift(TimeHelpers.now(), second: -1)
     )
     |> Repo.update!()
 
@@ -712,7 +712,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
     claim
     |> SnapshotObjectPublicationClaim.status_changeset(
       "publishing",
-      DateTime.utc_now() |> DateTime.add(3_600, :second) |> DateTime.truncate(:second)
+      DateTime.utc_now() |> DateTime.shift(hour: 1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 

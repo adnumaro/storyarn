@@ -58,7 +58,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotPolicy do
   def expires_at(origin, %DateTime{} = captured_at) do
     case policy(origin) do
       {:ok, %{retention: :explicit_delete}} -> {:ok, nil}
-      {:ok, %{retention: {:ttl, seconds}}} -> {:ok, DateTime.add(captured_at, seconds, :second)}
+      {:ok, %{retention: {:ttl, seconds}}} -> {:ok, DateTime.shift(captured_at, second: seconds)}
       {:error, reason} -> {:error, reason}
     end
   end

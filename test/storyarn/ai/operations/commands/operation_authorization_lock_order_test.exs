@@ -427,7 +427,7 @@ defmodule Storyarn.AI.Operations.Commands.OperationAuthorizationLockOrderTest do
   test "result expiry retains technical Workspace before waiting on Operation" do
     with_queued_operation(fn ctx ->
       succeeded = succeed_operation(ctx)
-      expired_at = DateTime.add(TimeHelpers.now(), -1, :second)
+      expired_at = DateTime.shift(TimeHelpers.now(), second: -1)
 
       succeeded.id
       |> then(&Repo.get_by!(Result, operation_id: &1))

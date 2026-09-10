@@ -253,7 +253,7 @@ defmodule Storyarn.AI.ManagedSpend.AllowanceLockOrderTest do
       kind: "one_time",
       units: 1,
       remaining_units: 1,
-      expires_at: DateTime.add(now, -60, :second),
+      expires_at: DateTime.shift(now, minute: -1),
       granted_by_id: ctx.owner.id,
       actor_id: ctx.owner.id,
       metadata: %{}

@@ -171,7 +171,7 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       hashed_token = :crypto.hash(:sha256, token)
       encoded_token = Base.url_encode64(token, padding: false)
 
-      expired_at = DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.truncate(:second)
+      expired_at = DateTime.utc_now() |> DateTime.shift(day: -1) |> DateTime.truncate(:second)
 
       Repo.insert!(%ProjectInvitation{
         project_id: project.id,

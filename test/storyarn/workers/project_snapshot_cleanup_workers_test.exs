@@ -57,7 +57,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
       assert {:ok, %Oban.Job{conflict?: true}} = args |> worker.new() |> Oban.insert()
 
       first
-      |> Ecto.Changeset.change(inserted_at: %{DateTime.add(TimeHelpers.now(), -601, :second) | microsecond: {0, 6}})
+      |> Ecto.Changeset.change(inserted_at: %{DateTime.shift(TimeHelpers.now(), second: -601) | microsecond: {0, 6}})
       |> Repo.update!()
 
       assert {:ok, %Oban.Job{conflict?: false}} = args |> worker.new() |> Oban.insert()
@@ -65,8 +65,8 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   end
 
   test "maintenance reaper is scoped by worker, queue, state, and age" do
-    stale_at = DateTime.add(TimeHelpers.now(), -31 * 60, :second)
-    recent_at = DateTime.add(TimeHelpers.now(), -29 * 60, :second)
+    stale_at = DateTime.shift(TimeHelpers.now(), minute: -31)
+    recent_at = DateTime.shift(TimeHelpers.now(), minute: -29)
 
     stale = executing_job!(ProjectSnapshotRetentionWorker, %{}, attempted_at: stale_at)
     recent = executing_job!(ProjectSnapshotRetentionWorker, %{cursor: 1}, attempted_at: recent_at)
@@ -180,7 +180,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     stale_job =
       executing_job!(CleanupProjectSnapshotWorker, %{intent_id: intent.id},
-        attempted_at: DateTime.add(TimeHelpers.now(), -4 * 60 * 60, :second),
+        attempted_at: DateTime.shift(TimeHelpers.now(), hour: -4),
         attempt: 3
       )
 
@@ -197,7 +197,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   test "reconciler leaves stale executing jobs from other workers untouched" do
     stale_job =
       executing_job!(BuildProjectSnapshotWorker, %{snapshot_id: 9_223_372_036_854_775_807},
-        attempted_at: DateTime.add(TimeHelpers.now(), -4 * 60 * 60, :second),
+        attempted_at: DateTime.shift(TimeHelpers.now(), hour: -4),
         attempt: 3
       )
 
@@ -211,7 +211,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     recent_job =
       executing_job!(CleanupProjectSnapshotWorker, %{intent_id: intent.id},
-        attempted_at: DateTime.add(TimeHelpers.now(), -60 * 60, :second),
+        attempted_at: DateTime.shift(TimeHelpers.now(), hour: -1),
         attempt: 3
       )
 
@@ -226,7 +226,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     stale_job =
       executing_job!(CleanupProjectSnapshotWorker, %{intent_id: intent.id},
-        attempted_at: DateTime.add(TimeHelpers.now(), -4 * 60 * 60, :second),
+        attempted_at: DateTime.shift(TimeHelpers.now(), hour: -4),
         attempt: 10,
         max_attempts: 10
       )
@@ -661,8 +661,8 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     request
     |> StorageCleanupRequest.multipart_quiescence_changeset(
-      DateTime.add(now, -2, :second),
-      DateTime.add(now, -1, :second)
+      DateTime.shift(now, second: -2),
+      DateTime.shift(now, second: -1)
     )
     |> Repo.update!()
   end

@@ -1877,7 +1877,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
 
   defp validate_token(_token), do: {:error, :invalid_snapshot_object_token}
 
-  defp claim_lease_expires_at(now), do: DateTime.add(now, ProjectSnapshotLeasePolicy.build_lease_ttl_seconds(), :second)
+  defp claim_lease_expires_at(now), do: DateTime.shift(now, second: ProjectSnapshotLeasePolicy.build_lease_ttl_seconds())
 
   defp lease_active?(%DateTime{} = expires_at, %DateTime{} = now), do: DateTime.after?(expires_at, now)
   defp lease_active?(_expires_at, _now), do: false

@@ -26,7 +26,7 @@ defmodule Storyarn.Projects.Versioning.ChangeDetector do
   """
   @spec recent_manual_snapshot?(integer(), pos_integer()) :: boolean()
   def recent_manual_snapshot?(project_id, hours \\ 6) do
-    cutoff = DateTime.add(TimeHelpers.now(), -hours * 3600, :second)
+    cutoff = DateTime.shift(TimeHelpers.now(), hour: -hours)
 
     Repo.exists?(
       from(s in ProjectSnapshot, where: s.project_id == ^project_id and s.is_auto == false and s.inserted_at > ^cutoff)

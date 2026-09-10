@@ -42,7 +42,7 @@ defmodule Storyarn.Ideation.CanvasDeleteRestoreTest do
     assert Repo.get!(Idea, note.id).deleted_at == second_delete.deleted_at
 
     assert {:error, :stale_deletion} =
-             restore(ctx, %{second_delete | deleted_at: DateTime.add(second_delete.deleted_at, 1)})
+             restore(ctx, %{second_delete | deleted_at: DateTime.shift(second_delete.deleted_at, second: 1)})
 
     {:ok, second_restore} = restore(ctx, second_delete)
 

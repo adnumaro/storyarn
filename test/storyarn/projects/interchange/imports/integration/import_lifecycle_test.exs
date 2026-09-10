@@ -534,7 +534,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
     ready
-    |> Ecto.Changeset.change(expires_at: DateTime.add(TimeHelpers.now(), -60, :second))
+    |> Ecto.Changeset.change(expires_at: DateTime.shift(TimeHelpers.now(), minute: -1))
     |> Repo.update!()
 
     :ok = Notifications.subscribe(ctx.scope)
@@ -1888,7 +1888,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
     pending_cleanup
     |> Ecto.Changeset.change(
-      cleanup_after: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      cleanup_after: DateTime.utc_now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 
@@ -1933,7 +1933,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
     still_reserved
     |> Ecto.Changeset.change(
-      cleanup_after: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      cleanup_after: DateTime.utc_now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 
@@ -1992,7 +1992,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
     cleanup
     |> Ecto.Changeset.change(
-      cleanup_after: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      cleanup_after: DateTime.utc_now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 
@@ -2040,7 +2040,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     cleanup
     |> Ecto.Changeset.change(
       state: "reserved",
-      cleanup_after: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      cleanup_after: DateTime.utc_now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 
@@ -2092,7 +2092,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     cleanup
     |> Ecto.Changeset.change(
       state: "pending",
-      cleanup_after: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      cleanup_after: DateTime.utc_now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 
@@ -2154,7 +2154,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     |> Ecto.Changeset.change(
       state: "deleting",
       generation: 4,
-      cleanup_after: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+      cleanup_after: DateTime.utc_now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
     )
     |> Repo.update!()
 
@@ -2321,7 +2321,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
   end
 
   test "does not expire accepted attempts while their Oban jobs remain executable", ctx do
-    past = DateTime.add(TimeHelpers.now(), -60, :second)
+    past = DateTime.shift(TimeHelpers.now(), minute: -1)
     now = TimeHelpers.now()
     oban_now = DateTime.utc_now()
 
@@ -2407,7 +2407,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
-    inserted_at = DateTime.add(TimeHelpers.now(), -(47 * 60 * 60), :second)
+    inserted_at = DateTime.shift(TimeHelpers.now(), hour: -47)
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^ready.id),
@@ -2428,7 +2428,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
     assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
 
-    overdue_at = DateTime.add(TimeHelpers.now(), -(3 * 24 * 60 * 60), :second)
+    overdue_at = DateTime.shift(TimeHelpers.now(), day: -3)
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^queued.id),
@@ -2496,8 +2496,8 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
     assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
 
-    overdue_at = DateTime.add(TimeHelpers.now(), -(3 * 24 * 60 * 60), :second)
-    rolling_expiration = DateTime.add(TimeHelpers.now(), 24 * 60 * 60, :second)
+    overdue_at = DateTime.shift(TimeHelpers.now(), day: -3)
+    rolling_expiration = DateTime.shift(TimeHelpers.now(), day: 1)
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^queued.id),
@@ -2548,7 +2548,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
     assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
 
-    overdue_at = DateTime.add(TimeHelpers.now(), -(3 * 24 * 60 * 60), :second)
+    overdue_at = DateTime.shift(TimeHelpers.now(), day: -3)
 
     Repo.update_all(
       from(attempt in ProjectImportAttempt, where: attempt.id == ^queued.id),
@@ -2556,7 +2556,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
         parser_version: parser_version,
         inserted_at: overdue_at,
         updated_at: overdue_at,
-        expires_at: DateTime.add(TimeHelpers.now(), 24 * 60 * 60, :second)
+        expires_at: DateTime.shift(TimeHelpers.now(), day: 1)
       ]
     )
 
@@ -2647,7 +2647,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
   test "cleanup backoff lets requests beyond the first batch make progress", _ctx do
     now = DateTime.truncate(DateTime.utc_now(), :second)
-    due_at = DateTime.add(now, -60, :second)
+    due_at = DateTime.shift(now, minute: -1)
 
     rows =
       Enum.map(1..101, fn _index ->
@@ -2708,7 +2708,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
       format: "yarn",
       parser_version: parser_version,
       state: "pending",
-      cleanup_after: DateTime.add(now, -60, :second)
+      cleanup_after: DateTime.shift(now, minute: -1)
     })
     |> Repo.insert!()
 
@@ -3116,8 +3116,8 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
   defp mark_stale_for_sweep(attempt, seconds_ago) do
     now = TimeHelpers.now()
-    expires_at = DateTime.add(now, -seconds_ago, :second)
-    updated_at = DateTime.add(now, -600, :second)
+    expires_at = DateTime.shift(now, second: -seconds_ago)
+    updated_at = DateTime.shift(now, minute: -10)
 
     Repo.update_all(
       from(candidate in ProjectImportAttempt, where: candidate.id == ^attempt.id),

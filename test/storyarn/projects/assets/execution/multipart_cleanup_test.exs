@@ -577,7 +577,7 @@ defmodule Storyarn.Projects.Assets.MultipartCleanupTest do
 
   test "an expired final claim consumes the durable budget and blocks before provider IO" do
     request = insert_cleanup_request!()
-    expired_at = TimeHelpers.now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+    expired_at = TimeHelpers.now() |> DateTime.shift(minute: -1) |> DateTime.truncate(:second)
 
     request
     |> StorageCleanupRequest.multipart_cleanup_changeset(%{
@@ -758,11 +758,11 @@ defmodule Storyarn.Projects.Assets.MultipartCleanupTest do
 
   defp expire_quiet_window!(request_id) do
     now = DateTime.truncate(TimeHelpers.now(), :second)
-    expired_at = DateTime.add(now, -1, :second)
+    expired_at = DateTime.shift(now, second: -1)
 
     Repo.update_all(from(request in StorageCleanupRequest, where: request.id == ^request_id),
       set: [
-        multipart_quiescence_started_at: DateTime.add(expired_at, -1, :second),
+        multipart_quiescence_started_at: DateTime.shift(expired_at, second: -1),
         multipart_quiescence_not_before: expired_at,
         multipart_cleanup_claim_token: nil,
         multipart_cleanup_claim_expires_at: nil,

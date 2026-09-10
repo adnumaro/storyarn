@@ -94,7 +94,7 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
 
     expired_at =
       DateTime.utc_now()
-      |> DateTime.add(-48 * 60 * 60, :second)
+      |> DateTime.shift(day: -2)
       |> DateTime.truncate(:second)
 
     Repo.update_all(
@@ -180,7 +180,7 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
 
     expired_at =
       DateTime.utc_now()
-      |> DateTime.add(-48 * 60 * 60, :second)
+      |> DateTime.shift(day: -2)
       |> DateTime.truncate(:second)
 
     Repo.update_all(
@@ -199,7 +199,7 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
 
     expired_at =
       DateTime.utc_now()
-      |> DateTime.add(-48 * 60 * 60, :second)
+      |> DateTime.shift(day: -2)
       |> DateTime.truncate(:second)
 
     Repo.update_all(

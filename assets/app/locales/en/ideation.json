@@ -166,10 +166,8 @@
       "sharedModeHelp": "Everyone sees contributions. The facilitator can start private mode for everyone.",
       "duplicate": "Duplicate note",
       "duplicateHelp": "Duplicate · ⌘/Ctrl+D",
-      "undo": "Undo",
-      "redo": "Redo",
-      "undoHelp": "Undo · ⌘/Ctrl+Z",
-      "redoHelp": "Redo · ⇧⌘/Ctrl+Z"
+      "selectHelp": "Drag on empty canvas to select notes. Hold Shift to add to your selection; Escape cancels.",
+      "historyHelp": "Undo: ⌘/Ctrl+Z. Redo: ⌘/Ctrl+Shift+Z or Ctrl+Y."
     },
     "rounds": {
       "title": "Rounds",

@@ -20,7 +20,7 @@ defmodule StoryarnWeb.E2E.SettingsReauthenticationTest do
   test "keeps one sudo window after navigating through non-sensitive settings", %{conn: conn} do
     user = user_fixture()
     workspace = Workspaces.get_default_workspace(user)
-    stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+    stale_authenticated_at = DateTime.shift(DateTime.utc_now(:second), minute: -21)
     FunWithFlags.enable(:ai_integrations, for_actor: user)
 
     conn

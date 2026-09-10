@@ -128,7 +128,7 @@ defmodule Storyarn.Flows.VersionRequestsTest do
   test "recovers an interrupted execution without touching other workers", ctx do
     {:ok, request} = Flows.request_version(ctx.flow, ctx.user.id, title: "Interrupted")
     [job] = all_enqueued(worker: CreateFlowVersionWorker, args: %{request_id: request.id})
-    old = DateTime.add(TimeHelpers.now(), -1800, :second)
+    old = DateTime.shift(TimeHelpers.now(), minute: -30)
 
     job
     |> Ecto.Changeset.change(state: "executing", attempted_at: %{old | microsecond: {0, 6}}, attempt: 1)
@@ -154,7 +154,7 @@ defmodule Storyarn.Flows.VersionRequestsTest do
   test "exhausted interrupted execution terminalizes the capture and notifies the editor", ctx do
     {:ok, request} = Flows.request_version(ctx.flow, ctx.user.id, title: "Exhausted")
     [job] = all_enqueued(worker: CreateFlowVersionWorker, args: %{request_id: request.id})
-    old = DateTime.add(TimeHelpers.now(), -1800, :second)
+    old = DateTime.shift(TimeHelpers.now(), minute: -30)
     request |> Ecto.Changeset.change(inserted_at: old) |> Repo.update!()
 
     job

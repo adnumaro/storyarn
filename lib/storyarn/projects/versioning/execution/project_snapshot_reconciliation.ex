@@ -695,7 +695,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
     now = TimeHelpers.now()
 
     quiesced_before =
-      DateTime.add(now, -ProjectSnapshotLifecycle.build_recovery_quarantine_seconds(), :second)
+      DateTime.shift(now, second: -ProjectSnapshotLifecycle.build_recovery_quarantine_seconds())
 
     limit = database_page_limit(run)
 
@@ -789,7 +789,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
 
   defp inspect_publication_claim_page(run) do
     now = TimeHelpers.now()
-    quiesced_before = DateTime.add(now, -ProjectSnapshotLifecycle.build_recovery_quarantine_seconds(), :second)
+    quiesced_before = DateTime.shift(now, second: -ProjectSnapshotLifecycle.build_recovery_quarantine_seconds())
     limit = database_page_limit(run)
 
     rows = Repo.all(publication_claim_query(run, limit))
@@ -2306,7 +2306,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
 
   defp recover_stale_inspection_delivery(run) do
     now = %{database_clock_now() | microsecond: {0, 6}}
-    cutoff = DateTime.add(now, -InspectProjectSnapshotsWorker.recovery_after_seconds(), :second)
+    cutoff = DateTime.shift(now, second: -InspectProjectSnapshotsWorker.recovery_after_seconds())
 
     expected_args = %{
       "contract_version" => run.contract_version,

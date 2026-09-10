@@ -221,7 +221,7 @@ defmodule Storyarn.AI.PersonalByokTest do
                grant_key: "general-managed-limit",
                kind: "one_time",
                units: 1,
-               expires_at: DateTime.add(TimeHelpers.now(), -1, :second)
+               expires_at: DateTime.shift(TimeHelpers.now(), second: -1)
              })
 
     integration = connect_openai!(ctx.owner)

@@ -8,7 +8,7 @@ defmodule Storyarn.Accounts.Authentication.Rules.SudoWindow do
   def active?(user, minutes \\ -20)
 
   def active?(%User{authenticated_at: timestamp}, minutes) when is_struct(timestamp, DateTime) do
-    DateTime.after?(timestamp, DateTime.add(TimeHelpers.now(), minutes, :minute))
+    DateTime.after?(timestamp, DateTime.shift(TimeHelpers.now(), minute: minutes))
   end
 
   def active?(_user, _minutes), do: false

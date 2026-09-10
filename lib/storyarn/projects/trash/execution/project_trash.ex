@@ -472,7 +472,7 @@ defmodule Storyarn.Projects.ProjectTrash do
             |> Commercial.plan_retention_hours()
         end
 
-      Map.put(item, :purge_at, DateTime.add(item.deleted_at, retention_hours * 60 * 60, :second))
+      Map.put(item, :purge_at, DateTime.shift(item.deleted_at, hour: retention_hours))
     end)
   end
 

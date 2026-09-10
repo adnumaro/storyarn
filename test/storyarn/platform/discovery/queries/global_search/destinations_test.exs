@@ -226,7 +226,7 @@ defmodule Storyarn.Platform.GlobalSearch.DestinationsTest do
 
       # utc_datetime has second precision — same-second creates tie. Force a
       # clearly older sheet so cross-type ordering is observable.
-      past = DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.add(-3600)
+      past = DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.shift(hour: -1)
 
       Storyarn.Repo.update_all(
         Ecto.Query.from(s in Storyarn.Sheets.Sheet, where: s.id == ^old_sheet.id),
