@@ -1,0 +1,153 @@
+lib/storyarn/projects/comments/projections/scene_pin_record.ex
+  s_11667293ceac35::t_322ce57a97fa07 1-10
+test/storyarn/projects/comments/spatial_comments_test.exs
+  s_11667293ceac35::t_21c81d6a9c80fb 92,97-126
+  s_11667293ceac35::t_3f1f3ad1efc8d5 54,58-59,74-77,91,93-96
+test/storyarn_web/live/scene_live/comments_test.exs
+  s_11667293ceac35::t_7b90dcb757f662 103-135
+  s_11667293ceac35::t_9ec056f7113f17 136-142
+assets/app/components/comments/types.ts
+  s_11667293ceac35::t_049dd063dbbf9c 22-30,41
+assets/app/components/comments/CommentConversation.vue
+  s_11667293ceac35::t_8c234c92c6537e 151-160,321-326
+test/storyarn/projects/comments/integration/source_lifecycle_test.exs
+  s_11667293ceac35::t_3f1f3ad1efc8d5 17,40-44,47-65,112-115
+lib/storyarn/projects.ex
+  s_11667293ceac35::t_58cbb28b5c76a2 1021
+lib/storyarn/projects/comments/projections/scene_zone_record.ex
+  s_11667293ceac35::t_322ce57a97fa07 1-10
+lib/storyarn/projects/comments/projections/scene_connection_record.ex
+  s_11667293ceac35::t_322ce57a97fa07 1-10
+lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_60742fb758b4b9 223-224,234
+  s_11667293ceac35::t_88d195036f7c81 402-404
+assets/app/test/modules/flows/editor/FlowSequenceComments.test.ts
+  s_11667293ceac35::t_4d557f193eb98c 20-23
+  s_11667293ceac35::t_31266ad0af615e 24-27
+assets/app/modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue
+  s_11667293ceac35::t_049dd063dbbf9c 47
+  s_11667293ceac35::t_67bf87f5d3829b 475
+lib/storyarn/projects/comments/rules/context.ex
+  s_11667293ceac35::t_c4aafdbafcd6aa 133,263-264
+  s_11667293ceac35::t_322ce57a97fa07 1-101,103-105,116-132,134-176,179-212,215-228,232-233,237-243,246-261,266-296
+  s_11667293ceac35::t_299d98736f2ea3 102,106-115,177-178,213-214,244-245,262,265
+  s_11667293ceac35::t_b2e852c9ec78c6 229-231,234-236
+lib/storyarn/projects/comments/comments.ex
+  s_11667293ceac35::t_58cbb28b5c76a2 6,103,106,235-236,274,287-296
+  s_11667293ceac35::t_53afe8a15f3b89 297
+test/storyarn/projects/comments/comments_test.exs
+  s_11667293ceac35::t_3f1f3ad1efc8d5 25,30-32,34-37,59,63,65-66,71,73-74,292,296-298,300,306,309-314,319,322,326-327,330-331
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_11667293ceac35::t_1b2370ee44ac28 212-220,304-307,310-311,336-351
+  s_11667293ceac35::t_4d557f193eb98c 8,32-39,42,173,177,190-211,221-222,273-279,291-303,308-309,312-313,352,396
+  s_5af6a6d0a150f1::t_31eeea24ffa154 314,353
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_11667293ceac35::t_91d165a1a9b924 141-142,151-152
+  s_11667293ceac35::t_25db47919df922 8,36,52,69,126-128,130-131,133,138,140,145-149,154,158,258,261
+  s_11667293ceac35::t_65bc120cbbed5b 181-211,219-230
+  s_11667293ceac35::t_bb8c71ef0b536d 144,212-218,262,265-280,285-291,297-312,322-337,347-362
+  s_11667293ceac35::t_3338e7ec06e1eb 150
+assets/app/test/modules/flows/components/FlowCommentsPanel.test.ts
+  s_11667293ceac35::t_4d557f193eb98c 177-199,203
+  s_11667293ceac35::t_72534043a47c5f 200-202,204
+test/storyarn/projects/comments/contextual_comments_test.exs
+  s_11667293ceac35::t_c4aafdbafcd6aa 1-13,15-59,83-268,270-320
+  s_11667293ceac35::t_b2e852c9ec78c6 14,60-82,269
+lib/storyarn/projects/comments/projections/scene_annotation_record.ex
+  s_11667293ceac35::t_322ce57a97fa07 1-10
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_60742fb758b4b9 214-215,225
+  s_11667293ceac35::t_cb570c1684f53f 391-393
+lib/storyarn/projects/comments/projections/sheet_block_record.ex
+  s_11667293ceac35::t_322ce57a97fa07 1-14
+lib/storyarn/projects/comments/queries/queries.ex
+  s_11667293ceac35::t_5248e384c84063 242-243,253,260,262-263,266-269,272,337-339
+  s_11667293ceac35::t_6ae847cd5b3ee2 261,264-265,270-271
+  s_11667293ceac35::t_65bc120cbbed5b 222,224-226,335-336,340-342
+  s_11667293ceac35::t_3fdbb592686840 273-275
+lib/storyarn/projects/comments/entities/thread.ex
+  s_11667293ceac35::t_fda6f56f14560b 2,19-30
+lib/storyarn/projects/comments/rules/dto.ex
+  s_11667293ceac35::t_58cbb28b5c76a2 4,21,35-36
+lib/storyarn/projects/comments/projections/flow_node_record.ex
+  s_11667293ceac35::t_2fbb8b8a9cd63b 9-10
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_60742fb758b4b9 150,246-247,257,353,443-452
+assets/app/test/modules/flows/editor/FlowSequenceWorkspace.test.ts
+  s_11667293ceac35::t_ebcba32bac0e11 4,124-145,169
+  s_11667293ceac35::t_c11d21a297f10d 146-168
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_11667293ceac35::t_7e6e24cb475307 42-43,64-65,95,102-104,106,108-119,176-182,255,258-260,277,279-281,356,373-374,380-381
+  s_11667293ceac35::t_998cae0ef85a5f 163,209-211,223-226
+  s_11667293ceac35::t_7b90dcb757f662 191-208,212-222,227-237
+test/storyarn_web/live/sheet_live/comments_test.exs
+  s_11667293ceac35::t_7b90dcb757f662 103-139
+  s_11667293ceac35::t_28df9f785d2037 140-145
+assets/app/modules/flows/editor/composables/useCanvasComments.ts
+  s_11667293ceac35::t_049dd063dbbf9c 7,96,242,296-297,307-312,320-331
+  s_11667293ceac35::t_c50f5257ff600e 332-333
+lib/storyarn/projects/comments/rules/payload.ex
+  s_11667293ceac35::t_b3b4e8d9257bef 68,74-76
+  s_5af6a6d0a150f1::t_31e94887868504 77
+assets/app/modules/flows/editor/lib/comment-geometry.ts
+  s_11667293ceac35::t_abcdbd18c541fc 33-34,42-50
+  s_11667293ceac35::t_049dd063dbbf9c 17-25,30,38,51
+  s_11667293ceac35::t_9c1594cf271a9c 52
+test/storyarn_web/live/shared/notification_helpers_test.exs
+  s_11667293ceac35::t_7e6e24cb475307 65,72-78
+  s_11667293ceac35::t_6d3afeb57564a4 79-80
+assets/app/locales/en/flows.json
+  s_11667293ceac35::t_1f9b2fa4bd2bba 581
+assets/app/locales/en/scenes.json
+  s_11667293ceac35::t_c80d1ee4e3253b 504
+assets/app/locales/en/sheets.json
+  s_11667293ceac35::t_71e4d8fffc8f28 138
+assets/app/locales/es/flows.json
+  s_11667293ceac35::t_d9982eb8ac3fae 581
+assets/app/locales/es/scenes.json
+  s_11667293ceac35::t_13e6443159f409 504
+assets/app/locales/es/sheets.json
+  s_11667293ceac35::t_4448d2d7447963 138
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_a5353989538fe6 467,472,477
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_11667293ceac35::t_53bb32d3327511 934,939,944
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_11667293ceac35::t_4518466e1411d0 461,466,471
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_72a5c9b4d1d4f0 467,472,477
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_11667293ceac35::t_f5d728e6af55e7 934,939,944
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_11667293ceac35::t_cbd70a6d678cf7 461,466,471
+priv/gettext/flows.pot
+  s_11667293ceac35::t_07ceabc7bebe5f 467,472,477
+priv/gettext/scenes.pot
+  s_11667293ceac35::t_d851adb479f99e 934,939,944
+priv/gettext/sheets.pot
+  s_11667293ceac35::t_3002a7d853888c 461,466,471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fc798482bdc49f8f812733ea0336e6eb4eedc016",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
