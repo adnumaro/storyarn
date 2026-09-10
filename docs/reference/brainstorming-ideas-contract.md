@@ -53,6 +53,58 @@ stack is cleared at session/synchronization/recovery resets. Internal revisions
 and receipts do not constitute a product history browser: there are no
 `list_idea_revisions`, `list_idea_conflicts` or `get_idea_edit` APIs.
 
+## Connection commands (ENG-165)
+
+`update_idea_connections/4` accepts a UUID `request_key`, a `changes` list of
+`{source_id, target_id, connected}` maps, and a `versions` list of `{id, version}`
+maps for exactly the distinct sources. One request contains 1–100 distinct
+directed edges and at most 100 sources. Both endpoints must remain readable,
+live notes in the same open session. The entire batch is checked before any
+write, and each source keeps its limit of 100 outgoing connections. Unrelated
+and private connections are preserved. Duplicate pairs, conflicting operations
+for one pair, invalid identities and mismatched version sets are rejected.
+
+Connections have a `links_version` per source, independent of text and placement
+versions. A batch advances each changed source once. Its response contains only
+the edges actually changed and the acknowledged versions of all sources. The
+last request key, actor-bound fingerprint and actual changes are retained per
+source in an internal `links_receipt`; a retry returns the same response without
+changing links or emitting another invalidation. Reusing that retained key with
+different input fails with `idempotency_conflict`. A superseded source fails with
+`stale_connections`, including a connect/disconnect/reconnect cycle whose visible
+contents happen to match again. Even the compatibility `connect_ideas/6` port
+advances this version when it changes a link. No-op requests do not advance a
+version or invalidate the board, and their response contains no undoable change.
+
+Browser undo uses the acknowledged versions and reverses only changes the
+command actually made. A later link change on the same source prevents that
+undo from overwriting another participant's work; movement, text editing and
+changes to other sources do not interfere. Receipts are bounded to the most
+recent request per source, not a permanent command history. Ordinary idea and
+placement projections expose `links_version` but never the receipt.
+
+Canvas creation optionally accepts `connection: {source_ids: [...]}` for 1–100
+distinct readable sources. First persistence creates the authored note, its
+content and publication, and all incoming connections in one transaction.
+Invalid sources or capacity failures leave no orphan note or partial links.
+The request fingerprint includes the original connection input. Replaying a
+successful creation returns its existing note and never re-adds an edge that a
+collaborator subsequently removed. Creating a connected note needs no expected
+source link version: its new target identity is appended to the current state
+under the contribution lock. Creation replies additionally carry `connected_from`
+entries with each source's original `before_version` and acknowledged `version`.
+One internal `creation_links_receipt`, bounded by the 100-source limit, preserves
+that original acknowledgement on retries. It is absent from ordinary note
+projections and has no history API. Undoing the creation uses the existing exact
+delete/restore protocol; deleted endpoints disappear from connection projections,
+and restored endpoints only reveal connections that still exist.
+
+Snapshots preserve connection state and link versions, remapping endpoints with
+the note identities. They exclude the ephemeral `links_receipt` and
+`creation_links_receipt`; a restore never
+replays an acknowledgement containing pre-restore canvas IDs. Older snapshots
+without `links_version` continue with version zero.
+
 ## Ownership and locking
 
 Ideas owns idea identities, immutable content revisions, save receipts, retained

@@ -23,6 +23,12 @@ import { useCanvasViewport, type Point } from "../composables/useCanvasViewport"
 import { useCanvasMarquee } from "../composables/useCanvasMarquee";
 import { useBoardText } from "../composables/useBoardText";
 import { notePosition } from "../lib/placement";
+import {
+  connectedPlacement,
+  connectionEndpoints,
+  readableViewport,
+  type ConnectionDirection,
+} from "../lib/connectionGeometry";
 import type {
   BoardContext,
   CanvasIdea,
@@ -85,6 +91,8 @@ const emit = defineEmits<{
   finish: [];
   move: [moves: Array<{ id: number; point: Point }>];
   connect: [source: number, target: number, connected: boolean];
+  connectSelection: [ids: number[], connected: boolean];
+  addConnected: [sourceIds: number[], point: Point];
   remove: [ids: number[]];
   duplicate: [ids: number[]];
   undo: [];
@@ -195,7 +203,19 @@ function fitAll() {
 function center(note: Idea) {
   const point = position(note);
   view.x = view.width / 2 - (point.x + (note.canvas?.width ?? 280) / 2) * view.zoom;
-  view.y = view.height / 2 - (point.y + 120) * view.zoom;
+  view.y = view.height / 2 - (point.y + (noteHeights.value.get(note.id) ?? 260) / 2) * view.zoom;
+}
+function noteBounds(note: Idea) {
+  return {
+    ...position(note),
+    width: note.canvas?.width ?? 280,
+    height: noteHeights.value.get(note.id) ?? 260,
+  };
+}
+async function revealNote(note: Idea) {
+  await nextTick();
+  measureNotes();
+  Object.assign(view, readableViewport(noteBounds(note), view));
 }
 function focus() {
   root.value?.focus({ preventScroll: true });
@@ -206,11 +226,79 @@ function summaryAnchor(id: number): Point | undefined {
     ? { x: frame.x + frame.synthesisX - 28, y: frame.y + frame.synthesisY - 64 }
     : undefined;
 }
-defineExpose({ center, fitAll, focus, summaryAnchor });
+defineExpose({ center, fitAll, focus, summaryAnchor, revealNote });
 const visibleSelection = computed(() =>
   selectedIds.filter((id) => notes.some((note) => note.id === id)),
 );
 const selectedId = computed(() => selectedIds[0] ?? null);
+const chosenOrigin = ref<number | null>(null);
+const connectionSelection = computed(() => {
+  const origin = chosenOrigin.value;
+  return origin !== null && visibleSelection.value.includes(origin)
+    ? [origin, ...visibleSelection.value.filter((id) => id !== origin)]
+    : visibleSelection.value;
+});
+const connectionOrigin = computed(() => {
+  if (!permissions.edit) return null;
+  if (tool.value === "connect") return linkSource.value;
+  return connectionSelection.value.length >= 2 ? connectionSelection.value[0] : null;
+});
+function connectionWriteBlocked() {
+  return (
+    !permissions.edit ||
+    historyState.busy ||
+    drag !== null ||
+    selectingArea.value ||
+    groupNudge !== null
+  );
+}
+function connectSelection(connected: boolean) {
+  if (connectionWriteBlocked() || visibleSelection.value.length < 2) return;
+  emit("finish");
+  tool.value = "select";
+  linkSource.value = null;
+  emit("connectSelection", [...connectionSelection.value], connected);
+  focus();
+}
+function useConnectionOrigin(id: number) {
+  if (connectionWriteBlocked() || !visibleSelection.value.includes(id)) return;
+  chosenOrigin.value = id;
+}
+function addConnected(direction: ConnectionDirection) {
+  if (connectionWriteBlocked() || !canCreate.value || !visibleSelection.value.length) return;
+  const selected = notes.filter((note) => visibleSelection.value.includes(note.id));
+  const obstacles = [...notes.map(noteBounds), ...layouts.value.map((layout) => layout.bounds)];
+  const point = connectedPlacement(selected.map(noteBounds), obstacles, direction);
+  if (!point) return;
+  emit("finish");
+  tool.value = "select";
+  linkSource.value = null;
+  emit("addConnected", [...visibleSelection.value], point);
+}
+const connectionTools = computed(() => ({
+  selection: connectionSelection.value.map((id) => {
+    const note = notes.find((note) => note.id === id)!;
+    return {
+      id,
+      label:
+        note.title ||
+        note.preview ||
+        note.body.replace(/<[^>]*>/g, " ").trim() ||
+        t("ideation.untitled"),
+    };
+  }),
+  hasConnections: notes.some(
+    (note) =>
+      visibleSelection.value.includes(note.id) &&
+      note.canvas?.links?.some((id) => visibleSelection.value.includes(id)),
+  ),
+  canCreate: canCreate.value,
+  busy: historyState.busy,
+  onConnect: () => connectSelection(true),
+  onDisconnect: () => connectSelection(false),
+  onCreate: addConnected,
+  onOrigin: useConnectionOrigin,
+}));
 const matches = computed(() =>
   notes.filter((n) =>
     `${n.title ?? ""} ${n.body.replace(/<[^>]*>/g, " ")}`
@@ -223,16 +311,13 @@ const links = computed(() =>
     (source.canvas?.links ?? []).flatMap((id) => {
       const target = notes.find((n) => n.id === id);
       if (!target) return [];
-      const a = position(source),
-        b = position(target);
+      const endpoints = connectionEndpoints(noteBounds(source), noteBounds(target), 6 / view.zoom);
+      if (!endpoints) return [];
       return [
         {
           source: source.id,
           target: id,
-          x1: a.x + (source.canvas?.width ?? 280) / 2,
-          y1: a.y + 120,
-          x2: b.x + (target.canvas?.width ?? 280) / 2,
-          y2: b.y + 120,
+          ...endpoints,
         },
       ];
     }),
@@ -615,6 +700,10 @@ function keydown(event: KeyboardEvent) {
     if (event.key === "Escape") marquee.cancel();
     return;
   }
+  if (event.altKey) {
+    connectedNoteShortcut(event);
+    return;
+  }
   if (event.metaKey || event.ctrlKey) {
     modifiedShortcut(event);
     return;
@@ -634,9 +723,29 @@ function keydown(event: KeyboardEvent) {
   nudge(event);
 }
 function ignoreKey(event: KeyboardEvent) {
-  return (
-    event.defaultPrevented || event.altKey || event.isComposing || interactiveTarget(event.target)
-  );
+  if (event.defaultPrevented || event.isComposing) return true;
+  const target = event.target;
+  if (
+    target instanceof Element &&
+    target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')
+  )
+    return true;
+  const historyKey = ["z", "y"].includes(event.key.toLowerCase());
+  if (historyKey && !event.altKey && (event.metaKey || event.ctrlKey)) return false;
+  return interactiveTarget(target);
+}
+function connectedNoteShortcut(event: KeyboardEvent) {
+  if (!event.shiftKey || event.metaKey || event.ctrlKey) return;
+  const directions: { [key: string]: ConnectionDirection | undefined } = {
+    ArrowUp: "up",
+    ArrowRight: "right",
+    ArrowDown: "down",
+    ArrowLeft: "left",
+  };
+  const direction = directions[event.key];
+  if (!direction || !visibleSelection.value.length) return;
+  event.preventDefault();
+  if (!event.repeat) addConnected(direction);
 }
 function editFocusedNote(event: KeyboardEvent) {
   if (selectedGroupId.value !== null) {
@@ -693,9 +802,10 @@ function modifiedShortcut(event: KeyboardEvent) {
   }
   if (!["d", "z", "y"].includes(key)) return;
   event.preventDefault();
-  if (!permissions.edit || historyState.busy || event.repeat) return;
-  if (key === "d") duplicateSelection();
-  else historyShortcut(event, key);
+  if (!permissions.edit) return;
+  if (key === "d") {
+    if (!historyState.busy && !event.repeat) duplicateSelection();
+  } else historyShortcut(event, key);
 }
 function groupShortcut(event: KeyboardEvent) {
   event.preventDefault();
@@ -719,10 +829,11 @@ function duplicateSelection() {
     emit("duplicate", [...visibleSelection.value]);
 }
 function historyShortcut(event: KeyboardEvent, key: string) {
-  const redo = (key === "z" && event.shiftKey) || (key === "y" && event.ctrlKey);
-  if (redo) {
-    if (historyState.canRedo) emit("redo");
-  } else if (key === "z" && historyState.canUndo) emit("undo");
+  const redo = key === "y" || event.shiftKey;
+  const available = redo ? historyState.canRedo : historyState.canUndo;
+  if (!available && !historyState.busy) return;
+  if (redo) emit("redo");
+  else emit("undo");
 }
 function pastePoint(): Point {
   return (
@@ -759,8 +870,14 @@ function shortcut(event: KeyboardEvent) {
   }
   if (key === "v") chooseTool("select");
   if (key === "h") chooseTool("pan");
-  if (key === "l" && permissions.edit && !historyState.busy) chooseTool("connect");
+  if (key === "l") connectionShortcut(event);
   if (key === "1") fitAll();
+}
+function connectionShortcut(event: KeyboardEvent) {
+  if (connectionWriteBlocked() || event.repeat) return;
+  event.preventDefault();
+  if (visibleSelection.value.length >= 2) connectSelection(!event.shiftKey);
+  else if (!event.shiftKey) chooseTool("connect");
 }
 watch(
   () => canCreate.value,
@@ -768,6 +885,9 @@ watch(
     if (!allowed && tool.value === "note") tool.value = "select";
   },
 );
+watch(visibleSelection, (ids) => {
+  if (chosenOrigin.value !== null && !ids.includes(chosenOrigin.value)) chosenOrigin.value = null;
+});
 // Controls, resizes and navigation may change the viewport mid-gesture.
 watch(
   [
@@ -819,8 +939,8 @@ onUnmounted(() => {
     id="brainstorming-canvas"
     tabindex="0"
     :aria-label="t('ideation.canvas.label')"
-    aria-describedby="brainstorming-selection-help brainstorming-history-help"
-    aria-keyshortcuts="Meta+Z Control+Z Meta+Shift+Z Control+Shift+Z Control+Y"
+    aria-describedby="brainstorming-selection-help brainstorming-history-help brainstorming-connection-help"
+    aria-keyshortcuts="Meta+Z Control+Z Meta+Shift+Z Control+Shift+Z Meta+Y Control+Y L Shift+L Alt+Shift+ArrowUp Alt+Shift+ArrowRight Alt+Shift+ArrowDown Alt+Shift+ArrowLeft"
     class="absolute inset-0 touch-none overflow-hidden outline-none"
     :class="
       space || tool === 'pan'
@@ -855,13 +975,28 @@ onUnmounted(() => {
         height="1"
         aria-hidden="true"
       >
+        <defs>
+          <marker
+            id="brainstorming-connection-arrow"
+            markerWidth="7"
+            markerHeight="7"
+            refX="7"
+            refY="3.5"
+            orient="auto"
+          >
+            <path d="M0,0 L7,3.5 L0,7" fill="none" stroke="currentColor" stroke-linejoin="round" />
+          </marker>
+        </defs>
         <line
           v-for="link in links"
           :key="`${link.source}-${link.target}`"
+          :data-connection-source="link.source"
+          :data-connection-target="link.target"
           v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
           stroke="currentColor"
           class="text-muted-foreground/50"
           :stroke-width="2 / view.zoom"
+          marker-end="url(#brainstorming-connection-arrow)"
         />
       </svg>
       <CanvasGroup
@@ -898,6 +1033,16 @@ onUnmounted(() => {
           width: `${note.canvas?.width ?? 280}px`,
         }"
       >
+        <span
+          v-if="connectionOrigin === note.id"
+          :id="`connection-origin-badge-${note.id}`"
+          class="pointer-events-none absolute bottom-0 right-2 z-10 translate-y-1/2 rounded-full border border-primary/30 bg-background px-2 py-0.5 text-[11px] font-medium text-primary shadow-sm"
+          :style="{
+            transform: `translateY(50%) scale(${1 / view.zoom})`,
+            transformOrigin: 'right center',
+          }"
+          >{{ t("ideation.canvas.connectionOrigin") }}</span
+        >
         <CanvasNote
           :note="note"
           :can-create="canCreate"
@@ -923,7 +1068,7 @@ onUnmounted(() => {
           class="absolute bottom-full left-1/2 z-20 mb-4 -translate-x-1/2"
           :style="{ transform: `scale(${1 / view.zoom})`, transformOrigin: 'bottom center' }"
         >
-          <slot name="selection" />
+          <slot name="selection" :connection-tools="connectionTools" />
         </div>
       </div>
       <div
@@ -946,6 +1091,9 @@ onUnmounted(() => {
     />
     <p id="brainstorming-selection-help" class="sr-only">{{ t("ideation.canvas.selectHelp") }}</p>
     <p id="brainstorming-history-help" class="sr-only">{{ t("ideation.canvas.historyHelp") }}</p>
+    <p id="brainstorming-connection-help" class="sr-only">
+      {{ t("ideation.canvas.connectionHelp") }}
+    </p>
     <CanvasCursors
       v-if="collaboration.cursors"
       :container="root"
@@ -1050,6 +1198,7 @@ onUnmounted(() => {
           :icon="Cable"
           :active="tool === 'connect'"
           :tooltip-title="t('ideation.canvas.connect')"
+          :tooltip-description="t('ideation.canvas.connectionHelp')"
           @click="chooseTool('connect')"
       /></template>
       <div class="mx-0.5 h-6 w-px bg-border" />

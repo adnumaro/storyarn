@@ -101,7 +101,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
     Enum.all?(["x", "y"], &optional_range?(canvas[&1], -1_000_000, 1_000_000)) and
       optional_range?(canvas["width"], 180, 800) and
       (is_nil(canvas["color"]) or canvas["color"] in ~w(yellow coral mint blue violet paper)) and
-      valid_canvas_version?(canvas["version"])
+      valid_canvas_version?(canvas["version"]) and valid_canvas_version?(canvas["links_version"])
   end
 
   defp optional_range?(nil, _, _), do: true

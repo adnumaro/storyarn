@@ -18,6 +18,8 @@ import DashboardContent from "@shell/DashboardContent.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { useLive } from "@shared/composables/useLive";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
+import CanvasConnectionTools from "./components/CanvasConnectionTools.vue";
+import { useCanvasConnections } from "./composables/useCanvasConnections";
 import GroupSelectionTools from "./components/GroupSelectionTools.vue";
 import { useCanvasGroups } from "./composables/useCanvasGroups";
 import SessionDialog from "./components/SessionDialog.vue";
@@ -76,6 +78,7 @@ const notes = useCanvasNotes(
     selectedIds.value = selectedIds.value.map((id) => (id === from ? to : id));
     if (editing.value === from) editing.value = to;
   },
+  (idea) => connections.created(idea),
 );
 const current = computed(() => notes.notes.value.find((n) => n.id === selected.value));
 const writable = computed(() => board.can_edit && board.session?.status === "open");
@@ -109,11 +112,23 @@ const colors = [
 ];
 const history = useCanvasHistory(
   () => {
-    failure.value = online.value ? "undo_unavailable" : "offline";
+    if (failure.value !== "unavailable")
+      failure.value = online.value ? "undo_unavailable" : "offline";
   },
-  () => !online.value,
+  () => !online.value || failure.value === "unavailable",
   prepareHistory,
 );
+const connections = useCanvasConnections({
+  notes,
+  request,
+  context,
+  history,
+  allowed: () => writable.value,
+  notify: (code) => {
+    failure.value = code;
+  },
+});
+const mutationBusy = computed(() => history.busy.value || connections.pending.value !== null);
 const groups = useCanvasGroups(
   () => board,
   request,
@@ -136,7 +151,7 @@ function groupingProblem(ids: number[], sources: ReturnType<typeof selectedNotes
   return sources.length >= 2 && sources.length === ids.length && shared ? null : "invalid_group";
 }
 async function createGroup(ids = selectedIds.value) {
-  if (!groups.allowed.value || history.busy.value) return;
+  if (!groups.allowed.value || mutationBusy.value) return;
   const sources = selectedNotes(ids);
   const problem = groupingProblem(ids, sources);
   if (problem) {
@@ -181,6 +196,7 @@ function reset(reason: string) {
   roundFilter.value = board.round_filter;
   notes.reset(reason !== "access_changed");
   groups.reset();
+  connections.reset();
   selectedIds.value = [];
   editing.value = null;
   settings.value = false;
@@ -224,6 +240,7 @@ function presenceCommand(
   deletion?: RemovedNote,
 ): CanvasCommand {
   const initial = notes.find(id);
+  const initialConnection = notes.connection(id);
   const at = context();
   const valid = () => at.epoch === board.epoch && at.session_id === board.session?.id;
   let removed = deletion;
@@ -234,7 +251,13 @@ function presenceCommand(
       // Finishing an untouched local note already cancels it, without a server
       // deletion. Its creation is still safely undoable/redoable in this session.
       if (!initiallyCreated || !initial || notes.resolveId(id) >= 0 || notes.find(id)) return false;
-      removed = { id: notes.resolveId(id), revision: 0, deleted_at: null, idea: initial };
+      removed = {
+        id: notes.resolveId(id),
+        revision: 0,
+        deleted_at: null,
+        idea: initial,
+        connection: initialConnection,
+      };
       select([]);
       return true;
     }
@@ -322,6 +345,7 @@ function historyRangeLoaded() {
   return board.ideas.some((idea) => idea.id <= oldestLoadedIdeaId!);
 }
 function prepareHistory(targets: CanvasTarget[]): Promise<boolean> {
+  if (connections.pending.value) return Promise.resolve(false);
   const available = targets.every((target) => {
     const note = notes.find(target.id);
     if (!note && !target.restoring) return false;
@@ -387,7 +411,7 @@ function showNewContributions() {
   if (roundFilter.value !== "all") void filterRound("all", true);
 }
 function add(point: Point) {
-  if (!canCreate.value || history.busy.value) return;
+  if (!canCreate.value || mutationBusy.value) return;
   finish();
   showNewContributions();
   const id = notes.add(point, current.value?.canvas?.color);
@@ -397,7 +421,7 @@ function add(point: Point) {
 }
 function edit(id: number) {
   const note = notes.find(id);
-  if (!note || !writable.value || history.busy.value || note.author_id !== board.current_user_id)
+  if (!note || !writable.value || mutationBusy.value || note.author_id !== board.current_user_id)
     return;
   if (editing.value === id) return;
   select(id);
@@ -458,7 +482,7 @@ function group(commands: CanvasCommand[]): CanvasCommand {
   };
 }
 function move(moves: Array<{ id: number; point: Point }>) {
-  if (!writable.value || history.busy.value) return;
+  if (!writable.value || mutationBusy.value) return;
   finish();
   const commands: CanvasCommand[] = [];
   for (const { id, point } of moves) {
@@ -472,7 +496,7 @@ function move(moves: Array<{ id: number; point: Point }>) {
   if (commands.length) history.push(group(commands));
 }
 function color(value: string) {
-  if (!current.value || history.busy.value) return;
+  if (!current.value || mutationBusy.value) return;
   const before = current.value.canvas?.color ?? "yellow";
   if (before === value) return;
   const id = current.value.id;
@@ -480,7 +504,7 @@ function color(value: string) {
   history.push(placementCommand(id, { color: before }, { color: value }));
 }
 async function remove(ids: number[]) {
-  if (!writable.value || history.busy.value) return;
+  if (!writable.value || mutationBusy.value) return;
   finish();
   const at = context();
   const commands = await history.run(async () => {
@@ -500,7 +524,7 @@ async function remove(ids: number[]) {
   }
 }
 function changeState(value: "active" | "parked" | "discarded") {
-  if (!current.value || !own.value || history.busy.value) return;
+  if (!current.value || !own.value || mutationBusy.value) return;
   finish();
   const note = current.value;
   notes.open(note);
@@ -522,14 +546,68 @@ async function setConnection(source: number, target: number, connected: boolean)
   return true;
 }
 async function connect(source: number, target: number, connected: boolean) {
-  if (source < 0 || target < 0) {
-    failure.value = "save_before_connect";
+  if (!writable.value || mutationBusy.value) return;
+  finish();
+  await connections.change([{ source_id: source, target_id: target, connected }]);
+}
+async function connectSelection(ids: number[], connected: boolean) {
+  if (!writable.value || mutationBusy.value) return;
+  const available = new Set(visible.value.map((note) => note.id));
+  const selected = [...new Set(ids)].filter((id) => available.has(id));
+  if (selected.length < 2) return;
+  const changes = connected
+    ? selected.slice(1).map((id) => ({ source_id: selected[0], target_id: id, connected }))
+    : selected.flatMap((id) =>
+        (notes.find(id)?.canvas?.links ?? [])
+          .filter((target) => selected.includes(target))
+          .map((target) => ({ source_id: id, target_id: target, connected })),
+      );
+  finish();
+  await connections.change(changes);
+}
+async function addConnected(ids: number[], point: Point) {
+  if (!canCreate.value || mutationBusy.value || !ids.length) return;
+  if (ids.length > 100) {
+    failure.value = "selection_too_large";
     return;
   }
-  if (!writable.value || history.busy.value) return;
-  if (Boolean(notes.find(source)?.canvas?.links?.includes(target)) === connected) return;
+  const sources = selectedNotes(ids);
+  if (sources.length !== new Set(ids).size) return;
+  const color = sources[0]?.canvas?.color;
+  const at = context();
   finish();
-  await history.run(() => setConnection(source, target, connected));
+  await history.run(async () => {
+    const sourceIds = await settledConnectionSources(ids);
+    if (
+      !sourceIds ||
+      at.epoch !== board.epoch ||
+      at.session_id !== board.session?.id ||
+      !canCreate.value
+    )
+      return;
+    showNewContributions();
+    const id = notes.add(point, color, undefined, undefined, { source_ids: sourceIds });
+    history.push(presenceCommand(id, true));
+    selectedIds.value = [id];
+    editing.value = id;
+    await nextTick();
+    const created = notes.find(id);
+    if (created) await canvas.value?.revealNote?.(created);
+  });
+}
+async function settledConnectionSources(ids: number[]) {
+  for (const id of ids) {
+    if (!(await notes.settle(id))) {
+      failure.value = "save_before_connect";
+      return null;
+    }
+  }
+  const sources = [...new Set(ids.map(notes.resolveId))];
+  if (sources.some((id) => id <= 0 || !notes.find(id))) {
+    failure.value = "save_before_connect";
+    return null;
+  }
+  return sources;
 }
 function selectedNotes(ids: number[]) {
   return visible.value.filter((note) => ids.includes(note.id));
@@ -538,12 +616,12 @@ function copy(event: ClipboardEvent, ids: number[]) {
   writeNotes(event, selectedNotes(ids));
 }
 function cut(event: ClipboardEvent, ids: number[]) {
-  if (!writable.value || history.busy.value) return;
+  if (!writable.value || mutationBusy.value) return;
   const owned = selectedNotes(ids).filter((note) => note.author_id === board.current_user_id);
   if (writeNotes(event, owned)) void remove(owned.map((note) => note.id));
 }
 async function insert(copies: NoteCopy[], point: Point) {
-  if (!canCreate.value || history.busy.value || !copies.length) return;
+  if (!canCreate.value || mutationBusy.value || !copies.length) return;
   finish();
   showNewContributions();
   const at = context();
@@ -597,7 +675,7 @@ function duplicate(ids: number[]) {
   });
 }
 function paste(event: ClipboardEvent, point: Point) {
-  if (!canCreate.value || history.busy.value) return;
+  if (!canCreate.value || mutationBusy.value) return;
   const copies = readNotes(event);
   if (copies?.length) {
     event.preventDefault();
@@ -605,11 +683,13 @@ function paste(event: ClipboardEvent, point: Point) {
   }
 }
 function undo() {
+  if (connections.pending.value && !history.busy.value) return;
   finish();
   void history.undo();
   canvas.value?.focus();
 }
 function redo() {
+  if (connections.pending.value && !history.busy.value) return;
   finish();
   void history.redo();
   canvas.value?.focus();
@@ -648,6 +728,7 @@ watch(
       settings.value = false;
       cancelHistoryPreparation?.();
       history.clear();
+      connections.reset();
       selectedIds.value = selectedIds.value.filter((id) => notes.find(id));
     }
   },
@@ -657,6 +738,7 @@ watch(
   () => {
     cancelHistoryPreparation?.();
     history.clear();
+    connections.reset();
     if (current.value && current.value.author_id !== board.current_user_id) select(null);
   },
 );
@@ -686,6 +768,8 @@ onMounted(() => {
 });
 onUnmounted(() => {
   cancelHistoryPreparation?.();
+  history.clear();
+  connections.reset();
   if (headerEvent !== undefined) live.removeHandleEvent(headerEvent);
 });
 </script>
@@ -702,7 +786,15 @@ onUnmounted(() => {
       class="z-40 flex items-center justify-between gap-3 border-b bg-destructive/10 px-4 py-2 text-xs"
     >
       <span>{{ error(board.error || failure || "offline") }}</span
-      ><Button variant="ghost" size="sm" @click="refresh">{{ t("ideation.refresh") }}</Button>
+      ><Button
+        v-if="connections.pending.value"
+        variant="ghost"
+        size="sm"
+        :disabled="history.busy.value"
+        @click="connections.retry"
+        >{{ t("ideation.retry") }}</Button
+      >
+      <Button v-else variant="ghost" size="sm" @click="refresh">{{ t("ideation.refresh") }}</Button>
     </div>
     <div
       v-if="board.session?.status === 'open' && !board.session.contributions_open"
@@ -778,7 +870,7 @@ onUnmounted(() => {
         :history-state="{
           canUndo: history.canUndo.value,
           canRedo: history.canRedo.value,
-          busy: history.busy.value,
+          busy: mutationBusy,
         }"
         :editing-id="editing"
         :permissions="{ edit: writable, create: canCreate }"
@@ -797,6 +889,8 @@ onUnmounted(() => {
         @finish="finish"
         @move="move"
         @connect="connect"
+        @connect-selection="connectSelection"
+        @add-connected="addConnected"
         @remove="remove"
         @duplicate="duplicate"
         @copy="copy"
@@ -823,17 +917,18 @@ onUnmounted(() => {
                 :options="options(['active', 'parked', 'discarded', 'all'])" /></PopoverContent
           ></Popover>
         </template>
-        <template #selection>
+        <template #selection="{ connectionTools }">
           <div v-if="current" class="surface-panel flex items-center gap-1 p-1.5 whitespace-nowrap">
             <GroupSelectionTools
               v-if="writable"
               :notes="selectedNotes(selectedIds)"
               :groups="groups.groups.value"
               :private-mode="board.session.configuration.private_mode"
-              :busy="history.busy.value"
+              :busy="mutationBusy"
               @create="createGroup()"
               @membership="groupMembership"
             />
+            <CanvasConnectionTools v-if="writable" v-bind="connectionTools" />
             <template v-if="writable"
               ><Popover
                 ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"
@@ -859,7 +954,7 @@ onUnmounted(() => {
                 type="button"
                 class="toolbar-btn"
                 :aria-label="t('ideation.canvas.duplicate')"
-                :disabled="history.busy.value"
+                :disabled="mutationBusy"
                 @click="duplicate(selectedIds)"
               >
                 <Copy class="size-3.5" />

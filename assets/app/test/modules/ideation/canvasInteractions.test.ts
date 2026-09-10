@@ -200,7 +200,7 @@ describe("canvas keyboard and selection", () => {
     key(wrapper, "Delete");
     copyEvent(wrapper, "cut");
     copyEvent(wrapper, "paste");
-    expect(wrapper.emitted("undo")).toHaveLength(1);
+    expect(wrapper.emitted("undo")).toHaveLength(2);
     for (const event of ["duplicate", "remove", "cut", "paste"])
       expect(wrapper.emitted(event)).toBeUndefined();
     expect(wrapper.find("#brainstorming-undo").exists()).toBe(false);
@@ -216,6 +216,19 @@ describe("canvas keyboard and selection", () => {
     expect(wrapper.emitted("remove")).toBeUndefined();
     copyEvent(wrapper, "copy");
     expect(wrapper.emitted("copy")).toHaveLength(1);
+  });
+  it("queues rapid history keys from canvas controls while preserving native text undo", async () => {
+    const wrapper = canvas({ historyState: { canUndo: false, canRedo: false, busy: true } });
+    const button = wrapper.get("button[aria-label='Zoom in']").element;
+    key(wrapper, "z", { metaKey: true }, button);
+    key(wrapper, "z", { metaKey: true, repeat: true }, button);
+    key(wrapper, "y", { metaKey: true }, button);
+    expect(wrapper.emitted("undo")).toHaveLength(2);
+    expect(wrapper.emitted("redo")).toHaveLength(1);
+    await wrapper.setProps({ editingId: 10 });
+    const editor = wrapper.get('[contenteditable="true"]').element;
+    key(wrapper, "z", { metaKey: true }, editor);
+    expect(wrapper.emitted("undo")).toHaveLength(2);
   });
   it("nudges the whole selection as one operation and Shift toggles membership", async () => {
     const wrapper = canvas({ selectedIds: [10, 11] });

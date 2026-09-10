@@ -23,7 +23,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.Params do
          {:ok, round} <- creation_round(params) do
       {:ok,
        params
-       |> fields([:title, :body, :state, :request_key, :canvas])
+       |> fields([:title, :body, :state, :request_key, :canvas, :connection])
        |> Map.put("configuration_version", version)
        |> Map.merge(round)}
     end

@@ -7,6 +7,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.UpdateCanvas do
   alias Storyarn.Ideation.Ideas.Queries.Visible
   alias Storyarn.Ideation.Ideas.Rules.Canvas
   alias Storyarn.Ideation.Ideas.Rules.Input
+  alias Storyarn.Ideation.Ideas.View
   alias Storyarn.Repo
 
   def run(scope, project_id, session_id, idea_id, expected, attrs)
@@ -48,6 +49,5 @@ defmodule Storyarn.Ideation.Ideas.Commands.UpdateCanvas do
     Transaction.success(projection(updated, actor_id), Enum.reject(audiences, &is_nil/1))
   end
 
-  defp projection(idea, actor_id),
-    do: Map.put(Map.delete(idea.canvas, "request_key"), "links", Visible.visible_links(idea, actor_id))
+  defp projection(idea, actor_id), do: View.canvas(idea.canvas, Visible.visible_links(idea, actor_id))
 end

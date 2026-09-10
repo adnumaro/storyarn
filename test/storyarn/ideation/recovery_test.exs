@@ -489,7 +489,7 @@ defmodule Storyarn.Ideation.RecoveryTest do
     assert {:ok, old} =
              Ideation.get_idea(ctx.author, ctx.project.id, maps["sessions"][ctx.session.id], maps["ideas"][source.id])
 
-    assert old.canvas == %{"links" => []}
+    assert old.canvas == %{"links" => [], "links_version" => 0}
     assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, legacy_capsule, maps)} end)
   end
 
@@ -506,6 +506,80 @@ defmodule Storyarn.Ideation.RecoveryTest do
     assert session.configuration.private_mode
     assert Repo.get!(Idea, maps["ideas"][note.id]).deleted_at
     assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+  end
+
+  test "connection versions survive recovery but old canvas acknowledgements do not", ctx do
+    source = idea_fixture(ctx)
+    target = idea_fixture(ctx)
+
+    command = %{
+      request_key: Ecto.UUID.generate(),
+      changes: [%{source_id: source.id, target_id: target.id, connected: true}],
+      versions: [%{id: source.id, version: 0}]
+    }
+
+    assert {:ok, _} = Ideation.update_idea_connections(ctx.author, ctx.project.id, ctx.session.id, command)
+    creation = idea_attrs(%{connection: %{source_ids: [target.id]}})
+    {:ok, created} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, creation)
+    assert Repo.get!(Idea, source.id).canvas["links_receipt"]
+    assert Repo.get!(Idea, created.id).canvas["creation_links_receipt"]
+
+    capsule = snapshot(ctx)["ideation"]
+    {:ok, data} = Capsule.open(capsule)
+
+    for row <- data["rows"]["ideas"] do
+      refute Map.has_key?(row["canvas"], "links_receipt")
+      refute Map.has_key?(row["canvas"], "creation_links_receipt")
+    end
+
+    reused = restore(ctx, capsule)
+    assert reused["ideas"][source.id] == source.id
+    refute Map.has_key?(Repo.get!(Idea, source.id).canvas, "links_receipt")
+    refute Map.has_key?(Repo.get!(Idea, created.id).canvas, "creation_links_receipt")
+
+    # Restore after actual row loss exercises new IDs as well as reuse above.
+    Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    source_id = maps["ideas"][source.id]
+    target_id = maps["ideas"][target.id]
+    refute source_id == source.id
+    {:ok, restored_source} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, source_id)
+    {:ok, restored_target} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, target_id)
+    assert restored_source.canvas["links"] == [target_id]
+    assert restored_source.canvas["links_version"] == 1
+    assert restored_target.canvas["links"] == [maps["ideas"][created.id]]
+    assert restored_target.canvas["links_version"] == 1
+    refute Map.has_key?(Repo.get!(Idea, source_id).canvas, "links_receipt")
+    refute Map.has_key?(Repo.get!(Idea, maps["ideas"][created.id]).canvas, "creation_links_receipt")
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+
+    remapped_command = %{
+      command
+      | changes: [%{source_id: source_id, target_id: target_id, connected: true}],
+        versions: [%{id: source_id, version: 0}]
+    }
+
+    assert {:error, :stale_connections} =
+             Ideation.update_idea_connections(ctx.author, ctx.project.id, session_id, remapped_command)
+
+    {:ok, replayed} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, session_id, creation)
+    assert replayed.id == maps["ideas"][created.id]
+    refute Map.has_key?(replayed, :connected_from)
+  end
+
+  test "malformed connection versions cannot enter a recovery capsule", ctx do
+    idea_fixture(ctx)
+    {:ok, data} = ctx |> snapshot() |> Map.fetch!("ideation") |> Capsule.open()
+
+    for version <- [-1, "1", %{}, 1.5] do
+      invalid =
+        update_in(data, ["rows", "ideas"], fn rows ->
+          Enum.map(rows, &put_in(&1, ["canvas", "links_version"], version))
+        end)
+
+      assert {:error, :ideation_recovery_capture_failed} = Capsule.seal(invalid)
+    end
   end
 
   defp snapshot(ctx) do

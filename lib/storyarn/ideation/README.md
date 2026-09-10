@@ -31,6 +31,13 @@ atomic transaction/revision/publication workflows. `queries/` selects authorized
 revisions before decryption; `contracts/` builds safe views; `rules/` validates
 content, policy and selection; `events/` sends content-free invalidations.
 
+Connection batches use independent per-source link versions and one bounded last
+acknowledgement per source. Creating connected notes adds all selected incoming
+links in the same creation transaction; a bounded creation acknowledgement lets
+the browser reconcile its own undo versions. Neither acknowledgement is exposed
+as note history or copied into snapshots. Connection state and its versions are
+included in recovery, with endpoints remapped alongside the notes.
+
 Content revisions and edit receipts are internal records for current heads,
 pinned publications, concurrency, retries and compatible recovery capsules. They
 are not a user-facing card history: historical-revision, conflict-list and receipt
