@@ -1,0 +1,168 @@
+lib/storyarn/ideation/groups/queries/comment_sources.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 1-24
+assets/app/test/live/ideation/CommentsPanel.test.ts
+  s_2849957cac15c2::t_d4e4c188dc5e18 77
+  s_2849957cac15c2::t_4ca8db47df69e3 4,22,31-32,36-37,90-97,103-119,123-128
+  s_2849957cac15c2::t_3a546534699e66 23-30,33-35,40-45,98-102,120-122
+lib/storyarn/projects/comments/queries/ideation_conversations.ex
+  s_2849957cac15c2::t_4434d6ec70a613 31-38,46-51
+  s_2849957cac15c2::t_de99a906c161cf 16,130,196
+  s_2849957cac15c2::t_40d43b43f6b599 67-68
+  s_2849957cac15c2::t_fd70ef7257bdd0 1-6,9-10,12-15,17-19,22-30,39-45,52-66,69-92,95-97,100-120,140-192,197-208
+  s_2849957cac15c2::t_4cebf16b2045e4 135
+  s_2849957cac15c2::t_63ae5c89235c7e 93-94,121-129,131-134,136-139,193-194
+  s_2849957cac15c2::t_5ff3a1ac6b187b 7-8,11,20-21,98-99,195
+test/storyarn_web/live/ideation_live/comments_test.exs
+  s_2849957cac15c2::t_366538612be975 70-141
+lib/storyarn/ideation/groups/execution/comment_source.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 1-8,17-20,42
+  s_2849957cac15c2::t_4434d6ec70a613 9-10,12
+  s_2849957cac15c2::t_d4e4c188dc5e18 11,21-22
+  s_2849957cac15c2::t_9582c6c7587ad6 15,23-41
+  s_2849957cac15c2::t_e5b33ec7b1ba58 13-14,16
+lib/storyarn/ideation.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 18-25
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_2849957cac15c2::t_95d316449714bd 62-64
+lib/storyarn/ideation/sessions/events/invalidation.ex
+  s_2849957cac15c2::t_1894fb6260bc43 13
+priv/repo/migrations/20260911150000_extend_ideation_comment_collaboration.exs
+  s_2849957cac15c2::t_89069a6bfb8a84 1-7,9,17-44,46,51-56
+  s_2849957cac15c2::t_07fe90bd578a5e 8,45,47-50
+  s_2849957cac15c2::t_0b734bd08406f9 11-16
+  s_2849957cac15c2::t_1417c64c91fe1f 10
+lib/storyarn/projects/comments/README.md
+  s_2849957cac15c2::t_0b8c61cfdb08f2 10,12,17-20,24,31,42-83
+  s_2849957cac15c2::t_713abf3eb94455 5,98
+lib/storyarn/projects/comments/queries/queries.ex
+  s_2849957cac15c2::t_4434d6ec70a613 95-101,107-115
+  s_2849957cac15c2::t_7bfb95901b52df 19,94,117-122,124,132-138
+  s_2849957cac15c2::t_7c36ac2e76d349 7,116
+assets/app/components/notifications/NotificationBell.vue
+  s_2849957cac15c2::t_95d316449714bd 194-197
+  s_2849957cac15c2::t_3a546534699e66 380-382
+lib/storyarn/ideation/ideas/queries/comment_sources.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 1-24
+lib/storyarn/projects/comments/entities/participation.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 1-12
+assets/app/live/ideation/CommentsPanel.vue
+  s_2849957cac15c2::t_3a546534699e66 57-59,70-77,91-104,118-133,135-143
+  s_2849957cac15c2::t_a75f76a5223a86 2-4,13,43,67-69,78-90,105,116-117,134,144-147
+  s_2849957cac15c2::t_910e5e73474a11 26-30,33
+lib/storyarn/ideation/ideas/events/invalidation.ex
+  s_2849957cac15c2::t_068e8264cc98b0 12-14
+  s_2849957cac15c2::t_979e044cfc934a 15
+lib/storyarn/ideation/groups/groups.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 6-11
+lib/storyarn/projects/comments/commands/participation_state.ex
+  s_2849957cac15c2::t_fd70ef7257bdd0 1-6,10-15,31-62,70-72,74-103
+  s_2849957cac15c2::t_4434d6ec70a613 16-30
+  s_2849957cac15c2::t_40d43b43f6b599 63-69
+  s_2849957cac15c2::t_15563fbeec9e37 7-9,73
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_2849957cac15c2::t_a75f76a5223a86 80-82
+  s_2849957cac15c2::t_3a546534699e66 967-975
+assets/app/locales/en/brainstorming-comments.json
+  s_2849957cac15c2::t_1894fb6260bc43 4-14
+lib/storyarn/projects.ex
+  s_2849957cac15c2::t_dccc5195b31b5c 1058-1074
+  s_2849957cac15c2::t_8106856b18b5cc 1075
+assets/app/components/comments/types.ts
+  s_2849957cac15c2::t_a75f76a5223a86 45-47
+lib/storyarn/ideation/groups/events/invalidation.ex
+  s_2849957cac15c2::t_1894fb6260bc43 5
+  s_2849957cac15c2::t_25785793a62d9a 6
+assets/app/locales/es/brainstorming-comments.json
+  s_2849957cac15c2::t_1894fb6260bc43 4-14
+lib/storyarn/projects/comments/rules/payload.ex
+  s_2849957cac15c2::t_7bfb95901b52df 4-10
+  s_2849957cac15c2::t_29f122b4d2c129 11
+test/storyarn/projects/comments/ideation_comments_test.exs
+  s_2849957cac15c2::t_63ae5c89235c7e 64,149-152,154-155,161-162,170-173
+lib/storyarn/projects/comments/comments.ex
+  s_2849957cac15c2::t_1894fb6260bc43 14-15,383
+  s_2849957cac15c2::t_d4e4c188dc5e18 123-124,129
+  s_2849957cac15c2::t_95d316449714bd 18-23,27-44,136,262,274
+  s_2849957cac15c2::t_4434d6ec70a613 125,137-143,406
+  s_2849957cac15c2::t_7bfb95901b52df 47-48,255,347,382,404-405
+  s_2849957cac15c2::t_0b734bd08406f9 24-26
+  s_2849957cac15c2::t_9582c6c7587ad6 107,113-119,340-345
+  s_2849957cac15c2::t_02cbdedc2db0e4 8,10,16-17,120-122,126-128,130-135,144,346,407
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_2849957cac15c2::t_63ae5c89235c7e 174-175,185-187,200,213
+test/storyarn/projects/comments/ideation_collaboration_test.exs
+  s_2849957cac15c2::t_269beb9966bcb9 56
+  s_2849957cac15c2::t_9bdda44b675d7d 278-286,295-328,330-332
+  s_2849957cac15c2::t_0b734bd08406f9 192
+  s_2849957cac15c2::t_d4e4c188dc5e18 1-19,21-31,36-55,57-61,63-71,73-90,93-101,103-128,132-143,147-152,157-181,185-191,193-239,241-251,334-356
+  s_2849957cac15c2::t_068e8264cc98b0 252-254,257-259
+  s_2849957cac15c2::t_4cebf16b2045e4 260-277
+  s_2849957cac15c2::t_db0f3742c339fb 20,72,102,130,144-146,182-184,240,333
+  s_2849957cac15c2::t_f5a5a6b6d60561 329
+  s_2849957cac15c2::t_eae78b744ef2b8 154-155,255-256
+  s_2849957cac15c2::t_57af250129a69c 32-35,62,91-92,129,131,153,156,287-294
+assets/app/locales/es/notifications.json
+  s_2849957cac15c2::t_95d316449714bd 46
+lib/storyarn/platform/notifications/entities/notification.ex
+  s_2849957cac15c2::t_95d316449714bd 18,137
+assets/app/components/notifications/types.ts
+  s_2849957cac15c2::t_95d316449714bd 10-11
+assets/app/locales/en/notifications.json
+  s_2849957cac15c2::t_95d316449714bd 46
+lib/storyarn_web/helpers/authorize.ex
+  s_2849957cac15c2::t_95d316449714bd 174-177
+lib/storyarn_web/live/hooks/notifications.ex
+  s_2849957cac15c2::t_1894fb6260bc43 14,34,40,108-119,122
+  s_2849957cac15c2::t_5da85bf9008081 120-121,123
+config/architecture_boundaries.exs
+  s_2849957cac15c2::t_1894fb6260bc43 4143,4146-4159
+assets/app/components/comments/CommentConversation.vue
+  s_2849957cac15c2::t_3a546534699e66 310-314
+test/e2e/workspaces/projects/ideation/comments_test.exs
+  s_2849957cac15c2::t_49c606ce8d2ae5 15,27-29,39
+  s_2849957cac15c2::t_4ca8db47df69e3 74-102,104-129
+  s_2849957cac15c2::t_bcb8f923b7e758 103
+lib/storyarn/platform/notifications/execution/delivery.ex
+  s_2849957cac15c2::t_910e5e73474a11 44,47
+  s_2849957cac15c2::t_4434d6ec70a613 619-629
+  s_2849957cac15c2::t_95d316449714bd 29,454,462-466,606,633
+  s_2849957cac15c2::t_63ae5c89235c7e 631-632
+  s_2849957cac15c2::t_659c20f3296be6 607-618
+lib/storyarn/projects/comments/entities/thread.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 16
+lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex
+  s_2849957cac15c2::t_d26aa90d1a1b72 64,67,91-109,187-195,258-259
+  s_2849957cac15c2::t_366538612be975 232
+  s_2849957cac15c2::t_a75f76a5223a86 25,38,49-54,60-63,65-66,130,179,182,207,218-219,243-244,251-257
+  s_2849957cac15c2::t_7d0c980f629052 68,260
+lib/storyarn/ideation/sessions/queries/comment_sources.ex
+  s_2849957cac15c2::t_89069a6bfb8a84 1-20
+lib/storyarn/projects/comments/rules/dto.ex
+  s_2849957cac15c2::t_7bfb95901b52df 66-67
+  s_2849957cac15c2::t_166e73a44b0c3f 68-70
+  s_2849957cac15c2::t_b3cff00a917f19 71-76
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_2849957cac15c2::t_7bfb95901b52df 21,26-27,33,37-38,41,54,472-474,476-477,480-483
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_2849957cac15c2::t_63ae5c89235c7e 284-290
+lib/storyarn/ideation/ideas/ideas.ex
+  s_2849957cac15c2::t_b8149175e90111 7-8
+lib/storyarn/ideation/sessions/sessions.ex
+  s_2849957cac15c2::t_5b91a674a50738 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "13b7aefb2a0cf14b602dfca6dd3e33c180857cf8",
+  "prompts": {},
+  "sessions": {
+    "s_2849957cac15c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08cee-7937-74e3-a18f-3dd4680183a0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
