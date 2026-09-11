@@ -8,6 +8,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias Storyarn.Projects
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.IdeationLive.Handlers.CommentHandlers
   alias StoryarnWeb.IdeationLive.Handlers.GroupHandlers
   alias StoryarnWeb.IdeationLive.Handlers.IdeaHandlers
   alias StoryarnWeb.IdeationLive.Handlers.RoundHandlers
@@ -80,6 +81,17 @@ defmodule StoryarnWeb.IdeationLive.Board do
         }
         base-url={@urls.tools["brainstorming"]}
       />
+      <.vue
+        :if={@board.session}
+        v-component="live/ideation/CommentsPanel"
+        v-socket={@socket}
+        v-inject:panels="project-layout"
+        id="brainstorming-comments"
+        state={@comments}
+        epoch={@epoch}
+        session-id={@session_id}
+        base-url={@urls.tools["brainstorming"]}
+      />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
   end
@@ -105,6 +117,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
     {:ok,
      socket
+     |> CommentHandlers.init()
      |> assign(:page_title, gettext("Brainstorming"))
      |> assign(:board, BoardData.empty())
      |> assign(:board_error, nil)
@@ -131,16 +144,17 @@ defmodule StoryarnWeb.IdeationLive.Board do
   def handle_params(params, _url, socket) do
     case Params.optional_id(params["id"]) do
       {:ok, id} ->
-        socket = socket |> subscribe_session(id) |> assign(:session_id, id)
+        socket = socket |> CommentHandlers.init() |> subscribe_session(id) |> assign(:session_id, id)
         filters = %{socket.assigns.filters | idea_before: nil, round_id: :all, round_before: nil}
         socket = assign(socket, :filters, filters)
         # A route transition invalidates reads started for the previous session.
         socket = assign(socket, :refresh_running, nil)
-        {:noreply, load_now(socket)}
+        {:noreply, socket |> load_now() |> CommentHandlers.linked(params)}
 
       {:error, _} ->
         {:noreply,
          socket
+         |> CommentHandlers.init()
          |> subscribe_session(nil)
          |> canvas_subscription(nil)
          |> assign(session_id: nil, refresh_running: nil, board: BoardData.empty(), board_error: "not_found")}
@@ -148,6 +162,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
   end
 
   @impl true
+  def handle_event("comments_" <> action, params, socket), do: CommentHandlers.handle(action, params, socket)
+
   def handle_event(event, params, socket)
       when event in @session_writes or event in @idea_writes or event in @round_writes or event in @timer_writes or
              event in @group_writes do
@@ -339,6 +355,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   def handle_info({:ideation_changed, id}, %{assigns: %{session_id: id}} = socket), do: {:noreply, refresh(socket)}
 
+  def handle_info({:ideation_comments_changed, id}, %{assigns: %{session_id: id}} = socket),
+    do: {:noreply, CommentHandlers.refresh(socket)}
+
   def handle_info({event, %{project_id: id}}, %{assigns: %{project: %{id: id}}} = socket)
       when event in [:project_membership_changed, :project_ownership_transferred], do: {:noreply, reload_access(socket)}
 
@@ -523,6 +542,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         socket
         |> canvas_subscription(if(data.session, do: data.session.id))
         |> assign(board: data, board_error: nil, membership: membership, can_edit: can_edit, canvas_ready: true)
+        |> CommentHandlers.refresh()
 
       {:error, _} ->
         lose_access(socket)
@@ -542,6 +562,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   defp lose_access(socket) do
     socket
+    |> CommentHandlers.init()
     |> canvas_subscription(nil)
     |> reset_epoch("access_changed")
     |> assign(board: BoardData.empty(), board_error: "unauthorized", canvas_ready: false)
@@ -578,8 +599,15 @@ defmodule StoryarnWeb.IdeationLive.Board do
     %{subscribed_session: previous, current_scope: scope, project: project} = socket.assigns
 
     if connected?(socket) and previous != id do
-      if previous, do: Ideation.unsubscribe_ideas(scope, project.id, previous)
-      if id, do: Ideation.subscribe_ideas(scope, project.id, id)
+      if previous do
+        Ideation.unsubscribe_ideas(scope, project.id, previous)
+        Projects.unsubscribe_ideation_comments(project.id, previous)
+      end
+
+      if id do
+        Ideation.subscribe_ideas(scope, project.id, id)
+        Projects.subscribe_ideation_comments(scope, project.id, id)
+      end
     end
 
     assign(socket, :subscribed_session, id)

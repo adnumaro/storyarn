@@ -80,5 +80,6 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
       :ui="ui"
       :draft-storage-key="draftStorageKey"
     />
+    <template v-if="$slots.footer" #footer><slot name="footer" /></template>
   </Sidebar>
 </template>

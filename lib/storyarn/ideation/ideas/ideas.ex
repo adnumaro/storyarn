@@ -4,6 +4,10 @@ defmodule Storyarn.Ideation.Ideas do
   alias Storyarn.Ideation.Ideas.Events.Invalidation
   alias Storyarn.Ideation.Ideas.Queries
 
+  defdelegate comment_source(scope, project_id, session_id, idea_id, opts),
+    to: Storyarn.Ideation.Ideas.Execution.CommentSource,
+    as: :get
+
   @doc false
   @spec group_sources(pos_integer(), [pos_integer()]) :: [map()]
   defdelegate group_sources(session_id, ids), to: Queries.GroupSources, as: :list

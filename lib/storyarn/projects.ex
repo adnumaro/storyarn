@@ -1054,4 +1054,12 @@ defmodule Storyarn.Projects do
   defdelegate unsubscribe_scene_comments(project_id, scene_id), to: Comments, as: :unsubscribe_scene
   defdelegate subscribe_sheet_comments(scope, project_id, sheet_id), to: Comments, as: :subscribe_sheet
   defdelegate unsubscribe_sheet_comments(project_id, sheet_id), to: Comments, as: :unsubscribe_sheet
+
+  defdelegate list_ideation_comment_threads(scope, project_id, session_id, idea_id \\ nil, opts \\ []),
+    to: Comments,
+    as: :list_ideation_threads
+
+  defdelegate create_ideation_comment(scope, project_id, session_id, idea_id, attrs), to: Comments, as: :create_ideation
+  defdelegate subscribe_ideation_comments(scope, project_id, session_id), to: Comments, as: :subscribe_ideation
+  defdelegate unsubscribe_ideation_comments(project_id, session_id), to: Comments, as: :unsubscribe_ideation
 end

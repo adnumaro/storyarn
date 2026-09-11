@@ -7,6 +7,41 @@ adds an explicit source contract and resolver; it does not create another messag
 callers enter through `Storyarn.Projects`. The realtime collaboration module in
 Platform remains technical coordination; it does not own these conversations.
 
+## Brainstorming adapter (ENG-139, first slice)
+
+`ideation_session` and `ideation_idea` are non-spatial discussion sources. The
+existing Flow/Sheet/Scene surface ownership and optional context remain unchanged.
+Session metadata is project-readable even during private contribution mode.
+Idea discussions require a live, published idea in a session outside private
+mode, including for the idea author and project owner. An unpublished edit is
+never used as the discussion label or preview. Group/decision anchors, mentions,
+notifications, subscriptions/read state and the Hub remain later ENG-139 work.
+
+Projects owns threads/messages; Ideation's public `comment_source` port owns the
+source's current audience and identity. Writes lock project access, then session,
+idea and thread. Generic detail, reply, resolution and idempotency replay also
+check this audience. Hiding/deleting the source hides the entire discussion;
+unlike a missing public editor context, it must not leave a readable preview.
+The nullable source pointers and immutable recovery UUID prevent rebinding to
+replacement rows. Archived sessions still support discussion; round/contribution
+gates do not close conversations.
+
+The panel lists the chosen session or shared idea's threads, supports explicit
+parent replies, revision-checked resolution/reopening and `?thread=` links.
+Requests bind to board epoch, session and discussion context. Invalidation
+rechecks access before emitting props and clears the composer when access is
+lost. Unconfirmed sends retain text/request identity in the mounted tab only;
+there is no offline/localStorage or cross-reload draft guarantee.
+
+Brainstorming comments follow the existing conversation lifecycle: they are not
+copied or rewound by content snapshots, Ideation recovery capsules, templates or
+imports. Database backups retain them. Replaced/deleted anchors cannot reveal
+history through their replacement; restoring the same live source may make its
+discussion available again, without resolving/reopening it. Generic notification
+destination APIs exclude these new sources until audience-aware delivery ships.
+No private idea text, Drafts content or notification payload is materialized by
+this adapter. Post-commit invalidation carries only the session ID.
+
 ## Model and permissions
 
 - A thread records source identity, author, open/resolved state, revision and

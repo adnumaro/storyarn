@@ -4134,6 +4134,30 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Brainstorming presents project-owned discussions through the public Comments ports"
+    },
+    %{
+      source: "lib/storyarn/projects/comments/commands/mutations.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Comment writes resolve and lock the current shared source through its owning Ideation facade"
+    },
+    %{
+      source: "lib/storyarn/projects/comments/comments.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Comment reads revalidate the audience of session and published-idea anchors"
+    },
+    %{
+      source: "lib/storyarn/projects/comments/queries/queries.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Comment anchor resolution consumes only authorized identity metadata, never private idea revisions"
+    },
+    %{
       source: "lib/storyarn/application.ex",
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],

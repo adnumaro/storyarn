@@ -9,6 +9,33 @@ defmodule Storyarn.Projects.Comments do
   alias Storyarn.Projects.Comments.Payload
   alias Storyarn.Projects.Comments.Queries
 
+  def list_ideation_threads(scope, project_id, session_id, idea_id \\ nil, opts \\ []) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(session_id) and (is_nil(idea_id) or Payload.valid_id?(idea_id)),
+         {:ok, _source} <- Storyarn.Ideation.comment_source(scope, project_id, session_id, idea_id) do
+      {threads, cursor} = Queries.list_ideation_threads(project_id, session_id, idea_id, opts)
+      threads = Enum.filter(threads, &Queries.readable?(&1, scope))
+      {:ok, %{threads: thread_dtos(threads, scope), next_cursor: cursor}}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def create_ideation(scope, project_id, session_id, idea_id, attrs) do
+    scope
+    |> Mutations.create_ideation(project_id, session_id, idea_id, attrs)
+    |> publish_and_read(scope, project_id)
+  end
+
+  def subscribe_ideation(scope, project_id, session_id) do
+    with {:ok, _} <- Storyarn.Ideation.comment_source(scope, project_id, session_id, nil) do
+      PubSub.subscribe(Storyarn.PubSub, ideation_topic(project_id, session_id))
+    end
+  end
+
+  def unsubscribe_ideation(project_id, session_id),
+    do: PubSub.unsubscribe(Storyarn.PubSub, ideation_topic(project_id, session_id))
+
   def list_flow_threads(scope, project_id, flow_id, opts \\ []) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(flow_id) do
@@ -42,7 +69,8 @@ defmodule Storyarn.Projects.Comments do
   def get_thread(scope, project_id, thread_id, opts \\ []) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(thread_id),
-         thread when not is_nil(thread) <- Queries.thread(project_id, thread_id) do
+         thread when not is_nil(thread) <- Queries.thread(project_id, thread_id),
+         true <- Queries.readable?(thread, scope) do
       {messages, next_cursor} = Queries.list_messages(thread.id, opts)
       root_message = Queries.root_messages([thread.id])[thread.id]
       messages = include_root_message(messages, root_message, opts)
@@ -52,7 +80,7 @@ defmodule Storyarn.Projects.Comments do
 
       {:ok,
        %{
-         thread: hd(thread_dtos([thread])),
+         thread: hd(thread_dtos([thread], scope)),
          messages: Enum.map(messages, &DTO.message(&1, authors, Map.get(mentions, &1.id, []))),
          next_cursor: next_cursor
        }}
@@ -170,6 +198,8 @@ defmodule Storyarn.Projects.Comments do
          true <- Payload.valid_id?(comment_id),
          message when not is_nil(message) <- Queries.message(project_id, comment_id),
          thread when not is_nil(thread) <- Queries.thread(project_id, message.thread_id),
+         true <- Queries.readable?(thread, scope),
+         false <- Queries.ideation?(thread),
          true <- Queries.source_available?(thread) do
       {:ok, destination(thread)}
     else
@@ -242,11 +272,18 @@ defmodule Storyarn.Projects.Comments do
     end
   end
 
-  defp thread_dtos(threads) do
+  defp thread_dtos(threads, scope \\ nil) do
     authors = Queries.authors(Enum.flat_map(threads, &[&1.author_id, &1.resolved_by_id]))
     previews = Queries.root_messages(Enum.map(threads, & &1.id))
-    available = Queries.available_sources(threads)
-    contexts = Context.available_many(threads)
+    {ideation, canonical} = Enum.split_with(threads, &Queries.ideation?/1)
+
+    available =
+      Map.merge(
+        Queries.available_sources(canonical),
+        Map.new(ideation, &{&1.id, Queries.available_source(&1, scope: scope)})
+      )
+
+    contexts = Context.available_many(canonical)
     Enum.map(threads, &DTO.thread(&1, authors, available[&1.id], previews[&1.id], contexts[&1.id]))
   end
 
@@ -279,6 +316,11 @@ defmodule Storyarn.Projects.Comments do
 
   defp publish_change(project_id, %{source_type: "sheet_canvas", container_id: sheet_id}) do
     PubSub.broadcast(Storyarn.PubSub, sheet_topic(project_id, sheet_id), {:sheet_comments_changed, sheet_id})
+  end
+
+  defp publish_change(project_id, %{source_type: type, container_id: session_id})
+       when type in ["ideation_session", "ideation_idea"] do
+    PubSub.broadcast(Storyarn.PubSub, ideation_topic(project_id, session_id), {:ideation_comments_changed, session_id})
   end
 
   defp destination(%{source_type: source_type} = thread) when source_type in ["flow_node", "flow_canvas"] do
@@ -330,4 +372,5 @@ defmodule Storyarn.Projects.Comments do
   defp flow_topic(project_id, flow_id), do: "project:#{project_id}:flow:#{flow_id}:comments"
   defp scene_topic(project_id, scene_id), do: "project:#{project_id}:scene:#{scene_id}:comments"
   defp sheet_topic(project_id, sheet_id), do: "project:#{project_id}:sheet:#{sheet_id}:comments"
+  defp ideation_topic(project_id, session_id), do: "project:#{project_id}:ideation:#{session_id}:comments"
 end
