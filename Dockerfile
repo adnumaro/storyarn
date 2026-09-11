@@ -65,6 +65,7 @@ COPY lib lib
 RUN mix compile
 
 COPY assets assets
+COPY scripts/vite-live-vue-injection.mjs scripts/
 
 # compile assets
 RUN mix assets.deploy
