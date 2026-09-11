@@ -177,19 +177,34 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
              Enum.sort(
                expected ++
                  group_operations ++
-                 idea_operations ++ [capture_recovery: 1, validate_recovery: 1, restore_recovery: 2, verify_recovery: 3]
+                 idea_operations ++
+                 [
+                   comment_source: 4,
+                   comment_source: 5,
+                   capture_recovery: 1,
+                   validate_recovery: 1,
+                   restore_recovery: 2,
+                   verify_recovery: 3
+                 ]
              )
 
     assert Storyarn.Ideation.Ideas.__info__(:functions) ==
              Enum.sort(
                idea_operations ++
-                 [set_private_mode_locked: 3, notify_timer_reveal: 2, group_sources: 2, move_group_sources: 5]
+                 [
+                   comment_source: 5,
+                   set_private_mode_locked: 3,
+                   notify_timer_reveal: 2,
+                   group_sources: 2,
+                   move_group_sources: 5
+                 ]
              )
 
     assert Storyarn.Ideation.Sessions.__info__(:functions) ==
              Enum.sort(
                expected ++
                  [
+                   comment_source: 4,
                    scheduled_timers: 0,
                    lock_for_contribution: 3,
                    set_canvas_mode_locked: 3,

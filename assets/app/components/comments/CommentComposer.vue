@@ -243,7 +243,7 @@ function submit() {
     </div>
     <p v-if="draft.error" role="alert" class="text-xs text-destructive">{{ draft.error }}</p>
     <div class="flex items-center justify-between gap-2">
-      <Popover v-model:open="mentionOpen">
+      <Popover v-if="ui.mentionsEnabled !== false" v-model:open="mentionOpen">
         <PopoverTrigger as-child>
           <Button
             variant="ghost"

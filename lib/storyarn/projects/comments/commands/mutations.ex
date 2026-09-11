@@ -16,6 +16,45 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   defguardp valid_thread_id?(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807
 
+  def create_ideation(scope, project_id, session_id, idea_id, attrs) do
+    with {:ok, payload} <- Payload.normalize(attrs),
+         true <- Payload.valid_id?(session_id) and (is_nil(idea_id) or Payload.valid_id?(idea_id)),
+         true <- payload.mention_user_ids == [] do
+      target = {:create_ideation, session_id, idea_id}
+
+      transact_request(scope, project_id, payload, target, fn project, actor_id, hash ->
+        source = lock_ideation_source!(scope, project.id, session_id, idea_id)
+
+        thread =
+          Repo.insert!(%Thread{
+            project_id: project.id,
+            author_id: actor_id,
+            source_type: if(idea_id, do: "ideation_idea", else: "ideation_session"),
+            source_id: source.id,
+            container_id: session_id,
+            ideation_session_id: session_id,
+            ideation_idea_id: idea_id,
+            source_inserted_at: source.inserted_at,
+            source_recovery_identity: source.recovery_identity,
+            source_label: if(idea_id, do: "Idea", else: "Session"),
+            last_activity_at: TimeHelpers.now()
+          })
+
+        insert_message(thread, actor_id, nil, payload, hash, [])
+      end)
+    else
+      false -> {:error, :invalid_request}
+      {:error, _} = error -> error
+    end
+  end
+
+  defp lock_ideation_source!(scope, project_id, session_id, idea_id) do
+    case Storyarn.Ideation.comment_source(scope, project_id, session_id, idea_id, lock: :share) do
+      {:ok, source} -> source
+      _ -> Repo.rollback(:not_found)
+    end
+  end
+
   def create(scope, project_id, flow_id, node_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
          {:ok, position} <- Payload.position(Payload.value(attrs, :position)),
@@ -86,7 +125,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
          parent_id = Payload.value(attrs, :parent_id),
          true <- Payload.valid_id?(thread_id) and Payload.valid_id?(parent_id) do
       transact_request(scope, project_id, payload, {:reply, thread_id, parent_id}, fn project, actor_id, request_hash ->
-        reply_to_thread!(project, actor_id, thread_id, parent_id, payload, request_hash)
+        reply_to_thread!(project, actor_id, thread_id, parent_id, payload, request_hash, scope)
       end)
     else
       false -> {:error, :invalid_parent}
@@ -98,7 +137,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
       when status in ["open", "resolved"] and is_integer(expected_revision) and expected_revision > 0 and
              valid_thread_id?(thread_id) do
     transact(scope, project_id, fn project, actor_id ->
-      thread = lock_available_thread!(project.id, thread_id)
+      thread = lock_available_thread!(project.id, thread_id, scope)
       if thread.revision != expected_revision, do: Repo.rollback(:stale)
 
       if thread.status == status do
@@ -130,16 +169,17 @@ defmodule Storyarn.Projects.Comments.Mutations do
     with {:ok, position} <- Payload.position(position, required: true),
          {:ok, context} <- normalize_context_option(opts) do
       transact(scope, project_id, fn project, _actor_id ->
-        move_thread!(project.id, thread_id, position, expected_revision, context)
+        move_thread!(project.id, thread_id, position, expected_revision, context, scope)
       end)
     end
   end
 
   def move(_scope, _project_id, _thread_id, _position, _revision, _opts), do: {:error, :invalid_position}
 
-  defp move_thread!(project_id, thread_id, position, expected_revision, context) do
+  defp move_thread!(project_id, thread_id, position, expected_revision, context, scope) do
     thread = Queries.thread(project_id, thread_id) || Repo.rollback(:not_found)
-    Queries.available_source(thread, lock: :share) || Repo.rollback(:source_unavailable)
+    Queries.available_source(thread, lock: :share, scope: scope) || Repo.rollback(:source_unavailable)
+    if Queries.ideation?(thread), do: Repo.rollback(:invalid_position)
     validate_position_for_thread!(thread, position)
 
     attributes =
@@ -248,7 +288,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
     request_hash = Payload.fingerprint(payload, target)
 
     transact(scope, project_id, fn project, actor_id ->
-      with_request(project.id, actor_id, payload, request_hash, fn ->
+      with_request(scope, project.id, actor_id, payload, request_hash, fn ->
         fun.(project, actor_id, request_hash)
       end)
     end)
@@ -364,8 +404,9 @@ defmodule Storyarn.Projects.Comments.Mutations do
     insert_message(thread, actor_id, nil, payload, request_hash, [])
   end
 
-  defp reply_to_thread!(project, actor_id, thread_id, parent_id, payload, request_hash) do
-    thread = lock_available_thread!(project.id, thread_id)
+  defp reply_to_thread!(project, actor_id, thread_id, parent_id, payload, request_hash, scope) do
+    thread = lock_available_thread!(project.id, thread_id, scope)
+    if Queries.ideation?(thread) and payload.mention_user_ids != [], do: Repo.rollback(:invalid_mention)
     if thread.status != "open", do: Repo.rollback(:thread_resolved)
     parent = Queries.message(project.id, parent_id)
     if is_nil(parent) or parent.thread_id != thread.id, do: Repo.rollback(:invalid_parent)
@@ -373,7 +414,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
     insert_message(thread, actor_id, parent_id, payload, request_hash, List.wrap(parent.author_id))
   end
 
-  defp with_request(project_id, actor_id, payload, request_hash, fun) do
+  defp with_request(scope, project_id, actor_id, payload, request_hash, fun) do
     key = Enum.join(["comment", project_id, actor_id, payload.client_request_id], ":")
     Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [key])
 
@@ -383,6 +424,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
       %Message{request_hash: ^request_hash} = message ->
         thread = Queries.thread(project_id, message.thread_id)
+        if not Queries.readable?(thread, scope), do: Repo.rollback(:not_found)
         result(thread, nil, false)
 
       _ ->
@@ -390,10 +432,10 @@ defmodule Storyarn.Projects.Comments.Mutations do
     end
   end
 
-  defp lock_available_thread!(project_id, thread_id) do
+  defp lock_available_thread!(project_id, thread_id, scope) do
     thread = Queries.thread(project_id, thread_id) || Repo.rollback(:not_found)
 
-    Queries.available_source(thread, lock: :share) || Repo.rollback(:source_unavailable)
+    Queries.available_source(thread, lock: :share, scope: scope) || Repo.rollback(:source_unavailable)
 
     Queries.thread(project_id, thread_id, lock: :update) || Repo.rollback(:not_found)
   end
@@ -430,7 +472,14 @@ defmodule Storyarn.Projects.Comments.Mutations do
       Enum.map(reply_recipients, &%{user_id: &1, kind: "comment_reply"}) ++
         Enum.map(payload.mention_user_ids, &%{user_id: &1, kind: "comment_mention"})
 
-    case Platform.deliver_comment_activity(actor_id, thread.project_id, message.id, recipients) do
+    # Brainstorming delivery/mentions are a later ENG-139 slice. Project-wide
+    # notification audiences are not safe for an idea that can become private.
+    delivery =
+      if Queries.ideation?(thread),
+        do: {:ok, nil},
+        else: Platform.deliver_comment_activity(actor_id, thread.project_id, message.id, recipients)
+
+    case delivery do
       {:ok, notification} ->
         result(thread, notification, true)
 

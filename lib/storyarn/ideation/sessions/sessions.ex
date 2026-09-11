@@ -5,6 +5,10 @@ defmodule Storyarn.Ideation.Sessions do
   alias Storyarn.Ideation.Sessions.Events.Invalidation
   alias Storyarn.Ideation.Sessions.Queries
 
+  defdelegate comment_source(scope, project_id, session_id, opts),
+    to: Storyarn.Ideation.Sessions.Execution.CommentSource,
+    as: :get
+
   defdelegate start_timer(scope, project_id, session_id, revision, attrs), to: Commands.StartTimer, as: :run
   defdelegate pause_timer(scope, project_id, session_id, revision, version), to: Commands.PauseTimer, as: :run
   defdelegate resume_timer(scope, project_id, session_id, revision, version), to: Commands.ResumeTimer, as: :run

@@ -11,6 +11,9 @@ defmodule Storyarn.Projects.Comments.Thread do
     field :flow_canvas_id, :integer
     field :scene_canvas_id, :integer
     field :sheet_canvas_id, :integer
+    field :ideation_session_id, :integer
+    field :ideation_idea_id, :integer
+    field :source_recovery_identity, Ecto.UUID
     field :position_x, :float
     field :position_y, :float
     field :container_id, :integer

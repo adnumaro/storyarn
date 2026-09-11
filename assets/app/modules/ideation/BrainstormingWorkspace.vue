@@ -10,6 +10,7 @@ import {
   RotateCcw,
   LayoutDashboard,
   Unplug,
+  MessageCircle,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -73,6 +74,9 @@ const rounds = computed(() => {
 });
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
+function useComments(ideaId: number | null) {
+  void request("comments_open", { idea_id: ideaId });
+}
 const notes = useCanvasNotes(
   () => board,
   request,
@@ -957,6 +961,14 @@ onUnmounted(() => {
         @list="list = true"
       >
         <template #session>
+          <Button
+            id="brainstorming-session-comments"
+            variant="ghost"
+            size="sm"
+            :disabled="!online"
+            @click="useComments(null)"
+            ><MessageCircle class="size-4" />{{ t("brainstormingComments.title") }}</Button
+          >
           <RoundFilter
             v-if="rounds.length && !list"
             :rounds="rounds"
@@ -975,6 +987,16 @@ onUnmounted(() => {
         </template>
         <template #selection="{ connectionTools }">
           <div v-if="current" class="surface-panel flex items-center gap-1 p-1.5 whitespace-nowrap">
+            <Button
+              v-if="current.published_revision && !board.session.configuration.private_mode"
+              id="brainstorming-idea-comments"
+              variant="ghost"
+              size="icon-sm"
+              :disabled="!online"
+              :aria-label="t('brainstormingComments.idea_comments')"
+              @click="useComments(current.id)"
+              ><MessageCircle class="size-4"
+            /></Button>
             <GroupSelectionTools
               v-if="writable"
               :notes="selectedNotes(selectedIds)"

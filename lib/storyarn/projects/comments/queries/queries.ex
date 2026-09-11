@@ -15,6 +15,12 @@ defmodule Storyarn.Projects.Comments.Queries do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
+  def ideation?(%{source_type: type}), do: type in ["ideation_session", "ideation_idea"]
+
+  def readable?(thread, scope) do
+    not ideation?(thread) or not is_nil(available_source(thread, scope: scope))
+  end
+
   def thread(project_id, thread_id, opts \\ []) do
     query = from(t in Thread, where: t.project_id == ^project_id and t.id == ^thread_id)
     query |> maybe_lock(opts) |> Repo.one()
@@ -56,6 +62,12 @@ defmodule Storyarn.Projects.Comments.Queries do
 
   def available_source(thread, opts \\ []) do
     case anchored_source(thread, opts) do
+      %{recovery_identity: identity} = source when identity == thread.source_recovery_identity ->
+        source
+
+      %{recovery_identity: _other_identity} ->
+        nil
+
       %{id: id, inserted_at: inserted_at} = source
       when id == thread.source_id and inserted_at == thread.source_inserted_at ->
         source
@@ -77,7 +89,35 @@ defmodule Storyarn.Projects.Comments.Queries do
   defp anchored_source(%Thread{source_type: "sheet_canvas", sheet_canvas_id: id, container_id: id} = thread, opts)
        when is_integer(id), do: sheet_source(thread.project_id, id, opts)
 
+  defp anchored_source(%Thread{source_type: type, ideation_session_id: session_id} = thread, opts)
+       when type in ["ideation_session", "ideation_idea"] and is_integer(session_id) do
+    idea_id = if type == "ideation_idea", do: thread.ideation_idea_id
+
+    if session_id == thread.container_id and (type == "ideation_session" or is_integer(idea_id)) do
+      case Storyarn.Ideation.comment_source(opts[:scope], thread.project_id, session_id, idea_id, opts) do
+        {:ok, %{id: id} = source} when id == thread.source_id -> source
+        _ -> nil
+      end
+    end
+  end
+
   defp anchored_source(_thread, _opts), do: nil
+
+  def list_ideation_threads(project_id, session_id, idea_id, opts) do
+    type = if idea_id, do: "ideation_idea", else: "ideation_session"
+    source_id = idea_id || session_id
+
+    from(t in Thread,
+      as: :thread,
+      where: t.project_id == ^project_id and t.container_id == ^session_id,
+      where: t.source_type == ^type and t.source_id == ^source_id,
+      where: t.ideation_session_id == ^session_id
+    )
+    |> then(fn query -> if idea_id, do: where(query, [t], t.ideation_idea_id == ^idea_id), else: query end)
+    |> maybe_filter_status(opts)
+    |> maybe_filter_cursor(opts)
+    |> page(opts)
+  end
 
   def available_sources(threads) do
     ids = Enum.map(threads, & &1.id)

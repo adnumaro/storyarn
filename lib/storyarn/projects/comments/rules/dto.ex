@@ -63,6 +63,7 @@ defmodule Storyarn.Projects.Comments.DTO do
     }
 
     case thread.source_type do
+      type when type in ["ideation_session", "ideation_idea"] -> Map.put(base, :session_id, thread.container_id)
       "scene_canvas" -> Map.put(base, :scene_id, thread.container_id)
       "sheet_canvas" -> Map.put(base, :sheet_id, thread.container_id)
       _flow -> Map.put(base, :flow_id, thread.container_id)

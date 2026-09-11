@@ -84,6 +84,8 @@ export interface CommentsPanelState<TSource extends CommentSource = CommentSourc
 }
 
 export interface CommentUiConfig {
+  /** Some source adapters deliberately defer mentions and notification delivery. */
+  mentionsEnabled?: boolean;
   /** Prefix used by stable DOM ids, for example `flow` or `scene`. */
   domScope: string;
   /** Vue-i18n namespace containing the common comment labels. */

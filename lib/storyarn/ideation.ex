@@ -15,6 +15,10 @@ defmodule Storyarn.Ideation do
   alias Storyarn.Ideation.Recovery
   alias Storyarn.Ideation.Sessions
 
+  @doc "Resolves a session or published idea comment anchor without exposing private revisions."
+  defdelegate comment_source(scope, project_id, session_id, idea_id, opts \\ []),
+    to: Ideas
+
   @doc "Lists shared canvas groups and live source geometry; private mode hides all synthesis."
   @spec list_groups(map(), pos_integer(), pos_integer()) :: {:ok, [map()]} | {:error, term()}
   defdelegate list_groups(scope, project_id, session_id), to: Groups
