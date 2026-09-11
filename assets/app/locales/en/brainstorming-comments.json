@@ -1,6 +1,17 @@
 {
   "brainstormingComments": {
     "title": "Comments",
+    "group_label": "Shared group",
+    "group_comments": "Discuss selected group",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "follow_help": "Following notifies you of new messages. Direct replies and mentions can notify you even when you are not following.",
+    "unread": "Unread",
+    "mark_read": "Mark read",
+    "mention": "Mention people",
+    "search_people": "Search people",
+    "no_people": "No matching people",
+    "remove_mention": "Remove mention of {name}",
     "idea_comments": "Discuss shared idea",
     "canvas_label": "Session discussion",
     "idea_label": "Shared idea",

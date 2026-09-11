@@ -1,6 +1,14 @@
 defmodule Storyarn.Projects.Comments.Payload do
   @moduledoc false
 
+  def valid_ideation_anchor?(nil), do: true
+  def valid_ideation_anchor?({:group, id}), do: valid_id?(id)
+  def valid_ideation_anchor?(id), do: valid_id?(id)
+
+  def ideation_anchor(session_id, nil), do: {"ideation_session", session_id}
+  def ideation_anchor(_session_id, {:group, id}), do: {"ideation_group", id}
+  def ideation_anchor(_session_id, id), do: {"ideation_idea", id}
+
   def normalize(attrs) when is_map(attrs) do
     body = value(attrs, :body)
     request_id = value(attrs, :client_request_id)

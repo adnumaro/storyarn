@@ -22,6 +22,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
       statusFilter: "open",
       error: nil,
       ideaId: nil,
+      groupId: nil,
       context: Ecto.UUID.generate()
     })
   end
@@ -34,7 +35,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
          true <- action == "open" or params["comment_context"] == socket.assigns.comments.context do
       dispatch(action, params, socket)
     else
-      _ -> failure(socket, :not_found)
+      _ -> failure(refresh(socket), :not_found)
     end
   end
 
@@ -45,14 +46,24 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   end
 
   defp dispatch("open", params, socket) do
-    case Params.optional_id(params["idea_id"]) do
-      {:ok, idea_id} ->
-        socket = socket |> init() |> put(%{open: true, ideaId: idea_id}) |> refresh()
-        {:reply, %{ok: socket.assigns.comments.open}, socket}
-
+    with {:ok, idea_id} <- Params.optional_id(params["idea_id"]),
+         {:ok, group_id} <- Params.optional_id(params["group_id"]),
+         true <- is_nil(idea_id) or is_nil(group_id) do
+      socket = socket |> init() |> put(%{open: true, ideaId: idea_id, groupId: group_id}) |> refresh()
+      {:reply, %{ok: socket.assigns.comments.open}, socket}
+    else
       _ ->
         failure(socket, :not_found)
     end
+  end
+
+  defp dispatch(action, params, socket) when action in ~w(follow read) do
+    Authorize.with_authorization(
+      socket,
+      :manage_comment_state,
+      &personal_state(action, params, &1),
+      fn current, _ -> failure(init(current), :not_found) end
+    )
   end
 
   defp dispatch("close", _, socket), do: {:noreply, init(socket)}
@@ -77,6 +88,25 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
 
   defp dispatch(_, _, socket), do: failure(socket, :not_found)
 
+  defp personal_state(action, params, socket) do
+    id = positive(params["thread_id"])
+
+    case current_thread(socket, id) do
+      {:ok, _} ->
+        %{current_scope: scope, project: project} = socket.assigns
+
+        response =
+          if action == "follow",
+            do: Projects.set_ideation_comment_following(scope, project.id, id, params["following"]),
+            else: Projects.mark_ideation_comment_read(scope, project.id, id, positive(params["message_id"]))
+
+        result(response, socket)
+
+      _ ->
+        failure(refresh(socket), :not_found)
+    end
+  end
+
   def refresh(%{assigns: %{comments: %{open: false}}} = socket), do: socket
 
   def refresh(socket) do
@@ -97,7 +127,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     |> Projects.create_ideation_comment(
       project.id,
       session_id,
-      state.ideaId,
+      anchor(state),
       Map.take(params, ~w(body client_request_id mention_user_ids))
     )
     |> result(socket)
@@ -146,14 +176,23 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     case current_thread(socket, id) do
       {:ok, %{thread: %{source: source}}} ->
         idea_id = if source.type == "ideation_idea", do: source.id
+        group_id = if source.type == "ideation_group", do: source.id
 
         context =
-          if idea_id == socket.assigns.comments.ideaId,
+          if idea_id == socket.assigns.comments.ideaId and group_id == socket.assigns.comments.groupId,
             do: socket.assigns.comments.context,
             else: Ecto.UUID.generate()
 
         socket
-        |> put(%{open: true, ideaId: idea_id, context: context, thread: nil, messages: [], error: nil})
+        |> put(%{
+          open: true,
+          ideaId: idea_id,
+          groupId: group_id,
+          context: context,
+          thread: nil,
+          messages: [],
+          error: nil
+        })
         |> load_threads()
         |> detail(id)
 
@@ -165,7 +204,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   defp load_threads(socket, cursor \\ nil) do
     %{current_scope: scope, project: project, session_id: id, comments: state} = socket.assigns
 
-    case Projects.list_ideation_comment_threads(scope, project.id, id, state.ideaId,
+    case Projects.list_ideation_comment_threads(scope, project.id, id, anchor(state),
            status: state.statusFilter,
            cursor: cursor
          ) do
@@ -176,7 +215,8 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
           threads: threads,
           nextCursor: next,
           canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content)),
-          selectedSourceId: state.ideaId || id,
+          members: members(scope, project.id),
+          selectedSourceId: state.groupId || state.ideaId || id,
           selectedSourceLabel: nil
         })
 
@@ -189,6 +229,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     case current_thread(socket, id, cursor: cursor) do
       {:ok, %{thread: thread, messages: messages, next_cursor: next}} ->
         messages = if cursor, do: Enum.uniq_by(messages ++ socket.assigns.comments.messages, & &1.id), else: messages
+        thread = Map.put(thread, :last_message_id, messages |> Enum.map(& &1.id) |> Enum.max(fn -> 0 end))
         put(socket, %{thread: thread, messages: messages, messageNextCursor: next})
 
       _ ->
@@ -199,10 +240,21 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   defp current_thread(socket, id, opts \\ []) do
     with {:ok, %{thread: %{source: %{type: type, session_id: session_id}}} = detail} <-
            Projects.get_comment_thread(socket.assigns.current_scope, socket.assigns.project.id, id, opts),
-         true <- type in ["ideation_session", "ideation_idea"] and session_id == socket.assigns.session_id do
+         true <-
+           type in ["ideation_session", "ideation_idea", "ideation_group"] and session_id == socket.assigns.session_id do
       {:ok, detail}
     else
       _ -> {:error, :not_found}
+    end
+  end
+
+  defp anchor(%{groupId: id}) when is_integer(id), do: {:group, id}
+  defp anchor(state), do: state.ideaId
+
+  defp members(scope, project_id) do
+    case Projects.list_comment_members(scope, project_id) do
+      {:ok, members} -> members
+      _ -> []
     end
   end
 

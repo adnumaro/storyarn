@@ -9,6 +9,10 @@ defmodule Storyarn.Ideation.Ideas.Events.Invalidation do
   end
 
   def broadcast(project_id, session_id, audience) do
+    if audience == :shared do
+      PubSub.broadcast(Storyarn.PubSub, "ideation:comment_sources", {:ideation_comment_sources_changed, project_id})
+    end
+
     PubSub.broadcast(Storyarn.PubSub, topic(project_id, session_id, audience), {:ideation_changed, session_id})
   end
 

@@ -3,6 +3,12 @@ defmodule Storyarn.Ideation.Groups do
   alias Storyarn.Ideation.Groups.Commands
   alias Storyarn.Ideation.Groups.Queries.List
 
+  defdelegate comment_source(scope, project_id, session_id, group_id, opts),
+    to: Storyarn.Ideation.Groups.Execution.CommentSource,
+    as: :get
+
+  defdelegate comment_sources_query(), to: Storyarn.Ideation.Groups.Queries.CommentSources, as: :query
+
   defdelegate list_groups(scope, project_id, session_id), to: List, as: :run
   defdelegate create_group(scope, project_id, session_id, attrs), to: Commands.Create, as: :run
   defdelegate update_group(scope, project_id, session_id, id, version, attrs), to: Commands.Update, as: :run

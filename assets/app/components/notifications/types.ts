@@ -7,7 +7,8 @@ export interface NotificationItem {
     | "content_created"
     | "content_deleted"
     | "comment_mention"
-    | "comment_reply";
+    | "comment_reply"
+    | "comment_followed";
   entityType: string | null;
   entityName: string | null;
   status: "success" | "failure" | null;

@@ -26,7 +26,7 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   @max_limit 100
   @content_entity_types ~w(sheet flow scene localization_language)
   @content_activity_marker_table "notification_content_activity_markers"
-  @comment_kinds ~w(comment_mention comment_reply)
+  @comment_kinds ~w(comment_mention comment_reply comment_followed)
   @max_pg_bigint 9_223_372_036_854_775_807
 
   defguardp valid_id(id) when is_integer(id) and id > 0 and id <= @max_pg_bigint
@@ -41,10 +41,10 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   @type content_action :: :created | :deleted
 
   @doc """
-  Persists mentions and replies for recipients selected by the comment owner.
+  Persists mentions, replies and followed activity for recipients selected by the comment owner.
 
   This joins the source transaction. Overlapping reasons use a single stable
-  comment key per recipient, with mention taking precedence over reply.
+  comment key per recipient, with mention taking precedence over reply and follow.
   Missing recipients and revoked access are suppressed; an unauthorized actor
   or invalid producer payload fails the source operation.
   """
@@ -451,13 +451,18 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   defp comment_recipient_kinds(recipients) do
     Enum.reduce_while(recipients, {:ok, %{}}, fn
       %{user_id: user_id, kind: kind}, {:ok, kinds} when valid_id(user_id) and kind in @comment_kinds ->
-        preferred_kind = if kinds[user_id] == "comment_mention", do: "comment_mention", else: kind
+        preferred_kind = Enum.min_by([kinds[user_id], kind], &comment_priority/1)
         {:cont, {:ok, Map.put(kinds, user_id, preferred_kind)}}
 
       _invalid, _acc ->
         {:halt, {:error, :invalid_comment_activity}}
     end)
   end
+
+  defp comment_priority("comment_mention"), do: 0
+  defp comment_priority("comment_reply"), do: 1
+  defp comment_priority("comment_followed"), do: 2
+  defp comment_priority(_), do: 3
 
   defp insert_comment_notifications(actor, project, comment_id, recipient_kinds) do
     selected_ids = Map.keys(recipient_kinds)
@@ -598,19 +603,34 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
     |> where([recipient], recipient.user_id != ^actor_id)
   end
 
-  defp visible_query(%{user: %{id: user_id}}) do
-    from(notification in Notification,
-      left_join: project in Project,
-      on: project.id == notification.project_id,
-      left_join: project_membership in ProjectMembership,
-      on: project_membership.project_id == project.id and project_membership.user_id == ^user_id,
-      left_join: workspace_membership in WorkspaceMembership,
-      on: workspace_membership.workspace_id == project.workspace_id and workspace_membership.user_id == ^user_id,
+  defp visible_query(%{user: %{id: user_id}} = scope) do
+    visible_comment_sources(
+      from(notification in Notification,
+        left_join: project in Project,
+        on: project.id == notification.project_id,
+        left_join: project_membership in ProjectMembership,
+        on: project_membership.project_id == project.id and project_membership.user_id == ^user_id,
+        left_join: workspace_membership in WorkspaceMembership,
+        on: workspace_membership.workspace_id == project.workspace_id and workspace_membership.user_id == ^user_id,
+        where:
+          notification.recipient_id == ^user_id and
+            (is_nil(notification.project_id) or
+               (not is_nil(project.id) and is_nil(project.deleted_at) and
+                  (not is_nil(project_membership.id) or not is_nil(workspace_membership.id))))
+      ),
+      scope
+    )
+  end
+
+  defp visible_comment_sources(query, scope) do
+    restricted = Storyarn.Projects.restricted_comment_message_ids_query()
+    readable = Storyarn.Projects.readable_comment_message_ids_query(scope)
+
+    from(notification in query,
       where:
-        notification.recipient_id == ^user_id and
-          (is_nil(notification.project_id) or
-             (not is_nil(project.id) and is_nil(project.deleted_at) and
-                (not is_nil(project_membership.id) or not is_nil(workspace_membership.id))))
+        is_nil(notification.entity_type) or is_nil(notification.entity_id) or
+          notification.entity_type != "comment" or notification.entity_id not in subquery(restricted) or
+          notification.entity_id in subquery(readable)
     )
   end
 

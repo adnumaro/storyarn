@@ -10,6 +10,7 @@ defmodule Storyarn.Ideation.Sessions.Events.Invalidation do
   def notify({:ok, _} = result, project_id) do
     if !Repo.in_transaction?() do
       PubSub.broadcast(Storyarn.PubSub, topic(project_id), {:ideation_sessions_changed, project_id})
+      PubSub.broadcast(Storyarn.PubSub, "ideation:comment_sources", {:ideation_comment_sources_changed, project_id})
     end
 
     result

@@ -43,6 +43,7 @@
     "messages": {
       "comment_mention": "{actor} te mencionó en un comentario",
       "comment_reply": "{actor} respondió a tu comentario",
+      "comment_followed": "{actor} comentó en una conversación que sigues",
       "created_named": "{actor} creó {entity}: {name}",
       "created": "{actor} creó {entity}",
       "deleted_named": "{actor} eliminó {entity}: {name}",

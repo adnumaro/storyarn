@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
   import Phoenix.Component, only: [assign: 3]
 
   alias Storyarn.Platform
+  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.NotificationHelpers
 
@@ -30,11 +31,13 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
     if Phoenix.LiveView.connected?(socket) do
       :ok = Platform.subscribe_notifications(scope)
+      :ok = Projects.subscribe_ideation_conversations(scope)
     end
 
     socket =
       socket
       |> assign(:notification_filter, :all)
+      |> assign(:comment_notification_refresh_pending, false)
       |> Phoenix.LiveView.attach_hook(
         :notification_events,
         :handle_event,
@@ -98,6 +101,22 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
   defp handle_notification_event(_event, _params, socket), do: {:cont, socket}
 
   defp handle_notification_info(:notifications_changed, socket) do
+    {state, socket} = refresh(socket)
+    {:halt, Phoenix.LiveView.push_event(socket, "notifications_updated", state)}
+  end
+
+  defp handle_notification_info({:ideation_comment_sources_changed, _project_id}, socket) do
+    # Coalesce canvas events. No source identities or content are pushed to the
+    # browser: the inbox/count always comes from a fresh audience-filtered read.
+    if not socket.assigns.comment_notification_refresh_pending do
+      Process.send_after(self(), :refresh_comment_notification_sources, 150)
+    end
+
+    {:halt, assign(socket, :comment_notification_refresh_pending, true)}
+  end
+
+  defp handle_notification_info(:refresh_comment_notification_sources, socket) do
+    socket = assign(socket, :comment_notification_refresh_pending, false)
     {state, socket} = refresh(socket)
     {:halt, Phoenix.LiveView.push_event(socket, "notifications_updated", state)}
   end

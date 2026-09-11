@@ -4140,10 +4140,23 @@ policy = %{
       reason: "Brainstorming presents project-owned discussions through the public Comments ports"
     },
     %{
-      source: "lib/storyarn/projects/comments/commands/mutations.ex",
+      source: "lib/storyarn/projects/comments/queries/ideation_conversations.ex",
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],
-      reason: "Comment writes resolve and lock the current shared source through its owning Ideation facade"
+      reason: "Comment Hub and inbox queries consume audience-only Ideation source projections before pagination"
+    },
+    %{
+      source: "lib/storyarn/platform/notifications/execution/delivery.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "Inbox listing, counts and read commands apply the comment owner's current restricted-source visibility contract"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/notifications.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The notification shell refetches authorized inbox state after brainstorming source invalidations"
     },
     %{
       source: "lib/storyarn/projects/comments/comments.ex",

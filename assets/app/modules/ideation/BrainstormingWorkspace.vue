@@ -77,6 +77,9 @@ const { request, context, online, sync } = useBoardConnection(() => board, reset
 function useComments(ideaId: number | null) {
   void request("comments_open", { idea_id: ideaId });
 }
+function groupComments(groupId: number) {
+  void request("comments_open", { group_id: groupId });
+}
 const notes = useCanvasNotes(
   () => board,
   request,
@@ -961,6 +964,15 @@ onUnmounted(() => {
         @list="list = true"
       >
         <template #session>
+          <Button
+            v-if="groups.selected.value !== null && !board.session.configuration.private_mode"
+            id="brainstorming-group-comments"
+            variant="ghost"
+            size="sm"
+            :disabled="!online"
+            @click="groupComments(groups.selected.value)"
+            ><MessageCircle class="size-4" />{{ t("brainstormingComments.group_comments") }}</Button
+          >
           <Button
             id="brainstorming-session-comments"
             variant="ghost"

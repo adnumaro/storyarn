@@ -2,31 +2,33 @@
 
 Comments are a Projects-owned capability because their access and durable
 lifecycle belong to one project, independently of the editor that displays them.
-Supported anchors are `flow_node`, `flow_canvas`, `scene_canvas` and `sheet_canvas`. Adding another editor
+Canonical editor anchors are `flow_node`, `flow_canvas`, `scene_canvas` and `sheet_canvas`. Adding another editor
 adds an explicit source contract and resolver; it does not create another message model. Public
 callers enter through `Storyarn.Projects`. The realtime collaboration module in
 Platform remains technical coordination; it does not own these conversations.
 
-## Brainstorming adapter (ENG-139, first slice)
+## Brainstorming adapter (ENG-139)
 
-`ideation_session` and `ideation_idea` are non-spatial discussion sources. The
+`ideation_session`, `ideation_idea` and `ideation_group` are non-spatial discussion sources. The
 existing Flow/Sheet/Scene surface ownership and optional context remain unchanged.
 Session metadata is project-readable even during private contribution mode.
 Idea discussions require a live, published idea in a session outside private
 mode, including for the idea author and project owner. An unpublished edit is
-never used as the discussion label or preview. Group/decision anchors, mentions,
-notifications, subscriptions/read state and the Hub remain later ENG-139 work.
+never used as the discussion label or preview. Active group discussions share
+the session audience outside private mode, independently of the current members
+of the group. Group labels are identity-only; no synthesis or private member
+revision is materialized. Decision anchors remain dependent on ENG-141.
 
 Projects owns threads/messages; Ideation's public `comment_source` port owns the
 source's current audience and identity. Writes lock project access, then session,
-idea and thread. Generic detail, reply, resolution and idempotency replay also
+idea/group and thread. Generic detail, reply, resolution and idempotency replay also
 check this audience. Hiding/deleting the source hides the entire discussion;
 unlike a missing public editor context, it must not leave a readable preview.
 The nullable source pointers and immutable recovery UUID prevent rebinding to
 replacement rows. Archived sessions still support discussion; round/contribution
 gates do not close conversations.
 
-The panel lists the chosen session or shared idea's threads, supports explicit
+The panel lists the chosen session, shared idea or group's threads, supports explicit
 parent replies, revision-checked resolution/reopening and `?thread=` links.
 Requests bind to board epoch, session and discussion context. Invalidation
 rechecks access before emitting props and clears the composer when access is
@@ -37,10 +39,48 @@ Brainstorming comments follow the existing conversation lifecycle: they are not
 copied or rewound by content snapshots, Ideation recovery capsules, templates or
 imports. Database backups retain them. Replaced/deleted anchors cannot reveal
 history through their replacement; restoring the same live source may make its
-discussion available again, without resolving/reopening it. Generic notification
-destination APIs exclude these new sources until audience-aware delivery ships.
-No private idea text, Drafts content or notification payload is materialized by
-this adapter. Post-commit invalidation carries only the session ID.
+discussion available again, without resolving/reopening it. The same rule applies
+to per-user following and read watermarks: they are live collaboration state,
+not part of content snapshots. User/thread deletion cascades participation rows.
+No private idea text or Drafts content is materialized by this adapter.
+
+### Participation and notifications
+
+Following is explicit and opt-in. Creating, replying, opening a permalink and
+listing a thread do not subscribe or acknowledge it. Viewers may follow/unfollow
+and mark accessible threads read, but cannot write messages. Read watermarks
+advance monotonically through an explicitly supplied message of that thread;
+the panel sends the highest message ID actually returned to it. A delayed
+acknowledgement cannot swallow a later reply. Unread means a message from another
+author exists beyond the watermark, independently of notification read state.
+
+Mentions select effective project members. New messages persist in-app
+notifications in the same transaction, with one recipient/message delivery:
+mention wins over direct-parent reply, which wins over explicit following.
+Actors never notify themselves. Unfollowing stops follower notices, not explicit
+mentions or direct replies. There are no email deliveries or automatic follows.
+Notifications contain no message text or source title. Listing, unread counts,
+mark-read operations and destination resolution revalidate source audience and
+recovery identity. Private/deleted/replaced sources disappear entirely, including
+from counts, while canonical editor notification behavior stays unchanged.
+
+### Future Collaboration Hub contract
+
+`Projects.list_ideation_conversations(scope, opts)` returns authorized thread DTOs
+and a stable `{at, id}` activity cursor. Membership, active source and recovery
+identity are filtered before pagination/preview materialization. Supported
+filters are `project_id`, `workspace_id`, `session_id`, `source_type`, `status`,
+`following`, `participated`, `mentioned`, `unread` and literal body `search` (200
+bytes maximum). Personal flags select matching threads when true; false adds no
+restriction. Limits default to 30 and cap at 100. Malformed options are rejected.
+The query is a brainstorming adapter, not the cross-editor Hub UI (ENG-188/189).
+
+Ideation owns content-free audience/identity query ports; Projects composes them
+with membership and conversation state. Single/batched comment destinations
+return audience-checked brainstorming session/thread links. Source and comment
+mutations emit post-commit invalidations. The Hub subscription emits only a
+project ID, never content; consumers must refetch through the scoped API. The
+notification shell coalesces these signals and refreshes its authorized list/count.
 
 ## Model and permissions
 
@@ -55,7 +95,7 @@ this adapter. Post-commit invalidation carries only the session ID.
   Every public operation reauthorizes effective membership, with direct project
   membership taking precedence over an inherited workspace role. Mutations lock
   the project and effective membership through the existing Access capability.
-- Resolved threads must be reopened before replying. Source-unavailable threads
+- Resolved threads must be reopened before replying. Source-unavailable canonical editor threads
   remain readable but do not accept replies or state changes.
 - Resolve/reopen and pin moves compare the expected revision after locking the thread. Replies
   advance that revision, so a stale resolve cannot silently close a newer reply.
