@@ -77,7 +77,13 @@ defmodule StoryarnWeb.IdeationLive.Board do
         v-inject="project-layout"
         id="brainstorming-board"
         class="contents"
-        board={Map.merge(@board, %{epoch: @epoch, loading: @refresh_running != nil, error: @board_error})}
+        board={
+          Map.merge(@board, %{
+            epoch: @epoch,
+            loading: @refresh_timer != nil or @refresh_running != nil or @refresh_dirty,
+            error: @board_error
+          })
+        }
         base-url={@urls.tools["brainstorming"]}
       />
       <.vue

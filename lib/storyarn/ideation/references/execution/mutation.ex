@@ -152,7 +152,7 @@ defmodule Storyarn.Ideation.References.Mutation do
     end
   end
 
-  defp changes(_, _, _, "remove"), do: {:ok, %{deleted_at: TimeHelpers.now()}}
+  defp changes(_, _, _, "remove"), do: {:ok, %{deleted_at: %{TimeHelpers.now() | microsecond: {0, 6}}}}
 
   defp changes(_, _, %{version: version}, "refresh") when version >= 49, do: {:error, :reference_history_limit}
 

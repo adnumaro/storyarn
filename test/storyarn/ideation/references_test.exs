@@ -8,6 +8,7 @@ defmodule Storyarn.Ideation.ReferencesTest do
   alias Storyarn.Ideation
   alias Storyarn.Ideation.References.Reference
   alias Storyarn.Ideation.References.Revision
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Sheets
 
@@ -162,9 +163,15 @@ defmodule Storyarn.Ideation.ReferencesTest do
     assert {:ok, removed} =
              Ideation.remove_reference(ctx.peer, ctx.project.id, ctx.session.id, nil, reference.id, 1, key)
 
+    persisted = Repo.get!(Reference, reference.id)
+    assert %DateTime{microsecond: {0, 6}} = persisted.deleted_at
+    assert persisted.version == 2
+    assert persisted.context == reference.base
+
     assert {:ok, ^removed} =
              Ideation.remove_reference(ctx.peer, ctx.project.id, ctx.session.id, nil, reference.id, 1, key)
 
+    assert Repo.get!(Reference, reference.id).deleted_at == persisted.deleted_at
     assert {:ok, %{references: []}} = list(ctx)
     assert Repo.get!(Sheets.Sheet, ctx.sheet.id).deleted_at == nil
     assert Repo.aggregate(Revision, :count) == 2
@@ -237,7 +244,7 @@ defmodule Storyarn.Ideation.ReferencesTest do
   defp unlink_during_backlinks(_event, _measurements, %{query: query}, {pid, marker, reference_id}) do
     if self() == pid and String.contains?(query, ~s(FROM "ideation_references")) and Process.delete(marker) do
       Repo.update_all(from(r in Reference, where: r.id == ^reference_id),
-        set: [deleted_at: Storyarn.Platform.Shared.TimeHelpers.now()]
+        set: [deleted_at: %{TimeHelpers.now() | microsecond: {0, 6}}]
       )
     end
   end

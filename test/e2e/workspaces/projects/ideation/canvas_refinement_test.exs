@@ -112,10 +112,11 @@ defmodule StoryarnWeb.E2E.BrainstormingCanvasRefinementTest do
       |> press("#brainstorming-canvas", "ControlOrMeta+z")
       |> assert_edges(edge <> "[marker-start][marker-end]")
 
-    # The edge can arrive via PubSub before the undo queue has finished.
-    # Wait for its acknowledgement before a full navigation tears down the LiveView.
+    # The mutation acknowledgement can precede its queued board projection.
+    # Let both finish before navigation cancels LiveView's database-reading task.
     browser
     |> assert_has("[data-group-id][aria-busy=false]", count: 1)
+    |> assert_has("#brainstorming-workspace[aria-busy=false]")
     |> visit(path(ctx))
     |> assert_has(".canvas-note", count: 2)
     |> assert_edges(edge <> "[marker-start][marker-end]")

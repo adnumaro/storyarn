@@ -262,6 +262,32 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert {:noreply, ^next} = Board.handle_async({:board, make_ref()}, {:ok, {:ok, %{}}}, next)
   end
 
+  test "board loading remains true for queued, active and follow-up reads", ctx do
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    socket = :sys.get_state(view.pid).socket
+
+    for {timer, running, dirty, expected} <- [
+          {nil, nil, false, false},
+          {make_ref(), nil, false, true},
+          {nil, make_ref(), false, true},
+          {nil, nil, true, true}
+        ] do
+      assigns =
+        Map.merge(socket.assigns, %{
+          __changed__: nil,
+          refresh_timer: timer,
+          refresh_running: running,
+          refresh_dirty: dirty
+        })
+
+      # Match the render-time socket shape used by LiveView for nested layouts.
+      render_socket = %{socket | assigns: %Socket.AssignsNotInSocket{__assigns__: assigns}}
+      html = render_component(&Board.render/1, Map.put(assigns, :socket, render_socket))
+      board = LiveVue.Test.get_vue(html, name: "live/ideation/BrainstormingBoard").props["board"]
+      assert board["loading"] == expected
+    end
+  end
+
   test "consecutive sidebar creations acknowledge each request and patch the existing board", ctx do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx))
     {:ok, another_tab, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
