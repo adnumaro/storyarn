@@ -124,21 +124,21 @@ defmodule Storyarn.Platform do
     to: Notifications,
     as: :deliver_async_result
 
-  @doc "Lists the current recipient's durable notifications."
+  @doc "Lists durable notifications; comments require a server-built visibility predicate from the inbox coordinator."
   @spec list_notifications(term(), keyword()) :: [term()]
   defdelegate list_notifications(scope, opts \\ []), to: Notifications
 
   @doc "Counts unread durable notifications for the current recipient."
-  @spec unread_notification_count(term()) :: non_neg_integer()
-  defdelegate unread_notification_count(scope), to: Notifications, as: :unread_count
+  @spec unread_notification_count(term(), keyword()) :: non_neg_integer()
+  defdelegate unread_notification_count(scope, opts \\ []), to: Notifications, as: :unread_count
 
   @doc "Marks one recipient-owned notification as read."
-  @spec mark_notification_read(term(), integer()) :: {:ok, term()} | {:error, :not_found}
-  defdelegate mark_notification_read(scope, notification_id), to: Notifications, as: :mark_read
+  @spec mark_notification_read(term(), integer(), keyword()) :: {:ok, term()} | {:error, :not_found}
+  defdelegate mark_notification_read(scope, notification_id, opts \\ []), to: Notifications, as: :mark_read
 
   @doc "Marks all recipient-owned notifications as read."
-  @spec mark_all_notifications_read(term()) :: {:ok, non_neg_integer()}
-  defdelegate mark_all_notifications_read(scope), to: Notifications, as: :mark_all_read
+  @spec mark_all_notifications_read(term(), keyword()) :: {:ok, non_neg_integer()}
+  defdelegate mark_all_notifications_read(scope, opts \\ []), to: Notifications, as: :mark_all_read
 
   @doc "Subscribes a recipient scope to its notification signal topic."
   @spec subscribe_notifications(term()) :: :ok | {:error, :not_found}

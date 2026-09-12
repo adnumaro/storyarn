@@ -158,8 +158,6 @@
         "violet": "Violet",
         "paper": "Paper"
       },
-      "delete": "Delete note",
-      "deleteHelp": "Delete note · Delete / Backspace",
       "discard": "Mark as discarded",
       "privateMode": "Private mode",
       "sharedMode": "Shared mode",
@@ -167,8 +165,6 @@
       "endPrivate": "End private mode and reveal to everyone",
       "privateModeHelp": "Each participant sees their own notes. The facilitator decides when to reveal contributions.",
       "sharedModeHelp": "Everyone sees contributions. The facilitator can start private mode for everyone.",
-      "duplicate": "Duplicate note",
-      "duplicateHelp": "Duplicate · ⌘/Ctrl+D",
       "selectHelp": "Drag on empty canvas to select notes. Hold Shift to add to your selection; Escape cancels.",
       "historyHelp": "Undo: ⌘/Ctrl+Z. Redo: ⌘/Ctrl+Shift+Z or Ctrl+Y.",
       "connectionOrigin": "Origin",
@@ -200,7 +196,6 @@
         "backward": "Arrow to first note",
         "both": "Arrows both ways"
       },
-      "removeConnection": "Delete connection",
       "resizeNote": "Resize note width"
     },
     "rounds": {

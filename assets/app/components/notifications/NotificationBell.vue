@@ -191,6 +191,10 @@ function commentText(notification: NotificationItem, actor: string): string | nu
     return t("notifications.messages.comment_reply", { actor });
   }
 
+  if (notification.kind === "comment_followed") {
+    return t("notifications.messages.comment_followed", { actor });
+  }
+
   return null;
 }
 
@@ -373,7 +377,9 @@ function relativeTime(isoDate: string): string {
             <Plus v-else-if="notification.kind === 'content_created'" class="size-4" />
             <MessageSquare
               v-else-if="
-                notification.kind === 'comment_mention' || notification.kind === 'comment_reply'
+                notification.kind === 'comment_mention' ||
+                notification.kind === 'comment_reply' ||
+                notification.kind === 'comment_followed'
               "
               class="size-4"
             />

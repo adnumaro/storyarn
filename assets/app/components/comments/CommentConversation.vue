@@ -307,6 +307,11 @@ function changeStatus(status: CommentStatus) {
             @click="live.pushEvent('comments_select_thread', { thread_id: thread.id })"
           >
             <div class="flex items-center justify-between gap-2">
+              <span
+                v-if="thread.unread"
+                class="size-2 shrink-0 rounded-full bg-primary"
+                :aria-label="$t(translationKey('unread'))"
+              />
               <span class="truncate text-xs font-medium">{{
                 thread.source.type === ui.canvasSourceType
                   ? $t(translationKey("canvas_label"))

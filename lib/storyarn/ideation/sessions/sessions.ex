@@ -5,6 +5,8 @@ defmodule Storyarn.Ideation.Sessions do
   alias Storyarn.Ideation.Sessions.Events.Invalidation
   alias Storyarn.Ideation.Sessions.Queries
 
+  defdelegate comment_sources_query(), to: Storyarn.Ideation.Sessions.Queries.CommentSources, as: :query
+
   defdelegate comment_source(scope, project_id, session_id, opts),
     to: Storyarn.Ideation.Sessions.Execution.CommentSource,
     as: :get

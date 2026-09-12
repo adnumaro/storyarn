@@ -61,7 +61,7 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
              Projects.set_comment_thread_status(ctx.author, ctx.project.id, first.thread.id, "open", resolved.revision)
 
     assert {:ok, %{threads: [_]}} = Projects.list_ideation_comment_threads(ctx.viewer, ctx.project.id, ctx.session.id)
-    assert Storyarn.Platform.list_notifications(ctx.author) == []
+    assert [%{kind: "comment_reply"}] = Storyarn.NotificationInbox.list_notifications(ctx.author)
   end
 
   test "private ideas cannot be discussed even by their author or owner", ctx do
@@ -150,16 +150,20 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
     idea = ctx |> idea_fixture() |> then(&publish_idea(ctx, &1))
     {:ok, discussion} = create(ctx, idea.id, attrs())
     assert {:ok, %{threads: []}} = Projects.list_flow_comment_threads(ctx.peer, ctx.project.id, ctx.session.id)
-    assert %{} = Projects.comment_destinations(ctx.peer, [hd(discussion.messages).id])
-    assert {:error, :not_found} = Projects.comment_destination(ctx.peer, ctx.project.id, hd(discussion.messages).id)
+
+    assert {:ok, %{surface: "brainstorming"}} =
+             Projects.comment_destination(ctx.peer, ctx.project.id, hd(discussion.messages).id)
+
     Repo.delete!(Repo.get!(Idea, idea.id))
+    assert Projects.comment_destinations(ctx.peer, [hd(discussion.messages).id]) == %{}
+    assert {:error, :not_found} = Projects.comment_destination(ctx.peer, ctx.project.id, hd(discussion.messages).id)
     assert Repo.get!(Thread, discussion.thread.id).ideation_idea_id == nil
     assert {:error, :not_found} = Projects.get_comment_thread(ctx.author, ctx.project.id, discussion.thread.id)
     assert Repo.aggregate(Message, :count) == 1
   end
 
-  test "mentions and spatial moves are explicitly disabled", ctx do
-    assert {:error, _} = create(ctx, nil, Map.put(attrs(), :mention_user_ids, [ctx.peer.user.id]))
+  test "member mentions are enabled but spatial moves and outsider mentions are rejected", ctx do
+    assert {:ok, _} = create(ctx, nil, Map.put(attrs(), :mention_user_ids, [ctx.peer.user.id]))
     {:ok, discussion} = create(ctx, nil, attrs())
 
     assert {:error, :invalid_mention} =
@@ -167,7 +171,10 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
                ctx.author,
                ctx.project.id,
                discussion.thread.id,
-               Map.merge(attrs(), %{parent_id: hd(discussion.messages).id, mention_user_ids: [ctx.peer.user.id]})
+               Map.merge(attrs(), %{
+                 parent_id: hd(discussion.messages).id,
+                 mention_user_ids: [user_scope_fixture().user.id]
+               })
              )
 
     assert {:error, :invalid_position} =

@@ -38,7 +38,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
       end
     end
     |> Repo.transact()
-    |> Invalidation.notify(project_id)
+    |> Invalidation.notify(project_id, :sources)
     |> TimerInvalidation.notify()
   end
 

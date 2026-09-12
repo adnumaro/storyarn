@@ -42,6 +42,9 @@ export interface CommentThread<TSource extends CommentSource = CommentSource> {
   message_count: number;
   created_at: string;
   last_activity_at: string;
+  following?: boolean;
+  unread?: boolean;
+  last_message_id?: number;
   resolved_at: string | null;
   resolved_by: CommentMember | null;
   source: TSource;

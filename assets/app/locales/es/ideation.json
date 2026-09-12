@@ -158,8 +158,6 @@
         "violet": "Violeta",
         "paper": "Papel"
       },
-      "delete": "Eliminar nota",
-      "deleteHelp": "Eliminar nota · Supr / Retroceso",
       "discard": "Marcar como descartada",
       "privateMode": "Modo privado",
       "sharedMode": "Modo compartido",
@@ -167,8 +165,6 @@
       "endPrivate": "Terminar modo privado y revelar para todos",
       "privateModeHelp": "Cada participante ve sus propias notas. El facilitador decide cuándo revelar las aportaciones.",
       "sharedModeHelp": "Todos ven las aportaciones. El facilitador puede activar el modo privado para todos.",
-      "duplicate": "Duplicar nota",
-      "duplicateHelp": "Duplicar · ⌘/Ctrl+D",
       "selectHelp": "Arrastra sobre el canvas vacío para seleccionar notas. Mantén Shift para añadir a la selección; Escape cancela.",
       "historyHelp": "Deshacer: ⌘/Ctrl+Z. Rehacer: ⌘/Ctrl+Shift+Z o Ctrl+Y.",
       "connectionOrigin": "Origen",
@@ -200,7 +196,6 @@
         "backward": "Flecha hacia la primera nota",
         "both": "Flechas en ambos sentidos"
       },
-      "removeConnection": "Eliminar conexión",
       "resizeNote": "Ajustar el ancho de la nota"
     },
     "rounds": {

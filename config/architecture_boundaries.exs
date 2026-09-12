@@ -1884,6 +1884,7 @@ boundaries = %{
     "lib/mix/tasks/storyarn.templates.import.ex",
     "lib/storyarn.ex",
     "lib/storyarn/application.ex",
+    "lib/storyarn/notification_inbox.ex",
     "lib/storyarn/architecture/",
     "lib/storyarn/public/blog.ex",
     "lib/storyarn/public/blog/post.ex",
@@ -4144,16 +4145,47 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/storyarn/ideation/ideas/events/invalidation.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Idea audience changes invalidate project-owned conversations for current project members"
+    },
+    %{
+      source: "lib/storyarn/ideation/groups/events/invalidation.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Group deletion and restoration invalidate project-owned conversations for current project members"
+    },
+    %{
+      source: "lib/storyarn/ideation/sessions/events/invalidation.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Session audience and identity changes invalidate project-owned conversations for current project members"
+    },
+    %{
       source: "lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "Brainstorming presents project-owned discussions through the public Comments ports"
     },
     %{
-      source: "lib/storyarn/projects/comments/commands/mutations.ex",
+      source: "lib/storyarn/projects/comments/queries/ideation_conversations.ex",
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],
-      reason: "Comment writes resolve and lock the current shared source through its owning Ideation facade"
+      reason: "Comment Hub and inbox queries consume audience-safe Ideation source projections before pagination"
+    },
+    %{
+      source: "lib/storyarn/notification_inbox.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "The application inbox composes producer-owned visibility queries without a Platform-to-Projects dependency"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/notifications.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The notification shell refetches authorized inbox state after brainstorming source invalidations"
     },
     %{
       source: "lib/storyarn/projects/comments/comments.ex",
@@ -4522,10 +4554,10 @@ policy = %{
       reason: "Tutorial settings restart Platform-owned onboarding through the public facade"
     },
     %{
-      source: "lib/storyarn_web/live/shared/notification_helpers.ex",
+      source: "lib/storyarn/notification_inbox.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "The shared notification helpers list and count through the public Platform facade"
+      reason: "The application inbox supplies source visibility to Platform-owned listing, counts and read-state writes"
     },
     %{
       source: "lib/storyarn/application.ex",

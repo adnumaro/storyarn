@@ -4,6 +4,7 @@ defmodule Storyarn.Projects.Comments.Queries do
 
   alias Storyarn.Projects.Comments.Mention
   alias Storyarn.Projects.Comments.Message
+  alias Storyarn.Projects.Comments.Payload
   alias Storyarn.Projects.Comments.Projections.FlowNodeRecord
   alias Storyarn.Projects.Comments.Projections.FlowRecord
   alias Storyarn.Projects.Comments.Projections.ProjectMembershipRecord
@@ -15,7 +16,7 @@ defmodule Storyarn.Projects.Comments.Queries do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
-  def ideation?(%{source_type: type}), do: type in ["ideation_session", "ideation_idea"]
+  def ideation?(%{source_type: type}), do: type in ["ideation_session", "ideation_idea", "ideation_group"]
 
   def readable?(thread, scope) do
     not ideation?(thread) or not is_nil(available_source(thread, scope: scope))
@@ -90,22 +91,37 @@ defmodule Storyarn.Projects.Comments.Queries do
        when is_integer(id), do: sheet_source(thread.project_id, id, opts)
 
   defp anchored_source(%Thread{source_type: type, ideation_session_id: session_id} = thread, opts)
-       when type in ["ideation_session", "ideation_idea"] and is_integer(session_id) do
-    idea_id = if type == "ideation_idea", do: thread.ideation_idea_id
-
-    if session_id == thread.container_id and (type == "ideation_session" or is_integer(idea_id)) do
-      case Storyarn.Ideation.comment_source(opts[:scope], thread.project_id, session_id, idea_id, opts) do
-        {:ok, %{id: id} = source} when id == thread.source_id -> source
-        _ -> nil
-      end
+       when type in ["ideation_session", "ideation_idea", "ideation_group"] and is_integer(session_id) do
+    with true <- session_id == thread.container_id,
+         {:ok, anchor} <- ideation_pointer(thread),
+         {:ok, %{id: id} = source} when id == thread.source_id <-
+           ideation_source(opts[:scope], thread.project_id, session_id, anchor, opts) do
+      source
+    else
+      _ -> nil
     end
   end
 
   defp anchored_source(_thread, _opts), do: nil
 
-  def list_ideation_threads(project_id, session_id, idea_id, opts) do
-    type = if idea_id, do: "ideation_idea", else: "ideation_session"
-    source_id = idea_id || session_id
+  defp ideation_pointer(%{source_type: "ideation_session", source_id: id, container_id: id}), do: {:ok, nil}
+
+  defp ideation_pointer(%{source_type: "ideation_idea", source_id: id, ideation_idea_id: id}) when is_integer(id),
+    do: {:ok, id}
+
+  defp ideation_pointer(%{source_type: "ideation_group", source_id: id, ideation_group_id: id}) when is_integer(id),
+    do: {:ok, {:group, id}}
+
+  defp ideation_pointer(_), do: {:error, :not_found}
+
+  def ideation_source(scope, project_id, session_id, {:group, id}, opts),
+    do: Storyarn.Ideation.group_comment_source(scope, project_id, session_id, id, opts)
+
+  def ideation_source(scope, project_id, session_id, anchor, opts),
+    do: Storyarn.Ideation.comment_source(scope, project_id, session_id, anchor, opts)
+
+  def list_ideation_threads(project_id, session_id, anchor, opts) do
+    {type, source_id} = Payload.ideation_anchor(session_id, anchor)
 
     from(t in Thread,
       as: :thread,
@@ -113,11 +129,19 @@ defmodule Storyarn.Projects.Comments.Queries do
       where: t.source_type == ^type and t.source_id == ^source_id,
       where: t.ideation_session_id == ^session_id
     )
-    |> then(fn query -> if idea_id, do: where(query, [t], t.ideation_idea_id == ^idea_id), else: query end)
+    |> then(fn query ->
+      case anchor do
+        {:group, id} -> where(query, [t], t.ideation_group_id == ^id)
+        nil -> query
+        id -> where(query, [t], t.ideation_idea_id == ^id)
+      end
+    end)
     |> maybe_filter_status(opts)
     |> maybe_filter_cursor(opts)
     |> page(opts)
   end
+
+  def available_sources([]), do: %{}
 
   def available_sources(threads) do
     ids = Enum.map(threads, & &1.id)

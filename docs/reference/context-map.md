@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-07
+> Last reviewed: 2026-09-12
 >
 > Scope: current modular monolith over one Repo and PostgreSQL schema
 
@@ -127,6 +127,17 @@ an alternative domain API or call private context modules.
 Platform is a control-plane grouping, not a catch-all for coordinators.
 Discovery and realtime collaboration can remain physically under `platform/`
 while the ratchet classifies them as application/technical code.
+
+`Storyarn.NotificationInbox` is an application coordinator, not a Platform
+capability or another bounded context. It composes Projects' current comment
+visibility queries with Platform's recipient-scoped listing, counting and
+read-state commands. All four operations apply the same correlated SQL
+predicate before pagination, aggregation or mutation. Platform never calls
+Projects to authorize a source; its low-level inbox operations hide comments
+when the server-built visibility predicate is absent. Web and other user-facing
+consumers must enter through the coordinator, not supply client-controlled
+visibility options. Platform retains every notification write and Projects
+retains the comment-source visibility rules.
 
 Commercial is a business bounded context, not a Platform capability. A consumer
 enters through `Storyarn.Commercial`, owns the operation whose admission is being

@@ -5,6 +5,7 @@ defmodule Storyarn.Platform.CommentNotificationsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.NotificationInbox
   alias Storyarn.Platform
   alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Repo
@@ -64,15 +65,15 @@ defmodule Storyarn.Platform.CommentNotificationsTest do
     recipients = [%{user_id: context.direct.id, kind: "comment_reply"}]
     assert {:ok, {:created, [_]}} = deliver(context, recipients)
     scope = user_scope_fixture(context.direct)
-    assert [_] = Platform.list_notifications(scope)
+    assert [_] = NotificationInbox.list_notifications(scope)
 
     membership =
       Repo.get_by!(Storyarn.Projects.ProjectMembership, project_id: context.project.id, user_id: context.direct.id)
 
     Repo.delete!(membership)
 
-    assert Platform.list_notifications(scope) == []
-    assert Platform.unread_notification_count(scope) == 0
+    assert NotificationInbox.list_notifications(scope) == []
+    assert NotificationInbox.unread_notification_count(scope) == 0
     assert {:ok, {:created, []}} = deliver(%{context | comment_id: context.comment_id + 1}, recipients)
   end
 

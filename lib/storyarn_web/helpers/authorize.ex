@@ -171,6 +171,10 @@ defmodule StoryarnWeb.Helpers.Authorize do
   # minimal socket without a resource.
   defp authorization_result(%{assigns: assigns}, :edit_content), do: authorize_project(assigns, :edit_content)
 
+  # Personal discussion state may be managed by viewers; the comment service
+  # additionally authorizes the exact source and always binds the acting user.
+  defp authorization_result(%{assigns: assigns}, :manage_comment_state), do: authorize_project(assigns, :view)
+
   # AI execution: a distinct action because a viewer may read content but must
   # never spend a workspace's AI allowance.
   defp authorization_result(%{assigns: assigns}, :use_ai), do: authorize_project(assigns, :use_ai)

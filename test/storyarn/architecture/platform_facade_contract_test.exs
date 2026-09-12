@@ -16,7 +16,9 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
     list_notifications: 1,
     list_notifications: 2,
     mark_all_notifications_read: 1,
+    mark_all_notifications_read: 2,
     mark_notification_read: 2,
+    mark_notification_read: 3,
     onboarding_pending?: 2,
     onboarding_summary: 1,
     onboarding_tutorials: 0,
@@ -31,19 +33,20 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
     subscribe_notifications: 1,
     track_analytics: 2,
     track_analytics: 3,
-    unread_notification_count: 1
+    unread_notification_count: 1,
+    unread_notification_count: 2
   ]
 
   @comment_contract [deliver_comment_activity: 4]
 
   @public_types ~w(notification_delivery_outcome onboarding_summary)a
 
-  # Advanced deliberately when ENG-112 moved the complete commercial contract
-  # into Storyarn.Commercial. These hashes protect Platform's remaining
-  # semantic signatures, defaults, documentation, types, and specs.
-  @docs_digest "4089846cb21bfe7a6e320041d6a0675c6a4f8340752a3619b903df7e2d3c6652"
+  # ENG-139 adds server-built visibility options to inbox operations. The
+  # application coordinator supplies them; omitted comment policies fail closed.
+  # These hashes seal the reviewed signatures, defaults, docs, types and specs.
+  @docs_digest "e3c2d40374a233afab3bf07ad4f822b4e61bdd24c0568442aef9f8db8ebd1ade"
   @types_digest "b16240403430379604117214f246a929a2c9493712e2244ac7020191167c00f0"
-  @specs_digest "44e9f2fa16d6e3fd7429fb9a04b3f1965ead40c89edf3258626724cbd066264c"
+  @specs_digest "2c448830f0eec1e62c887297c53ee8ec5e2ad32fdcae1801bf121948753ea84e"
 
   test "the root facade preserves every established function and arity" do
     public_functions =

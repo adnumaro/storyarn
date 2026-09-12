@@ -165,6 +165,152 @@ defmodule StoryarnWeb.Live.Hooks.NotificationsTest do
     })
   end
 
+  test "source invalidations do not wake a dashboard belonging to another project", %{
+    conn: conn,
+    workspace: workspace
+  } do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+    assert {:ok, _} =
+             Storyarn.Ideation.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
+
+    refute_push_event(view, "notifications_updated", %{}, 250)
+  end
+
+  test "an inherited member's dashboard hides notifications when their source becomes private", %{
+    conn: conn,
+    user: user,
+    workspace: workspace
+  } do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    project = Repo.preload(ctx.project, :workspace)
+    workspace_membership_fixture(project.workspace, user, "viewer")
+    idea = Storyarn.IdeationFixtures.idea_fixture(ctx, %{visibility: :shared})
+
+    assert {:ok, _} =
+             Storyarn.Projects.create_ideation_comment(ctx.author, ctx.project.id, ctx.session.id, idea.id, %{
+               body: "Shared review",
+               client_request_id: Ecto.UUID.generate(),
+               mention_user_ids: [user.id]
+             })
+
+    {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+    render_hook(view, "refresh_notifications", %{"filter" => "unread"})
+    assert_reply(view, %{unreadCount: 1, items: [_]})
+
+    assert {:ok, _} =
+             Storyarn.Ideation.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
+
+    assert_push_event(view, "notifications_updated", %{unreadCount: 0, items: []})
+  end
+
+  test "comment creation and replies refresh a recipient's bell once, not again for Hub activity", %{
+    conn: conn,
+    user: user,
+    workspace: workspace
+  } do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    membership_fixture(ctx.project, user, "viewer")
+    {:ok, view, _} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+    assert {:ok, detail} =
+             Storyarn.Projects.create_ideation_comment(ctx.author, ctx.project.id, ctx.session.id, nil, %{
+               body: "Please review",
+               client_request_id: Ecto.UUID.generate(),
+               mention_user_ids: [user.id]
+             })
+
+    assert_push_event(view, "notifications_updated", %{unreadCount: 1})
+    refute_push_event(view, "notifications_updated", %{}, 250)
+
+    assert {:ok, _} =
+             Storyarn.Projects.reply_to_comment_thread(ctx.peer, ctx.project.id, detail.thread.id, %{
+               body: "One more question",
+               parent_id: hd(detail.messages).id,
+               client_request_id: Ecto.UUID.generate(),
+               mention_user_ids: [user.id]
+             })
+
+    assert_push_event(view, "notifications_updated", %{unreadCount: 2})
+    refute_push_event(view, "notifications_updated", %{}, 250)
+  end
+
+  test "session renames and other members' conversation activity never refresh the bell", %{
+    conn: conn,
+    user: user,
+    workspace: workspace
+  } do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    membership_fixture(ctx.project, user, "viewer")
+    {:ok, view, _} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+    assert {:ok, _} =
+             Storyarn.Ideation.update_session(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{
+               title: "A different title"
+             })
+
+    assert {:ok, detail} =
+             Storyarn.Projects.create_ideation_comment(ctx.author, ctx.project.id, ctx.session.id, nil, %{
+               body: "A discussion without notifications for this member",
+               client_request_id: Ecto.UUID.generate()
+             })
+
+    assert {:ok, _} =
+             Storyarn.Projects.set_comment_thread_status(
+               ctx.author,
+               ctx.project.id,
+               detail.thread.id,
+               "resolved",
+               detail.thread.revision
+             )
+
+    refute_push_event(view, "notifications_updated", %{}, 250)
+  end
+
+  test "following and reading a conversation do not refresh the actor's notification bell", %{
+    conn: conn,
+    scope: scope,
+    user: user,
+    workspace: workspace
+  } do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    membership_fixture(ctx.project, user, "viewer")
+
+    assert {:ok, detail} =
+             Storyarn.Projects.create_ideation_comment(ctx.author, ctx.project.id, ctx.session.id, nil, %{
+               body: "Personal participation",
+               client_request_id: Ecto.UUID.generate()
+             })
+
+    {:ok, view, _} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+    assert {:ok, _} =
+             Storyarn.Projects.set_ideation_comment_following(scope, ctx.project.id, detail.thread.id, true)
+
+    assert {:ok, _} =
+             Storyarn.Projects.mark_ideation_comment_read(
+               scope,
+               ctx.project.id,
+               detail.thread.id,
+               hd(detail.messages).id
+             )
+
+    refute_push_event(view, "notifications_updated", %{}, 250)
+  end
+
   defp notification_fixture(scope, suffix) do
     {:ok, {:created, notification}} =
       Notifications.deliver(scope, nil, %{

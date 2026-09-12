@@ -14,8 +14,9 @@ defmodule Storyarn.Ideation.Ideas.Commands.SetPrivateMode do
   def run(_, _, _, _, _), do: {:error, :invalid_parameters}
 
   defp set_locked(access, revision, enabled) do
-    with {:ok, _result} <- PrivateMode.set_locked(access, revision, enabled) do
-      Transaction.success(%{id: access.session_id, private_mode: enabled}, [:shared])
+    with {:ok, result} <- PrivateMode.set_locked(access, revision, enabled) do
+      audiences = if result.changed, do: [:shared, :comment_sources], else: []
+      Transaction.success(%{id: access.session_id, private_mode: enabled}, audiences)
     end
   end
 end

@@ -140,22 +140,24 @@ defmodule Storyarn.Platform.Notifications do
   Lists the scoped user's recent, currently visible notifications.
 
   Supported options are `:unread_only` and `:limit`. The default limit is 20
-  and values are capped at 100.
+  and values are capped at 100. Comment notifications are hidden unless the
+  application supplies a server-built `:comment_visibility` SQL predicate.
+  User-facing consumers enter through `Storyarn.NotificationInbox`.
   """
   @spec list_notifications(Scope.t(), keyword()) :: [Notification.t()]
   defdelegate list_notifications(scope, opts \\ []), to: Delivery
 
   @doc "Returns the scoped user's count of currently visible unread notifications."
-  @spec unread_count(Scope.t()) :: non_neg_integer()
-  defdelegate unread_count(scope), to: Delivery
+  @spec unread_count(Scope.t(), keyword()) :: non_neg_integer()
+  defdelegate unread_count(scope, opts \\ []), to: Delivery
 
   @doc "Marks one currently visible notification as read."
-  @spec mark_read(Scope.t(), integer()) :: {:ok, Notification.t()} | {:error, :not_found}
-  defdelegate mark_read(scope, notification_id), to: Delivery
+  @spec mark_read(Scope.t(), integer(), keyword()) :: {:ok, Notification.t()} | {:error, :not_found}
+  defdelegate mark_read(scope, notification_id, opts \\ []), to: Delivery
 
   @doc "Marks all currently visible unread notifications for the scoped user as read."
-  @spec mark_all_read(Scope.t()) :: {:ok, non_neg_integer()}
-  defdelegate mark_all_read(scope), to: Delivery
+  @spec mark_all_read(Scope.t(), keyword()) :: {:ok, non_neg_integer()}
+  defdelegate mark_all_read(scope, opts \\ []), to: Delivery
 
   @doc "Subscribes the current process to notification invalidations for the scoped user."
   @spec subscribe(Scope.t()) :: :ok | {:error, :not_found}

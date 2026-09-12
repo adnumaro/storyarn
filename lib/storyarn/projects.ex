@@ -1060,11 +1060,33 @@ defmodule Storyarn.Projects do
   defdelegate subscribe_sheet_comments(scope, project_id, sheet_id), to: Comments, as: :subscribe_sheet
   defdelegate unsubscribe_sheet_comments(project_id, sheet_id), to: Comments, as: :unsubscribe_sheet
 
-  defdelegate list_ideation_comment_threads(scope, project_id, session_id, idea_id \\ nil, opts \\ []),
+  @doc "Subscribes to content-free invalidations; consumers must refetch with their scope."
+  defdelegate subscribe_ideation_conversations(scope), to: Comments, as: :subscribe_conversations
+  defdelegate subscribe_ideation_comment_source_changes(scope), to: Comments, as: :subscribe_source_changes
+  defdelegate subscribe_ideation_comment_participation(scope), to: Comments, as: :subscribe_participation
+  defdelegate invalidate_ideation_comment_sources(project_id), to: Comments, as: :invalidate_ideation_sources
+  defdelegate invalidate_ideation_comment_activity(project_id), to: Comments, as: :invalidate_ideation_activity
+
+  @doc false
+  defdelegate restricted_comment_message_ids_query(), to: Comments
+
+  @doc false
+  defdelegate readable_comment_message_ids_query(scope), to: Comments
+
+  @doc "Lists currently readable brainstorming conversations with activity pagination and personal filters."
+  defdelegate list_ideation_conversations(scope, opts \\ []), to: Comments
+
+  @doc "Explicitly follows or unfollows an accessible brainstorming thread for the current user."
+  defdelegate set_ideation_comment_following(scope, project_id, thread_id, following), to: Comments, as: :set_following
+
+  @doc "Acknowledges an observed message of an accessible brainstorming thread without regressing read state."
+  defdelegate mark_ideation_comment_read(scope, project_id, thread_id, message_id), to: Comments, as: :mark_thread_read
+
+  defdelegate list_ideation_comment_threads(scope, project_id, session_id, anchor \\ nil, opts \\ []),
     to: Comments,
     as: :list_ideation_threads
 
-  defdelegate create_ideation_comment(scope, project_id, session_id, idea_id, attrs), to: Comments, as: :create_ideation
+  defdelegate create_ideation_comment(scope, project_id, session_id, anchor, attrs), to: Comments, as: :create_ideation
   defdelegate subscribe_ideation_comments(scope, project_id, session_id), to: Comments, as: :subscribe_ideation
   defdelegate unsubscribe_ideation_comments(project_id, session_id), to: Comments, as: :unsubscribe_ideation
 end

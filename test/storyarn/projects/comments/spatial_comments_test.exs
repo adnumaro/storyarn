@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.SpatialCommentsTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Platform
+  alias Storyarn.NotificationInbox
   alias Storyarn.Projects
   alias Storyarn.Projects.Comments.Message
   alias Storyarn.Projects.Comments.Thread
@@ -47,7 +47,7 @@ defmodule Storyarn.Projects.SpatialCommentsTest do
     assert %{^key => %{node_id: nil, thread_id: ^thread_id}} =
              Projects.comment_destinations(recipient_scope, [message.id])
 
-    assert Enum.any?(Platform.list_notifications(recipient_scope), &(&1.entity_id == message.id))
+    assert Enum.any?(NotificationInbox.list_notifications(recipient_scope), &(&1.entity_id == message.id))
     assert {:ok, %{}} = Projects.flow_comment_counts(ctx.scope, ctx.project.id, ctx.flow.id)
   end
 

@@ -24,18 +24,23 @@ defmodule Storyarn.Ideation.Sessions.Execution.Mutation do
       with {:ok, access} <- ProjectAccess.write(scope, project_id),
            %Session{} = session <- lock_session(project_id, session_id),
            :ok <- authorize_manager(session, access),
-           :ok <- check_revision(session, revision) do
-        callback.(session, access)
+           :ok <- check_revision(session, revision),
+           {:ok, updated} <- callback.(session, access) do
+        {:ok, {updated, Invalidation.comment_change(session, updated)}}
       else
         nil -> {:error, :not_found}
         {:error, reason} -> {:error, reason}
       end
     end
     |> Repo.transact()
-    |> Invalidation.notify(project_id)
+    |> complete(project_id)
   end
 
   def run(_scope, _project_id, _session_id, _revision, _callback), do: {:error, :invalid_revision}
+
+  defp complete({:ok, {session, change}}, project_id), do: Invalidation.notify({:ok, session}, project_id, change)
+
+  defp complete(result, _project_id), do: result
 
   # Only called inside the command transaction: the session and audit record
   # either both commit or neither does. No asynchronous history write.

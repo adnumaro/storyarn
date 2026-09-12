@@ -103,7 +103,7 @@ defmodule StoryarnWeb.E2E.BrainstormingCanvasRefinementTest do
       |> click("#connection-direction-both")
       |> assert_edges(edge <> "[marker-start][marker-end]")
       |> assert_has("#connection-direction-both[aria-pressed=true]")
-      |> click("#delete-canvas-connection")
+      |> press("#brainstorming-canvas", "Delete")
       |> assert_edges(edge, 0)
       |> press("#brainstorming-canvas", "ControlOrMeta+z")
       |> assert_edges(edge <> "[marker-start][marker-end]")

@@ -132,7 +132,7 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
     assert all == []
   end
 
-  test "the trash action cancels a new unsaved note", %{conn: conn} do
+  test "the delete shortcut cancels a new unsaved note", %{conn: conn} do
     ctx = ideation_fixture()
     project = Repo.preload(ctx.project, :workspace)
     path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/brainstorming/#{ctx.session.id}"
@@ -145,8 +145,11 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
       |> press("#brainstorming-canvas", "n")
       |> assert_has(".canvas-note", count: 1)
 
-    {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: "button[aria-label='Delete note']", timeout: 10_000)
-    refute_has(browser, ".canvas-note")
+    browser
+    |> press("[contenteditable=true]", "Escape")
+    |> press("#brainstorming-canvas", "Delete")
+    |> refute_has(".canvas-note")
+
     {:ok, []} = Ideation.list_ideas(ctx.author, project.id, ctx.session.id, state: :all)
   end
 

@@ -171,7 +171,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       restore_group: 6
     ]
 
-    assert Storyarn.Ideation.Groups.__info__(:functions) == Enum.sort(group_operations)
+    assert Storyarn.Ideation.Groups.__info__(:functions) ==
+             Enum.sort(group_operations ++ [comment_source: 5, comment_sources_query: 0])
 
     assert Storyarn.Ideation.__info__(:functions) ==
              Enum.sort(
@@ -181,6 +182,9 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                  [
                    comment_source: 4,
                    comment_source: 5,
+                   comment_sources_query: 1,
+                   group_comment_source: 4,
+                   group_comment_source: 5,
                    capture_recovery: 1,
                    validate_recovery: 1,
                    restore_recovery: 2,
@@ -193,6 +197,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                idea_operations ++
                  [
                    comment_source: 5,
+                   comment_sources_query: 0,
                    set_private_mode_locked: 3,
                    notify_timer_reveal: 2,
                    group_sources: 2,
@@ -205,6 +210,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                expected ++
                  [
                    comment_source: 4,
+                   comment_sources_query: 0,
                    scheduled_timers: 0,
                    lock_for_contribution: 3,
                    set_canvas_mode_locked: 3,

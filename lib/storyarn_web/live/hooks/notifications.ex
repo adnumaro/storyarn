@@ -10,7 +10,9 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.NotificationInbox
   alias Storyarn.Platform
+  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.NotificationHelpers
 
@@ -30,11 +32,13 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
     if Phoenix.LiveView.connected?(socket) do
       :ok = Platform.subscribe_notifications(scope)
+      :ok = Projects.subscribe_ideation_comment_source_changes(scope)
     end
 
     socket =
       socket
       |> assign(:notification_filter, :all)
+      |> assign(:comment_notification_refresh_pending, false)
       |> Phoenix.LiveView.attach_hook(
         :notification_events,
         :handle_event,
@@ -69,7 +73,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
        when valid_notification_id(notification_id) do
     with :ok <- Authorize.authorize(socket, :manage_notifications),
          {:ok, _notification} <-
-           Platform.mark_notification_read(socket.assigns.current_scope, notification_id) do
+           NotificationInbox.mark_notification_read(socket.assigns.current_scope, notification_id) do
       {state, socket} = refresh(socket)
       {:halt, state, socket}
     else
@@ -84,7 +88,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   defp handle_notification_event("mark_all_notifications_read", %{}, socket) do
     with :ok <- Authorize.authorize(socket, :manage_notifications),
-         {:ok, _count} <- Platform.mark_all_notifications_read(socket.assigns.current_scope) do
+         {:ok, _count} <- NotificationInbox.mark_all_notifications_read(socket.assigns.current_scope) do
       {state, socket} = refresh(socket)
       {:halt, state, socket}
     else
@@ -99,6 +103,23 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
   defp handle_notification_event(_event, _params, socket), do: {:cont, socket}
 
   defp handle_notification_info(:notifications_changed, socket) do
+    {state, socket} = refresh(socket)
+    {:halt, Phoenix.LiveView.push_event(socket, "notifications_updated", state)}
+  end
+
+  defp handle_notification_info({:ideation_comment_sources_changed, _project_id}, socket) do
+    # This user-scoped subscription receives only relevant project changes,
+    # never conversation activity or personal participation. Coalesce audience changes;
+    # the inbox/count still comes from a fresh audience-filtered read.
+    if not socket.assigns.comment_notification_refresh_pending do
+      Process.send_after(self(), :refresh_comment_notification_sources, 150)
+    end
+
+    {:halt, assign(socket, :comment_notification_refresh_pending, true)}
+  end
+
+  defp handle_notification_info(:refresh_comment_notification_sources, socket) do
+    socket = assign(socket, :comment_notification_refresh_pending, false)
     {state, socket} = refresh(socket)
     {:halt, Phoenix.LiveView.push_event(socket, "notifications_updated", state)}
   end
