@@ -1,0 +1,110 @@
+test/storyarn/ideation/contextual_sessions_test.exs
+  s_93251447e419b7::t_19b02e493cb6ee 14,294,298,300-305,307-325,331,333,338-346,398-404
+  s_93251447e419b7::t_b07df459c4e91c 405-406
+lib/storyarn_web/live/shared/contextual_explorations.ex
+  s_93251447e419b7::t_b3a80b6f493257 59-63,73-87,180-183,192-197,204-207,230-231,240-243,250-252
+lib/storyarn_web/live/flow_live/show.ex
+  s_93251447e419b7::t_c7d844f783e9c9 86,90-94,96-99,102-111
+test/storyarn_web/live/contextual_source_header_diff_test.exs
+  s_93251447e419b7::t_6b6c9ca3750631 30
+  s_93251447e419b7::t_9e8d93f23e956d 1-29,31-57
+lib/storyarn_web/live/ideation_live/handlers/reference_handlers.ex
+  s_93251447e419b7::t_d34f2c4cd1d6f5 18,54-65,67,176-191,197-206
+  s_93251447e419b7::t_03b171a12dd2f1 207-208
+test/storyarn_web/live/ideation_live/references_test.exs
+  s_93251447e419b7::t_10b650cfd36a99 18-102,191,195,214,227,233
+lib/storyarn/ideation/references/rules/contextual_input.ex
+  s_93251447e419b7::t_19b02e493cb6ee 59,61
+assets/app/live/ideation/ExplorationLauncher.vue
+  s_93251447e419b7::t_b3a80b6f493257 73,232-234,236-255,397-399,401-413,415
+  s_93251447e419b7::t_35f8f216090b52 414,416-424
+assets/app/test/live/shared/ContextualSourceHeader.test.ts
+  s_93251447e419b7::t_6b6c9ca3750631 23-24,26,41
+  s_93251447e419b7::t_83a94503dcd6cb 16-19,59,76-77
+assets/app/test/live/ideation/ReferencesPanel.test.ts
+  s_93251447e419b7::t_10b650cfd36a99 49,76-133,136
+  s_93251447e419b7::t_d34f2c4cd1d6f5 35
+  s_93251447e419b7::t_d139bd0cd1cba4 134-135,137-141
+lib/storyarn_web/live/scene_live/show.ex
+  s_93251447e419b7::t_c7d844f783e9c9 107
+lib/storyarn/ideation/references/execution/contextual_session.ex
+  s_93251447e419b7::t_19b02e493cb6ee 28,37,40-42
+  s_93251447e419b7::t_cb2ae1efdd7b28 39
+assets/app/live/ideation/explorationTypes.ts
+  s_93251447e419b7::t_b3a80b6f493257 18-21,31
+assets/app/test/live/ideation/BoardPanels.test.ts
+  s_93251447e419b7::t_d34f2c4cd1d6f5 28
+lib/storyarn/ideation/sessions/execution/contribution_access.ex
+  s_93251447e419b7::t_19b02e493cb6ee 36
+assets/app/live/ideation/referenceTypes.ts
+  s_93251447e419b7::t_d34f2c4cd1d6f5 45
+lib/storyarn_web/live/sheet_live/show.ex
+  s_93251447e419b7::t_c7d844f783e9c9 83,87-88
+assets/app/live/ideation/ReferencesPanel.vue
+  s_93251447e419b7::t_d34f2c4cd1d6f5 2,50,78-95,339,341-346
+  s_93251447e419b7::t_5255a32d5423bc 347-350,357-360,382-386,395-399
+assets/app/locales/en/brainstorming-explorations.json
+  s_93251447e419b7::t_b3a80b6f493257 16-17
+assets/app/live/shared/ContextualSourceHeader.vue
+  s_93251447e419b7::t_c7d844f783e9c9 8-9,12,22
+assets/app/locales/es/brainstorming-explorations.json
+  s_93251447e419b7::t_b3a80b6f493257 16-17
+test/storyarn_web/live/ideation_live/contextual_pagination_test.exs
+  s_93251447e419b7::t_1f365e3cfd880a 1-34,36-195
+  s_93251447e419b7::t_55ba689744582f 35
+  s_93251447e419b7::t_11993458c4e845 196-200
+assets/app/test/live/ideation/ExplorationLauncher.test.ts
+  s_93251447e419b7::t_de2fc7d3d1dac9 21-24,227,229-258,265-307
+  s_93251447e419b7::t_ae2b0ff4c6eb5a 228,259-264
+  s_93251447e419b7::t_528a4589d20d82 308
+test/e2e/workspaces/projects/ideation/contextual_explorations_test.exs
+  s_93251447e419b7::t_56db73958351b5 108-187
+priv/gettext/default.pot
+  s_93251447e419b7::t_836ff3c85f19ac 53
+priv/gettext/en/LC_MESSAGES/default.po
+  s_93251447e419b7::t_7f3c210ae9e244 53
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_93251447e419b7::t_b8698aab5034f2 48,106,191,201,347,379,384,389,394
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_93251447e419b7::t_abff373639a736 112,312
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_93251447e419b7::t_804b33a3748781 34-35,102
+priv/gettext/es/LC_MESSAGES/default.po
+  s_93251447e419b7::t_caa58d91014dd2 53
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_93251447e419b7::t_031f46cb96dd7a 48,106,191,201,347,379,384,389,394
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_93251447e419b7::t_06418a576ebd59 112,312
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_93251447e419b7::t_4c3bc2f7f660cb 34-35,102
+priv/gettext/flows.pot
+  s_93251447e419b7::t_5c9a9d43ea4c66 48,106,191,201,347,379,384,389,394
+priv/gettext/sheets.pot
+  s_93251447e419b7::t_2704036180cf12 112,312
+priv/gettext/versioning.pot
+  s_93251447e419b7::t_f98ee9ab9da3a7 34-35,102
+test/storyarn_web/live/flow_live/show_test.exs
+  s_93251447e419b7::t_fdc8244549b44a 38,355
+test/storyarn_web/live/scene_live/show_test.exs
+  s_93251447e419b7::t_fc736117e0374c 39
+test/storyarn_web/live/sheet_live/comments_test.exs
+  s_93251447e419b7::t_485a19060de89f 410
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_93251447e419b7::t_2f70a8beaf38d6 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2152e4a7a4dcc0a23868c4ad16a12a95fe654e1c",
+  "prompts": {},
+  "sessions": {
+    "s_93251447e419b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09690-e161-7403-be42-d1df684f0dc6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
