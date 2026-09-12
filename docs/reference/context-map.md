@@ -31,6 +31,14 @@ imports or a general-purpose cross-context writer. Target owners authorize
 their projections through Projects, and Web composes Projects authorization
 with Ideation for the panel's current edit capability.
 
+Contextual entry from Sheets, Flows and Scenes is composed by
+`StoryarnWeb.Live.Shared.ContextualExplorations`, a presentation coordinator.
+It owns dialog state, authorized navigation and permission invalidation; it
+enters `Storyarn.Ideation` for contextual reads, atomic session creation and
+linking. The three editors do not call each other's adapters or acquire new
+write authority. Ideation persists retry receipts as existing reference and session revisions,
+so contextual creation, linking and recovery share the same provenance contract.
+
 The first context contract is explicitly overview-only (`overview_v1`), not a
 version of the complete document or an automatic structural diff. Historical
 previews require current access to both the source and the same target

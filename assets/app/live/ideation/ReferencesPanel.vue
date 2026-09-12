@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   ArrowUpRight,
@@ -47,6 +47,7 @@ const type = ref<ReferenceTargetType>("sheet");
 const relation = ref<ReferenceRelation>("reference");
 const pending = ref<string | null>(null);
 const failure = ref<string | null>(null);
+const referenceElements = ref<HTMLElement[]>([]);
 const confirmation = ref<{
   action: "refresh" | "remove";
   reference: BrainstormingReference;
@@ -74,6 +75,24 @@ function reset() {
 }
 
 watch(() => `${epoch}:${sessionId}:${state.context}:${state.open}`, reset);
+const focusContext = computed(() =>
+  JSON.stringify([epoch, sessionId, state.context, state.open, state.focusedReferenceId]),
+);
+watch(
+  focusContext,
+  async (context) => {
+    if (!state.open || !state.focusedReferenceId) return;
+    await nextTick();
+    if (context !== focusContext.value) return;
+    const element = referenceElements.value.find(
+      (item) => item.id === `brainstorming-reference-${state.focusedReferenceId}`,
+    );
+    if (!element?.isConnected) return;
+    element.focus({ preventScroll: true });
+    element.scrollIntoView({ block: "nearest" });
+  },
+  { immediate: true, flush: "post" },
+);
 onUnmounted(() => {
   token = null;
 });
@@ -317,16 +336,28 @@ function confirm() {
       </div>
       <article
         v-for="reference in state.items"
+        ref="referenceElements"
         :id="`brainstorming-reference-${reference.id}`"
-        :key="reference.id"
-        class="space-y-3 rounded-lg border border-border p-3"
+        :key="`${state.context}:${reference.id}`"
+        tabindex="-1"
+        :aria-labelledby="`brainstorming-reference-title-${reference.id}`"
+        :data-focused="reference.id === state.focusedReferenceId ? 'true' : undefined"
+        class="scroll-mt-2 space-y-3 rounded-lg border p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        :class="
+          reference.id === state.focusedReferenceId
+            ? 'border-primary/60 bg-primary/5'
+            : 'border-border'
+        "
       >
         <div class="space-y-1">
           <div class="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
             <span>{{ t(`brainstormingReferences.types.${reference.targetType}`) }}</span>
             <span>{{ t(`brainstormingReferences.relations.${reference.relation}`) }}</span>
           </div>
-          <h3 class="break-words text-sm font-medium">
+          <h3
+            :id="`brainstorming-reference-title-${reference.id}`"
+            class="break-words text-sm font-medium"
+          >
             {{ reference.current?.name ?? t("brainstormingReferences.unavailable") }}
           </h3>
           <p
@@ -348,7 +379,11 @@ function confirm() {
           {{ t("brainstormingReferences.unavailableHelp") }}
         </p>
         <template v-else>
-          <details v-if="reference.base" class="rounded-md bg-muted/40 p-2">
+          <details
+            v-if="reference.base"
+            :open="reference.id === state.focusedReferenceId"
+            class="rounded-md bg-muted/40 p-2"
+          >
             <summary class="cursor-pointer text-xs font-medium">
               {{ t("brainstormingReferences.base") }}
             </summary>
@@ -357,7 +392,11 @@ function confirm() {
               {{ t("brainstormingReferences.capturedAt", { date: date(reference.capturedAt) }) }}
             </p>
           </details>
-          <details v-if="reference.current" class="rounded-md border border-border p-2">
+          <details
+            v-if="reference.current"
+            :open="reference.id === state.focusedReferenceId"
+            class="rounded-md border border-border p-2"
+          >
             <summary class="cursor-pointer text-xs font-medium">
               {{ t("brainstormingReferences.current") }}
             </summary>

@@ -56,7 +56,8 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
   defp valid_links?(row, "session_revisions", index) do
     Map.has_key?(index.sessions, row["session_id"]) and positive?(row["number"]) and
-      is_map(row["snapshot"]) and round_snapshot?(row, index) and timer_snapshot?(row)
+      is_map(row["snapshot"]) and round_snapshot?(row, index) and timer_snapshot?(row) and
+      contextual_snapshot?(row, index)
   end
 
   defp valid_links?(row, "rounds", index), do: Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
@@ -190,6 +191,32 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   end
 
   defp round_snapshot?(_, _), do: true
+
+  defp contextual_snapshot?(%{"action" => "context_linked", "snapshot" => snapshot} = row, index) do
+    request = snapshot["contextual_request"]
+
+    is_map(request) and Enum.sort(Map.keys(request)) == ~w(fingerprint key reference_identity) and
+      match?({:ok, _}, Ecto.UUID.cast(request["key"])) and
+      is_binary(request["fingerprint"]) and Regex.match?(~r/\A[0-9a-f]{64}\z/, request["fingerprint"]) and
+      contextual_reference?(request["reference_identity"], row["session_id"], index.references)
+  end
+
+  defp contextual_snapshot?(_, _), do: true
+
+  defp contextual_reference?(identity, session_id, references) do
+    case Ecto.UUID.dump(identity) do
+      {:ok, bytes} ->
+        identity = Base.encode64(bytes)
+
+        Enum.any?(references, fn {_, reference} ->
+          reference["session_id"] == session_id and is_nil(reference["idea_id"]) and
+            reference["recovery_identity"] == identity
+        end)
+
+      _ ->
+        false
+    end
+  end
 
   defp timer_snapshot?(%{"action" => action, "snapshot" => snapshot})
        when action in ~w(timer_started timer_paused timer_resumed timer_extended timer_cancelled timer_elapsed),

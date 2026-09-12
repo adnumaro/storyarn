@@ -18,6 +18,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.ContextualExplorations, as: ExplorationHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.SheetLive.Handlers.AudioHandlers
   alias StoryarnWeb.SheetLive.Handlers.BlockHandlers
@@ -77,12 +78,16 @@ defmodule StoryarnWeb.SheetLive.Show do
     >
       <.vue
         :if={@sheet}
-        v-component="live/sheet/show/SheetHeader"
+        v-component="live/shared/ContextualSourceHeader"
         v-socket={@socket}
+        v-diff={Application.get_env(:live_vue, :enable_props_diff, true)}
         v-inject:top-left="project-layout"
         id="sheet-header"
+        source-type="sheet"
         health={@sheet_health}
         comments={sheet_header_comment_props(assigns)}
+        exploration-state={@explorations}
+        exploration-source-key={"sheet:#{@sheet.id}"}
       />
 
       <.sheet_content
@@ -369,6 +374,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       |> assign(:formula_search_has_more, false)
       |> assign(:highlight_target, nil)
       |> assign(:highlight_revision, 0)
+      |> ExplorationHandlers.init(:sheet)
       |> UndoRedoStack.init()
       |> CommentHandlers.init()
 
@@ -410,7 +416,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket
       end
 
-    {:noreply, socket}
+    {:noreply, ExplorationHandlers.source_changed(socket)}
   end
 
   defp assign_sheet_highlight(socket, requested_sheet_id, raw_highlight) do
@@ -564,6 +570,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   # --- Tabs ---
 
   @impl true
+  def handle_event("exploration_" <> action, params, socket), do: ExplorationHandlers.handle(action, params, socket)
+
   def handle_event(event, _params, socket) when event in ~w(main_sidebar_toggle main_sidebar_pin main_sidebar_init) do
     {:noreply, socket}
   end

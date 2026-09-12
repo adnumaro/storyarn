@@ -31,6 +31,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Scenes
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.ContextualExplorations, as: ExplorationHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
@@ -98,11 +99,14 @@ defmodule StoryarnWeb.SceneLive.Show do
     >
       <.vue
         :if={@scene}
-        v-component="live/scene/show/SceneHeader"
+        v-component="live/shared/ContextualSourceHeader"
         v-socket={@socket}
         v-inject:top-left="project-layout"
         id="scene-header"
+        source-type="scene"
         header={scene_header_props(assigns)}
+        exploration-state={@explorations}
+        exploration-source-key={"scene:#{@scene.id}"}
       />
 
       <.vue
@@ -455,7 +459,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       |> assign(:pending_delete_id, nil)
       |> maybe_allow_background_upload(can_edit)
 
-    {:ok, CommentHandlers.init(socket)}
+    {:ok, socket |> ExplorationHandlers.init(:scene) |> CommentHandlers.init()}
   end
 
   @impl true
@@ -493,7 +497,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket
       end
 
-    {:noreply, socket}
+    {:noreply, ExplorationHandlers.source_changed(socket)}
   end
 
   defp load_scene(socket, scene_id) do
@@ -732,6 +736,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   @valid_tools ~w(select pan rectangle triangle circle freeform pin annotation connector ruler)
 
   @impl true
+  def handle_event("exploration_" <> action, params, socket), do: ExplorationHandlers.handle(action, params, socket)
+
   def handle_event("comments_open", params, socket) do
     CommentHandlers.handle("open", params, prepare_for_comments(socket))
   end

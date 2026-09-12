@@ -35,7 +35,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
   defp get_scene_header_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "live/scene/show/SceneHeader")
+    |> LiveVue.Test.get_vue(name: "live/shared/ContextualSourceHeader")
     |> then(& &1.props["header"])
   end
 

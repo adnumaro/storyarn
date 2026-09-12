@@ -855,6 +855,11 @@ defmodule Storyarn.Projects do
           | {:error, :not_found | :unauthorized | :ownership_invariant_violation | :authorization_transaction_required}
   defdelegate authorize_locked(scope, project_id, action), to: Access
 
+  @doc "Revalidates current access with an explicit shared or exclusive Project lock before consumer locks."
+  @spec authorize_locked(scope(), integer(), action(), :share | :update) ::
+          {:ok, project(), membership()} | {:error, atom()}
+  defdelegate authorize_locked(scope, project_id, action, lock_mode), to: Access
+
   @doc """
   Serializes durable background bookkeeping with project snapshot capture and restore.
 

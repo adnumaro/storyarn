@@ -33,7 +33,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
       panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
-      header = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
+      header = LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")
 
       assert header.props["flow-name"] == "Canonical Flow"
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"
@@ -351,7 +351,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       render_async(view, 2000)
 
-      header = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
+      header = LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")
       health = header.props["flow-health"]["health"]
       item = Enum.find(health["warningItems"], &(&1["entityId"] == dialogue.id))
       codes = Enum.map(item["reasons"], & &1["code"])

@@ -42,6 +42,7 @@ export interface ReferencesPanelState {
   open: boolean;
   context: string;
   ideaId: number | null;
+  focusedReferenceId: number | null;
   items: BrainstormingReference[];
   nextCursor: number | null;
   results: ReferenceTarget[];

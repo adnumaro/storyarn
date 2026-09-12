@@ -15,6 +15,91 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     %{ctx | project: Repo.preload(ctx.project, :workspace)}
   end
 
+  test "opening an older reference pins it once without changing the normal pagination cursor", ctx do
+    sheet = sheet_fixture(ctx.project, %{name: "Starting design"})
+    reference = add_reference(ctx, sheet.id)
+
+    for number <- 1..21 do
+      newer = sheet_fixture(ctx.project, %{name: "Later design #{number}"})
+      add_reference(ctx, newer.id)
+    end
+
+    {:ok, first_page} = Ideation.list_references(ctx.author, ctx.project.id, ctx.session.id, nil)
+    refute Enum.any?(first_page.references, &(&1.id == reference.id))
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
+    render_hook(view, "references_open", payload(view, ctx, %{reference_id: reference.id}))
+    assert_reply(view, %{status: "ok"})
+    assert state(view)["focusedReferenceId"] == reference.id
+    assert Enum.map(state(view)["items"], & &1["id"]) == [reference.id | Enum.map(first_page.references, & &1.id)]
+    assert state(view)["nextCursor"] == first_page.next_cursor
+
+    {:ok, second_page} =
+      Ideation.list_references(ctx.author, ctx.project.id, ctx.session.id, nil, before_id: first_page.next_cursor)
+
+    render_hook(view, "references_load_more", payload(view, ctx, %{}))
+    assert state(view)["nextCursor"] == second_page.next_cursor
+    assert hd(state(view)["items"])["id"] == reference.id
+    assert Enum.count(state(view)["items"], &(&1["id"] == reference.id)) == 1
+    assert Enum.sort(Enum.map(state(view)["items"], & &1["id"])) == Enum.sort(Enum.map(second_page.references, & &1.id))
+
+    {:ok, _} = Sheets.update_sheet(sheet, %{name: "Revised starting design"})
+    render_hook(view, "references_reload", payload(view, ctx, %{}))
+    assert state(view)["nextCursor"] == first_page.next_cursor
+
+    assert %{"id" => id, "status" => "changed", "current" => %{"name" => "Revised starting design"}} =
+             hd(state(view)["items"])
+
+    assert id == reference.id
+  end
+
+  test "focused references must belong to the requested session and shared idea scope", ctx do
+    sheet = sheet_fixture(ctx.project)
+    reference = add_reference(ctx, sheet.id)
+    shared = ctx |> idea_fixture() |> then(&publish_idea(ctx, &1))
+    idea_reference = add_reference(ctx, sheet.id, shared.id)
+    {:ok, other_session} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Another exploration"})
+    other_reference = add_reference(%{ctx | session: other_session}, sheet.id)
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
+
+    for attrs <- [%{reference_id: idea_reference.id}, %{reference_id: other_reference.id}, %{reference_id: "invalid"}] do
+      render_hook(view, "references_open", payload(view, ctx, %{reference_id: reference.id}))
+      assert state(view)["focusedReferenceId"] == reference.id
+      render_hook(view, "references_open", payload(view, ctx, attrs))
+      assert_reply(view, %{status: "error"})
+      refute state(view)["open"]
+      assert state(view)["focusedReferenceId"] == nil
+      assert state(view)["items"] == []
+    end
+
+    render_hook(view, "references_open", payload(view, ctx, %{idea_id: shared.id, reference_id: idea_reference.id}))
+    assert_reply(view, %{status: "ok"})
+    assert state(view)["focusedReferenceId"] == idea_reference.id
+  end
+
+  test "removing a focused reference clears its pinned details on reload", ctx do
+    sheet = sheet_fixture(ctx.project)
+    reference = add_reference(ctx, sheet.id)
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
+    render_hook(view, "references_open", payload(view, ctx, %{reference_id: reference.id}))
+    assert state(view)["focusedReferenceId"] == reference.id
+
+    {:ok, _} =
+      Ideation.remove_reference(
+        ctx.author,
+        ctx.project.id,
+        ctx.session.id,
+        nil,
+        reference.id,
+        reference.version,
+        Ecto.UUID.generate()
+      )
+
+    render_hook(view, "references_reload", payload(view, ctx, %{}))
+    refute state(view)["open"]
+    assert state(view)["focusedReferenceId"] == nil
+    assert state(view)["items"] == []
+  end
+
   test "links an existing sheet, compares saved context and explicitly refreshes it", ctx do
     sheet = sheet_fixture(ctx.project, %{name: "Original design", description: "Starting context"})
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
@@ -103,11 +188,11 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     sheet = sheet_fixture(ctx.project)
     private = idea_fixture(ctx)
     shared = ctx |> idea_fixture() |> then(&publish_idea(ctx, &1))
-    add_reference(ctx, sheet.id, shared.id)
+    reference = add_reference(ctx, sheet.id, shared.id)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
     render_hook(view, "references_open", payload(view, ctx, %{idea_id: private.id}))
     refute state(view)["open"]
-    render_hook(view, "references_open", payload(view, ctx, %{idea_id: shared.id}))
+    render_hook(view, "references_open", payload(view, ctx, %{idea_id: shared.id, reference_id: reference.id}))
     assert state(view)["open"]
     assert state(view)["items"] != []
     before_privacy_change = :sys.get_state(view.pid).socket
@@ -126,6 +211,7 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     assert accepted.assigns.references.items == []
     assert accepted.assigns.references.results == []
     assert accepted.assigns.references.history == []
+    assert accepted.assigns.references.focusedReferenceId == nil
 
     send(view.pid, {:ideation_references_changed, ctx.session.id})
     render(view)
@@ -138,12 +224,13 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     sheet = sheet_fixture(ctx.project, %{name: "No stale previews"})
     reference = add_reference(ctx, sheet.id)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
-    render_hook(view, "references_open", payload(view, ctx, %{}))
+    render_hook(view, "references_open", payload(view, ctx, %{reference_id: reference.id}))
     render_hook(view, "references_history", payload(view, ctx, %{reference_id: reference.id}))
     assert state(view)["history"] != []
     {:ok, _} = Sheets.delete_sheet(sheet)
     render_hook(view, "references_reload", payload(view, ctx, %{}))
     assert [%{"status" => "unavailable", "base" => nil, "current" => nil}] = state(view)["items"]
+    assert state(view)["focusedReferenceId"] == reference.id
     assert state(view)["history"] == []
     render_hook(view, "references_history", payload(view, ctx, %{reference_id: reference.id}))
     assert_reply(view, %{status: "error"})

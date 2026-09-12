@@ -50,7 +50,7 @@ msgstr "Formato desconocido"
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:189
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:245
-#: lib/storyarn_web/live/flow_live/show.ex:1976
+#: lib/storyarn_web/live/flow_live/show.ex:1984
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:98
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:115
 #, elixir-autogen, elixir-format
@@ -136,7 +136,7 @@ msgstr "No se detectaron cambios"
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
-#: lib/storyarn_web/live/ideation_live/board.ex:132
+#: lib/storyarn_web/live/ideation_live/board.ex:133
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr "Brainstorming"
@@ -146,7 +146,7 @@ msgstr "Brainstorming"
 msgid "Untitled session"
 msgstr "Sesión sin título"
 
-#: lib/storyarn_web/live/ideation_live/board.ex:320
+#: lib/storyarn_web/live/ideation_live/board.ex:325
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr "Miembro"
