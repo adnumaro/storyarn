@@ -512,33 +512,42 @@ describe("spatial comment geometry and interactions", () => {
     );
   });
 
-  it("cycles overlapping contexts by keyboard before committing the chosen target", async () => {
-    const free = { ...thread, context: null };
-    const { wrapper, addNode } = setup({}, [free]);
-    addNode(43, { x: 140, y: 80 }, { width: 200, height: 120 });
-    await nextTick();
-    const pin = wrapper.get("#flow-comment-pin-12");
-    key(pin.element, "ArrowRight");
-    await nextTick();
-    expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Dialogue");
-    key(pin.element, "]");
-    await nextTick();
-    expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Node 43");
-    expect(live.pushEvent).not.toHaveBeenCalled();
-    key(pin.element, "Enter");
-    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
-      "comments_move",
-      {
-        thread_id: 12,
-        x: 165,
-        y: 110,
-        context: { type: "flow_node", id: "43", offset: { x: 25, y: 30 } },
-        expected_revision: 3,
-      },
-      expect.any(Function),
-      expect.any(Function),
-    );
-  });
+  it.each(["]", "PageDown"])(
+    "cycles overlapping contexts by keyboard before committing the chosen target using %s",
+    async (cycleKey) => {
+      const free = { ...thread, context: null };
+      const { wrapper, addNode } = setup({}, [free]);
+      addNode(43, { x: 140, y: 80 }, { width: 200, height: 120 });
+      await nextTick();
+      const pin = wrapper.get("#flow-comment-pin-12");
+      pointer(pin.element, "pointerdown", 430, 290);
+      pointer(window, "pointermove", 440, 290);
+      await nextTick();
+      expect(wrapper.find("#flow-comment-snap-preview button").exists()).toBe(false);
+      key(pin.element, "Escape");
+      key(pin.element, "ArrowRight");
+      await nextTick();
+      expect(wrapper.find("#flow-comment-snap-preview button").exists()).toBe(true);
+      expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Dialogue");
+      key(pin.element, cycleKey);
+      await nextTick();
+      expect(wrapper.get("#flow-comment-snap-preview").text()).toContain("Node 43");
+      expect(live.pushEvent).not.toHaveBeenCalled();
+      key(pin.element, "Enter");
+      expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+        "comments_move",
+        {
+          thread_id: 12,
+          x: 165,
+          y: 110,
+          context: { type: "flow_node", id: "43", offset: { x: 25, y: 30 } },
+          expected_revision: 3,
+        },
+        expect.any(Function),
+        expect.any(Function),
+      );
+    },
+  );
 
   it("does not reopen the tooltip when a keyboard drag loses focus", async () => {
     const { wrapper } = setup();

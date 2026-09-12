@@ -180,6 +180,16 @@ Existing node threads keep `nil` positions for the editor's default placement;
 new spatial threads require a position. Moving a pin changes its position and
 revision, never its source identity, messages, author or discussion activity time.
 
+Scene context remains optional: pins, zones, connections and annotations never own
+threads. Their offsets use Scene percentages relative to the pin/annotation position,
+the zone's minimum vertex X/Y, or a connection's starting pin (falling back to its
+first waypoint, then its ending pin). Before deletion, database triggers preserve
+that origin plus the offset as the thread's fallback position, clamped to the Scene
+bounds. Endpoint cascades capture connection positions before either endpoint is
+removed. This does not change messages, activity or revisions. Context without an
+offset keeps its explicit saved position. Undo recreating an element with a new ID
+leaves the old context unavailable and the same Scene conversation readable.
+
 The spatial-anchor migration is explicitly irreversible: removing its columns or
 canvas source type would lose persisted anchors and pin positions. Schema changes
 must roll forward while preserving the conversation history.

@@ -773,27 +773,36 @@ describe("Sheet canvas comments", () => {
     });
   });
 
-  it("cycles from a block to its row with the keyboard and commits only on Enter", async () => {
-    const { wrapper, row, block } = setup();
-    const rowId = "4d92b7f1-0713-4cae-bd33-c749722399aa";
-    snapTarget(row, "sheet_column_group", rowId, rect(90, 300, 640, 160), "Row of 3 blocks");
-    snapTarget(block, "sheet_block", "42", rect(210, 300, 200, 160), "Starting power");
-    await nextTick();
-    const pin = wrapper.get("#sheet-comment-pin-12");
-    await pin.trigger("keydown", { key: "ArrowRight" });
-    expect(wrapper.get("#sheet-comment-snap-preview").text()).toContain("Starting power");
-    await pin.trigger("keydown", { key: "]" });
-    expect(wrapper.get("#sheet-comment-snap-preview").text()).toContain("Row of 3 blocks");
-    expect(live.pushEvent).not.toHaveBeenCalled();
-    await pin.trigger("keydown", { key: "Enter" });
-    expect(lastRequest("comments_move")[1]).toEqual({
-      thread_id: 12,
-      expected_revision: 3,
-      x: 26,
-      y: 300,
-      context: { type: "sheet_column_group", id: rowId, offset: { x: 16, y: 20 } },
-    });
-  });
+  it.each(["]", "PageDown"])(
+    "cycles from a block to its row with the keyboard and commits only on Enter using %s",
+    async (cycleKey) => {
+      const { wrapper, row, block } = setup();
+      const rowId = "4d92b7f1-0713-4cae-bd33-c749722399aa";
+      snapTarget(row, "sheet_column_group", rowId, rect(90, 300, 640, 160), "Row of 3 blocks");
+      snapTarget(block, "sheet_block", "42", rect(210, 300, 200, 160), "Starting power");
+      await nextTick();
+      const pin = wrapper.get("#sheet-comment-pin-12");
+      pointer(pin.element, "pointerdown", 210, 320);
+      pointer(window, "pointermove", 220, 320);
+      await nextTick();
+      expect(wrapper.find("#sheet-comment-snap-preview button").exists()).toBe(false);
+      await pin.trigger("keydown", { key: "Escape" });
+      await pin.trigger("keydown", { key: "ArrowRight" });
+      expect(wrapper.find("#sheet-comment-snap-preview button").exists()).toBe(true);
+      expect(wrapper.get("#sheet-comment-snap-preview").text()).toContain("Starting power");
+      await pin.trigger("keydown", { key: cycleKey });
+      expect(wrapper.get("#sheet-comment-snap-preview").text()).toContain("Row of 3 blocks");
+      expect(live.pushEvent).not.toHaveBeenCalled();
+      await pin.trigger("keydown", { key: "Enter" });
+      expect(lastRequest("comments_move")[1]).toEqual({
+        thread_id: 12,
+        expected_revision: 3,
+        x: 26,
+        y: 300,
+        context: { type: "sheet_column_group", id: rowId, offset: { x: 16, y: 20 } },
+      });
+    },
+  );
 
   it("uses Alt on release to detach context and the toggle to place freely", async () => {
     const { wrapper, header } = setup({ placing: true });

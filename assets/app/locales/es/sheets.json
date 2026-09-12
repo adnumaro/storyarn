@@ -118,7 +118,7 @@
       "place_hint": "Colocar un comentario en esta ficha (C)",
       "placing_hint": "Haz clic en cualquier punto de la superficie de la ficha, o enfócala y pulsa Enter, para colocar un comentario. Pulsa Esc para cancelar.",
       "keyboard_place_hint": "Pulsa Enter para colocar el comentario en el centro de esta ficha.",
-      "keyboard_move_hint": "Usa las flechas para mover, Mayús para mayor precisión, Intro para guardar y Escape para cancelar. Usa [ y ] para elegir entre contextos superpuestos. Mantén Alt para colocar libremente.",
+      "keyboard_move_hint": "Usa las flechas para mover, Mayús para mayor precisión, Intro para guardar y Escape para cancelar. Usa Re Pág y Av Pág para elegir entre contextos superpuestos. Mantén Alt para colocar libremente.",
       "pin_label": "Comentario de {author}",
       "move_pin": "Mover comentario por esta ficha",
       "title": "Comentarios",
@@ -161,7 +161,7 @@
       "snap_context": "Contexto: {label}",
       "free_position": "Posición libre · sin contexto",
       "next_context": "Siguiente contexto",
-      "drag_hint": "Alt: libre · [ ]: contexto · Esc: cancelar"
+      "drag_hint": "Alt: libre · Re Pág/Av Pág: contexto · Esc: cancelar"
     },
     "metadata": {
       "untitled": "Sin título",

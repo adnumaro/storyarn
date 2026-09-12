@@ -92,6 +92,20 @@ An exception must name the operation, paths, reason, transaction boundary and
 locks or preconditions. A generic `records/` folder or a local Ecto schema does
 not itself authorize writes.
 
+Scene element deletion has a narrow Projects comment lifecycle exception at
+the database layer. The `BEFORE DELETE` triggers defined in
+`priv/repo/migrations/20260912120000_capture_scene_comment_context_positions.exs`
+update only the fallback coordinates of matching Projects-owned
+`comment_threads`, so discussion pins retain their last useful position after
+their context disappears. The write runs inside the Scene delete transaction
+with its row locks, including pin-to-connection cascades. It requires the owning
+Scene reference, context pointer, immutable context ID and creation timestamp,
+and a saved offset. Messages, source ownership, revisions and activity remain
+unchanged. This does not grant Scenes ordinary comment-write authority.
+Migration-defined trigger bodies are outside the application source ratchet;
+the contract is documented in both context READMEs and exercised by
+`test/storyarn/projects/comments/scene_context_comments_test.exs`.
+
 `storage_cleanup_requests` is a deliberate shared technical handoff rather than
 a domain table with competing owners. Flows, Sheets and Scenes may only append a
 `storage_compensation` request through their exact adapters; Projects owns retry,

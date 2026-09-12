@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import type { CommentContextReference } from "@components/comments/types";
+import { commentContextCycleDirection } from "@components/comments/commentKeyboard";
 import type { AreaPlugin } from "rete-area-plugin";
 import {
   CommentMagneticDrag,
@@ -212,6 +213,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     };
   });
   const moving = computed(() => Boolean(drag.value?.moved));
+  const keyboardDragging = computed(() => drag.value?.pointerId === null);
   const isPending = (id: number) => pendingMoves.value.has(id);
 
   function focusThread() {
@@ -292,8 +294,9 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
       altHeld = true;
       updatePreview();
     }
-    if (event.key === "[" || event.key === "]") {
-      cycleContext(event.key === "]" ? 1 : -1);
+    const cycleDirection = commentContextCycleDirection(event);
+    if (cycleDirection != null) {
+      cycleContext(cycleDirection);
       return true;
     }
     if (event.key === "Enter" && drag.value.pointerId == null) {
@@ -694,6 +697,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     panelState,
     magnetism,
     moving,
+    keyboardDragging,
     dragPreview,
     snapOutline,
     isPending,
