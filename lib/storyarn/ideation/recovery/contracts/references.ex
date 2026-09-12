@@ -15,6 +15,7 @@ defmodule Storyarn.Ideation.Recovery.References do
     |> remap(:round_id, &lookup(maps, "rounds", &1))
     |> remap(:idea_id, &lookup(maps, "ideas", &1))
     |> remap(:group_id, &lookup(maps, "groups", &1))
+    |> remap(:reference_id, &lookup(maps, "references", &1))
     |> remap(:operation_id, &lookup(maps, "reveals", &1))
     |> remap(:source_idea_id, &lookup(maps, "ideas", &1))
     |> rewrite_payload(collection, actors, maps)
@@ -40,6 +41,22 @@ defmodule Storyarn.Ideation.Recovery.References do
   end
 
   defp rewrite_payload(row, "timers", _, _), do: TimerState.restore(row)
+
+  defp rewrite_payload(row, "references", _, maps) do
+    case maps["content_destinations"] do
+      destinations when is_map(destinations) ->
+        case get_in(destinations, [row.target_type, row.target_id]) do
+          %{id: _, identity: _} = target ->
+            remap_content_target(row, target)
+
+          _ ->
+            %{row | target_id: nil}
+        end
+
+      _ ->
+        if maps["review_assisted_consent"], do: %{row | target_id: nil}, else: row
+    end
+  end
 
   defp rewrite_payload(row, "group_revisions", _, maps) do
     sources =
@@ -71,6 +88,12 @@ defmodule Storyarn.Ideation.Recovery.References do
   end
 
   defp rewrite_payload(row, _, _, _), do: row
+
+  defp remap_content_target(row, target) do
+    if Map.get(target, :source_identity, row.target_identity) == row.target_identity,
+      do: %{row | target_id: target.id, target_identity: target.identity},
+      else: %{row | target_id: nil}
+  end
 
   defp remap_directions(%{"link_directions" => directions} = canvas, maps) do
     remapped =

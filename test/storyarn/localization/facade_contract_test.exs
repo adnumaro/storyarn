@@ -105,6 +105,7 @@ defmodule Storyarn.Localization.FacadeContractTest do
     purge_texts_for_source: 2,
     purge_texts_for_sources: 2,
     remove_language: 1,
+    reference_targets_query: 2,
     remove_language: 2,
     reorder_languages: 2,
     restore_flow_version_texts: 3,

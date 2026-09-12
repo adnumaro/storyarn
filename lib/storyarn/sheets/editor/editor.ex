@@ -23,6 +23,7 @@ defmodule Storyarn.Sheets.Editor do
   alias Storyarn.Sheets.Editor.Queries.DefaultImage
   alias Storyarn.Sheets.Editor.Queries.DialogueAudio
   alias Storyarn.Sheets.Editor.Queries.Galleries, as: GalleryQueries
+  alias Storyarn.Sheets.Editor.Queries.ReferenceTargets
   alias Storyarn.Sheets.Editor.Queries.Sheets, as: SheetQueries
 
   defdelegate list_dialogue_audio_lines(project_id, sheet_id), to: DialogueAudio, as: :list_lines
@@ -71,6 +72,7 @@ defmodule Storyarn.Sheets.Editor do
   defp local_dialogue_audio_node(_receipt), do: {:error, :invalid_dialogue_audio_receipt}
 
   defdelegate list_sheets_tree(project_id), to: SheetQueries
+  defdelegate reference_targets_query(scope, project_id), to: ReferenceTargets, as: :query
   defdelegate search_sheets(project_id, query, opts \\ []), to: SheetQueries
   defdelegate search_sheets_deep(project_id, query, opts \\ []), to: SheetQueries
   defdelegate search_sheets_in_projects(project_ids, query, opts \\ []), to: SheetQueries

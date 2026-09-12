@@ -19,6 +19,6 @@ defmodule Storyarn.Ideation.Recovery do
     with {:ok, _} <- Capsule.open(capsule), do: :ok
   end
 
-  defdelegate restore(project_id, capsule), to: Restore, as: :run
+  defdelegate restore(project_id, capsule, destination_maps \\ nil), to: Restore, as: :run
   defdelegate verify(project_id, capsule, maps), to: Restore
 end

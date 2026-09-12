@@ -121,6 +121,7 @@ defmodule Storyarn.Architecture.ScenesFacadeContractTest do
     record_version_compared: 2,
     record_version_panel_opened: 2,
     reorder_ambient_flows: 2,
+    reference_targets_query: 2,
     reorder_layers: 2,
     restore_enabled?: 0,
     restore_scene: 1,

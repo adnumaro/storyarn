@@ -173,6 +173,10 @@ defmodule Storyarn.Sheets do
   @doc "Gets a single sheet by ID within a project.\nReturns `nil` if the sheet doesn't exist or doesn't belong to the project.\n"
   @spec get_sheet(id(), id()) :: sheet() | nil
   defdelegate get_sheet(project_id, sheet_id), to: Editor
+
+  @doc "Returns an authorized active Sheet overview query for bounded reference selection."
+  @spec reference_targets_query(map(), integer()) :: {:ok, Ecto.Query.t()} | {:error, :not_found}
+  defdelegate reference_targets_query(scope, project_id), to: Editor
   @doc "Gets a single sheet by ID within a project.\nRaises `Ecto.NoResultsError` if not found.\n"
   @spec get_sheet!(id(), id()) :: sheet()
   defdelegate get_sheet!(project_id, sheet_id), to: Editor

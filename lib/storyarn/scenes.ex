@@ -76,6 +76,10 @@ defmodule Storyarn.Scenes do
   @spec get_scene(integer(), integer()) :: scene_record() | nil
   defdelegate get_scene(project_id, scene_id), to: Editor
 
+  @doc "Returns an authorized active Scene overview query for bounded reference selection."
+  @spec reference_targets_query(map(), integer()) :: {:ok, Ecto.Query.t()} | {:error, :not_found}
+  defdelegate reference_targets_query(scope, project_id), to: Editor
+
   @doc """
   Gets a single scene by ID within a project, with all associations preloaded.
   Raises `Ecto.NoResultsError` if not found.

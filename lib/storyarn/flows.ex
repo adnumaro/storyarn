@@ -242,6 +242,10 @@ defmodule Storyarn.Flows do
   @spec get_flow(integer(), integer()) :: flow() | nil
   defdelegate get_flow(project_id, flow_id), to: Editor
 
+  @doc "Returns an authorized active Flow overview query for bounded reference selection."
+  @spec reference_targets_query(map(), integer()) :: {:ok, Ecto.Query.t()} | {:error, :not_found}
+  defdelegate reference_targets_query(scope, project_id), to: Editor
+
   @doc """
   Gets a single flow by ID within a project (no preloads).
   Used for breadcrumbs and lightweight lookups.

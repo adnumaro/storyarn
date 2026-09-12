@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Unplug,
   MessageCircle,
+  Link2,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -77,6 +78,10 @@ function useComments(ideaId: number | null) {
 }
 function groupComments(groupId: number) {
   void request("comments_open", { group_id: groupId });
+}
+async function useReferences(ideaId: number | null) {
+  const reply = await request("references_open", { idea_id: ideaId });
+  if (reply.status === "error") failure.value = reply.code;
 }
 const notes = useCanvasNotes(
   () => board,
@@ -979,6 +984,14 @@ onUnmounted(() => {
             @click="useComments(null)"
             ><MessageCircle class="size-4" />{{ t("brainstormingComments.title") }}</Button
           >
+          <Button
+            id="brainstorming-session-references"
+            variant="ghost"
+            size="sm"
+            :disabled="!online"
+            @click="useReferences(null)"
+            ><Link2 class="size-4" />{{ t("brainstormingReferences.title") }}</Button
+          >
           <RoundFilter
             v-if="rounds.length && !list"
             :rounds="rounds"
@@ -997,6 +1010,20 @@ onUnmounted(() => {
         </template>
         <template #selection="{ connectionTools }">
           <div v-if="current" class="surface-panel flex items-center gap-1 p-1.5 whitespace-nowrap">
+            <Button
+              v-if="
+                current.visibility === 'shared' &&
+                current.published_revision &&
+                !board.session.configuration.private_mode
+              "
+              id="brainstorming-idea-references"
+              variant="ghost"
+              size="icon-sm"
+              :disabled="!online"
+              :aria-label="t('brainstormingReferences.ideaReferences')"
+              @click="useReferences(current.id)"
+              ><Link2 class="size-4"
+            /></Button>
             <Button
               v-if="current.published_revision && !board.session.configuration.private_mode"
               id="brainstorming-idea-comments"

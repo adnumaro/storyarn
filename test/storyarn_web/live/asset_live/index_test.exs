@@ -268,6 +268,24 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       %{project: project}
     end
 
+    test "asset deep link opens exactly the scoped asset and invalid targets clear it", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      asset = image_asset_fixture(project, user, %{filename: "linked-art.png"})
+      other = user |> project_fixture() |> Repo.preload(:workspace)
+      foreign = image_asset_fixture(other, user)
+      {:ok, view, _} = live(conn, assets_path(project) <> "?asset=#{asset.id}")
+      assert get_assets_vue(view).props["selected-asset"]["id"] == asset.id
+      render_patch(view, assets_path(project) <> "?asset=#{foreign.id}")
+      assert get_assets_vue(view).props["selected-asset"] == nil
+      render_patch(view, assets_path(project) <> "?asset=#{asset.id}")
+      assert get_assets_vue(view).props["selected-asset"]["id"] == asset.id
+      render_patch(view, assets_path(project) <> "?asset=invalid")
+      assert get_assets_vue(view).props["selected-asset"] == nil
+    end
+
     test "selecting asset sets selected-asset prop", %{conn: conn, user: user, project: project} do
       asset = image_asset_fixture(project, user, %{filename: "hero.png"})
 

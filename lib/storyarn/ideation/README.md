@@ -2,7 +2,7 @@
 
 Ideation owns brainstorming sessions, responsibilities, configuration, ideas,
 authored revisions and publication. External callers enter `Storyarn.Ideation`;
-its root facade delegates through Sessions, Ideas and Recovery without importing private
+its root facade delegates through Sessions, Ideas, Groups, References and Recovery without importing private
 roles. Capabilities collaborate through their own facades.
 
 ## Sessions capability
@@ -75,6 +75,33 @@ Deleting a group permits only its deleting actor to restore that exact deletion.
 Queries and entities stay passive; events emit content-free invalidations after commit.
 Recovery includes groups, memberships and revisions in its sealed inventory.
 
+## References capability
+
+References owns explicit, many-to-many links from sessions and shared ideas to
+existing Sheets, Flows, Scenes, Assets and active localization text rows. A link
+never duplicates or edits the destination. Private ideas do not yet admit shared
+references, even for their author; publication is a separate operation. Current
+audience is checked again on reads, inverse links, history and mutation retries.
+
+The saved `overview_v1` is a bounded, explicitly selected overview of the target,
+not an editable copy or a universal content version. Name, description and typed
+metadata are compared; Sheet blocks, Flow nodes and Scene layers are outside this
+comparison. Refreshing is explicit and preserves prior consulted contexts. Missing
+or inaccessible destinations return no title, saved context, locator or preview.
+Destination generations are fenced by their recorded creation identity, never name.
+
+Each source permits up to 100 active references; pages contain at most 50 entries.
+A reference retains up to 49 consulted contexts and a final unlink receipt (50
+revisions maximum), without silently pruning provenance. Reaching the context
+limit does not prevent unlinking. Create/refresh/remove use session-scoped actor
+request identities, optimistic revisions and after-commit content-free events.
+Reference changes do not refresh notification inboxes. Snapshots include references
+and retained context, independently of conversations, which are never rewound.
+
+The reverse query is available for ENG-191; creating/retaking an exploration from
+an editor and decision anchors remain separate features. Drafts and automatic
+application of proposed changes are not part of this capability.
+
 ## Project authority
 
 Projects owns identity and effective membership, including inherited access and
@@ -98,7 +125,7 @@ of the session transaction, not a background side effect. Queries and entities
 never write or acquire locks. Physical project deletion cascades its records;
 archive only changes the session lifecycle and records a revision.
 
-Recovery is the privileged reconstitution capability for the twelve session/round/timer/idea/group
+Recovery is the privileged reconstitution capability for the fourteen session/round/timer/idea/group/reference
 tables. Its closed inventory uses raw encrypted fields and owns the derived
 `ideation_recovery_captures` cache. `execution/` coordinates capture/reconstitution;
 `adapters/` handles bounded persistence and encryption; `contracts/` owns the

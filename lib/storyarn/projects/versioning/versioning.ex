@@ -36,6 +36,11 @@ defmodule Storyarn.Projects.Versioning do
   @type project_snapshot :: ProjectSnapshot.t()
 
   @doc false
+  defdelegate ideation_recovery_target_identities(project_id, targets),
+    to: Storyarn.Projects.Versioning.IdeationDestinations,
+    as: :identities
+
+  @doc false
   defdelegate run_snapshot_archive_smoke!(snapshot_id), to: SnapshotArchiveSmoke, as: :run!
 
   # ========== Project Snapshots ==========

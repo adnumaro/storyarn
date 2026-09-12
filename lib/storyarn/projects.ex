@@ -52,6 +52,9 @@ defmodule Storyarn.Projects do
   @doc false
   defdelegate project_snapshot_reconciliation_metrics_child_specs(config), to: Versioning
 
+  @doc false
+  defdelegate ideation_recovery_target_identities(project_id, targets), to: Versioning
+
   # =============================================================================
   # Project CRUD
   # =============================================================================
@@ -273,6 +276,10 @@ defmodule Storyarn.Projects do
 
   @doc "Gets an active Project asset by its project-scoped identity."
   defdelegate get_asset(project_id, asset_id), to: Assets
+
+  @doc "Returns an authorized active asset overview query without storage locations."
+  @spec reference_targets_query(map(), integer()) :: {:ok, Ecto.Query.t()} | {:error, :not_found}
+  defdelegate reference_targets_query(scope, project_id), to: Assets
 
   @doc "Consumes an uploaded file through the Project-owned asset boundary."
   defdelegate upload_asset(path, entry, project_id, uploaded_by_id, opts \\ []),

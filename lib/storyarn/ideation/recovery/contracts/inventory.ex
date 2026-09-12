@@ -28,9 +28,14 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"group_memberships", "ideation_group_memberships", :group_id,
      ~w(id recovery_identity session_id group_id idea_id source_revision actor_id removed_at inserted_at)a},
     {"group_revisions", "ideation_group_revisions", :group_id,
-     ~w(id recovery_identity session_id group_id actor_id number operation request_key fingerprint title synthesis canvas idea_ids sources deleted_at inserted_at)a}
+     ~w(id recovery_identity session_id group_id actor_id number operation request_key fingerprint title synthesis canvas idea_ids sources deleted_at inserted_at)a},
+    {"references", "ideation_references", :session_id,
+     ~w(id recovery_identity session_id idea_id created_by_id target_type target_id target_identity relation version context deleted_at inserted_at updated_at)a},
+    {"reference_revisions", "ideation_reference_revisions", :reference_id,
+     ~w(id recovery_identity session_id reference_id actor_id number operation request_key fingerprint context inserted_at)a}
   ]
   @group_collections ~w(groups group_memberships group_revisions)
+  @reference_collections ~w(references reference_revisions)
   @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id)a
   @dates ~w(archived_at deleted_at removed_at inserted_at updated_at completed_at started_at closed_at deadline_at)a
   @max_rows 100_000
@@ -100,7 +105,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3, 4] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3, 4, 5] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -135,12 +140,16 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def normalize(%{"version" => 3, "rows" => rows} = data),
-    do: %{data | "version" => 4, "rows" => Enum.reduce(@group_collections, rows, &Map.put(&2, &1, []))}
+    do: normalize(%{data | "version" => 4, "rows" => Enum.reduce(@group_collections, rows, &Map.put(&2, &1, []))})
+
+  def normalize(%{"version" => 4, "rows" => rows} = data),
+    do: %{data | "version" => 5, "rows" => Enum.reduce(@reference_collections, rows, &Map.put(&2, &1, []))}
 
   def normalize(data), do: data
 
-  defp tables_for(4), do: @tables
-  defp tables_for(3), do: Enum.reject(@tables, &(elem(&1, 0) in @group_collections))
+  defp tables_for(5), do: @tables
+  defp tables_for(4), do: Enum.reject(@tables, &(elem(&1, 0) in @reference_collections))
+  defp tables_for(3), do: Enum.reject(tables_for(4), &(elem(&1, 0) in @group_collections))
 
   defp tables_for(2) do
     for {collection, table, parent, fields} <- tables_for(3), collection != "timers" do

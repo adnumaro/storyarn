@@ -6,7 +6,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
   @root "lib/storyarn/ideation"
   @session_roles ~w(adapters commands entities events execution queries)
   @roles ~w(adapters commands contracts entities events execution queries rules)
-  @capabilities ~w(groups ideas recovery sessions)
+  @capabilities ~w(groups ideas recovery references sessions)
   @forbidden_role_edges [
     {"queries", "commands"},
     {"queries", "execution"},
@@ -188,6 +188,17 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    capture_recovery: 1,
                    validate_recovery: 1,
                    restore_recovery: 2,
+                   restore_recovery: 3,
+                   list_references: 4,
+                   list_references: 5,
+                   search_reference_targets: 4,
+                   search_reference_targets: 5,
+                   add_reference: 5,
+                   refresh_reference: 7,
+                   remove_reference: 7,
+                   reference_history: 5,
+                   list_reference_backlinks: 4,
+                   list_reference_backlinks: 5,
                    verify_recovery: 3
                  ]
              )
@@ -235,7 +246,9 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       "revisions" => Storyarn.Ideation.Ideas.Revision,
       "edits" => Storyarn.Ideation.Ideas.Edit,
       "reveals" => Storyarn.Ideation.Ideas.Reveal,
-      "publications" => Storyarn.Ideation.Ideas.Publication
+      "publications" => Storyarn.Ideation.Ideas.Publication,
+      "references" => Storyarn.Ideation.References.Reference,
+      "reference_revisions" => Storyarn.Ideation.References.Revision
     }
 
     for {collection, table, _, fields} <- Storyarn.Ideation.Recovery.Inventory.tables() do
