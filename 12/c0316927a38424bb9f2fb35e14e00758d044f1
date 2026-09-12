@@ -119,6 +119,8 @@ test/storyarn/ideation/decision_recovery_test.exs
 test/storyarn/architecture/projects_facade_contract_test.exs
   s_93251447e419b7::t_2146e33ae90088 31
   s_93251447e419b7::t_2bcbe1c840323c 30
+  s_93251447e419b7::t_dee19fd29bedac 345,347
+  s_93251447e419b7::t_11b7ff123fe091 379,382,422
 assets/app/modules/ideation/BrainstormingWorkspace.vue
   s_93251447e419b7::t_a4bf182cb069c0 13,87,95,97-99,102-106,136
   s_93251447e419b7::t_d63ee440eca1da 88-94,96,100-101,131-135,141,1052-1067,1073
