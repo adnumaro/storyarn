@@ -3,9 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   StickyNote,
   Plus,
-  Copy,
   Archive,
-  Trash2,
   CircleX,
   RotateCcw,
   LayoutDashboard,
@@ -1047,17 +1045,6 @@ onUnmounted(() => {
                     :aria-pressed="current.canvas?.color === item.id"
                     @click="color(item.id)" /></PopoverContent></Popover
             ></template>
-            <ToolbarTooltip v-if="canCreate" :label="t('ideation.canvas.duplicateHelp')">
-              <button
-                type="button"
-                class="toolbar-btn"
-                :aria-label="t('ideation.canvas.duplicate')"
-                :disabled="mutationBusy"
-                @click="duplicate(selectedIds)"
-              >
-                <Copy class="size-3.5" />
-              </button>
-            </ToolbarTooltip>
             <Popover v-if="current.canvas?.links?.length"
               ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.connections')"
                 ><Unplug class="size-3.5" /></PopoverTrigger
@@ -1104,17 +1091,6 @@ onUnmounted(() => {
               >
                 <CircleX class="size-3.5" /></button
             ></ToolbarTooltip>
-            <template v-if="own && writable">
-              <ToolbarTooltip :label="t('ideation.canvas.deleteHelp')"
-                ><button
-                  type="button"
-                  class="toolbar-btn"
-                  :aria-label="t('ideation.canvas.delete')"
-                  :disabled="notes.deleting.has(current.id)"
-                  @click="remove(selectedIds)"
-                >
-                  <Trash2 class="size-3.5" /></button></ToolbarTooltip
-            ></template>
           </div>
           <div
             v-if="selected !== null && (notes.errors.get(selected) || draft?.error)"

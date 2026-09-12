@@ -165,6 +165,58 @@ defmodule StoryarnWeb.Live.Hooks.NotificationsTest do
     })
   end
 
+  test "source invalidations do not wake a dashboard belonging to another project", %{
+    conn: conn,
+    workspace: workspace
+  } do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+    assert {:ok, _} =
+             Storyarn.Ideation.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
+
+    refute_push_event(view, "notifications_updated", %{}, 250)
+  end
+
+  test "an inherited member's dashboard hides notifications when their source becomes private", %{
+    conn: conn,
+    user: user,
+    workspace: workspace
+  } do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    project = Repo.preload(ctx.project, :workspace)
+    workspace_membership_fixture(project.workspace, user, "viewer")
+    idea = Storyarn.IdeationFixtures.idea_fixture(ctx, %{visibility: :shared})
+
+    assert {:ok, _} =
+             Storyarn.Projects.create_ideation_comment(ctx.author, ctx.project.id, ctx.session.id, idea.id, %{
+               body: "Shared review",
+               client_request_id: Ecto.UUID.generate(),
+               mention_user_ids: [user.id]
+             })
+
+    {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+    render_hook(view, "refresh_notifications", %{"filter" => "unread"})
+    assert_reply(view, %{unreadCount: 1, items: [_]})
+
+    assert {:ok, _} =
+             Storyarn.Ideation.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
+
+    assert_push_event(view, "notifications_updated", %{unreadCount: 0, items: []})
+  end
+
   defp notification_fixture(scope, suffix) do
     {:ok, {:created, notification}} =
       Notifications.deliver(scope, nil, %{

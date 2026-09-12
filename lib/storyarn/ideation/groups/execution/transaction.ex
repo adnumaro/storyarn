@@ -18,7 +18,7 @@ defmodule Storyarn.Ideation.Groups.Execution.Transaction do
     else
       fn -> run_locked(scope, project_id, session_id, command, callback) end
       |> Repo.transact()
-      |> complete(project_id, session_id)
+      |> complete(project_id, session_id, command.operation)
     end
   end
 
@@ -86,10 +86,10 @@ defmodule Storyarn.Ideation.Groups.Execution.Transaction do
 
   defp project(group), do: group |> then(&List.project([&1], &1.session_id)) |> hd()
 
-  defp complete({:ok, {result, changed?}}, project_id, session_id) do
-    if changed?, do: Invalidation.broadcast(project_id, session_id)
+  defp complete({:ok, {result, changed?}}, project_id, session_id, operation) do
+    if changed?, do: Invalidation.broadcast(project_id, session_id, operation)
     {:ok, result}
   end
 
-  defp complete({:error, reason}, _, _), do: {:error, reason}
+  defp complete({:error, reason}, _, _, _), do: {:error, reason}
 end

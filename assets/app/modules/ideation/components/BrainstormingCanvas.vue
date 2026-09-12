@@ -15,7 +15,6 @@ import {
   ArrowRight,
   ArrowLeft,
   ArrowLeftRight,
-  Trash2,
 } from "@lucide/vue";
 import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
@@ -1288,19 +1287,6 @@ onUnmounted(() => {
           @click="changeConnectionDirection(direction.value)"
         >
           <component :is="direction.icon" class="size-4" />
-        </button>
-      </ToolbarTooltip>
-      <span class="mx-1 h-4 w-px bg-border" />
-      <ToolbarTooltip :label="t('ideation.canvas.removeConnection')">
-        <button
-          id="delete-canvas-connection"
-          type="button"
-          class="toolbar-btn hover:text-destructive"
-          :disabled="historyState.busy"
-          :aria-label="t('ideation.canvas.removeConnection')"
-          @click="removeConnection"
-        >
-          <Trash2 class="size-4" />
         </button>
       </ToolbarTooltip>
     </div>

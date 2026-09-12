@@ -15,6 +15,20 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
   @types ~w(ideation_session ideation_idea ideation_group)
   @max_id 9_223_372_036_854_775_807
 
+  def member_ids(project_id) do
+    direct = from(m in ProjectMembershipRecord, where: m.project_id == ^project_id, select: m.user_id)
+
+    inherited =
+      from(m in WorkspaceMembershipRecord,
+        join: p in Project,
+        on: p.workspace_id == m.workspace_id,
+        where: p.id == ^project_id,
+        select: m.user_id
+      )
+
+    direct |> union(^inherited) |> Repo.all()
+  end
+
   def readable_query(%{user: %{id: user_id}}) do
     sources =
       "ideation_session"

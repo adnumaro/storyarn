@@ -1057,6 +1057,7 @@ defmodule Storyarn.Projects do
 
   @doc "Subscribes to content-free invalidations; consumers must refetch with their scope."
   defdelegate subscribe_ideation_conversations(scope), to: Comments, as: :subscribe_conversations
+  defdelegate invalidate_ideation_comment_sources(project_id), to: Comments, as: :invalidate_ideation_sources
 
   @doc false
   defdelegate restricted_comment_message_ids_query(), to: Comments

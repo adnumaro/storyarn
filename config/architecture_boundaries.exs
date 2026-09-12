@@ -4134,6 +4134,24 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/storyarn/ideation/ideas/events/invalidation.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Idea audience changes invalidate project-owned conversations for current project members"
+    },
+    %{
+      source: "lib/storyarn/ideation/groups/events/invalidation.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Group deletion and restoration invalidate project-owned conversations for current project members"
+    },
+    %{
+      source: "lib/storyarn/ideation/sessions/events/invalidation.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Session audience and identity changes invalidate project-owned conversations for current project members"
+    },
+    %{
       source: "lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],

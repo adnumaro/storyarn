@@ -65,9 +65,12 @@ defmodule Storyarn.Ideation.Ideas.Commands.Restore do
             do: restored,
             else: Publication.publish_creation(restored, access.user_id)
 
-        result(restored, access, [:shared, access.user_id])
+        result(restored, access, audiences(restored, access.user_id))
     end
   end
+
+  defp audiences(%{published_revision: nil}, actor_id), do: [actor_id]
+  defp audiences(_idea, actor_id), do: [:shared, :comment_sources, actor_id]
 
   defp result(idea, access, audiences) do
     with {:ok, view} <- Visible.get(idea.session_id, idea.id, access.user_id) do

@@ -286,6 +286,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     list_ideation_conversations: 1,
     list_ideation_conversations: 2,
     subscribe_ideation_conversations: 1,
+    invalidate_ideation_comment_sources: 1,
     set_ideation_comment_following: 4,
     mark_ideation_comment_read: 4,
     list_ideation_comment_threads: 3,

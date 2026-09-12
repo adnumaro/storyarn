@@ -10,11 +10,25 @@ defmodule Storyarn.Projects.Comments do
   alias Storyarn.Projects.Comments.ParticipationState
   alias Storyarn.Projects.Comments.Payload
   alias Storyarn.Projects.Comments.Queries
+  alias Storyarn.Repo
 
   def subscribe_conversations(%{user: %{id: id}}) when is_integer(id) and id > 0,
-    do: PubSub.subscribe(Storyarn.PubSub, "ideation:comment_sources")
+    do: PubSub.subscribe(Storyarn.PubSub, conversation_topic(id))
 
   def subscribe_conversations(_), do: {:error, :not_found}
+
+  # Resolve the audience at publication time, not when a socket mounts: the
+  # inbox spans projects and must also observe newly granted memberships.
+  def invalidate_ideation_sources(project_id) do
+    if Repo.in_transaction?() do
+      {:error, :comment_requires_outer_transaction}
+    else
+      project_id
+      |> IdeationConversations.member_ids()
+      |> Enum.each(&publish_conversation_change(&1, project_id))
+    end
+  end
+
   def restricted_comment_message_ids_query, do: IdeationConversations.restricted_message_ids()
   def readable_comment_message_ids_query(scope), do: IdeationConversations.readable_message_ids(scope)
 
@@ -37,7 +51,8 @@ defmodule Storyarn.Projects.Comments do
 
   defp update_participation(scope, project_id, thread_id, action) do
     with {:ok, thread} <- ParticipationState.update(scope, project_id, thread_id, action) do
-      publish_change(project_id, thread)
+      publish_conversation_change(scope.user.id, project_id)
+      publish_ideation_change(project_id, thread.container_id)
       get_thread(scope, project_id, thread_id)
     end
   end
@@ -380,9 +395,18 @@ defmodule Storyarn.Projects.Comments do
 
   defp publish_change(project_id, %{source_type: type, container_id: session_id})
        when type in ["ideation_session", "ideation_idea", "ideation_group"] do
-    PubSub.broadcast(Storyarn.PubSub, "ideation:comment_sources", {:ideation_comment_sources_changed, project_id})
+    invalidate_ideation_sources(project_id)
+    publish_ideation_change(project_id, session_id)
+  end
+
+  defp publish_ideation_change(project_id, session_id) do
     PubSub.broadcast(Storyarn.PubSub, ideation_topic(project_id, session_id), {:ideation_comments_changed, session_id})
   end
+
+  defp publish_conversation_change(user_id, project_id),
+    do: PubSub.broadcast(Storyarn.PubSub, conversation_topic(user_id), {:ideation_comment_sources_changed, project_id})
+
+  defp conversation_topic(user_id), do: "ideation:comment_sources:user:#{user_id}"
 
   defp destination(%{source_type: source_type} = thread) when source_type in ["flow_node", "flow_canvas"] do
     %{

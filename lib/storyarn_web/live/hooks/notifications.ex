@@ -106,8 +106,9 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
   end
 
   defp handle_notification_info({:ideation_comment_sources_changed, _project_id}, socket) do
-    # Coalesce canvas events. No source identities or content are pushed to the
-    # browser: the inbox/count always comes from a fresh audience-filtered read.
+    # This user-scoped subscription receives only relevant project changes,
+    # never ordinary canvas motion. Coalesce source and conversation changes;
+    # the inbox/count still comes from a fresh audience-filtered read.
     if not socket.assigns.comment_notification_refresh_pending do
       Process.send_after(self(), :refresh_comment_notification_sources, 150)
     end

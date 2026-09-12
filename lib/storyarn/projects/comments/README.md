@@ -79,8 +79,15 @@ Ideation owns content-free audience/identity query ports; Projects composes them
 with membership and conversation state. Single/batched comment destinations
 return audience-checked brainstorming session/thread links. Source and comment
 mutations emit post-commit invalidations. The Hub subscription emits only a
-project ID, never content; consumers must refetch through the scoped API. The
-notification shell coalesces these signals and refreshes its authorized list/count.
+project ID, never content; consumers must refetch through the scoped API. Each
+user has a separate subscription, with direct and inherited project membership
+resolved and deduplicated at publication time. New memberships therefore work
+without reconnecting, and unrelated projects never wake the notification shell.
+Ordinary note/group positions, connections and private edits emit only board
+signals, not conversation/inbox invalidations. Source audience changes (including
+private mode, deletion and restoration) still invalidate discussions. Following
+and read acknowledgements invalidate only that user's personal Hub state. The
+notification shell coalesces relevant signals and refreshes its authorized list/count.
 
 ## Model and permissions
 

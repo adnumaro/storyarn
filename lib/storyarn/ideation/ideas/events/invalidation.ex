@@ -8,11 +8,12 @@ defmodule Storyarn.Ideation.Ideas.Events.Invalidation do
     end
   end
 
-  def broadcast(project_id, session_id, audience) do
-    if audience == :shared do
-      PubSub.broadcast(Storyarn.PubSub, "ideation:comment_sources", {:ideation_comment_sources_changed, project_id})
-    end
+  # Only commands that change an existing discussion's audience add this
+  # signal. Ordinary shared canvas activity must not invalidate inboxes.
+  def broadcast(project_id, _session_id, :comment_sources),
+    do: Storyarn.Projects.invalidate_ideation_comment_sources(project_id)
 
+  def broadcast(project_id, session_id, audience) do
     PubSub.broadcast(Storyarn.PubSub, topic(project_id, session_id, audience), {:ideation_changed, session_id})
   end
 
