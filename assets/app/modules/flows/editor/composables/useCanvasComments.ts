@@ -428,7 +428,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     dragPreview.value = null;
     if (current?.pointerId != null && current.target.hasPointerCapture?.(current.pointerId))
       current.target.releasePointerCapture(current.pointerId);
-    if (current?.thread) hoverId.value = current.thread.id;
+    hoverId.value = null;
     return current;
   }
   function cancelDrag() {
@@ -454,6 +454,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     if (current.moved) updatePreview();
     const preview = dragPreview.value;
     endSession();
+    if (current.thread) hoverId.value = current.thread.id;
     if (!current.moved || !preview || !options.state().canComment) return;
     suppressedClick = current.pointerId != null;
     if (current.thread) persistThread(current.thread, preview);

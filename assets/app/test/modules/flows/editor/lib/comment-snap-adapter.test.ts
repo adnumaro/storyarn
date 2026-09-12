@@ -201,6 +201,23 @@ describe("Flow comment snap geometry", () => {
     expect(context.offset).toEqual({ x: 10, y: 20 });
   });
 
+  it("matches context IDs literally when checking whether their targets are hidden", () => {
+    const { area, container, node } = setup();
+    node("42");
+    const id = '42"\\child]';
+    const { element } = node(id);
+    element.hidden = true;
+    const fallback = { x: 500, y: 500 };
+    const context = { type: "flow_node", id, offset: { x: 10, y: 20 } };
+
+    expect(resolveFlowCommentPosition(fallback, context, area, container)).toEqual(fallback);
+    element.hidden = false;
+    expect(resolveFlowCommentPosition(fallback, context, area, container)).toEqual({
+      x: 110,
+      y: 120,
+    });
+  });
+
   it("ignores zero-sized and stale DOM targets without losing valid node references", () => {
     const { area, adapter, node } = setup();
     node("7", undefined, { width: 100, height: 0 });

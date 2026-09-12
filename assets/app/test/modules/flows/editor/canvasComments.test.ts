@@ -446,6 +446,7 @@ describe("spatial comment geometry and interactions", () => {
       await nextTick();
       expect(pin.attributes("style")).toContain("left: 420px");
       expect(wrapper.find("#flow-comment-snap-preview").exists()).toBe(false);
+      expect(wrapper.find("#flow-comment-preview").exists()).toBe(false);
       pointer(window, "pointerup", 700, 500);
       expect(live.pushEvent).not.toHaveBeenCalled();
     },
@@ -537,6 +538,21 @@ describe("spatial comment geometry and interactions", () => {
       expect.any(Function),
       expect.any(Function),
     );
+  });
+
+  it("does not reopen the tooltip when a keyboard drag loses focus", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    (pin.element as HTMLElement).focus();
+    key(pin.element, "ArrowRight");
+    (pin.element as HTMLElement).blur();
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 420px");
+    expect(wrapper.find("#flow-comment-preview").exists()).toBe(false);
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    await pin.trigger("pointerenter");
+    expect(wrapper.find("#flow-comment-preview").exists()).toBe(true);
   });
 
   it("does not let an old failed request roll back a newer pending move", async () => {
@@ -961,6 +977,33 @@ describe("Flow canvas draft recovery", () => {
       context: null,
       body: "Keep this discussion",
     });
+  });
+
+  it("keeps the draft and stored text when a live refresh removes its context", async () => {
+    store();
+    const state = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "active-draft",
+      draftPosition: position,
+      draftContext: context,
+    };
+    const { wrapper, area, node, pipes } = setup(state, [], null, storageKey);
+    await nextTick();
+    node.remove();
+    area.nodeViews.delete("node-42");
+    pipes.forEach((pipe) => pipe({ type: "noderemoved" }));
+    await wrapper.setProps({ state: { ...state, draftContext: null } });
+    await flushFrames();
+    expect(wrapper.find("#flow-comment-popover").exists()).toBe(true);
+    expect(wrapper.get("#flow-comment-draft-pin").attributes("style")).toContain("left: 420px");
+    expect(readCommentDraft(storageKey)).toMatchObject({
+      position,
+      context: null,
+      body: "Keep this discussion",
+    });
+    expect(live.pushEvent).not.toHaveBeenCalled();
   });
 
   it("does not retry an old recovery after a new draft was opened and discarded", async () => {

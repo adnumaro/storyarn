@@ -172,7 +172,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     if state.thread do
       load_detail(socket, state.thread.id)
     else
-      refresh_selected_source(socket, state.selectedNodeId)
+      socket
+      |> refresh_selected_source(state.selectedNodeId)
+      |> refresh_draft_context()
+    end
+  end
+
+  defp refresh_draft_context(%{assigns: %{comments: %{draftContext: nil}}} = socket), do: socket
+
+  defp refresh_draft_context(socket) do
+    case draft_context(socket, nil, socket.assigns.comments.draftContext) do
+      {:ok, _context} ->
+        socket
+
+      {:error, reason} when reason in [:context_unavailable, :invalid_context] ->
+        put_state(socket, %{draftContext: nil, error: nil})
+
+      _unavailable ->
+        clear(socket)
     end
   end
 
@@ -310,6 +327,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp mutation_result({:ok, %{thread: %{id: thread_id}}}, socket) do
     {:reply, %{ok: true}, socket |> refresh() |> select_thread(thread_id)}
   end
+
+  defp mutation_result({:error, reason}, socket) when reason in [:context_unavailable, :invalid_context],
+    do: failure(refresh_draft_context(socket), reason)
 
   defp mutation_result({:error, reason}, socket), do: failure(socket, reason)
 
@@ -513,6 +533,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   end
 
   defp error_message(:stale), do: dgettext("flows", "This conversation changed. Review the latest state and try again.")
+
+  defp error_message(:context_unavailable),
+    do: dgettext("flows", "The comment context is no longer available. Review the pin's position and try again.")
+
+  defp error_message(:invalid_context),
+    do: dgettext("flows", "The selected comment context is invalid. Move the pin and try again.")
 
   defp error_message(reason) when reason in [:not_found, :unauthorized, :unavailable, :source_unavailable] do
     dgettext("flows", "This conversation or its source is no longer available.")

@@ -112,8 +112,8 @@ export function resolveFlowCommentPosition(
   container: HTMLElement,
 ): CommentPoint | null {
   if (context?.type === "flow_node") {
-    const target = Array.from(container.querySelectorAll<HTMLElement>(NODE_SELECTOR)).find(
-      (element) => element.dataset.flowCommentNode === context.id,
+    const target = container.querySelector<HTMLElement>(
+      `[data-flow-comment-node="${CSS.escape(context.id)}"]`,
     );
     if (target && !renderedTarget(target)) return position ?? null;
   }

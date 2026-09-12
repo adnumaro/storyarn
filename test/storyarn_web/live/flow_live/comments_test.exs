@@ -247,6 +247,84 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert panel(reloaded)["thread"]["position"] == thread["position"]
   end
 
+  test "a remote node deletion detaches an open draft without replacing its composer or position", context do
+    reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
+    position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
+    view = open_flow(context)
+    render_hook(view, "comments_place", Map.put(position, :context, reference))
+    assert_reply(view, %{ok: true})
+    placed = panel(view)
+
+    render_hook(view, "comments_refresh", %{})
+    assert panel(view)["draftContext"] == placed["draftContext"]
+    assert panel(view)["draftId"] == placed["draftId"]
+
+    assert {:ok, _deleted, _meta} = Flows.delete_node(context.node)
+    send(view.pid, {:remote_change, :node_deleted, %{node_id: context.node.id}})
+
+    detached = panel(view)
+    assert detached["open"]
+    assert detached["presentation"] == "canvas"
+    assert detached["draftId"] == placed["draftId"]
+    assert detached["draftPosition"] == placed["draftPosition"]
+    assert detached["draftContext"] == nil
+    assert detached["selectedNodeId"] == nil
+    assert detached["error"] == nil
+
+    render_hook(view, "comments_create", %{
+      position: detached["draftPosition"],
+      context: detached["draftContext"],
+      body: "Continue writing after the collaborator removes the beat",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    assert_reply(view, %{ok: true})
+    assert panel(view)["thread"]["source"]["id"] == context.flow.id
+    assert panel(view)["thread"]["context"] == nil
+    assert panel(view)["thread"]["position"] == placed["draftPosition"]
+    assert [%{"body" => "Continue writing after the collaborator removes the beat"}] = panel(view)["messages"]
+  end
+
+  test "a draft submission racing node deletion explains the context failure and can retry in place", context do
+    reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
+    position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
+    view = open_flow(context)
+    render_hook(view, "comments_place", Map.put(position, :context, reference))
+    assert_reply(view, %{ok: true})
+    placed = panel(view)
+
+    attrs = %{
+      position: placed["draftPosition"],
+      context: placed["draftContext"],
+      body: "Keep the text when sending races the deletion",
+      client_request_id: Ecto.UUID.generate()
+    }
+
+    # Delete without a collaboration notification so create sees the stale context first.
+    Repo.delete!(context.node)
+    render_hook(view, "comments_create", attrs)
+
+    assert_reply(view, %{
+      ok: false,
+      context_unavailable: true,
+      error: "The comment context is no longer available. Review the pin's position and try again."
+    })
+
+    detached = panel(view)
+    assert detached["open"]
+    assert detached["presentation"] == "canvas"
+    assert detached["draftId"] == placed["draftId"]
+    assert detached["draftPosition"] == placed["draftPosition"]
+    assert detached["draftContext"] == nil
+    assert detached["thread"] == nil
+
+    render_hook(view, "comments_create", %{attrs | context: detached["draftContext"]})
+    assert_reply(view, %{ok: true})
+    assert panel(view)["thread"]["context"] == nil
+    assert panel(view)["thread"]["position"] == placed["draftPosition"]
+    assert [%{"body" => "Keep the text when sending races the deletion"}] = panel(view)["messages"]
+  end
+
   test "a restored draft whose node disappeared can recover as a free comment", context do
     reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
     position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
