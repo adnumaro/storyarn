@@ -1,0 +1,69 @@
+.github/workflows/ci.yml
+  s_194a5688996098::t_a583d0879cbd89 46,51,56,58,142,147,152,154,222,226,231,233,356,360,365,367
+config/runtime.exs
+  s_194a5688996098::t_5f6c95c53b2c1c 84-90
+config/test.exs
+  s_2849957cac15c2::t_77daaba9bfcb02 173,177,192-195
+docs/reference/README.md
+  s_194a5688996098::t_a1e141871ef0d1 51
+docs/reference/testing-performance.md
+  s_194a5688996098::t_fde7550fb8b11b 1-52
+lib/storyarn_web/components/layouts/root.html.heex
+  s_194a5688996098::t_47d736c6166dc3 79
+mix.exs
+  s_194a5688996098::t_7f8a4cc5201186 141-142,174-191
+test/fixtures/vite_manifest.json
+  s_194a5688996098::t_4fd366e8f93030 1-4
+test/mix/test_runtime_config_test.exs
+  s_194a5688996098::t_be41ac895f6627 1-38
+test/storyarn/architecture/commercial_boundary_test.exs
+  s_dfb48c7493277b::t_ec7746b8e1c1e1 2
+test/storyarn/architecture/commercial_internal_structure_test.exs
+  s_dfb48c7493277b::t_7759c05fbe1356 2
+test/storyarn/architecture/persistence_write_ownership_test.exs
+  s_194a5688996098::t_080723c7b0a3fe 2-4,684-735,3224-3225,3228,3267-3271,3273-3278,3280-3281,3284-3286,3289-3293,3295-3297,3300-3308,3310-3314,4843,4859,4868,5504-5505,5507,5512,5521,5783-5784,5789-5798,5874-5875,5885,5891
+test/storyarn/architecture/storage_composition_boundary_test.exs
+  s_194a5688996098::t_cd22c2254e9b71 2,166,170-171,177-178,181,184,191-193,195
+test/storyarn/architecture/worker_ownership_boundary_test.exs
+  s_dfb48c7493277b::t_36ad7bde05f714 2
+test/storyarn/flows/health/execution/structural_analysis_test.exs
+  s_194a5688996098::t_2118f7d3fa894a 2
+test/storyarn/platform/reactions/adapters/analytics_test.exs
+  s_194a5688996098::t_6264995c8158bc 71,102,148,154,166
+test/storyarn/projects/assets/integration/variant_generation_test.exs
+  s_194a5688996098::t_e59cddc4ffe4da 36,61,80,107,129,157,165-179
+test/test_helper.exs
+  s_194a5688996098::t_d72b41a62cbdb9 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d60b1fb2ab4e3f5d85ef6669739f8bb0ae31dd9a",
+  "prompts": {},
+  "sessions": {
+    "s_194a5688996098": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a095dc-b2df-76f2-a3ae-9990c699347a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_2849957cac15c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08cee-7937-74e3-a18f-3dd4680183a0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_dfb48c7493277b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e29a6efc-f33e-48a0-b08c-dcdff93245f6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
