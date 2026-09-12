@@ -61,7 +61,8 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
     {:halt, state, socket}
   end
 
-  defp handle_notification_event("refresh_notifications", %{"filter" => filter}, socket) when filter in ~w(all unread) do
+  defp handle_notification_event("refresh_notifications", %{"filter" => filter}, socket)
+       when filter in ~w(all unread) do
     filter = String.to_existing_atom(filter)
     {state, socket} = refresh(socket, filter)
 

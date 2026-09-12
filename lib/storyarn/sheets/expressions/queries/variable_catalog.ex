@@ -509,7 +509,8 @@ defmodule Storyarn.Sheets.Expressions.Queries.VariableCatalog do
     do: from([_column, _block, sheet, _row] in query, where: sheet.shortcut == ^value)
 
   defp filter_table(query, {:variable, value}),
-    do: from([column, _block, _sheet, _row] in query, where: fragment("LOWER(?)", column.slug) == ^String.downcase(value))
+    do:
+      from([column, _block, _sheet, _row] in query, where: fragment("LOWER(?)", column.slug) == ^String.downcase(value))
 
   defp filter_table(query, {:variable_contains, value}) do
     from([column, _block, _sheet, _row] in query, where: ilike(column.slug, ^contains_term(value)))

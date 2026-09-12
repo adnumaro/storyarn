@@ -84,8 +84,13 @@ defmodule Storyarn.Ideation.RoundsTest do
     end
 
     assert {:error, :stale_revision} = Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{})
-    assert {:error, :stale_revision} = Ideation.start_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, 1)
-    assert {:error, :stale_revision} = Ideation.update_round(ctx.owner, ctx.project.id, ctx.session.id, round.id, 1, %{})
+
+    assert {:error, :stale_revision} =
+             Ideation.start_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, 1)
+
+    assert {:error, :stale_revision} =
+             Ideation.update_round(ctx.owner, ctx.project.id, ctx.session.id, round.id, 1, %{})
+
     assert {:error, :stale_revision} = Ideation.cancel_round(ctx.owner, ctx.project.id, ctx.session.id, round.id, 1)
 
     assert {:error, :invalid_revision} =
@@ -111,7 +116,10 @@ defmodule Storyarn.Ideation.RoundsTest do
 
     assert {:error, :round_not_found} = Ideation.start_round(ctx.facilitator, ctx.project.id, other.id, round.id, 1)
     assert {:error, :round_not_found} = Ideation.close_round(ctx.facilitator, ctx.project.id, other.id, round.id, 1)
-    assert {:error, :round_not_found} = Ideation.update_round(ctx.facilitator, ctx.project.id, other.id, round.id, 1, %{})
+
+    assert {:error, :round_not_found} =
+             Ideation.update_round(ctx.facilitator, ctx.project.id, other.id, round.id, 1, %{})
+
     assert {:error, :round_not_found} = Ideation.cancel_round(ctx.facilitator, ctx.project.id, other.id, round.id, 1)
     assert {:error, :not_found} = Ideation.list_rounds(stranger, ctx.project.id, ctx.session.id)
     assert {:error, :not_found} = Ideation.list_rounds(ctx.owner, ctx.project.id, -1)
@@ -230,7 +238,10 @@ defmodule Storyarn.Ideation.RoundsTest do
     end
 
     assert {:error, :invalid_round} = Ideation.update_round(ctx.owner, ctx.project.id, ctx.session.id, round.id, 3, nil)
-    assert {:ok, cleared} = Ideation.update_round(ctx.owner, ctx.project.id, ctx.session.id, round.id, 3, %{prompt: nil})
+
+    assert {:ok, cleared} =
+             Ideation.update_round(ctx.owner, ctx.project.id, ctx.session.id, round.id, 3, %{prompt: nil})
+
     assert cleared.revision == 4
     assert {:ok, [%{prompt: nil}]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
 

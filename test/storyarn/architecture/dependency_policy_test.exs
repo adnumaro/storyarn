@@ -227,7 +227,11 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       classification_roots: classification_roots(),
       boundaries: %{
         flows: ["lib/storyarn/flows/"],
-        infrastructure: ["lib/storyarn/platform/analytics.ex", "lib/storyarn/platform/analytics/", "lib/storyarn/repo.ex"],
+        infrastructure: [
+          "lib/storyarn/platform/analytics.ex",
+          "lib/storyarn/platform/analytics/",
+          "lib/storyarn/repo.ex"
+        ],
         presentation_adapters: [
           "lib/storyarn_web/router.ex",
           "lib/storyarn_web/live_vue_encoders.ex"

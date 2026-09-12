@@ -167,7 +167,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   def upload_progress(_scope, _workspace, _import_id, _percent), do: {:error, :workspace_snapshot_upload_not_found}
 
   @doc false
-  def cancel_upload(%{user: _} = scope, %{id: _} = workspace, import_id), do: discard_upload(scope, workspace, import_id)
+  def cancel_upload(%{user: _} = scope, %{id: _} = workspace, import_id),
+    do: discard_upload(scope, workspace, import_id)
 
   @doc "Lists recent imports visible in one workspace settings surface."
   def list(%{user: _} = scope, %{id: workspace_id}) do
@@ -1280,8 +1281,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp validate_import_namespace(%{provider_namespace_fingerprint: fingerprint}, fingerprint) when is_binary(fingerprint),
-    do: :ok
+  defp validate_import_namespace(%{provider_namespace_fingerprint: fingerprint}, fingerprint)
+       when is_binary(fingerprint), do: :ok
 
   defp validate_import_namespace(_import, _fingerprint),
     do: {:error, :workspace_snapshot_import_storage_namespace_mismatch}

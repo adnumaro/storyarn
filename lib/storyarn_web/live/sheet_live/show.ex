@@ -474,7 +474,10 @@ defmodule StoryarnWeb.SheetLive.Show do
     if own_sheet_block?(assigns.blocks, block_id), do: target
   end
 
-  defp validate_sheet_highlight(%{kind: "cell", blockId: block_id, rowId: row_id, columnId: column_id} = target, assigns) do
+  defp validate_sheet_highlight(
+         %{kind: "cell", blockId: block_id, rowId: row_id, columnId: column_id} = target,
+         assigns
+       ) do
     with true <- own_sheet_block?(assigns.blocks, block_id),
          %{rows: rows, columns: columns} <- Map.get(assigns.table_data, block_id),
          true <- Enum.any?(rows, &(&1.id == row_id)),
@@ -665,7 +668,8 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event("detach_block", params, socket), do: BlockHandlers.handle_detach(params, socket, content_helpers())
 
-  def handle_event("reattach_block", params, socket), do: BlockHandlers.handle_reattach(params, socket, content_helpers())
+  def handle_event("reattach_block", params, socket),
+    do: BlockHandlers.handle_reattach(params, socket, content_helpers())
 
   # --- Gallery blocks ---
 

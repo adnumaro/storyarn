@@ -96,7 +96,9 @@ defmodule Storyarn.Flows.SequenceLayerReorderTest do
     assert {:error, :field_not_editable} =
              Flows.edit_node(flow.id, owner.id, :put_field, %{field: "composition_layer_order", value: []})
 
-    assert {:ok, restored} = Flows.restore_sequence_composition(owner.id, Map.delete(initial, "composition_layer_order"))
+    assert {:ok, restored} =
+             Flows.restore_sequence_composition(owner.id, Map.delete(initial, "composition_layer_order"))
+
     assert restored["composition_layer_order"] == nil
     assert Flows.get_node(flow.id, owner.id).data["text"] == "Restored line"
   end

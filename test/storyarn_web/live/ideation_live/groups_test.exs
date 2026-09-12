@@ -20,7 +20,10 @@ defmodule StoryarnWeb.IdeationLive.GroupsTest do
 
     render_hook(author, "create_group", payload(author, creation(ctx)))
     assert_reply(author, %{status: "ok", value: %{id: id, version: version}})
-    eventually(viewer, fn board -> assert [%{"id" => ^id, "title" => "What drives the character?"}] = board["groups"] end)
+
+    eventually(viewer, fn board ->
+      assert [%{"id" => ^id, "title" => "What drives the character?"}] = board["groups"]
+    end)
 
     render_hook(
       author,
@@ -88,7 +91,9 @@ defmodule StoryarnWeb.IdeationLive.GroupsTest do
     do: ~p"/workspaces/#{ctx.project.workspace.slug}/projects/#{ctx.project.slug}/brainstorming/#{ctx.session.id}"
 
   defp data(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["board"]
-  defp payload(view, attrs), do: Map.merge(attrs, %{epoch: data(view)["epoch"], session_id: data(view)["session"]["id"]})
+
+  defp payload(view, attrs),
+    do: Map.merge(attrs, %{epoch: data(view)["epoch"], session_id: data(view)["session"]["id"]})
 
   defp eventually(view, assertion, attempts \\ 150)
   defp eventually(view, assertion, 1), do: assertion.(data(view))

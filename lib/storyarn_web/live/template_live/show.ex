@@ -325,9 +325,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
                         {installation_stage_label(installation.stage)}
                       </p>
                       <p class="mt-2 text-xs text-base-content/50">
-                        {dgettext("projects", "Installation reference: %{reference}",
-                          reference: installation.id
-                        )}
+                        {dgettext("projects", "Installation reference: %{reference}", reference: installation.id)}
                       </p>
                     </div>
                   </div>

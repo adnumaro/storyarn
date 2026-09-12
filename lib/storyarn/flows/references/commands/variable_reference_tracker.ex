@@ -277,8 +277,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     end
   end
 
-  defp normalize_node(%FlowNode{id: id, type: type, data: data}) when is_integer(id) and is_binary(type) and is_map(data),
-    do: {:ok, %{id: id, type: type, data: data}}
+  defp normalize_node(%FlowNode{id: id, type: type, data: data})
+       when is_integer(id) and is_binary(type) and is_map(data), do: {:ok, %{id: id, type: type, data: data}}
 
   defp normalize_node(%{} = node) do
     id = node["original_id"] || node[:original_id] || node["id"] || node[:id]
@@ -475,7 +475,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
       spec ->
         {:error,
-         {:unresolved_variable_reference, "flow_node", spec.source_id, spec.kind, spec.source_sheet, spec.source_variable}}
+         {:unresolved_variable_reference, "flow_node", spec.source_id, spec.kind, spec.source_sheet,
+          spec.source_variable}}
     end
   end
 

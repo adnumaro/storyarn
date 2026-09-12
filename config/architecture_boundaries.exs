@@ -286,7 +286,8 @@ entity_reference_persistence_ownership = %{
         %{identity: "def update_block_references/2", operations: [:delete_all]},
         %{identity: "defp batch_insert_references/4", operations: [:insert_all]}
       ],
-      reason: "Projects reconstructs or removes its closed Project graph without borrowing ordinary Flow or Sheet writers"
+      reason:
+        "Projects reconstructs or removes its closed Project graph without borrowing ordinary Flow or Sheet writers"
     },
     %{
       context: :projects,
@@ -810,7 +811,8 @@ shared_persistence_mapping_policy = %{
   privileged_workflows: %{
     exact_project_restore: %{
       transaction: "the Project snapshot restore executor's enclosing restore transaction",
-      locks_or_preconditions: "validated snapshot/project identity plus the executor's Project and materialization locks"
+      locks_or_preconditions:
+        "validated snapshot/project identity plus the executor's Project and materialization locks"
     },
     project_flow_materialization: %{
       transaction: "the enclosing Project snapshot materialization transaction",
@@ -823,11 +825,13 @@ shared_persistence_mapping_policy = %{
     },
     project_import: %{
       transaction: "the validated Project import materializer's enclosing transaction",
-      locks_or_preconditions: "validated import identity and payload plus the materializer's locked active Project graph"
+      locks_or_preconditions:
+        "validated import identity and payload plus the materializer's locked active Project graph"
     },
     project_recovery: %{
       transaction: "the Project recovery/materialization coordinator's enclosing transaction",
-      locks_or_preconditions: "validated snapshot data and the coordinator's workspace, Project and materialization locks"
+      locks_or_preconditions:
+        "validated snapshot data and the coordinator's workspace, Project and materialization locks"
     },
     project_scene_materialization: %{
       transaction: "the enclosing Project snapshot materialization transaction",
@@ -2485,7 +2489,8 @@ sheet_internal_path_denials =
       source_root: "lib/storyarn/sheets/#{source_capability}/",
       target_root: "lib/storyarn/sheets/#{target_capability}/#{private_role}/",
       kinds: ["runtime", "export", "compile"],
-      reason: "Sheet capabilities may consume another capability only through its facade or stable entities and contracts"
+      reason:
+        "Sheet capabilities may consume another capability only through its facade or stable entities and contracts"
     }
   end
 
@@ -2571,7 +2576,8 @@ scene_internal_path_denials =
       source_root: "lib/storyarn/scenes/#{source_capability}/",
       target_root: "lib/storyarn/scenes/#{target_capability}/#{private_role}/",
       kinds: ["runtime", "export", "compile"],
-      reason: "Scene capabilities may consume another capability only through its facade or stable entities and contracts"
+      reason:
+        "Scene capabilities may consume another capability only through its facade or stable entities and contracts"
     }
   end
 
@@ -2657,7 +2663,8 @@ flow_internal_path_denials =
       source_root: "lib/storyarn/flows/#{source_capability}/",
       target_root: "lib/storyarn/flows/#{target_capability}/#{private_role}/",
       kinds: ["runtime", "export", "compile"],
-      reason: "Flow capabilities may consume another capability only through its facade or stable entities and contracts"
+      reason:
+        "Flow capabilities may consume another capability only through its facade or stable entities and contracts"
     }
   end
 
@@ -2849,7 +2856,8 @@ commercial_root_facade_path_denials =
       source_root: "lib/storyarn/commercial.ex",
       target_root: "lib/storyarn/commercial/#{private_target}",
       kinds: ["runtime", "export", "compile"],
-      reason: "The Storyarn.Commercial facade composes stable capability facets rather than private implementation roles"
+      reason:
+        "The Storyarn.Commercial facade composes stable capability facets rather than private implementation roles"
     }
   end
 
@@ -2952,7 +2960,8 @@ object_storage_facade_path_denials =
       source_root: source_root,
       target_root: "lib/storyarn/platform/#{target_capability}/#{private_target}",
       kinds: ["runtime", "export", "compile"],
-      reason: "ObjectStorage is an isolated technical capability and cannot enter another Platform capability's internals"
+      reason:
+        "ObjectStorage is an isolated technical capability and cannot enter another Platform capability's internals"
     }
   end
 
@@ -3407,7 +3416,8 @@ privileged_entrypoints = [
     allowed_callers: [
       "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex"
     ],
-    reason: "only the verified workspace snapshot-import lifecycle may validate and materialize its exact Project archive"
+    reason:
+      "only the verified workspace snapshot-import lifecycle may validate and materialize its exact Project archive"
   },
   %{
     module: "Storyarn.Projects.ProjectReconstitution",
@@ -4168,7 +4178,8 @@ policy = %{
       source: "lib/storyarn/notification_inbox.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
-      reason: "The application inbox composes producer-owned visibility queries without a Platform-to-Projects dependency"
+      reason:
+        "The application inbox composes producer-owned visibility queries without a Platform-to-Projects dependency"
     },
     %{
       source: "lib/storyarn_web/live/hooks/notifications.ex",
@@ -4222,7 +4233,8 @@ policy = %{
       source: "lib/storyarn_web/live/ideation_live/sidebar.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
-      reason: "The sticky brainstorming sidebar subscribes to inherited access invalidation through the Workspaces facade"
+      reason:
+        "The sticky brainstorming sidebar subscribes to inherited access invalidation through the Workspaces facade"
     },
     %{
       source: "lib/storyarn_web/live/ideation_live/helpers/board_data.ex",
@@ -4350,13 +4362,15 @@ policy = %{
       source: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
       target: "lib/storyarn/platform/object_storage.ex",
       kinds: ["runtime"],
-      reason: "Projects keeps Project blob identity policy while delegating generic locks through Platform ObjectStorage"
+      reason:
+        "Projects keeps Project blob identity policy while delegating generic locks through Platform ObjectStorage"
     },
     %{
       source: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
       target: "lib/storyarn/platform/object_storage.ex",
       kinds: ["runtime"],
-      reason: "Projects keeps deletion and multipart policy while delegating provider I/O through Platform ObjectStorage"
+      reason:
+        "Projects keeps deletion and multipart policy while delegating provider I/O through Platform ObjectStorage"
     },
     %{
       source: "lib/storyarn/scenes/assets/adapters/storage/hashing.ex",
@@ -4911,13 +4925,15 @@ policy = %{
       source: "lib/storyarn/localization/languages/adapters/notifications/delivery.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Localization language changes request durable cross-cutting delivery through the public Platform contract"
+      reason:
+        "Localization language changes request durable cross-cutting delivery through the public Platform contract"
     },
     %{
       source: "lib/storyarn/localization/translation/adapters/notifications/delivery.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Localization translation runs request durable cross-cutting delivery through the public Platform contract"
+      reason:
+        "Localization translation runs request durable cross-cutting delivery through the public Platform contract"
     },
     %{
       source: "lib/storyarn/scenes/assets/commands/assets.ex",

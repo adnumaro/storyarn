@@ -30,7 +30,8 @@ defmodule StoryarnWeb.IdeationLive.Handlers.SessionHandlers do
 
     attrs =
       if is_map(params["configuration"]),
-        do: Map.put(attrs, "configuration", Map.take(params["configuration"], ~w(default_visibility publication_policy))),
+        do:
+          Map.put(attrs, "configuration", Map.take(params["configuration"], ~w(default_visibility publication_policy))),
         else: attrs
 
     Ideation.update_session(scope, project_id, id, revision, attrs)

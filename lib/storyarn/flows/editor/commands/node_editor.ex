@@ -117,7 +117,14 @@ defmodule Storyarn.Flows.NodeEditor do
     {:ok, put_condition(data, payload_value(payload, :condition) || %{})}
   end
 
-  defp do_apply_operation(%FlowNode{type: "dialogue"}, _flow, _project_id, :put_response_condition_builder, payload, data) do
+  defp do_apply_operation(
+         %FlowNode{type: "dialogue"},
+         _flow,
+         _project_id,
+         :put_response_condition_builder,
+         payload,
+         data
+       ) do
     {:ok,
      put_response_condition(
        data,
@@ -126,7 +133,14 @@ defmodule Storyarn.Flows.NodeEditor do
      )}
   end
 
-  defp do_apply_operation(%FlowNode{type: "condition"}, _flow, _project_id, :toggle_condition_switch_mode, _payload, data) do
+  defp do_apply_operation(
+         %FlowNode{type: "condition"},
+         _flow,
+         _project_id,
+         :toggle_condition_switch_mode,
+         _payload,
+         data
+       ) do
     {:ok, toggle_condition_switch_mode(data)}
   end
 
@@ -186,13 +200,27 @@ defmodule Storyarn.Flows.NodeEditor do
     {:ok, put_exit_target(data, payload_value(payload, :target_type), payload_value(payload, :target_id))}
   end
 
-  defp do_apply_operation(%FlowNode{type: "subflow"}, %Flow{} = flow, _project_id, :put_subflow_reference, payload, data) do
+  defp do_apply_operation(
+         %FlowNode{type: "subflow"},
+         %Flow{} = flow,
+         _project_id,
+         :put_subflow_reference,
+         payload,
+         data
+       ) do
     with {:ok, flow_id} <- validate_subflow_reference(payload_value(payload, :value), flow.id) do
       {:ok, put_subflow_reference(data, flow_id)}
     end
   end
 
-  defp do_apply_operation(%FlowNode{type: "instruction"}, _flow, _project_id, :put_instruction_assignments, payload, data) do
+  defp do_apply_operation(
+         %FlowNode{type: "instruction"},
+         _flow,
+         _project_id,
+         :put_instruction_assignments,
+         payload,
+         data
+       ) do
     {:ok, put_instruction_assignments(data, payload_value(payload, :assignments) || [])}
   end
 

@@ -59,7 +59,9 @@ defmodule Storyarn.Projects.Comments.ParticipationState do
   end
 
   def decorate(dtos, %{user: %{id: user_id}}) do
-    ids = for %{source: %{type: type}, id: id} <- dtos, type in ~w(ideation_session ideation_idea ideation_group), do: id
+    ids =
+      for %{source: %{type: type}, id: id} <- dtos, type in ~w(ideation_session ideation_idea ideation_group), do: id
+
     decorate_ideation(dtos, ids, user_id)
   end
 

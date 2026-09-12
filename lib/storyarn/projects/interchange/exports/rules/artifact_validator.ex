@@ -1082,7 +1082,13 @@ defmodule Storyarn.Projects.Exports.ArtifactValidator do
          _selected_flow_shortcuts
        ), do: nil
 
-  defp external_target_identifier_findings(format, flow, active_flows_by_id, active_flows_by_shortcut, selected_flow_ids) do
+  defp external_target_identifier_findings(
+         format,
+         flow,
+         active_flows_by_id,
+         active_flows_by_shortcut,
+         selected_flow_ids
+       ) do
     Enum.flat_map(flow.nodes || [], fn node ->
       with %{} = data <- flow_reference_data(node),
            %{} = target <-
@@ -2205,7 +2211,10 @@ defmodule Storyarn.Projects.Exports.ArtifactValidator do
   defp impossible_condition_field?(value), do: not (is_nil(value) or is_binary(value))
 
   defp impossible_condition_operator?(operator) when operator in [nil, ""], do: false
-  defp impossible_condition_operator?(operator) when is_binary(operator), do: not FlowCondition.valid_operator?(operator)
+
+  defp impossible_condition_operator?(operator) when is_binary(operator),
+    do: not FlowCondition.valid_operator?(operator)
+
   defp impossible_condition_operator?(_operator), do: true
 
   defp impossible_condition_value?(_operator, value) when value in [nil, ""], do: false

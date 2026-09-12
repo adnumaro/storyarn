@@ -44,7 +44,10 @@ defmodule Storyarn.Ideation.CanvasShapesTest do
     assert {:ok, ^changed} = reshape(ctx, note, 0, attrs)
     assert {:error, :idempotency_conflict} = reshape(ctx, note, 0, Map.put(attrs, "shape", "diamond"))
     assert {:error, :stale_canvas} = reshape(ctx, note, 0, placement(%{"shape" => "diamond"}))
-    assert {:ok, %{"shape" => "rectangle", "version" => 2}} = reshape(ctx, note, 1, placement(%{"shape" => "rectangle"}))
+
+    assert {:ok, %{"shape" => "rectangle", "version" => 2}} =
+             reshape(ctx, note, 1, placement(%{"shape" => "rectangle"}))
+
     assert {:ok, %{"shape" => "ellipse", "version" => 3}} = reshape(ctx, note, 2, placement(%{"shape" => "ellipse"}))
 
     assert {:ok, saved} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, note.id)
@@ -153,7 +156,10 @@ defmodule Storyarn.Ideation.CanvasShapesTest do
 
   defp placement(attrs),
     do:
-      Map.merge(%{"x" => 40, "y" => 60, "width" => 280, "color" => "mint", "request_key" => Ecto.UUID.generate()}, attrs)
+      Map.merge(
+        %{"x" => 40, "y" => 60, "width" => 280, "color" => "mint", "request_key" => Ecto.UUID.generate()},
+        attrs
+      )
 
   defp create_note(ctx, canvas \\ %{}) do
     {:ok, note} =
@@ -168,7 +174,8 @@ defmodule Storyarn.Ideation.CanvasShapesTest do
   defp capture(ctx) do
     {:ok, snapshot} =
       Repo.transact(fn ->
-        {:ok, ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
+        {:ok,
+         ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
       end)
 
     snapshot["ideation"]

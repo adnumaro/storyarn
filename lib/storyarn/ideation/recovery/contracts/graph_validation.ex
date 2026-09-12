@@ -55,7 +55,8 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
   defp valid_links?(row, "rounds", index), do: Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
 
-  defp valid_links?(row, "timers", index), do: Map.has_key?(index.sessions, row["session_id"]) and TimerState.valid?(row)
+  defp valid_links?(row, "timers", index),
+    do: Map.has_key?(index.sessions, row["session_id"]) and TimerState.valid?(row)
 
   defp valid_links?(row, "ideas", index) do
     Map.has_key?(index.sessions, row["session_id"]) and revision?(index, row["id"], row["revision"]) and

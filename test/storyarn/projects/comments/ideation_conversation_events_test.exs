@@ -365,12 +365,26 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     }
 
     assert {:ok, restored} =
-             Ideation.restore_group(ctx.author, ctx.project.id, ctx.session.id, group.id, deleted.version, restore_attrs)
+             Ideation.restore_group(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               group.id,
+               deleted.version,
+               restore_attrs
+             )
 
     assert_changed_once(ctx.project.id)
 
     assert {:ok, ^restored} =
-             Ideation.restore_group(ctx.author, ctx.project.id, ctx.session.id, group.id, deleted.version, restore_attrs)
+             Ideation.restore_group(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               group.id,
+               deleted.version,
+               restore_attrs
+             )
 
     refute_changed(ctx.project.id)
   end

@@ -233,7 +233,9 @@ defmodule Storyarn.Ideation.RecoveryTest do
     invalid = %{capsule | "ciphertext" => Base.encode64("forged capsule")}
     assert {:error, :invalid_ideation_recovery} = restore_result(ctx, invalid)
     assert {:ok, _} = Ideation.get_session(ctx.owner, ctx.project.id, ctx.session.id)
-    assert {:error, :missing_ideation_recovery} = SnapshotObjectFormat.validate_project(Map.delete(snapshot, "ideation"))
+
+    assert {:error, :missing_ideation_recovery} =
+             SnapshotObjectFormat.validate_project(Map.delete(snapshot, "ideation"))
 
     assert {:error, :unexpected_ideation_recovery} =
              SnapshotObjectFormat.validate_project(%{snapshot | "format_version" => 2})
@@ -246,7 +248,9 @@ defmodule Storyarn.Ideation.RecoveryTest do
     assert {:ok, session} =
              Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{})
 
-    assert {:ok, _} = Ideation.start_timer(ctx.facilitator, ctx.project.id, session.id, session.revision, %{seconds: 60})
+    assert {:ok, _} =
+             Ideation.start_timer(ctx.facilitator, ctx.project.id, session.id, session.revision, %{seconds: 60})
+
     idea = idea_fixture(ctx, %{visibility: :shared})
 
     assert {:ok, _} =
@@ -358,7 +362,9 @@ defmodule Storyarn.Ideation.RecoveryTest do
     idea_id = maps["ideas"][idea.id]
 
     assert {:ok, operation} =
-             Ideation.prepare_idea_reveal(ctx.author, ctx.project.id, session_id, key, [%{idea_id: idea_id, revision: 1}])
+             Ideation.prepare_idea_reveal(ctx.author, ctx.project.id, session_id, key, [
+               %{idea_id: idea_id, revision: 1}
+             ])
 
     assert operation.id == maps["reveals"][reveal.id]
     assert operation.status == :prepared
@@ -390,7 +396,10 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
     assert {:ok, [session]} = Ideation.list_sessions(ctx.owner, recovered.id)
     membership_fixture(recovered, ctx.author.user, "editor")
-    assert {:ok, [%{body: "<p>Survives source deletion</p>"}]} = Ideation.list_ideas(ctx.author, recovered.id, session.id)
+
+    assert {:ok, [%{body: "<p>Survives source deletion</p>"}]} =
+             Ideation.list_ideas(ctx.author, recovered.id, session.id)
+
     assert {:ok, []} = Ideation.list_ideas(ctx.owner, recovered.id, session.id)
   end
 
@@ -585,7 +594,8 @@ defmodule Storyarn.Ideation.RecoveryTest do
   defp snapshot(ctx) do
     {:ok, snapshot} =
       Repo.transact(fn ->
-        {:ok, ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
+        {:ok,
+         ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
       end)
 
     snapshot |> Map.put("asset_catalog_refs", %{}) |> Jason.encode!() |> Jason.decode!()

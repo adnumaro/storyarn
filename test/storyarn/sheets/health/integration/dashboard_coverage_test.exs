@@ -405,7 +405,9 @@ defmodule Storyarn.Sheets.Health.Integration.DashboardCoverageTest do
     sheet_id
     |> Sheets.list_blocks()
     |> Enum.sort_by(& &1.position)
-    |> Enum.map(fn block -> %{id: block.id, column_group_id: block.column_group_id, column_index: block.column_index} end)
+    |> Enum.map(fn block ->
+      %{id: block.id, column_group_id: block.column_group_id, column_index: block.column_index}
+    end)
     |> renumber_column_indexes()
   end
 

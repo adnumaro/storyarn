@@ -210,7 +210,8 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
 
   defp attempt_arguments_current(%Operation{}, _task, _route), do: {:error, :attempt_contract_mismatch}
 
-  defp complete_attempt_reauthorization(%Operation{}, %Task{}, %ExecutionRoute{}, {:denied, reason}), do: {:error, reason}
+  defp complete_attempt_reauthorization(%Operation{}, %Task{}, %ExecutionRoute{}, {:denied, reason}),
+    do: {:error, reason}
 
   defp complete_attempt_reauthorization(%Operation{}, %Task{}, %ExecutionRoute{}, nil),
     do: {:error, :operation_authorization_changed}
@@ -536,9 +537,11 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
     |> Repo.update!()
   end
 
-  defp ensure_transition!(%Operation{execution_status: "queued"}, next) when next in ~w(running cancelled failed), do: :ok
+  defp ensure_transition!(%Operation{execution_status: "queued"}, next) when next in ~w(running cancelled failed),
+    do: :ok
 
-  defp ensure_transition!(%Operation{execution_status: "running", external_attempt_started_at: nil}, "cancelled"), do: :ok
+  defp ensure_transition!(%Operation{execution_status: "running", external_attempt_started_at: nil}, "cancelled"),
+    do: :ok
 
   defp ensure_transition!(%Operation{execution_status: "running"}, next) when next in ~w(succeeded failed unknown),
     do: :ok

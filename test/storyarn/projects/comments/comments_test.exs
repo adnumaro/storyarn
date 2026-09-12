@@ -60,7 +60,8 @@ defmodule Storyarn.Projects.CommentsTest do
     {:ok, detail} = create_comment(ctx)
     other_node = node_fixture(ctx.flow)
 
-    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation, constraint: "comment_threads_context_identity"}}} =
+    assert {:error,
+            %Postgrex.Error{postgres: %{code: :check_violation, constraint: "comment_threads_context_identity"}}} =
              Repo.query(
                "UPDATE comment_threads SET context_id = $1 WHERE id = $2",
                [to_string(other_node.id), detail.thread.id],

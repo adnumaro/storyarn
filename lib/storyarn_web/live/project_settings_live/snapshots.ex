@@ -529,7 +529,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   end
 
   @impl true
-  def handle_info({:project_snapshot_restore_updated, _restore_id}, %{assigns: %{snapshot_access_active: false}} = socket) do
+  def handle_info(
+        {:project_snapshot_restore_updated, _restore_id},
+        %{assigns: %{snapshot_access_active: false}} = socket
+      ) do
     {:noreply, socket}
   end
 

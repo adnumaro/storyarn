@@ -432,7 +432,14 @@ defmodule Storyarn.Flows.Editor.Commands.SequenceVisualLayers do
     |> then(&SequenceVisualLayer.override_changeset(%SequenceVisualLayer{}, &1))
   end
 
-  defp visual_layer_override_changeset(%SequenceVisualLayer{} = local, _inherited, _owner_id, _layer_key, attrs, _fields) do
+  defp visual_layer_override_changeset(
+         %SequenceVisualLayer{} = local,
+         _inherited,
+         _owner_id,
+         _layer_key,
+         attrs,
+         _fields
+       ) do
     local
     |> SequenceVisualLayer.update_changeset(attrs)
     |> Ecto.Changeset.put_change(:removed, false)

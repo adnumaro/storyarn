@@ -14,7 +14,7 @@ defmodule Storyarn.Repo.Migrations.CreateScreenplays do
       add :parent_id, references(:screenplays, on_delete: :nilify_all)
       add :linked_flow_id, references(:flows, on_delete: :nilify_all)
 
-      # Draft support (see FUTURE_FEATURES.md — Copy-Based Drafts)
+      # Copy-based draft support
       # null = original, non-null = this is a draft of the referenced screenplay
       add :draft_of_id, references(:screenplays, on_delete: :delete_all)
       add :draft_label, :string

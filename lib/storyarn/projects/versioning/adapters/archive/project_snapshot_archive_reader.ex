@@ -148,7 +148,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader do
   def retryable_error?({:http_error, status, _response}) when status in [408, 409, 425, 429] or status in 500..599,
     do: true
 
-  def retryable_error?(reason) when reason in [:multipart_upload_part_timeout, :multipart_upload_part_task_exit], do: true
+  def retryable_error?(reason) when reason in [:multipart_upload_part_timeout, :multipart_upload_part_task_exit],
+    do: true
 
   def retryable_error?({:multipart_upload_abort_failed, upload_reason, abort_reason}),
     do: retryable_error?(upload_reason) or retryable_error?(abort_reason)
@@ -173,7 +174,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader do
              :snapshot_archive_storage_stat_failed
            ], do: retryable_error?(reason)
 
-  def retryable_error?({:unexpected_length, actual, expected}) when is_integer(actual) and is_integer(expected), do: true
+  def retryable_error?({:unexpected_length, actual, expected}) when is_integer(actual) and is_integer(expected),
+    do: true
 
   def retryable_error?(reason) when reason in [:eagain, :eio, :emfile, :enfile, :enomem, :estale, :etimedout, :timeout],
     do: true
@@ -377,7 +379,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader do
 
   defp validate_preflight_archive_size(_size, maximum), do: {:error, {:snapshot_archive_size_limit_exceeded, maximum}}
 
-  defp autonomous_archive_metadata(%{archive_storage_key: archive_key, archive_size_bytes: archive_size_bytes} = archive) do
+  defp autonomous_archive_metadata(
+         %{archive_storage_key: archive_key, archive_size_bytes: archive_size_bytes} = archive
+       ) do
     archive_checksum = Map.get(archive, :archive_checksum)
 
     with true <-
@@ -864,7 +868,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader do
     end
   end
 
-  defp validate_untrusted_entry_count(count, maximum) when is_integer(count) and count >= 2 and count <= maximum, do: :ok
+  defp validate_untrusted_entry_count(count, maximum) when is_integer(count) and count >= 2 and count <= maximum,
+    do: :ok
 
   defp validate_untrusted_entry_count(_count, maximum), do: {:error, {:snapshot_zip_entry_limit_exceeded, maximum}}
 
@@ -1475,7 +1480,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader do
     end
   end
 
-  defp read_exact(source, _offset, _length, _stat), do: {:error, {:invalid_snapshot_storage_range, source_label(source)}}
+  defp read_exact(source, _offset, _length, _stat),
+    do: {:error, {:invalid_snapshot_storage_range, source_label(source)}}
 
   defp source_stream(key, offset, length, stat) when is_binary(key) do
     Storage.stream(key, offset, length, conditional_opts(stat))

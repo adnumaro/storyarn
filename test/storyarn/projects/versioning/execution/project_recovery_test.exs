@@ -3308,7 +3308,9 @@ defmodule Storyarn.Projects.Versioning.ProjectRecoveryTest do
     on_exit(fn ->
       Assets.storage_delete(asset.key)
 
-      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type)))
+      delete_storage_blob(
+        BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type))
+      )
     end)
 
     asset

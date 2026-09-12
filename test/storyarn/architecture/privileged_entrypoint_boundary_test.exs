@@ -649,7 +649,11 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     opaque_remote_call_matches?(right, functions, context, 1)
   end
 
-  defp opaque_restricted_call?({:&, _, [{:/, _, [{{:., _, [module_ast, function]}, _, []}, arity]}]}, functions, context)
+  defp opaque_restricted_call?(
+         {:&, _, [{:/, _, [{{:., _, [module_ast, function]}, _, []}, arity]}]},
+         functions,
+         context
+       )
        when is_atom(function) and is_integer(arity) do
     opaque_receiver?(module_ast, context) and function_matches?(functions, function, arity)
   end
@@ -672,7 +676,11 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       opaque_apply_matches?(module_ast, function, args, functions, context)
   end
 
-  defp opaque_restricted_call?({{:., _, [function_ast, :capture]}, _, [module_ast, function, arity]}, functions, context) do
+  defp opaque_restricted_call?(
+         {{:., _, [function_ast, :capture]}, _, [module_ast, function, arity]},
+         functions,
+         context
+       ) do
     function_module?(function_ast, context) and
       opaque_receiver?(module_ast, context) and
       function_matches?(functions, literal_atom(function), literal_capture_arity(arity))
@@ -702,7 +710,8 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
   defp opaque_receiver?(module_ast, context), do: opaque_field_receiver?(module_ast, context)
 
-  defp opaque_field_receiver?({{:., metadata, [access, :get]}, _, [_container, _key]}, context) when is_list(metadata) do
+  defp opaque_field_receiver?({{:., metadata, [access, :get]}, _, [_container, _key]}, context)
+       when is_list(metadata) do
     Keyword.get(metadata, :from_brackets, false) or
       literal_target_module?(access, "Access", context.aliases)
   end
@@ -714,7 +723,12 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     remote_call_matches?(right, target, functions, context, 1)
   end
 
-  defp restricted_call?({:&, _, [{:/, _, [{{:., _, [module_ast, function]}, _, []}, arity]}]}, target, functions, context)
+  defp restricted_call?(
+         {:&, _, [{:/, _, [{{:., _, [module_ast, function]}, _, []}, arity]}]},
+         target,
+         functions,
+         context
+       )
        when is_atom(function) and is_integer(arity) do
     target_module?(module_ast, target, context) and
       function_matches?(functions, function, arity)
@@ -739,7 +753,12 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       apply_matches?(module_ast, function, args, target, functions, context)
   end
 
-  defp restricted_call?({{:., _, [function_ast, :capture]}, _, [module_ast, function, arity]}, target, functions, context) do
+  defp restricted_call?(
+         {{:., _, [function_ast, :capture]}, _, [module_ast, function, arity]},
+         target,
+         functions,
+         context
+       ) do
     function_module?(function_ast, context) and
       target_module?(module_ast, target, context) and
       function_matches?(functions, literal_atom(function), literal_capture_arity(arity))
@@ -749,7 +768,13 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     remote_call_matches?(node, target, functions, context, 0)
   end
 
-  defp remote_call_matches?({{:., _, [module_ast, function]}, _, arguments}, target, functions, context, piped_arguments)
+  defp remote_call_matches?(
+         {{:., _, [module_ast, function]}, _, arguments},
+         target,
+         functions,
+         context,
+         piped_arguments
+       )
        when is_atom(function) and is_list(arguments) do
     target_module?(module_ast, target, context) and
       function_matches?(functions, function, length(arguments) + piped_arguments)

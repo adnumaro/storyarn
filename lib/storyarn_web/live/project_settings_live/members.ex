@@ -309,7 +309,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
      |> push_navigate(to: ~p"/workspaces/#{workspace_slug}")}
   end
 
-  defp parse_positive_pg_bigint(value) when is_integer(value) and value > 0 and value <= @max_pg_bigint, do: {:ok, value}
+  defp parse_positive_pg_bigint(value) when is_integer(value) and value > 0 and value <= @max_pg_bigint,
+    do: {:ok, value}
 
   defp parse_positive_pg_bigint(value) when is_binary(value) do
     case Integer.parse(value) do

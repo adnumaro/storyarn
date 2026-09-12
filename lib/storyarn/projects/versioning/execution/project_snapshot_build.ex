@@ -76,7 +76,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   action and is unique within the project.
   """
   @spec request(Scope.t(), Project.t(), map()) :: request_result()
-  def request(%{user: %{id: user_id}} = scope, %Project{} = project, attrs) when is_integer(user_id) and is_map(attrs) do
+  def request(%{user: %{id: user_id}} = scope, %Project{} = project, attrs)
+      when is_integer(user_id) and is_map(attrs) do
     with {:ok, request} <- normalize_request(attrs),
          {:ok, %Project{} = authorized_project, _membership} <-
            Memberships.authorize(scope, project.id, :manage_project) do
@@ -423,8 +424,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp renew_bound_publication_claim_lease(_snapshot, _reservation, _claim, _status, _now, _allow_expired_claim_recovery),
-    do: {:error, :snapshot_build_publication_claim_conflict}
+  defp renew_bound_publication_claim_lease(
+         _snapshot,
+         _reservation,
+         _claim,
+         _status,
+         _now,
+         _allow_expired_claim_recovery
+       ), do: {:error, :snapshot_build_publication_claim_conflict}
 
   defp validate_heartbeat_claim_token(snapshot, reservation, claim) do
     cond do
@@ -791,7 +798,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp validate_released_cleanup_proof(_snapshot, _reservation), do: {:error, :snapshot_build_recovery_candidate_changed}
+  defp validate_released_cleanup_proof(_snapshot, _reservation),
+    do: {:error, :snapshot_build_recovery_candidate_changed}
 
   defp cleanup_request_id("storage_cleanup_request:" <> encoded_id) do
     case Integer.parse(encoded_id) do
@@ -880,7 +888,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     |> persist_terminal_snapshot()
   end
 
-  defp terminalize_released_build(_snapshot, _reservation, _now), do: {:error, :snapshot_build_recovery_candidate_changed}
+  defp terminalize_released_build(_snapshot, _reservation, _now),
+    do: {:error, :snapshot_build_recovery_candidate_changed}
 
   defp released_failure_code(code) when is_binary(code) do
     if Map.has_key?(@safe_failure_messages, code), do: code, else: "build_failed"
@@ -1849,7 +1858,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   defp validate_build_fence_locked(%ProjectSnapshot{cancel_requested_at: %DateTime{}}, _expected_generation),
     do: {:error, :snapshot_build_cancelled}
 
-  defp validate_build_fence_locked(%ProjectSnapshot{}, _expected_generation), do: {:error, :snapshot_build_state_conflict}
+  defp validate_build_fence_locked(%ProjectSnapshot{}, _expected_generation),
+    do: {:error, :snapshot_build_state_conflict}
 
   defp validate_build_fence_locked(nil, _expected_generation), do: {:error, :project_snapshot_not_found}
 
@@ -2011,8 +2021,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp handle_failed_settlement({:ok, :committed}, _snapshot, reason, attempt, max_attempts) when attempt < max_attempts,
-    do: {:retry, safe_error_code(reason)}
+  defp handle_failed_settlement({:ok, :committed}, _snapshot, reason, attempt, max_attempts)
+       when attempt < max_attempts, do: {:retry, safe_error_code(reason)}
 
   defp handle_failed_settlement({:ok, :active_unowned}, snapshot, reason, attempt, max_attempts),
     do: retry_unsettled(snapshot, reason, attempt, max_attempts)

@@ -35,7 +35,10 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.Materialization do
   def rewrite_node_data(data, _type, _renames), do: data
 
   @spec finalize_flow(map(), %{optional(String.t()) => String.t()}) :: map()
-  def finalize_flow(%{"settings" => %{"import_source" => "yarn_spinner"}, "nodes" => nodes} = flow_data, shortcut_renames)
+  def finalize_flow(
+        %{"settings" => %{"import_source" => "yarn_spinner"}, "nodes" => nodes} = flow_data,
+        shortcut_renames
+      )
       when is_list(nodes) do
     layout_nodes =
       Enum.map(nodes, fn node ->

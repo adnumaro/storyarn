@@ -46,7 +46,8 @@ defmodule Storyarn.Sheets.Expressions.Queries.VariableNamespaces do
   def resolve_sheet_id(_project_id, _namespace), do: nil
 
   @spec resolve_sheet_ids(pos_integer(), [String.t()]) :: %{String.t() => pos_integer()}
-  def resolve_sheet_ids(project_id, namespaces) when is_integer(project_id) and project_id > 0 and is_list(namespaces) do
+  def resolve_sheet_ids(project_id, namespaces)
+      when is_integer(project_id) and project_id > 0 and is_list(namespaces) do
     namespaces = namespaces |> Enum.filter(&valid_namespace?/1) |> Enum.uniq()
     numeric_ids = numeric_namespace_ids(namespaces)
 

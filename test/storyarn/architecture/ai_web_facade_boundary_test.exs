@@ -87,7 +87,8 @@ defmodule Storyarn.Architecture.AIWebFacadeBoundaryTest do
 
   defp internal_ai_alias?([:Storyarn, :AI, _internal | _rest], _local_aliases), do: true
 
-  defp internal_ai_alias?([local_alias, _internal | _rest], local_aliases), do: MapSet.member?(local_aliases, local_alias)
+  defp internal_ai_alias?([local_alias, _internal | _rest], local_aliases),
+    do: MapSet.member?(local_aliases, local_alias)
 
   defp internal_ai_alias?(_segments, _local_aliases), do: false
 

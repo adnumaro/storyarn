@@ -76,9 +76,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         v-inject="project-layout"
         id="brainstorming-board"
         class="contents"
-        board={
-          Map.merge(@board, %{epoch: @epoch, loading: @refresh_running != nil, error: @board_error})
-        }
+        board={Map.merge(@board, %{epoch: @epoch, loading: @refresh_running != nil, error: @board_error})}
         base-url={@urls.tools["brainstorming"]}
       />
       <.vue
@@ -247,7 +245,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
          {:ok, _} <- Ideation.get_session(socket.assigns.current_scope, socket.assigns.project.id, id) do
       {:reply, %{status: "ok"},
        push_patch(socket,
-         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/brainstorming/#{id}"
+         to:
+           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/brainstorming/#{id}"
        )}
     else
       {:error, reason} -> {:reply, Replies.error(reason), socket}
@@ -346,7 +345,10 @@ defmodule StoryarnWeb.IdeationLive.Board do
   def handle_info({:online_users, users}, socket) do
     known_ids = MapSet.new(socket.assigns.online_users, & &1.user_id)
     member_ids = MapSet.new(socket.assigns.board.members, & &1.id)
-    new_member? = Enum.any?(users, &(!MapSet.member?(known_ids, &1.user_id) and !MapSet.member?(member_ids, &1.user_id)))
+
+    new_member? =
+      Enum.any?(users, &(!MapSet.member?(known_ids, &1.user_id) and !MapSet.member?(member_ids, &1.user_id)))
+
     socket = assign(socket, :online_users, users)
     {:noreply, if(new_member?, do: refresh(socket), else: socket)}
   end

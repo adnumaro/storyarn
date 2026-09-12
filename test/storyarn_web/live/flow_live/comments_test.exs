@@ -145,7 +145,9 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert canvas(view)["commentCounts"] == %{}
 
     render_hook(view, "comments_close", %{})
+
     render_hook(view, "comments_move", %{thread_id: thread["id"], x: 300, y: 120, expected_revision: thread["revision"]})
+
     refute panel(view)["open"]
     assert canvas(view)["commentFocusThreadId"] == nil
     assert [%{"position" => %{"x" => 300.0, "y" => 120.0}}] = canvas(view)["commentPins"]
@@ -188,7 +190,8 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
   end
 
-  test "a magnetic draft keeps absolute coordinates and context through movement, creation, retry and reload", context do
+  test "a magnetic draft keeps absolute coordinates and context through movement, creation, retry and reload",
+       context do
     view = open_flow(context)
     reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
     position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
@@ -245,6 +248,115 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     reloaded = open_flow(context, "?thread=#{thread["id"]}")
     assert panel(reloaded)["thread"]["context"] == thread["context"]
     assert panel(reloaded)["thread"]["position"] == thread["position"]
+  end
+
+  test "a remote node deletion detaches an open draft without replacing its composer or position", context do
+    reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
+    position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
+    view = open_flow(context)
+    render_hook(view, "comments_place", Map.put(position, :context, reference))
+    assert_reply(view, %{ok: true})
+    placed = panel(view)
+
+    render_hook(view, "comments_refresh", %{})
+    assert panel(view)["draftContext"] == placed["draftContext"]
+    assert panel(view)["draftId"] == placed["draftId"]
+
+    assert {:ok, _deleted, _meta} = Flows.delete_node(context.node)
+    send(view.pid, {:remote_change, :node_deleted, %{node_id: context.node.id}})
+
+    detached = panel(view)
+    assert detached["open"]
+    assert detached["presentation"] == "canvas"
+    assert detached["draftId"] == placed["draftId"]
+    assert detached["draftPosition"] == placed["draftPosition"]
+    assert detached["draftContext"] == nil
+    assert detached["selectedNodeId"] == nil
+    assert detached["error"] == nil
+
+    render_hook(view, "comments_create", %{
+      position: detached["draftPosition"],
+      context: detached["draftContext"],
+      body: "Continue writing after the collaborator removes the beat",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    assert_reply(view, %{ok: true})
+    assert panel(view)["thread"]["source"]["id"] == context.flow.id
+    assert panel(view)["thread"]["context"] == nil
+    assert panel(view)["thread"]["position"] == placed["draftPosition"]
+    assert [%{"body" => "Continue writing after the collaborator removes the beat"}] = panel(view)["messages"]
+  end
+
+  test "a draft submission racing node deletion explains the context failure and can retry in place", context do
+    reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
+    position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
+    view = open_flow(context)
+    render_hook(view, "comments_place", Map.put(position, :context, reference))
+    assert_reply(view, %{ok: true})
+    placed = panel(view)
+
+    attrs = %{
+      position: placed["draftPosition"],
+      context: placed["draftContext"],
+      body: "Keep the text when sending races the deletion",
+      client_request_id: Ecto.UUID.generate()
+    }
+
+    # Delete without a collaboration notification so create sees the stale context first.
+    Repo.delete!(context.node)
+    render_hook(view, "comments_create", attrs)
+
+    assert_reply(view, %{
+      ok: false,
+      context_unavailable: true,
+      error: "The comment context is no longer available. Review the pin's position and try again."
+    })
+
+    detached = panel(view)
+    assert detached["open"]
+    assert detached["presentation"] == "canvas"
+    assert detached["draftId"] == placed["draftId"]
+    assert detached["draftPosition"] == placed["draftPosition"]
+    assert detached["draftContext"] == nil
+    assert detached["thread"] == nil
+
+    render_hook(view, "comments_create", %{attrs | context: detached["draftContext"]})
+    assert_reply(view, %{ok: true})
+    assert panel(view)["thread"]["context"] == nil
+    assert panel(view)["thread"]["position"] == placed["draftPosition"]
+    assert [%{"body" => "Keep the text when sending races the deletion"}] = panel(view)["messages"]
+  end
+
+  test "a restored draft whose node disappeared can recover as a free comment", context do
+    reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
+    position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}
+    view = open_flow(context)
+    render_hook(view, "comments_place", Map.put(position, :context, reference))
+    assert_reply(view, %{ok: true})
+    assert panel(view)["draftContext"]["id"] == reference.id
+
+    assert {:ok, _deleted, _meta} = Flows.delete_node(context.node)
+    reloaded = open_flow(context)
+    render_hook(reloaded, "comments_place", Map.put(position, :context, reference))
+    assert_reply(reloaded, %{ok: false, context_unavailable: true})
+    assert panel(reloaded)["draftPosition"] == nil
+
+    render_hook(reloaded, "comments_place", Map.put(position, :context, nil))
+    assert_reply(reloaded, %{ok: true})
+    assert panel(reloaded)["draftPosition"] == %{"x" => position.x, "y" => position.y}
+    assert panel(reloaded)["draftContext"] == nil
+
+    render_hook(reloaded, "comments_create", %{
+      position: position,
+      context: nil,
+      body: "Keep the draft after its beat disappears",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    assert panel(reloaded)["thread"]["source"]["id"] == context.flow.id
+    assert panel(reloaded)["thread"]["context"] == nil
+    assert [%{"body" => "Keep the draft after its beat disappears"}] = panel(reloaded)["messages"]
   end
 
   test "a magnetic draft can become free and late moves cannot reopen it or replace another draft", context do
@@ -358,6 +470,104 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert detached["position"] == %{"x" => 600.0, "y" => 400.0}
     assert canvas(view)["commentCounts"] == %{}
     assert canvas(view)["commentFocusNodeId"] == nil
+  end
+
+  test "Sequence filters follow reassociation and detachment without changing the conversation", context do
+    detail = create_comment(context)
+    other_node = node_fixture(context.flow, %{type: "dialogue"})
+    view = open_flow(context)
+    render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
+    assert [%{"id" => id}] = panel(view)["threads"]
+    assert id == detail.thread.id
+
+    render_hook(view, "comments_move", %{
+      thread_id: id,
+      x: 500,
+      y: 600,
+      context: %{type: "flow_node", id: to_string(other_node.id)},
+      expected_revision: detail.thread.revision
+    })
+
+    render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
+    assert panel(view)["threads"] == []
+    render_hook(view, "comments_open", %{node_id: other_node.id, presentation: "workspace"})
+    assert [%{"id" => ^id} = moved] = panel(view)["threads"]
+    render_hook(view, "comments_select_thread", %{thread_id: id})
+    assert panel(view)["presentation"] == "workspace"
+    assert [%{"body" => "Review this beat"}] = panel(view)["messages"]
+
+    render_hook(view, "comments_move", %{
+      thread_id: id,
+      x: 700,
+      y: 800,
+      context: nil,
+      expected_revision: moved["revision"]
+    })
+
+    render_hook(view, "comments_open", %{node_id: other_node.id, presentation: "workspace"})
+    assert panel(view)["threads"] == []
+    render_hook(view, "comments_open", %{})
+    assert [%{"id" => ^id, "context" => nil}] = panel(view)["threads"]
+
+    reloaded = open_flow(context, "?thread=#{id}")
+    assert panel(reloaded)["thread"]["id"] == id
+    assert panel(reloaded)["thread"]["source"]["id"] == context.flow.id
+    assert [%{"body" => "Review this beat"}] = panel(reloaded)["messages"]
+  end
+
+  test "invalid and stale magnetic moves preserve both context and position and return authoritative state", context do
+    detail = create_comment(context)
+    foreign_node = context.project |> flow_fixture() |> node_fixture()
+    view = open_flow(context, "?thread=#{detail.thread.id}")
+    original = panel(view)["thread"]
+
+    render_hook(view, "comments_move", %{
+      thread_id: detail.thread.id,
+      x: 500,
+      y: 600,
+      context: %{type: "flow_node", id: to_string(foreign_node.id)},
+      expected_revision: detail.thread.revision
+    })
+
+    assert_reply(view, %{ok: false, context_unavailable: true})
+    assert panel(view)["thread"] == original
+
+    render_hook(view, "comments_move", %{
+      thread_id: detail.thread.id,
+      x: detail.thread.position.x,
+      y: detail.thread.position.y,
+      context: %{type: "flow_node", id: to_string(context.node.id)},
+      expected_revision: detail.thread.revision
+    })
+
+    revision = detail.thread.revision
+    assert_reply(view, %{ok: true, thread: %{revision: ^revision}})
+    assert panel(view)["thread"] == original
+
+    render_hook(view, "comments_move", %{
+      thread_id: detail.thread.id,
+      x: 800,
+      y: 900,
+      context: nil,
+      expected_revision: revision
+    })
+
+    assert_reply(view, %{ok: true})
+    detached = panel(view)["thread"]
+    assert detached["context"] == nil
+
+    render_hook(view, "comments_move", %{
+      thread_id: detail.thread.id,
+      x: 100,
+      y: 200,
+      context: %{type: "flow_node", id: to_string(context.node.id)},
+      expected_revision: revision
+    })
+
+    assert_reply(view, %{ok: false, context_unavailable: false})
+    assert panel(view)["thread"] == detached
+    assert [%{"id" => id, "position" => %{"x" => 800.0, "y" => 900.0}, "context" => nil}] = canvas(view)["commentPins"]
+    assert id == detail.thread.id
   end
 
   test "forged placement and movement cannot cross Flow boundaries or bypass viewer permissions", context do

@@ -40,7 +40,11 @@ defmodule Storyarn.Projects.Imports.NotificationDelivery do
   @doc false
   @spec deliver(ProjectImportAttempt.t(), locked_context(), String.t()) ::
           {:ok, Platform.notification_delivery_outcome()} | {:error, Ecto.Changeset.t()}
-  def deliver(%ProjectImportAttempt{} = attempt, %{project_id: project_id, requester_id: requester_id} = context, status)
+  def deliver(
+        %ProjectImportAttempt{} = attempt,
+        %{project_id: project_id, requester_id: requester_id} = context,
+        status
+      )
       when status in ["success", "failure"] do
     project = if attempt.project_id == project_id, do: context.project
     requester = if attempt.user_id == requester_id, do: context.requester

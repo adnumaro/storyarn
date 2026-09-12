@@ -96,7 +96,7 @@ msgstr "Espacio de trabajo creado exitosamente."
 msgid "Workspace deleted."
 msgstr "Espacio de trabajo eliminado."
 
-#: lib/storyarn_web/live/hooks/workspace_scope.ex:58
+#: lib/storyarn_web/live/hooks/workspace_scope.ex:63
 #: lib/storyarn_web/live/project_live/form.ex:78
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:544
 #: lib/storyarn_web/live/workspace_live/show.ex:120
@@ -127,7 +127,7 @@ msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
 
 #: lib/storyarn_web/live/project_live/form.ex:75
-#: lib/storyarn_web/live/template_live/show.ex:461
+#: lib/storyarn_web/live/template_live/show.ex:459
 #: lib/storyarn_web/live/workspace_live/show.ex:117
 #: lib/storyarn_web/live/workspace_live/show.ex:157
 #, elixir-autogen, elixir-format
@@ -154,38 +154,38 @@ msgstr "Banner subido exitosamente."
 msgid "Invalid file data or upload failed."
 msgstr "Datos de archivo inválidos o la subida falló."
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:368
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:371
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] "hace %{count} día"
 msgstr[1] "hace %{count} días"
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:365
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:368
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] "hace %{count} hora"
 msgstr[1] "hace %{count} horas"
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:362
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:365
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
 msgstr[0] "hace %{count} minuto"
 msgstr[1] "hace %{count} minutos"
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:345
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:348
 #, elixir-autogen, elixir-format
 msgid "Deleted %{time_ago}"
 msgstr "Eliminado %{time_ago}"
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:348
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:351
 #, elixir-autogen, elixir-format
 msgid "by %{email}"
 msgstr "por %{email}"
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:359
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:362
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr "ahora mismo"
@@ -195,7 +195,7 @@ msgstr "ahora mismo"
 msgid "Create a password for %{email} to accept your invitation."
 msgstr "Crea una contraseña para %{email} y acepta tu invitación."
 
-#: lib/storyarn_web/live/template_live/show.ex:344
+#: lib/storyarn_web/live/template_live/show.ex:342
 #, elixir-autogen, elixir-format
 msgid "Workspace"
 msgstr "Espacio de trabajo"

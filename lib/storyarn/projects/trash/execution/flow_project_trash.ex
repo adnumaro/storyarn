@@ -104,7 +104,10 @@ defmodule Storyarn.Projects.FlowProjectTrash do
           Repo.rollback(:flow_not_found)
 
       case Repo.one(
-             from(project in Project, where: project.id == ^project_id and is_nil(project.deleted_at), lock: "FOR UPDATE")
+             from(project in Project,
+               where: project.id == ^project_id and is_nil(project.deleted_at),
+               lock: "FOR UPDATE"
+             )
            ) do
         nil -> Repo.rollback(:project_not_active)
         %Project{} -> :ok
@@ -255,7 +258,9 @@ defmodule Storyarn.Projects.FlowProjectTrash do
     end
   end
 
-  defp trash_ref_would_restore?(%FlowEntityTrashReferenceRecord{source_field: "data." <> key}, %FlowNodeRecord{data: data})
+  defp trash_ref_would_restore?(%FlowEntityTrashReferenceRecord{source_field: "data." <> key}, %FlowNodeRecord{
+         data: data
+       })
        when is_map(data), do: Map.get(data, key) == nil
 
   defp trash_ref_would_restore?(_ref, _node), do: true

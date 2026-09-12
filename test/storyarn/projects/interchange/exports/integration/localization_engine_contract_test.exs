@@ -188,7 +188,9 @@ defmodule Storyarn.Projects.Exports.LocalizationEngineContractTest do
     language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
     stale_node
-    |> Ecto.Changeset.change(data: Map.merge(stale_node.data, %{"text" => "Current database source", "responses" => []}))
+    |> Ecto.Changeset.change(
+      data: Map.merge(stale_node.data, %{"text" => "Current database source", "responses" => []})
+    )
     |> Repo.update!()
 
     assert :ok = Localization.extract_flow_node(stale_node)

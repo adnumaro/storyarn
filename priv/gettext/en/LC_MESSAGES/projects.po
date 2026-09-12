@@ -57,7 +57,7 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/members.ex:95
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:296
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:120
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:110
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:108
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr ""
@@ -164,14 +164,14 @@ msgstr "Some items could not be deleted."
 #: lib/storyarn_web/live/project_settings_live/members.ex:185
 #: lib/storyarn_web/live/project_settings_live/members.ex:289
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:284
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:661
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:664
 #: lib/storyarn_web/live/project_settings_live/templates.ex:67
 #: lib/storyarn_web/live/project_settings_live/templates.ex:123
 #: lib/storyarn_web/live/project_settings_live/trash.ex:84
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:149
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:171
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:234
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:246
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:232
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:244
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this project."
 msgstr ""
@@ -206,7 +206,7 @@ msgstr ""
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:159
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:157
 #, elixir-autogen, elixir-format
 msgid "Failed to save settings."
 msgstr ""
@@ -272,7 +272,7 @@ msgstr ""
 msgid "Sheet \"%{name}\" has no references from flows or scenes"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/dialogic.ex:77
+#: lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/dialogic.ex:78
 #, elixir-autogen, elixir-format
 msgid "set_if_unset emits unconditional set in Dialogic (no conditional set syntax)"
 msgstr ""
@@ -282,24 +282,24 @@ msgstr ""
 msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:458
+#: lib/storyarn_web/live/template_live/show.ex:456
 #: lib/storyarn_web/live/workspace_live/show.ex:151
 #, elixir-autogen, elixir-format
 msgid "Template installation started."
 msgstr "Template installation started."
 
-#: lib/storyarn_web/live/template_live/show.ex:579
-#: lib/storyarn_web/live/workspace_live/show.ex:189
+#: lib/storyarn_web/live/template_live/show.ex:577
+#: lib/storyarn_web/live/workspace_live/show.ex:190
 #, elixir-autogen, elixir-format
 msgid "Your project is ready."
 msgstr "Your project is ready."
 
-#: lib/storyarn_web/live/template_live/show.ex:401
+#: lib/storyarn_web/live/template_live/show.ex:399
 #, elixir-autogen, elixir-format
 msgid "Starting installation…"
 msgstr "Starting installation…"
 
-#: lib/storyarn_web/live/template_live/show.ex:405
+#: lib/storyarn_web/live/template_live/show.ex:403
 #, elixir-autogen, elixir-format
 msgid "Installation in progress"
 msgstr "Installation in progress"
@@ -309,33 +309,33 @@ msgstr "Installation in progress"
 msgid "Installation reference: %{reference}"
 msgstr "Installation reference: %{reference}"
 
-#: lib/storyarn_web/live/template_live/show.ex:724
+#: lib/storyarn_web/live/template_live/show.ex:722
 #, elixir-autogen, elixir-format
 msgid "Waiting to start…"
 msgstr "Waiting to start…"
 
-#: lib/storyarn_web/live/template_live/show.ex:725
+#: lib/storyarn_web/live/template_live/show.ex:723
 #, elixir-autogen, elixir-format
 msgid "Verifying template integrity…"
 msgstr "Verifying template integrity…"
 
-#: lib/storyarn_web/live/template_live/show.ex:726
+#: lib/storyarn_web/live/template_live/show.ex:724
 #, elixir-autogen, elixir-format
 msgid "Copying project content and assets…"
 msgstr "Copying project content and assets…"
 
-#: lib/storyarn_web/live/template_live/show.ex:727
+#: lib/storyarn_web/live/template_live/show.ex:725
 #, elixir-autogen, elixir-format
 msgid "Retrying after a temporary issue…"
 msgstr "Retrying after a temporary issue…"
 
-#: lib/storyarn_web/live/template_live/show.ex:728
+#: lib/storyarn_web/live/template_live/show.ex:726
 #, elixir-autogen, elixir-format
 msgid "Creating project…"
 msgstr "Creating project…"
 
 #: lib/storyarn_web/live/project_settings_live/templates.ex:208
-#: lib/storyarn_web/live/template_live/show.ex:517
+#: lib/storyarn_web/live/template_live/show.ex:515
 #, elixir-autogen, elixir-format
 msgid "A template publication is already running."
 msgstr ""
@@ -381,7 +381,7 @@ msgstr ""
 msgid "Create a password for %{email} to accept your invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:407
+#: lib/storyarn_web/live/template_live/show.ex:405
 #, elixir-autogen, elixir-format
 msgid "Create from template"
 msgstr ""
@@ -392,7 +392,7 @@ msgid "Create project"
 msgstr ""
 
 #: lib/storyarn_web/live/template_live/show.ex:239
-#: lib/storyarn_web/live/template_live/show.ex:810
+#: lib/storyarn_web/live/template_live/show.ex:808
 #, elixir-autogen, elixir-format
 msgid "Current"
 msgstr ""
@@ -422,7 +422,7 @@ msgstr ""
 msgid "Failed"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:843
+#: lib/storyarn_web/live/template_live/show.ex:841
 #, elixir-autogen, elixir-format
 msgid "Flows"
 msgstr ""
@@ -437,7 +437,7 @@ msgstr ""
 msgid "Installed"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:800
+#: lib/storyarn_web/live/template_live/show.ex:798
 #, elixir-autogen, elixir-format
 msgid "New template publication"
 msgstr ""
@@ -507,7 +507,7 @@ msgstr ""
 msgid "Private templates"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:380
+#: lib/storyarn_web/live/template_live/show.ex:378
 #, elixir-autogen, elixir-format
 msgid "Project name"
 msgstr ""
@@ -543,12 +543,12 @@ msgstr ""
 msgid "Published"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:823
+#: lib/storyarn_web/live/template_live/show.ex:821
 #, elixir-autogen, elixir-format
 msgid "Published %{date}"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:793
+#: lib/storyarn_web/live/template_live/show.ex:791
 #, elixir-autogen, elixir-format
 msgid "Published version %{version}"
 msgstr ""
@@ -573,7 +573,7 @@ msgstr ""
 msgid "Retrying"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:844
+#: lib/storyarn_web/live/template_live/show.ex:842
 #, elixir-autogen, elixir-format
 msgid "Scenes"
 msgstr ""
@@ -593,7 +593,7 @@ msgstr ""
 msgid "Search templates"
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:842
+#: lib/storyarn_web/live/template_live/show.ex:840
 #, elixir-autogen, elixir-format
 msgid "Sheets"
 msgstr ""
@@ -604,13 +604,13 @@ msgid "Storyarn demos"
 msgstr ""
 
 #: lib/storyarn_web/live/template_live/index.ex:191
-#: lib/storyarn_web/live/template_live/show.ex:539
+#: lib/storyarn_web/live/template_live/show.ex:537
 #, elixir-autogen, elixir-format
 msgid "Template archived."
 msgstr ""
 
 #: lib/storyarn_web/live/template_live/index.ex:194
-#: lib/storyarn_web/live/template_live/show.ex:543
+#: lib/storyarn_web/live/template_live/show.ex:541
 #, elixir-autogen, elixir-format
 msgid "Template could not be archived."
 msgstr ""
@@ -621,9 +621,9 @@ msgstr ""
 msgid "Template could not be deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:464
-#: lib/storyarn_web/live/template_live/show.ex:467
-#: lib/storyarn_web/live/workspace_live/show.ex:160
+#: lib/storyarn_web/live/template_live/show.ex:462
+#: lib/storyarn_web/live/template_live/show.ex:465
+#: lib/storyarn_web/live/workspace_live/show.ex:161
 #, elixir-autogen, elixir-format
 msgid "Template could not be installed."
 msgstr ""
@@ -639,13 +639,13 @@ msgid "Template could not be restored."
 msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/templates.ex:212
-#: lib/storyarn_web/live/template_live/show.ex:523
+#: lib/storyarn_web/live/template_live/show.ex:521
 #, elixir-autogen, elixir-format
 msgid "Template limit reached for your plan."
 msgstr ""
 
 #: lib/storyarn_web/live/template_live/show.ex:37
-#: lib/storyarn_web/live/template_live/show.ex:559
+#: lib/storyarn_web/live/template_live/show.ex:557
 #, elixir-autogen, elixir-format
 msgid "Template not found."
 msgstr ""
@@ -655,14 +655,14 @@ msgstr ""
 msgid "Template permanently deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:526
-#: lib/storyarn_web/live/template_live/show.ex:530
+#: lib/storyarn_web/live/template_live/show.ex:524
+#: lib/storyarn_web/live/template_live/show.ex:528
 #, elixir-autogen, elixir-format
 msgid "Template publication could not be queued."
 msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/templates.ex:172
-#: lib/storyarn_web/live/template_live/show.ex:511
+#: lib/storyarn_web/live/template_live/show.ex:509
 #, elixir-autogen, elixir-format
 msgid "Template publication queued."
 msgstr ""
@@ -672,18 +672,18 @@ msgstr ""
 msgid "Template restored."
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:362
+#: lib/storyarn_web/live/template_live/show.ex:360
 #, elixir-autogen, elixir-format
 msgid "Template version"
 msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/templates.ex:216
-#: lib/storyarn_web/live/template_live/show.ex:520
+#: lib/storyarn_web/live/template_live/show.ex:518
 #, elixir-autogen, elixir-format
 msgid "Template version limit reached for your plan."
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:801
+#: lib/storyarn_web/live/template_live/show.ex:799
 #, elixir-autogen, elixir-format
 msgid "Template version publication"
 msgstr ""
@@ -727,17 +727,17 @@ msgstr ""
 msgid "You don't have permission to publish templates from this project."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1483
+#: lib/storyarn_web/live/export_import_live/index.ex:1485
 #, elixir-autogen, elixir-format
 msgid "The selected Yarn project is invalid or exceeds the import safety limits."
 msgstr "The selected Yarn project is invalid or exceeds the import safety limits."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1489
+#: lib/storyarn_web/live/export_import_live/index.ex:1491
 #, elixir-autogen, elixir-format
 msgid "The import could not be completed. No project content was changed."
 msgstr "The import could not be completed. No project content was changed."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1450
+#: lib/storyarn_web/live/export_import_live/index.ex:1452
 #, elixir-autogen, elixir-format
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
@@ -792,79 +792,79 @@ msgstr ""
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""
 
-#: lib/storyarn_web/live/template_live/show.ex:678
+#: lib/storyarn_web/live/template_live/show.ex:676
 #, elixir-autogen, elixir-format
 msgid "Template installation failed: %{reason} Reference: %{reference}"
 msgstr "Template installation failed: %{reason} Reference: %{reference}"
 
-#: lib/storyarn_web/live/template_live/show.ex:687
+#: lib/storyarn_web/live/template_live/show.ex:685
 #, elixir-autogen, elixir-format
 msgid "A template asset could not be copied."
 msgstr "A template asset could not be copied."
 
-#: lib/storyarn_web/live/template_live/show.ex:690
-#: lib/storyarn_web/live/template_live/show.ex:722
+#: lib/storyarn_web/live/template_live/show.ex:688
+#: lib/storyarn_web/live/template_live/show.ex:720
 #, elixir-autogen, elixir-format
 msgid "The installation could not be completed."
 msgstr "The installation could not be completed."
 
-#: lib/storyarn_web/live/template_live/show.ex:693
+#: lib/storyarn_web/live/template_live/show.ex:691
 #, elixir-autogen, elixir-format
 msgid "This template is no longer available."
 msgstr "This template is no longer available."
 
-#: lib/storyarn_web/live/template_live/show.ex:696
+#: lib/storyarn_web/live/template_live/show.ex:694
 #, elixir-autogen, elixir-format
 msgid "The template failed its integrity check."
 msgstr "The template failed its integrity check."
 
-#: lib/storyarn_web/live/template_live/show.ex:700
+#: lib/storyarn_web/live/template_live/show.ex:698
 #, elixir-autogen, elixir-format
 msgid "This template version is incompatible and must be republished."
 msgstr "This template version is incompatible and must be republished."
 
-#: lib/storyarn_web/live/template_live/show.ex:704
+#: lib/storyarn_web/live/template_live/show.ex:702
 #, elixir-autogen, elixir-format
 msgid "This template version contains an invalid subflow exit and must be republished."
 msgstr "This template version contains an invalid subflow exit and must be republished."
 
-#: lib/storyarn_web/live/template_live/show.ex:707
+#: lib/storyarn_web/live/template_live/show.ex:705
 #, elixir-autogen, elixir-format
 msgid "The workspace project limit has been reached."
 msgstr "The workspace project limit has been reached."
 
-#: lib/storyarn_web/live/template_live/show.ex:710
+#: lib/storyarn_web/live/template_live/show.ex:708
 #, elixir-autogen, elixir-format
 msgid "The template asset manifest is unavailable."
 msgstr "The template asset manifest is unavailable."
 
-#: lib/storyarn_web/live/template_live/show.ex:713
+#: lib/storyarn_web/live/template_live/show.ex:711
 #, elixir-autogen, elixir-format
 msgid "The template integrity information is unavailable."
 msgstr "The template integrity information is unavailable."
 
-#: lib/storyarn_web/live/template_live/show.ex:716
+#: lib/storyarn_web/live/template_live/show.ex:714
 #, elixir-autogen, elixir-format
 msgid "The template or workspace is no longer available."
 msgstr "The template or workspace is no longer available."
 
-#: lib/storyarn_web/live/template_live/show.ex:719
+#: lib/storyarn_web/live/template_live/show.ex:717
 #, elixir-autogen, elixir-format
 msgid "You no longer have permission to install this template."
 msgstr "You no longer have permission to install this template."
 
-#: lib/storyarn_web/live/template_live/show.ex:432
+#: lib/storyarn_web/live/template_live/show.ex:430
 #, elixir-autogen, elixir-format
 msgid "Dismiss installation failure"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1490
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:2048
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1496
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:2054
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" contains an expression that cannot be exported to %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:2068
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:2074
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\": %{warning}"
 msgstr ""
@@ -919,12 +919,12 @@ msgstr[1] ""
 msgid "Sheet \"%{name}\" needs a valid shortcut for the %{format} export"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1276
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1282
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has no configured target; %{format} cannot preserve the transition"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1301
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1307
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" targets content that no longer exists; %{format} cannot preserve the transition"
 msgstr ""
@@ -949,27 +949,27 @@ msgstr ""
 msgid "\"%{node}\" in flow \"%{flow}\" has connections from outputs the exporter cannot preserve"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1293
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1299
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has target data that cannot be exported"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1858
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1864
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" loses behavior in %{format}: %{detail}"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1285
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1291
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" targets a flow outside this partial export"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1100
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1106
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" targets flow \"%{target}\", which needs a valid shortcut for the %{format} export"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1190
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1196
 #, elixir-autogen, elixir-format
 msgid "A selected flow and an external target collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr ""
@@ -984,17 +984,17 @@ msgstr ""
 msgid "Dialogue \"%{node}\" in flow \"%{flow}\" has response data that cannot be exported"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1706
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1712
 #, elixir-autogen, elixir-format
 msgid "Dialogue conditions are not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1718
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1724
 #, elixir-autogen, elixir-format
 msgid "Dialogue conditions are not represented in articy:draft XML"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1807
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1813
 #, elixir-autogen, elixir-format
 msgid "Exit flow references are not represented by this serializer"
 msgstr ""
@@ -1004,7 +1004,7 @@ msgstr ""
 msgid "Flow \"%{name}\" has %{count} Entry nodes; export can preserve only one"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1607
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1613
 #, elixir-autogen, elixir-format
 msgid "Grouped switch cases cannot be represented by this serializer"
 msgstr ""
@@ -1024,7 +1024,7 @@ msgstr ""
 msgid "Multiple hubs collapse to the target identifier \"%{identifier}\" in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1784
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1790
 #, elixir-autogen, elixir-format
 msgid "Multiple subflow return branches cannot be represented by this serializer"
 msgstr ""
@@ -1036,22 +1036,22 @@ msgid_plural "%{count} Yarn line IDs collide after serialization"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1668
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1674
 #, elixir-autogen, elixir-format
 msgid "Response assignments are not represented in articy:draft XML"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1733
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1739
 #, elixir-autogen, elixir-format
 msgid "Response-specific routing is not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1748
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1754
 #, elixir-autogen, elixir-format
 msgid "Subflow transitions are not represented in Unreal CSV"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1628
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1634
 #, elixir-autogen, elixir-format
 msgid "Switch branches are merged by this serializer"
 msgstr ""
@@ -1066,12 +1066,12 @@ msgstr ""
 msgid "set_if_unset emits an unconditional assignment in Ink"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1644
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1650
 #, elixir-autogen, elixir-format
 msgid "Condition branch routing is not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1761
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1767
 #, elixir-autogen, elixir-format
 msgid "Subflow return routing is not represented by this serializer"
 msgstr ""
@@ -1081,47 +1081,47 @@ msgstr ""
 msgid "\"%{node}\" in flow \"%{flow}\" is not reachable from Entry and will not be included in the %{format} export"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1374
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1380
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" references a variable that no longer exists"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1425
+#: lib/storyarn_web/live/export_import_live/index.ex:1427
 #, elixir-autogen, elixir-format
 msgid "The import was cancelled. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1436
+#: lib/storyarn_web/live/export_import_live/index.ex:1438
 #, elixir-autogen, elixir-format
 msgid "This import could not be validated and was discarded. Validate the file again before importing."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:785
+#: lib/storyarn_web/live/export_import_live/index.ex:786
 #, elixir-autogen, elixir-format
 msgid "This import is already running and cannot be dismissed. It will finish in the background."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1443
+#: lib/storyarn_web/live/export_import_live/index.ex:1445
 #, elixir-autogen, elixir-format
 msgid "This import preview expired before the import was started. Upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1379
+#: lib/storyarn_web/live/export_import_live/index.ex:1381
 #, elixir-autogen, elixir-format
 msgid "This project already has a main flow, so the imported one could not be created. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1429
+#: lib/storyarn_web/live/export_import_live/index.ex:1431
 #, elixir-autogen, elixir-format
 msgid "The import could not run before its retention deadline. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1099
+#: lib/storyarn_web/live/export_import_live/index.ex:1101
 #, elixir-autogen, elixir-format
 msgid "Your previous import could not be restored. Reset it and upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:756
+#: lib/storyarn_web/live/export_import_live/index.ex:757
 #, elixir-autogen, elixir-format
 msgid "The import could not be dismissed. Try again."
 msgstr ""
@@ -1229,7 +1229,7 @@ msgstr ""
 msgid "Ownership could not be transferred because the project ownership data is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:542
+#: lib/storyarn_web/live/export_import_live/index.ex:543
 #: lib/storyarn_web/live/project_settings_live/members.ex:232
 #: lib/storyarn_web/live/project_settings_live/members.ex:308
 #, elixir-autogen, elixir-format
@@ -1277,7 +1277,7 @@ msgstr ""
 msgid "The member could not be removed because project ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:256
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:254
 #, elixir-autogen, elixir-format
 msgid "Version control settings could not be saved because project ownership is inconsistent."
 msgstr ""
@@ -1308,18 +1308,18 @@ msgstr ""
 msgid "Variable references could not be repaired because project ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:727
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:730
 #, elixir-autogen, elixir-format
 msgid "The snapshot action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:674
-#: lib/storyarn_web/live/export_import_live/index.ex:1457
+#: lib/storyarn_web/live/export_import_live/index.ex:675
+#: lib/storyarn_web/live/export_import_live/index.ex:1459
 #, elixir-autogen, elixir-format
 msgid "The import action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:685
+#: lib/storyarn_web/live/export_import_live/index.ex:686
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to import into this project."
 msgstr ""

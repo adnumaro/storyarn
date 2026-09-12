@@ -152,7 +152,8 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
       page = Enum.take(rows, limit)
 
       next =
-        if length(rows) > limit, do: %{at: DateTime.to_iso8601(List.last(page).last_activity_at), id: List.last(page).id}
+        if length(rows) > limit,
+          do: %{at: DateTime.to_iso8601(List.last(page).last_activity_at), id: List.last(page).id}
 
       {:ok, page, next}
     end

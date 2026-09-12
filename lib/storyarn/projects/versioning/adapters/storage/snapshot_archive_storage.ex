@@ -156,7 +156,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
 
   @doc false
   @spec ready_prefix(pos_integer(), String.t()) :: String.t()
-  def ready_prefix(project_id, token), do: "projects/#{project_id}/snapshots/archives/v#{@format_version}/ready/#{token}"
+  def ready_prefix(project_id, token),
+    do: "projects/#{project_id}/snapshots/archives/v#{@format_version}/ready/#{token}"
 
   @doc false
   @spec archive_key(String.t()) :: String.t()
@@ -919,7 +920,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
     end
   end
 
-  defp verify_archive(key, size_bytes, observer), do: verify_object(key, size_bytes, nil, @archive_content_type, observer)
+  defp verify_archive(key, size_bytes, observer),
+    do: verify_object(key, size_bytes, nil, @archive_content_type, observer)
 
   defp verify_manifest(key, staged, observer) do
     case verify_object(
@@ -1795,7 +1797,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
          %{id: reservation_id, lease_token: lease_token}
        ), do: :ok
 
-  defp validate_claim_reservation(_claim, _reservation), do: {:error, :snapshot_object_stage_reservation_binding_conflict}
+  defp validate_claim_reservation(_claim, _reservation),
+    do: {:error, :snapshot_object_stage_reservation_binding_conflict}
 
   defp lock_claim(object_prefix) do
     Repo.one(
@@ -1877,7 +1880,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
 
   defp validate_token(_token), do: {:error, :invalid_snapshot_object_token}
 
-  defp claim_lease_expires_at(now), do: DateTime.shift(now, second: ProjectSnapshotLeasePolicy.build_lease_ttl_seconds())
+  defp claim_lease_expires_at(now),
+    do: DateTime.shift(now, second: ProjectSnapshotLeasePolicy.build_lease_ttl_seconds())
 
   defp lease_active?(%DateTime{} = expires_at, %DateTime{} = now), do: DateTime.after?(expires_at, now)
   defp lease_active?(_expires_at, _now), do: false

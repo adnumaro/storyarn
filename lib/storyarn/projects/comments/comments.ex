@@ -211,6 +211,20 @@ defmodule Storyarn.Projects.Comments do
     |> publish_and_read(scope, project_id)
   end
 
+  def validate_flow_context(scope, project_id, flow_id, input) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(flow_id),
+         flow when not is_nil(flow) <- Queries.flow_source(project_id, flow_id),
+         {:ok, context} <- Context.normalize(input),
+         {:ok, _attributes} <-
+           Context.attributes(%{source_type: "flow_canvas", container_id: flow.id, project_id: project_id}, context) do
+      {:ok, context}
+    else
+      {:error, _reason} = error -> error
+      _unavailable -> {:error, :source_unavailable}
+    end
+  end
+
   def validate_sheet_context(scope, project_id, sheet_id, input) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(sheet_id),

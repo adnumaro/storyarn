@@ -715,7 +715,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   defp redo_action({:create_layer, layer}, socket) do
     case Scenes.create_layer(socket.assigns.scene.id, layer_to_attrs(layer)) do
       {:ok, new_layer} ->
-        {:ok, push_event(socket, "layer_created", %{id: new_layer.id, name: new_layer.name}), {:create_layer, new_layer}}
+        {:ok, push_event(socket, "layer_created", %{id: new_layer.id, name: new_layer.name}),
+         {:create_layer, new_layer}}
 
       {:error, _} ->
         {:error, socket}

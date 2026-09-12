@@ -112,7 +112,8 @@ defmodule Storyarn.Sheets.Editor.Commands.Sheets do
   end
 
   @doc false
-  def create_sheet_in_transaction(%{user: %{id: actor_id}}, project, attrs) when is_integer(actor_id) and actor_id > 0 do
+  def create_sheet_in_transaction(%{user: %{id: actor_id}}, project, attrs)
+      when is_integer(actor_id) and actor_id > 0 do
     project_id = project_id!(project)
     sheet = create_sheet_in_transaction(project, attrs)
     {sheet, deliver_content_activity!(actor_id, project_id, :created, sheet)}
@@ -154,7 +155,8 @@ defmodule Storyarn.Sheets.Editor.Commands.Sheets do
     trash_sheet(sheet)
   end
 
-  def delete_sheet(%{user: %{id: actor_id}} = actor_scope, %Sheet{} = sheet) when is_integer(actor_id) and actor_id > 0 do
+  def delete_sheet(%{user: %{id: actor_id}} = actor_scope, %Sheet{} = sheet)
+      when is_integer(actor_id) and actor_id > 0 do
     trash_sheet(actor_scope, sheet)
   end
 
@@ -165,7 +167,8 @@ defmodule Storyarn.Sheets.Editor.Commands.Sheets do
     with {:ok, %{entity: entity}} <- delete_sheet_subtree(sheet), do: {:ok, entity}
   end
 
-  def trash_sheet(%{user: %{id: actor_id}} = actor_scope, %Sheet{} = sheet) when is_integer(actor_id) and actor_id > 0 do
+  def trash_sheet(%{user: %{id: actor_id}} = actor_scope, %Sheet{} = sheet)
+      when is_integer(actor_id) and actor_id > 0 do
     with {:ok, %{entity: entity}} <- delete_sheet_subtree(actor_scope, sheet), do: {:ok, entity}
   end
 

@@ -63,7 +63,9 @@ defmodule StoryarnWeb.LiveVueEncoders do
 
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Assets.Entities.AssetRecord, except: [:deleted_at, :deleted_by_id])
 
-  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Projections.AssetRecord, except: [:deleted_at, :deleted_by_id])
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Projections.AssetRecord,
+    except: [:deleted_at, :deleted_by_id]
+  )
 
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Projections.BlockRecord)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Projections.EntityVersionRecord)

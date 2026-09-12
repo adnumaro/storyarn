@@ -45,8 +45,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           "can_edit" => @can_edit,
           "membership" => @membership,
           "active_tool" => "localization",
-          "dashboard_url" =>
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
           "current_scope" => @current_scope,
           "locale" => @locale
         }
@@ -91,9 +90,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           }
         }
         selected-text={serialize_selected_text(assigns)}
-        languages={
-          %{current: serialize_language(assigns), targets: serialize_target_languages(assigns)}
-        }
+        languages={%{current: serialize_language(assigns), targets: serialize_target_languages(assigns)}}
         speakers={serialize_speakers(@speakers)}
         overview-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
       />
@@ -256,7 +253,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     end)
   end
 
-  def handle_event("save_translation", %{"id" => id, "lock_version" => lock_version, "localized_text" => params}, socket) do
+  def handle_event(
+        "save_translation",
+        %{"id" => id, "lock_version" => lock_version, "localized_text" => params},
+        socket
+      ) do
     with_auth(:edit_content, socket, fn ->
       save_translation(socket, id, lock_version, params)
     end)

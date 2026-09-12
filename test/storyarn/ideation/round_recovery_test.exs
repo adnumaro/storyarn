@@ -165,7 +165,11 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], "not-a-date") end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], nil) end,
       fn data ->
-        update_in(data, ["rows", "rounds", Access.at(0)], &Map.merge(&1, %{"status" => "cancelled", "started_at" => nil}))
+        update_in(
+          data,
+          ["rows", "rounds", Access.at(0)],
+          &Map.merge(&1, %{"status" => "cancelled", "started_at" => nil})
+        )
       end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "prompt"], String.duplicate("é", 1500)) end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(1), "number"], first.number) end,
@@ -211,19 +215,24 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
   end
 
   defp start_round(ctx, round) do
-    {:ok, session} = Ideation.start_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, ctx.session.revision)
+    {:ok, session} =
+      Ideation.start_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, ctx.session.revision)
+
     %{ctx | session: session}
   end
 
   defp close_round(ctx, round) do
-    {:ok, session} = Ideation.close_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, ctx.session.revision)
+    {:ok, session} =
+      Ideation.close_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, ctx.session.revision)
+
     %{ctx | session: session}
   end
 
   defp capture(ctx) do
     {:ok, snapshot} =
       Repo.transact(fn ->
-        {:ok, ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
+        {:ok,
+         ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
       end)
 
     snapshot["ideation"]

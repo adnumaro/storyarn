@@ -1,4 +1,5 @@
 import type { FlowCommentThread } from "../../types/comments";
+import type { CommentContextReference } from "@components/comments/types";
 export { commentPopoverPosition } from "@components/comments/commentGeometry";
 
 export interface CommentPoint {
@@ -13,6 +14,10 @@ export interface CommentViewport extends CommentPoint {
 export interface CommentNodeView {
   position: CommentPoint;
 }
+
+export type ResolvableFlowCommentContext = CommentContextReference & {
+  status?: "available" | "unavailable";
+};
 
 export function commentNodeId(thread: FlowCommentThread): number | null {
   if (thread.source.status !== "available") return null;
@@ -31,7 +36,7 @@ export function commentCanvasPoint(
 ): CommentPoint | null {
   if (thread.source.status !== "available") return null;
   if (thread.source.type === "flow_canvas")
-    return movedPosition ?? contextualCanvasPoint(thread, views);
+    return movedPosition ?? contextualCommentPoint(thread.position, thread.context, views);
   const node = views.get(`node-${thread.source.id}`);
   if (!node) return null;
   // Older, node-only threads did not store an offset.
@@ -39,15 +44,23 @@ export function commentCanvasPoint(
   return { x: node.position.x + offset.x, y: node.position.y + offset.y };
 }
 
-function contextualCanvasPoint(
-  thread: FlowCommentThread,
+/** Both persisted pins and drafts use a node-relative offset plus a surface fallback. */
+export function contextualCommentPoint(
+  position: CommentPoint | null | undefined,
+  context: ResolvableFlowCommentContext | null | undefined,
   views: ReadonlyMap<string, CommentNodeView>,
 ): CommentPoint | null {
-  const nodeId = commentNodeId(thread);
-  const node = nodeId == null ? null : views.get(`node-${nodeId}`);
-  const offset = thread.context?.offset;
-  if (node && offset) return { x: node.position.x + offset.x, y: node.position.y + offset.y };
-  return thread.position ?? null;
+  const offset = context?.offset;
+  if (
+    context?.type !== "flow_node" ||
+    context.status === "unavailable" ||
+    !offset ||
+    ![offset.x, offset.y].every(Number.isFinite)
+  )
+    return position ?? null;
+  const node = views.get(`node-${context.id}`);
+  if (!node) return position ?? null;
+  return { x: node.position.x + offset.x, y: node.position.y + offset.y };
 }
 
 export function commentScreenPoint(point: CommentPoint, viewport: CommentViewport): CommentPoint {

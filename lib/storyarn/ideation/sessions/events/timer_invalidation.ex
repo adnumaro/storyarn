@@ -6,7 +6,9 @@ defmodule Storyarn.Ideation.Sessions.Events.TimerInvalidation do
   # notification was lost. This carries no state; it asks the runtime to retry
   # its durable inventory, even if the individual delivery later exhausts retries.
   def wake do
-    if !Repo.in_transaction?(), do: Phoenix.PubSub.broadcast(Storyarn.PubSub, "ideation:timers", :ideation_timers_changed)
+    if !Repo.in_transaction?(),
+      do: Phoenix.PubSub.broadcast(Storyarn.PubSub, "ideation:timers", :ideation_timers_changed)
+
     :ok
   end
 

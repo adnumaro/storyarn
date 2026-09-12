@@ -69,7 +69,9 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
 
     for scope <- [ctx.owner, ctx.author, ctx.peer, ctx.viewer] do
       assert {:error, _} = Projects.create_ideation_comment(scope, ctx.project.id, ctx.session.id, idea.id, attrs())
-      assert {:error, :not_found} = Projects.list_ideation_comment_threads(scope, ctx.project.id, ctx.session.id, idea.id)
+
+      assert {:error, :not_found} =
+               Projects.list_ideation_comment_threads(scope, ctx.project.id, ctx.session.id, idea.id)
     end
 
     assert Repo.aggregate(Thread, :count) == 0
@@ -98,7 +100,9 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
 
     for scope <- [ctx.owner, ctx.author, ctx.peer] do
       assert {:error, :not_found} = Projects.get_comment_thread(scope, ctx.project.id, discussion.thread.id)
-      assert {:error, :not_found} = Projects.list_ideation_comment_threads(scope, ctx.project.id, ctx.session.id, idea.id)
+
+      assert {:error, :not_found} =
+               Projects.list_ideation_comment_threads(scope, ctx.project.id, ctx.session.id, idea.id)
 
       assert {:error, _} =
                Projects.reply_to_comment_thread(

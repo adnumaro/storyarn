@@ -298,6 +298,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     create_ideation_comment: 5,
     subscribe_ideation_comments: 3,
     unsubscribe_ideation_comments: 2,
+    validate_flow_comment_context: 4,
     validate_sheet_comment_context: 4,
     list_flow_comment_threads: 3,
     list_flow_comment_threads: 4,

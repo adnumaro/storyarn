@@ -142,7 +142,8 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
 
   defp revalidation_reply(socket, {:ok, _integration}), do: {:reply, %{status: "ok"}, assign_detail(socket)}
 
-  defp revalidation_reply(socket, {:error, :invalid_key}), do: {:reply, error_reply(:invalid_key), assign_detail(socket)}
+  defp revalidation_reply(socket, {:error, :invalid_key}),
+    do: {:reply, error_reply(:invalid_key), assign_detail(socket)}
 
   defp revalidation_reply(socket, {:error, reason}), do: {:reply, error_reply(reason), socket}
 

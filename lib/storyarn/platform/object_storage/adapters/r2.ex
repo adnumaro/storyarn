@@ -356,7 +356,8 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
 
   defp abort_multipart_inventory(_key, [], _max_uploads, _remaining_passes, aborted_count), do: {:ok, aborted_count}
 
-  defp abort_multipart_inventory(key, uploads, max_uploads, remaining_passes, aborted_count) when remaining_passes > 0 do
+  defp abort_multipart_inventory(key, uploads, max_uploads, remaining_passes, aborted_count)
+       when remaining_passes > 0 do
     with :ok <- abort_multipart_uploads(uploads, remaining_passes) do
       abort_until_multipart_inventory_empty(
         key,
@@ -479,7 +480,8 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
 
   defp normalize_multipart_page_encoding(page, :identity), do: {:ok, page}
 
-  defp normalize_multipart_page_encoding(%{encoding_type: "url", uploads: uploads} = page, :url) when is_list(uploads) do
+  defp normalize_multipart_page_encoding(%{encoding_type: "url", uploads: uploads} = page, :url)
+       when is_list(uploads) do
     with {:ok, next_key_marker} <- decode_multipart_key(Map.get(page, :next_key_marker, "")),
          {:ok, uploads} <- decode_multipart_upload_keys(uploads) do
       {:ok, %{page | next_key_marker: next_key_marker, uploads: uploads}}
@@ -803,7 +805,8 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   end
 
   @impl true
-  def stream(key, offset, length, opts) when is_integer(offset) and offset >= 0 and is_integer(length) and length >= 0 do
+  def stream(key, offset, length, opts)
+      when is_integer(offset) and offset >= 0 and is_integer(length) and length >= 0 do
     etag = Keyword.get(opts, :etag)
     {:ok, range_stream(key, offset, length, etag)}
   end

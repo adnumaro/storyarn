@@ -66,7 +66,8 @@ defmodule Storyarn.Localization.Texts do
     )
   end
 
-  def purge_flow_node_texts(node_ids) when is_list(node_ids), do: Lifecycle.purge_texts_for_sources("flow_node", node_ids)
+  def purge_flow_node_texts(node_ids) when is_list(node_ids),
+    do: Lifecycle.purge_texts_for_sources("flow_node", node_ids)
 
   def purge_sheet_texts(source_type, source_ids) when source_type in ~w(block sheet) and is_list(source_ids),
     do: Lifecycle.purge_texts_for_sources(source_type, source_ids)

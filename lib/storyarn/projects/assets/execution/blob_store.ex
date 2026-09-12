@@ -72,7 +72,8 @@ defmodule Storyarn.Projects.Assets.BlobStore do
   metadata. Bytes are still verified independently by SHA-256.
   """
   @spec compatible_content_type?(term(), term()) :: boolean()
-  def compatible_content_type?(actual, expected) when is_binary(actual) and actual != "" and actual == expected, do: true
+  def compatible_content_type?(actual, expected) when is_binary(actual) and actual != "" and actual == expected,
+    do: true
 
   def compatible_content_type?("application/octet-stream", "audio/ogg"), do: true
   def compatible_content_type?("video/webm", "audio/webm"), do: true
@@ -176,7 +177,8 @@ defmodule Storyarn.Projects.Assets.BlobStore do
     verify_asset_blob_identity(destination_key, blob_hash, size, content_type, opts)
   end
 
-  def verify_asset_blob(_project_id, _blob_hash, _size, _content_type, _opts), do: {:error, :invalid_asset_blob_identity}
+  def verify_asset_blob(_project_id, _blob_hash, _size, _content_type, _opts),
+    do: {:error, :invalid_asset_blob_identity}
 
   defp verify_asset_blob_identity(destination_key, blob_hash, size, content_type, opts) do
     with true <- Regex.match?(@sha256_regex, blob_hash),

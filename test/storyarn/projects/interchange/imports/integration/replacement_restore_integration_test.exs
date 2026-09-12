@@ -152,7 +152,9 @@ defmodule Storyarn.Projects.Imports.ReplacementRestoreIntegrationTest do
              )
            )
 
-    assert Repo.exists?(from(pin in ScenePin, where: pin.scene_id == ^restored_scene.id and pin.label == "Recovery Gate"))
+    assert Repo.exists?(
+             from(pin in ScenePin, where: pin.scene_id == ^restored_scene.id and pin.label == "Recovery Gate")
+           )
 
     refute Repo.exists?(
              from(flow in Flow,

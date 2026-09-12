@@ -414,8 +414,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
          _project_id
        ), do: handle_exploration_flow_jump(socket, new_state, target_flow_id)
 
-  defp handle_continue_step({:flow_return, new_state, _skipped}, socket, _nodes, _connections, _sheets_map, _project_id),
-    do: handle_exploration_flow_return(socket, new_state)
+  defp handle_continue_step(
+         {:flow_return, new_state, _skipped},
+         socket,
+         _nodes,
+         _connections,
+         _sheets_map,
+         _project_id
+       ), do: handle_exploration_flow_return(socket, new_state)
 
   defp handle_continue_step({:finished, new_state, _skipped}, socket, _nodes, _connections, _sheets_map, _project_id),
     do: handle_flow_finished(socket, new_state)
@@ -427,7 +433,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp handle_built_slide({:finished, final_state}, socket), do: handle_flow_finished(socket, final_state)
-  defp handle_built_slide({:content, ready_state, _slide}, socket), do: {:noreply, update_flow_slide(socket, ready_state)}
+
+  defp handle_built_slide({:content, ready_state, _slide}, socket),
+    do: {:noreply, update_flow_slide(socket, ready_state)}
 
   defp handle_built_slide({:flow_jump, jumped_state, target_flow_id}, socket),
     do: handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
@@ -613,7 +621,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp init_flow_state(socket, context, engine_state) do
-    case build_slide_or_advance(engine_state, context.nodes, context.connections, context.sheets_map, context.project_id) do
+    case build_slide_or_advance(
+           engine_state,
+           context.nodes,
+           context.connections,
+           context.sheets_map,
+           context.project_id
+         ) do
       {:finished, final_state} ->
         apply_finished_flow(socket, final_state)
 
@@ -1581,7 +1595,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_ambient_flow_jump(socket, current, state, target_flow_id, depth \\ 0)
 
-  defp handle_ambient_flow_jump(socket, _current, _state, _target_flow_id, depth) when depth > @max_ambient_jump_depth do
+  defp handle_ambient_flow_jump(socket, _current, _state, _target_flow_id, depth)
+       when depth > @max_ambient_jump_depth do
     finish_ambient_flow(socket)
   end
 

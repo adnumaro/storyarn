@@ -113,7 +113,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotCrud do
     end
   end
 
-  def remeasure_object_set(_snapshot_id, _expected_generation, _attrs), do: {:error, :invalid_snapshot_accounting_update}
+  def remeasure_object_set(_snapshot_id, _expected_generation, _attrs),
+    do: {:error, :invalid_snapshot_accounting_update}
 
   @doc "Returns the next project snapshot version number."
   @spec next_version_number(integer()) :: pos_integer()

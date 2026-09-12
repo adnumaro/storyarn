@@ -284,7 +284,8 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
 
   @doc false
   @spec snapshot_commit_context?(pos_integer(), String.t()) :: boolean()
-  def snapshot_commit_context?(snapshot_id, kind) when is_integer(snapshot_id) and snapshot_id > 0 and is_binary(kind) do
+  def snapshot_commit_context?(snapshot_id, kind)
+      when is_integer(snapshot_id) and snapshot_id > 0 and is_binary(kind) do
     case Process.get(@storage_commit_process_key) do
       %{
         project_snapshot_id: ^snapshot_id,
@@ -2063,7 +2064,9 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
 
   defp validate_reservation_scope(%Workspace{}, _attrs), do: {:error, :invalid_storage_reservation_project}
 
-  defp lock_restore_reservation_project(%Workspace{id: workspace_id}, %StorageReservation{project_id_snapshot: project_id}) do
+  defp lock_restore_reservation_project(%Workspace{id: workspace_id}, %StorageReservation{
+         project_id_snapshot: project_id
+       }) do
     case lock_restore_reservation_project(workspace_id, project_id) do
       %Project{} = project -> {:ok, project}
       nil -> {:error, :invalid_storage_reservation_project}
@@ -2344,8 +2347,15 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
     normalize_cleanup_owner(reservation, reason, cleanup_request_id, cleanup_scope)
   end
 
-  defp normalize_cleanup_release(_reservation, _reason, _status, _reference, _request_id, _cleanup_scope, _cleanup_proof),
-    do: {:error, :storage_reservation_cleanup_ownership_required}
+  defp normalize_cleanup_release(
+         _reservation,
+         _reason,
+         _status,
+         _reference,
+         _request_id,
+         _cleanup_scope,
+         _cleanup_proof
+       ), do: {:error, :storage_reservation_cleanup_ownership_required}
 
   defp normalize_no_write_release(%StorageReservation{storage_started_at: nil} = reservation, reason, cleanup_proof) do
     with {:ok, prefixes} <- operation_object_prefixes(reservation),
@@ -2891,11 +2901,11 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
       reservation.cleanup_reference == attrs.cleanup_reference
   end
 
-  defp validate_operation_bytes(%StorageReservation{kind: "snapshot_export"}, bytes) when is_non_negative_integer(bytes),
-    do: :ok
+  defp validate_operation_bytes(%StorageReservation{kind: "snapshot_export"}, bytes)
+       when is_non_negative_integer(bytes), do: :ok
 
-  defp validate_operation_bytes(%StorageReservation{kind: "restore_staging"}, bytes) when is_non_negative_integer(bytes),
-    do: :ok
+  defp validate_operation_bytes(%StorageReservation{kind: "restore_staging"}, bytes)
+       when is_non_negative_integer(bytes), do: :ok
 
   defp validate_operation_bytes(%StorageReservation{kind: "snapshot_build"}, bytes) when is_positive_integer(bytes),
     do: :ok
@@ -2924,7 +2934,10 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
   defp verify_storage_start_allowed(%StorageReservation{}), do: :ok
 
   defp active_reservation(%StorageReservation{status: "active"}), do: :ok
-  defp active_reservation(%StorageReservation{status: "committed"}), do: {:error, :storage_reservation_already_committed}
+
+  defp active_reservation(%StorageReservation{status: "committed"}),
+    do: {:error, :storage_reservation_already_committed}
+
   defp active_reservation(%StorageReservation{status: "released"}), do: {:error, :storage_reservation_already_released}
 
   defp renewed_expiry(reservation, measured_at) do

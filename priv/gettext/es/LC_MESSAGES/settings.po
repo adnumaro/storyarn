@@ -42,7 +42,7 @@ msgid "A link to confirm your email change has been sent to the new address."
 msgstr "Hemos enviado un enlace para confirmar el cambio de email a la nueva dirección."
 
 #: lib/storyarn_web/live/settings_live/ai_team.ex:179
-#: lib/storyarn_web/live/settings_live/integration_detail.ex:312
+#: lib/storyarn_web/live/settings_live/integration_detail.ex:313
 #: lib/storyarn_web/live/shared/sudo_reauth.ex:83
 #, elixir-autogen, elixir-format
 msgid "Confirm it's you to change these settings."

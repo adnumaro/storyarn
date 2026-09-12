@@ -443,7 +443,8 @@ defmodule Storyarn.Projects.Imports.Materializer do
   end
 
   @doc false
-  def preflight_conflicts(project_id, %ImportPlan{data: data}, strategy) when is_integer(project_id) and project_id > 0 do
+  def preflight_conflicts(project_id, %ImportPlan{data: data}, strategy)
+      when is_integer(project_id) and project_id > 0 do
     with :ok <- validate_plan_data(data) do
       existing_targets = preload_existing_targets(project_id)
       preflight_conflict_strategy(project_id, data, strategy, existing_targets)
@@ -899,7 +900,8 @@ defmodule Storyarn.Projects.Imports.Materializer do
 
   defp preflight_skip_variable_contracts(_project_id, _data, _strategy, _existing_targets), do: :ok
 
-  defp normalize_conflict_strategy(strategy) when is_atom(strategy), do: normalize_conflict_strategy(to_string(strategy))
+  defp normalize_conflict_strategy(strategy) when is_atom(strategy),
+    do: normalize_conflict_strategy(to_string(strategy))
 
   defp normalize_conflict_strategy("skip"), do: {:ok, :skip}
   defp normalize_conflict_strategy("overwrite"), do: {:ok, :overwrite}
@@ -1010,7 +1012,8 @@ defmodule Storyarn.Projects.Imports.Materializer do
   end
 
   defp record_shortcut_rename(renames, imported, resolved)
-       when is_binary(imported) and is_binary(resolved) and imported != resolved, do: Map.put(renames, imported, resolved)
+       when is_binary(imported) and is_binary(resolved) and imported != resolved,
+       do: Map.put(renames, imported, resolved)
 
   defp record_shortcut_rename(renames, _imported, _resolved), do: renames
 

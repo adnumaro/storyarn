@@ -134,7 +134,8 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   def non_blank(""), do: nil
   def non_blank(s), do: s
 
-  defp maybe_add_source_locale(codes, %{locale_code: locale_code}) when is_binary(locale_code), do: [locale_code | codes]
+  defp maybe_add_source_locale(codes, %{locale_code: locale_code}) when is_binary(locale_code),
+    do: [locale_code | codes]
 
   defp maybe_add_source_locale(codes, _source_language), do: codes
 

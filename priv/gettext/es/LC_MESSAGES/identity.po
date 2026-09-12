@@ -60,7 +60,7 @@ msgstr "¡Bienvenido de nuevo!"
 
 #: lib/storyarn_web/live/user_live/confirm_access.ex:56
 #: lib/storyarn_web/user_auth.ex:243
-#: lib/storyarn_web/user_auth.ex:531
+#: lib/storyarn_web/user_auth.ex:533
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr "Debes iniciar sesión para acceder a esta página."

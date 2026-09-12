@@ -211,7 +211,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   defp advance_phase(%ProjectSnapshotReconciliationRun{phase: "publication_claims"} = run),
     do: inspect_publication_claims(run)
 
-  defp advance_phase(%ProjectSnapshotReconciliationRun{phase: "cleanup_intents"} = run), do: inspect_cleanup_intents(run)
+  defp advance_phase(%ProjectSnapshotReconciliationRun{phase: "cleanup_intents"} = run),
+    do: inspect_cleanup_intents(run)
 
   defp advance_phase(%ProjectSnapshotReconciliationRun{phase: "provider_objects"} = run), do: inspect_provider_page(run)
 

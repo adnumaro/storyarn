@@ -31,9 +31,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
         auto-version-scenes={version_control_value(@version_control_form, :auto_version_scenes)}
         auto-version-sheets={version_control_value(@version_control_form, :auto_version_sheets)}
         version-usage={serialize_version_usage(@version_usage)}
-        usage-path={
-          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings/usage-limits"
-        }
+        usage-path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings/usage-limits"}
         save-status={Atom.to_string(@save_status)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>

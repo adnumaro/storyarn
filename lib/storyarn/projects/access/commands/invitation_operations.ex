@@ -406,9 +406,11 @@ defmodule Storyarn.Projects.InvitationOperations do
     {:ok, locked_workspace}
   end
 
-  defp lock_available_parent(%{parent_key: :project_id}, %Project{id: project_id, workspace_id: workspace_id}, %Workspace{
-         id: workspace_id
-       }) do
+  defp lock_available_parent(
+         %{parent_key: :project_id},
+         %Project{id: project_id, workspace_id: workspace_id},
+         %Workspace{id: workspace_id}
+       ) do
     case Repo.one(
            from(project in Project,
              where: project.id == ^project_id and is_nil(project.deleted_at),

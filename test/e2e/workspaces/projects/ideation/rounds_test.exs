@@ -98,7 +98,8 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     |> assert_has("#brainstorming-canvas")
   end
 
-  test "a round closes in both browsers while private notes remain private and editable", %{conn: conn} = test_context do
+  test "a round closes in both browsers while private notes remain private and editable",
+       %{conn: conn} = test_context do
     ctx = ideation_fixture()
     assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
     assert {:ok, private} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)

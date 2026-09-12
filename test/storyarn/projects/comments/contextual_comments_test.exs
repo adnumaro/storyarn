@@ -241,6 +241,39 @@ defmodule Storyarn.Projects.ContextualCommentsTest do
              })
   end
 
+  test "Flow draft context uses the same surface and permissions as persisted comments without writing", ctx do
+    flow = flow_fixture(ctx.project)
+    node = node_fixture(flow)
+    other_flow = flow_fixture(ctx.project)
+    outsider = user_scope_fixture(user_fixture())
+    reference = %{type: "flow_node", id: node.id, offset: %{x: 35, y: -20}, label: "Untrusted label"}
+
+    assert {:ok, %{type: "flow_node", id: id, offset: %{x: 35.0, y: -20.0}} = normalized} =
+             Projects.validate_flow_comment_context(ctx.scope, ctx.project.id, flow.id, reference)
+
+    assert id == to_string(node.id)
+    refute Map.has_key?(normalized, :label)
+    assert {:ok, nil} = Projects.validate_flow_comment_context(ctx.scope, ctx.project.id, flow.id, nil)
+
+    assert {:error, :not_found} =
+             Projects.validate_flow_comment_context(outsider, ctx.project.id, flow.id, reference)
+
+    assert {:error, :context_unavailable} =
+             Projects.validate_flow_comment_context(ctx.scope, ctx.project.id, other_flow.id, reference)
+
+    assert {:ok, _deleted, _meta} = Flows.delete_node(node)
+
+    assert {:error, :context_unavailable} =
+             Projects.validate_flow_comment_context(ctx.scope, ctx.project.id, flow.id, reference)
+
+    Repo.update!(Ecto.Changeset.change(flow, deleted_at: Storyarn.Platform.Shared.TimeHelpers.now()))
+
+    assert {:error, :source_unavailable} =
+             Projects.validate_flow_comment_context(ctx.scope, ctx.project.id, flow.id, nil)
+
+    assert Repo.aggregate(Thread, :count) == 0
+  end
+
   test "Flow node creation keeps relative offset while ownership and position use its canvas", ctx do
     flow = flow_fixture(ctx.project)
     node = node_fixture(flow, %{position_x: 400, position_y: 200})

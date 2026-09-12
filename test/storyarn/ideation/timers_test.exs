@@ -175,7 +175,10 @@ defmodule Storyarn.Ideation.TimersTest do
     attrs = idea_attrs()
     assert {:ok, idea} = Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
     deleted = idea_fixture(ctx)
-    assert {:ok, deleted} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, deleted.id, deleted.revision)
+
+    assert {:ok, deleted} =
+             Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, deleted.id, deleted.revision)
+
     assert {:ok, _} = Ideation.set_contributions_open(ctx.facilitator, ctx.project.id, ctx.session.id, 1, false)
     assert current(ctx).configuration_version == 1
     assert {:ok, ^idea} = Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
@@ -291,7 +294,8 @@ defmodule Storyarn.Ideation.TimersTest do
     assert current(ctx).configuration.private_mode
   end
 
-  test "resuming explicitly renews scheduler authority and configuration, and never reveals without private mode", ctx do
+  test "resuming explicitly renews scheduler authority and configuration, and never reveals without private mode",
+       ctx do
     private(ctx)
     timer = start(ctx, %{reveal_on_expiry: true})
 
@@ -344,7 +348,10 @@ defmodule Storyarn.Ideation.TimersTest do
 
     for value <- [nil, "true", 1, %{}] do
       assert {:error, :invalid_timer_options} =
-               Ideation.start_timer(ctx.owner, ctx.project.id, ctx.session.id, 1, %{seconds: 15, reveal_on_expiry: value})
+               Ideation.start_timer(ctx.owner, ctx.project.id, ctx.session.id, 1, %{
+                 seconds: 15,
+                 reveal_on_expiry: value
+               })
     end
 
     assert {:error, :timer_reveal_requires_private} =
@@ -440,7 +447,13 @@ defmodule Storyarn.Ideation.TimersTest do
     attrs = Map.merge(%{seconds: 120}, attrs)
 
     assert {:ok, _} =
-             Ideation.start_timer(actor || ctx.facilitator, ctx.project.id, ctx.session.id, current(ctx).revision, attrs)
+             Ideation.start_timer(
+               actor || ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               current(ctx).revision,
+               attrs
+             )
 
     timer(ctx)
   end

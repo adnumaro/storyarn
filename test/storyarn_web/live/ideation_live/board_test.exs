@@ -182,7 +182,13 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     second = idea_fixture(ctx, %{visibility: :shared, title: "Second"}, ctx.peer)
     {:ok, author, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
     {:ok, peer, _} = live(log_in_user(ctx.conn, ctx.peer.user), board_path(ctx, ctx.session.id))
-    render_hook(author, "save_idea", payload(author, edit_attrs(%{idea_id: first.id, revision: 1, title: "First draft"})))
+
+    render_hook(
+      author,
+      "save_idea",
+      payload(author, edit_attrs(%{idea_id: first.id, revision: 1, title: "First draft"}))
+    )
+
     assert_reply(author, %{status: "ok", value: first_draft})
     render_hook(peer, "save_idea", payload(peer, edit_attrs(%{idea_id: second.id, revision: 1, title: "Second draft"})))
     assert_reply(peer, %{status: "ok", value: second_draft})
@@ -332,7 +338,10 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   test "workspace role changes invalidate inherited access", ctx do
     direct = Projects.get_membership(ctx.project.id, ctx.author.user.id)
     assert {:ok, _} = Projects.remove_member(ctx.owner, ctx.project.id, direct.id)
-    inherited = Storyarn.WorkspacesFixtures.workspace_membership_fixture(ctx.project.workspace, ctx.author.user, "member")
+
+    inherited =
+      Storyarn.WorkspacesFixtures.workspace_membership_fixture(ctx.project.workspace, ctx.author.user, "member")
+
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
     assert data(view)["can_edit"]
 
@@ -432,7 +441,13 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_board_eventually(view, fn board -> assert [%{"status" => "planned"}] = board["rounds"] end)
     [round] = data(view)["rounds"]
     refute Map.has_key?(round, "recovery_identity")
-    render_hook(view, "start_round", payload(view, %{revision: data(view)["session"]["revision"], round_id: round["id"]}))
+
+    render_hook(
+      view,
+      "start_round",
+      payload(view, %{revision: data(view)["session"]["revision"], round_id: round["id"]})
+    )
+
     assert_reply(view, %{status: "ok"})
     assert_board_eventually(participant, fn board -> assert board["active_round"]["id"] == round["id"] end)
     assert_board_eventually(view, fn board -> assert board["active_round"]["id"] == round["id"] end)
@@ -443,7 +458,12 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert header.props["active-round"]["prompt"] == round["prompt"]
     epoch = data(participant)["epoch"]
 
-    render_hook(view, "close_round", payload(view, %{revision: data(view)["session"]["revision"], round_id: round["id"]}))
+    render_hook(
+      view,
+      "close_round",
+      payload(view, %{revision: data(view)["session"]["revision"], round_id: round["id"]})
+    )
+
     assert_reply(view, %{status: "ok"})
 
     assert_board_eventually(participant, fn board ->
@@ -505,7 +525,12 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     {:ok, peer, _} = live(log_in_user(build_conn(), ctx.peer.user), board_path(ctx, ctx.session.id))
     epoch = data(peer)["epoch"]
 
-    render_hook(manager, "update_round", payload(manager, %{revision: "2", round_id: "#{round.id}", prompt: "Corrected"}))
+    render_hook(
+      manager,
+      "update_round",
+      payload(manager, %{revision: "2", round_id: "#{round.id}", prompt: "Corrected"})
+    )
+
     assert_reply(manager, %{status: "ok"})
     assert_board_eventually(manager, fn board -> assert board["session"]["revision"] == 3 end)
     assert_board_eventually(peer, fn board -> assert [%{"prompt" => "Corrected"}] = board["rounds"] end)
@@ -660,7 +685,9 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   defp data(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["board"]
-  defp payload(view, attrs), do: Map.merge(attrs, %{epoch: data(view)["epoch"], session_id: data(view)["session"]["id"]})
+
+  defp payload(view, attrs),
+    do: Map.merge(attrs, %{epoch: data(view)["epoch"], session_id: data(view)["session"]["id"]})
 
   defp assert_board_eventually(view, assertion, attempts \\ 200)
 

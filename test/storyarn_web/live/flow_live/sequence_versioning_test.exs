@@ -270,7 +270,10 @@ defmodule StoryarnWeb.FlowLive.SequenceVersioningTest do
     assert socket_assigns(view).auto_snapshot_ref == nil
     assert Flows.list_versions(flow.id) == []
     request = Repo.get_by!(Flows.Versioning.VersionRequest, flow_id: flow.id, status: "pending")
-    assert :ok = Oban.Testing.perform_job(Storyarn.Workers.CreateFlowVersionWorker, %{request_id: request.id}, repo: Repo)
+
+    assert :ok =
+             Oban.Testing.perform_job(Storyarn.Workers.CreateFlowVersionWorker, %{request_id: request.id}, repo: Repo)
+
     assert [version] = Flows.list_versions(flow.id)
     assert version.is_auto
     on_exit(fn -> SnapshotStorage.delete(version.storage_key) end)

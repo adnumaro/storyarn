@@ -101,7 +101,14 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
 
   test "a deleted group retains its revision and remapped provenance for explicit undo", ctx do
     assert {:ok, deleted} =
-             Ideation.delete_group(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.group.id, 1, Ecto.UUID.generate())
+             Ideation.delete_group(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.group.id,
+               1,
+               Ecto.UUID.generate()
+             )
 
     capsule = capture(ctx)
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
@@ -278,7 +285,8 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
   defp capture(ctx) do
     {:ok, snapshot} =
       Repo.transact(fn ->
-        {:ok, ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
+        {:ok,
+         ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
       end)
 
     snapshot["ideation"]

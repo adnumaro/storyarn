@@ -166,7 +166,8 @@ defmodule Storyarn.Sheets.Assets.Commands.Assets do
   end
 
   @doc false
-  def with_project_storage_lock(project_id, fun) when is_integer(project_id) and project_id > 0 and is_function(fun, 0) do
+  def with_project_storage_lock(project_id, fun)
+      when is_integer(project_id) and project_id > 0 and is_function(fun, 0) do
     with {:ok, workspace_id} <- project_workspace_id(project_id) do
       previous_lock = Process.get(@workspace_lock_key)
       Process.put(@workspace_lock_key, workspace_id)

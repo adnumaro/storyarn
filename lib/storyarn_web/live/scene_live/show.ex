@@ -659,7 +659,8 @@ defmodule StoryarnWeb.SceneLive.Show do
     }
   end
 
-  defp build_trigger_config("timed", params), do: %{"interval_ms" => IntegerParser.parse(params["interval_ms"]) || 30_000}
+  defp build_trigger_config("timed", params),
+    do: %{"interval_ms" => IntegerParser.parse(params["interval_ms"]) || 30_000}
 
   defp build_trigger_config("on_event", params), do: %{"variable_ref" => params["variable_ref"] || ""}
 
@@ -999,7 +1000,11 @@ defmodule StoryarnWeb.SceneLive.Show do
     {:noreply, put_flash(socket, :error, zone_label_icon_too_large_message())}
   end
 
-  def handle_event("upload_pin_icon", %{"id" => id, "filename" => filename, "content_type" => ct, "data" => data}, socket) do
+  def handle_event(
+        "upload_pin_icon",
+        %{"id" => id, "filename" => filename, "content_type" => ct, "data" => data},
+        socket
+      ) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       pin = Scenes.get_pin(socket.assigns.scene.id, id)
 

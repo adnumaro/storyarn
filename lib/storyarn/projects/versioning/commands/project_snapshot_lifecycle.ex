@@ -777,8 +777,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
                 coalesce(filter(sum(intent.retry_count), intent.status == "terminal"), 0),
                 :integer
               ),
-            repeated_terminal_failures: filter(count(intent.id), intent.status == "terminal" and intent.retry_count > 1),
-            oldest_requested_at: filter(min(intent.requested_at), intent.status in ["pending", "processing", "retrying"])
+            repeated_terminal_failures:
+              filter(count(intent.id), intent.status == "terminal" and intent.retry_count > 1),
+            oldest_requested_at:
+              filter(min(intent.requested_at), intent.status in ["pending", "processing", "retrying"])
           }
         )
       )
@@ -1524,7 +1526,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   defp cleanup_intent_id(%SnapshotCleanupIntent{id: id}), do: id
   defp cleanup_intent_id(intent_id), do: intent_id
 
-  defp terminalize_locked_predelete_failure(nil, _intent_or_id, _reason), do: {:error, :snapshot_cleanup_intent_not_found}
+  defp terminalize_locked_predelete_failure(nil, _intent_or_id, _reason),
+    do: {:error, :snapshot_cleanup_intent_not_found}
 
   defp terminalize_locked_predelete_failure(%SnapshotCleanupIntent{status: "completed"}, _intent_or_id, _reason),
     do: {:ok, :already_completed}

@@ -148,7 +148,8 @@ defmodule Storyarn.AI.Task do
   definition lock-free through `post_operation_authorization_mode/0`.
   """
   @spec post_operation_authorization_safe?(t()) :: boolean()
-  def post_operation_authorization_safe?(%__MODULE__{module: module}), do: lock_free_post_operation_authorization?(module)
+  def post_operation_authorization_safe?(%__MODULE__{module: module}),
+    do: lock_free_post_operation_authorization?(module)
 
   @spec context_subject(t(), ExecutionIntent.t() | Operation.t()) ::
           {:ok, SubjectRef.t()} | {:error, atom()}
@@ -255,7 +256,11 @@ defmodule Storyarn.AI.Task do
 
   defp valid_managed_price?(_task), do: false
 
-  defp valid_personal_cost_class?(%{personal_byok_allowed?: true, allowed_lanes: lanes, personal_cost_class: cost_class})
+  defp valid_personal_cost_class?(%{
+         personal_byok_allowed?: true,
+         allowed_lanes: lanes,
+         personal_cost_class: cost_class
+       })
        when is_list(lanes) do
     :personal_byok in lanes and is_binary(cost_class) and String.valid?(cost_class) and byte_size(cost_class) > 0 and
       byte_size(cost_class) <= 80

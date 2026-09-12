@@ -225,7 +225,8 @@ defmodule Storyarn.Flows.References.Rules.StaleVariableReferenceData do
     Map.put(block, "rules", repair_condition_rules(rules, read_references))
   end
 
-  defp repair_block(%{"type" => "group", "blocks" => inner_blocks} = group, read_references) when is_list(inner_blocks) do
+  defp repair_block(%{"type" => "group", "blocks" => inner_blocks} = group, read_references)
+       when is_list(inner_blocks) do
     Map.put(group, "blocks", Enum.map(inner_blocks, &repair_block(&1, read_references)))
   end
 

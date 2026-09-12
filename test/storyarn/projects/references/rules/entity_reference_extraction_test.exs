@@ -97,7 +97,8 @@ defmodule Storyarn.Projects.References.EntityReferenceExtractionTest do
         ~s(<span class="mention" data-type="sheet" data-type="flow" data-id="42">Duplicate</span>)
 
       assert {:error,
-              {:invalid_project_reference, {:block, :content, :malformed_mention}, %{type: ["sheet", "flow"], id: ["42"]}}} =
+              {:invalid_project_reference, {:block, :content, :malformed_mention},
+               %{type: ["sheet", "flow"], id: ["42"]}}} =
                EntityReferenceExtraction.extract_block_value_references("rich_text", %{
                  "content" => duplicate_type
                })

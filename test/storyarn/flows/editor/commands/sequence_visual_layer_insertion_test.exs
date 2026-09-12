@@ -35,7 +35,9 @@ defmodule Storyarn.Flows.SequenceVisualLayerInsertionTest do
 
   test "new images stay above an existing backdrop regardless of their default kind order", context do
     %{flow: flow, owner: owner, image: image} = context
-    {:ok, backdrop} = Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "backdrop", z_index: 900})
+
+    {:ok, backdrop} =
+      Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "backdrop", z_index: 900})
 
     {:ok, character} = Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "character"})
     {:ok, next_backdrop} = Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "backdrop"})
@@ -50,7 +52,9 @@ defmodule Storyarn.Flows.SequenceVisualLayerInsertionTest do
     %{flow: flow, owner: owner, image: image} = context
     source = node_fixture(flow, %{type: "dialogue"})
     {:ok, _owner} = Flows.set_composition_source(owner.id, source.id)
-    {:ok, backdrop} = Flows.create_sequence_visual_layer(source.id, %{asset_id: image.id, kind: "backdrop", z_index: 900})
+
+    {:ok, backdrop} =
+      Flows.create_sequence_visual_layer(source.id, %{asset_id: image.id, kind: "backdrop", z_index: 900})
 
     {:ok, character} =
       Flows.create_sequence_visual_layer(source.id, %{asset_id: image.id, kind: "character", z_index: 10})

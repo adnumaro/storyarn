@@ -215,7 +215,10 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
 
     assert page_three.id == first.thread.id
     assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(ctx.peer, project_id: ctx.project.id + 999)
-    assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(user_scope_fixture(), search: "Discuss", limit: 1)
+
+    assert {:ok, %{threads: []}} =
+             Projects.list_ideation_conversations(user_scope_fixture(), search: "Discuss", limit: 1)
+
     assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(ctx.peer, search: "absent")
 
     for opts <- [

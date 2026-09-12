@@ -1,21 +1,34 @@
-import type { AreaPlugin } from "rete-area-plugin";
 import type {
   CommentMagneticAdapter,
   CommentSnapCandidate,
 } from "@components/comments/commentMagnetism";
-import { commentPointFromClient, commentScreenPoint } from "./comment-geometry";
-import type { FlowAreaExtra, FlowSchemes } from "./rete-schemes";
+import {
+  commentPointFromClient,
+  commentScreenPoint,
+  contextualCommentPoint,
+  type CommentNodeView,
+  type CommentPoint,
+  type CommentViewport,
+  type ResolvableFlowCommentContext,
+} from "./comment-geometry";
+
+interface FlowCommentArea {
+  area: { transform: CommentViewport };
+  nodeViews: ReadonlyMap<string, CommentNodeView>;
+}
+
+const NODE_SELECTOR = "[data-flow-comment-node]";
 
 /** Rete owns geometry; comments retain a Flow owner and an optional node reference. */
 export function flowCommentSnapAdapter(
-  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+  area: FlowCommentArea,
   container: HTMLElement,
 ): CommentMagneticAdapter {
   return {
     candidates() {
       const viewport = container.getBoundingClientRect();
       const candidates: CommentSnapCandidate[] = [];
-      for (const element of container.querySelectorAll<HTMLElement>("[data-flow-comment-node]")) {
+      for (const element of container.querySelectorAll<HTMLElement>(NODE_SELECTOR)) {
         const id = element.dataset.flowCommentNode;
         if (!id || !area.nodeViews.has(`node-${id}`)) continue;
         const rect = element.getBoundingClientRect();
@@ -63,11 +76,46 @@ export function flowCommentSnapAdapter(
 }
 
 function visibleTarget(element: HTMLElement, rect: DOMRect, viewport: DOMRect): boolean {
-  const sized = rect.width > 0 && rect.height > 0;
   const intersects =
-    rect.right >= viewport.left &&
-    rect.left <= viewport.right &&
-    rect.bottom >= viewport.top &&
-    rect.top <= viewport.bottom;
-  return sized && intersects && !element.closest('[hidden], [aria-hidden="true"]');
+    rect.right > viewport.left &&
+    rect.left < viewport.right &&
+    rect.bottom > viewport.top &&
+    rect.top < viewport.bottom;
+  return intersects && renderedTarget(element, rect);
+}
+
+function renderedTarget(element: HTMLElement, rect = element.getBoundingClientRect()): boolean {
+  if (element.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
+  if (
+    ![rect.left, rect.top, rect.width, rect.height].every(Number.isFinite) ||
+    rect.width <= 0 ||
+    rect.height <= 0
+  )
+    return false;
+  for (let parent: HTMLElement | null = element; parent; parent = parent.parentElement) {
+    const style = getComputedStyle(parent);
+    if (
+      style.display === "none" ||
+      ["hidden", "collapse"].includes(style.visibility) ||
+      style.opacity === "0"
+    )
+      return false;
+  }
+  return true;
+}
+
+/** Offscreen or temporarily unmounted nodes still have authoritative Rete origins. */
+export function resolveFlowCommentPosition(
+  position: CommentPoint | null | undefined,
+  context: ResolvableFlowCommentContext | null | undefined,
+  area: FlowCommentArea,
+  container: HTMLElement,
+): CommentPoint | null {
+  if (context?.type === "flow_node") {
+    const target = container.querySelector<HTMLElement>(
+      `[data-flow-comment-node="${CSS.escape(context.id)}"]`,
+    );
+    if (target && !renderedTarget(target)) return position ?? null;
+  }
+  return contextualCommentPoint(position, context, area.nodeViews);
 }

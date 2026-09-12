@@ -22,9 +22,11 @@ defmodule Storyarn.Projects.Exports.ExpressionTranspiler.Articy do
 
   defp emit_condition_op(ref, "contains", val), do: "contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "not_contains", val), do: "!contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "not_contains", val),
+    do: "!contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "starts_with", val), do: "startsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "starts_with", val),
+    do: "startsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
   defp emit_condition_op(ref, "ends_with", val), do: "endsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 

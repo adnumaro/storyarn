@@ -30,7 +30,16 @@ defmodule Storyarn.Sheets.Versioning.RestorePolicyTest do
   end
 
   test "missing and malformed configuration fails closed" do
-    invalid_configs = [nil, %{}, "true", 1, ["invalid"], [], [sheet_version_restore: "true"], [sheet_version_restore: 1]]
+    invalid_configs = [
+      nil,
+      %{},
+      "true",
+      1,
+      ["invalid"],
+      [],
+      [sheet_version_restore: "true"],
+      [sheet_version_restore: 1]
+    ]
 
     for invalid_config <- invalid_configs do
       if is_nil(invalid_config) do

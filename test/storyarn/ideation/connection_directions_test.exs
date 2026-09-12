@@ -112,7 +112,10 @@ defmodule Storyarn.Ideation.ConnectionDirectionsTest do
     assert Enum.find(notes, &(&1.id == source.id)).canvas == peer_view.canvas
 
     placement = %{"x" => 30, "y" => 60, "request_key" => Ecto.UUID.generate()}
-    assert {:ok, placed} = Ideation.update_idea_canvas(ctx.peer, ctx.project.id, ctx.session.id, source.id, 0, placement)
+
+    assert {:ok, placed} =
+             Ideation.update_idea_canvas(ctx.peer, ctx.project.id, ctx.session.id, source.id, 0, placement)
+
     assert placed["link_directions"] == peer_view.canvas["link_directions"]
     assert canvas(source)["link_directions"][to_string(private.id)] == "both"
 
@@ -201,7 +204,9 @@ defmodule Storyarn.Ideation.ConnectionDirectionsTest do
 
       assert {:error, :ideation_recovery_capture_failed} = Capsule.seal(malformed)
       {:ok, bytes} = malformed |> Jason.encode!() |> Vault.encrypt()
-      assert {:error, :invalid_ideation_recovery} = restore(ctx, %{"version" => 1, "ciphertext" => Base.encode64(bytes)})
+
+      assert {:error, :invalid_ideation_recovery} =
+               restore(ctx, %{"version" => 1, "ciphertext" => Base.encode64(bytes)})
     end
 
     assert is_nil(Repo.get!(Session, ctx.session.id).deleted_at)
@@ -209,7 +214,9 @@ defmodule Storyarn.Ideation.ConnectionDirectionsTest do
   end
 
   defp canvas(idea), do: Repo.get!(Idea, idea.id).canvas
-  defp apply_command(ctx, attrs), do: Ideation.update_idea_connections(ctx.author, ctx.project.id, ctx.session.id, attrs)
+
+  defp apply_command(ctx, attrs),
+    do: Ideation.update_idea_connections(ctx.author, ctx.project.id, ctx.session.id, attrs)
 
   defp write(ctx, source, target, version, connected, direction \\ :omitted),
     do: apply_command(ctx, command(source, target, version, connected, direction))
@@ -223,7 +230,8 @@ defmodule Storyarn.Ideation.ConnectionDirectionsTest do
   defp capture(ctx) do
     {:ok, snapshot} =
       Repo.transact(fn ->
-        {:ok, ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
+        {:ok,
+         ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
       end)
 
     snapshot["ideation"]
