@@ -1,0 +1,50 @@
+test/storyarn/architecture/persistence_write_ownership_test.exs
+  s_194a5688996098::t_ab86c42d940a72 312-313,730-769,1748-1752,1778,1783,1852,1857,2072,2075-2077,2083,2325,2347,2349,2351,2375-2377,2380-2383,2409-2411,2413-2431,2433-2438,2442-2446,2527-2528,2534,2560-2562,3627-3631,3835-3841,4072-4085,4087-4094,4098-4099,4122,4723-4741,4743-4751,4755-4756,4758-4776,4780-4863,4896-4898,4916-4925
+config/runtime.exs
+  s_194a5688996098::t_3c2e25e2f29c3e 85-93
+.github/workflows/ci.yml
+  s_194a5688996098::t_3c2e25e2f29c3e 162-165
+mix.exs
+  s_194a5688996098::t_eb00be9b7719c5 185,190-227
+test/mix/test_selection_test.exs
+  s_194a5688996098::t_eb00be9b7719c5 1-72
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_194a5688996098::t_761e28d5cddc89 125-132
+docs/reference/testing-performance.md
+  s_194a5688996098::t_e898c5e818feda 19,22-30,49-51,53-54,57-60,66-72
+  s_194a5688996098::t_a01e19341fc094 39-43
+test/mix/test_runtime_config_test.exs
+  s_194a5688996098::t_92dd8a61b177d5 16-21
+test/storyarn/architecture/privileged_entrypoint_boundary_test.exs
+  s_194a5688996098::t_d700671b883081 2
+test/storyarn/flows/versioning/execution/flow_snapshot_restore_rollback_test.exs
+  s_194a5688996098::t_8160d1065c8697 1-107
+test/storyarn/flows/versioning/execution/flow_snapshot_restore_test.exs
+  s_194a5688996098::t_75a8bb5c0645fd 2-3
+test/storyarn/platform/discovery/queries/global_search/advanced_search_test.exs
+  s_194a5688996098::t_6f40b667729ee0 12,14-15,324-325,327-332,1358-1398
+test/storyarn/projects/assets/integration/variant_generation_test.exs
+  s_194a5688996098::t_8506aa2ffd48ea 23,38,169,172-174,178,186-228
+test/storyarn/projects/versioning/execution/builders/flow_builder_rollback_test.exs
+  s_194a5688996098::t_1de14fd9bd0d71 1-109
+test/storyarn/projects/versioning/execution/builders/flow_builder_test.exs
+  s_194a5688996098::t_521fb54496ad07 2-3
+test/test_helper.exs
+  s_194a5688996098::t_dcfc8dae31f59e 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "802d017354d8c6cb1dbe42f5cbb1176f72a18416",
+  "prompts": {},
+  "sessions": {
+    "s_194a5688996098": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a095dc-b2df-76f2-a3ae-9990c699347a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
