@@ -1,5 +1,6 @@
 defmodule Storyarn.Ideation.Recovery.GraphValidation do
   @moduledoc false
+  alias Storyarn.Ideation.Recovery.DecisionState
   alias Storyarn.Ideation.Recovery.GroupState
   alias Storyarn.Ideation.Recovery.ReferenceState
   alias Storyarn.Ideation.Recovery.TimerState
@@ -21,6 +22,8 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       revisions: revisions,
       groups: Map.new(rows["groups"], &{&1["id"], &1}),
       references: Map.new(rows["references"], &{&1["id"], &1}),
+      decisions: Map.new(rows["decisions"], &{&1["id"], &1}),
+      decision_revisions: MapSet.new(rows["decision_revisions"], &{&1["decision_id"], &1["number"]}),
       group_revisions: MapSet.new(rows["group_revisions"], &{&1["group_id"], &1["number"]}),
       publications: MapSet.new(rows["publications"], &{&1["idea_id"], &1["revision"]}),
       memberships: MapSet.new(rows["group_memberships"], &{&1["group_id"], &1["idea_id"], &1["source_revision"]})
@@ -28,14 +31,15 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
     Enum.all?(rows, fn {collection, entries} ->
       Enum.all?(entries, &valid_row?(&1, collection, index)) and unique_identities?(entries, collection, index)
-    end) and unique_records?(rows) and GroupState.consistent?(rows) and ReferenceState.consistent?(rows)
+    end) and unique_records?(rows) and GroupState.consistent?(rows) and ReferenceState.consistent?(rows) and
+      DecisionState.consistent?(rows)
   end
 
   defp unique_records?(rows) do
     unique_numbers?(rows["revisions"], "idea_id") and unique_session_records?(rows) and
       unique_numbers?(rows["group_revisions"], "group_id") and GroupState.unique?(rows) and
       GroupState.within_limits?(rows) and unique_numbers?(rows["reference_revisions"], "reference_id") and
-      ReferenceState.unique?(rows)
+      ReferenceState.unique?(rows) and DecisionState.unique?(rows)
   end
 
   defp unique_session_records?(rows) do
@@ -94,6 +98,9 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
   defp valid_links?(row, collection, index) when collection in ~w(references reference_revisions),
     do: ReferenceState.valid?(row, collection, index)
+
+  defp valid_links?(row, collection, index) when collection in ~w(decisions decision_revisions),
+    do: DecisionState.valid?(row, collection, index)
 
   defp canvas_valid?(row, index) do
     canvas = Map.get(row, "canvas", %{})
@@ -268,7 +275,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   defp session_id(row, "sessions", _), do: row["id"]
 
   defp session_id(row, collection, _)
-       when collection in ~w(session_revisions rounds timers ideas reveals groups group_memberships group_revisions references reference_revisions),
+       when collection in ~w(session_revisions rounds timers ideas reveals groups group_memberships group_revisions references reference_revisions decisions decision_revisions),
        do: row["session_id"]
 
   defp session_id(row, _, index), do: get_in(index.ideas, [row["idea_id"], "session_id"])

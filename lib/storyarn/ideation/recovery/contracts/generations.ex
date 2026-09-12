@@ -11,6 +11,7 @@ defmodule Storyarn.Ideation.Recovery.Generations do
     ideas = Map.new(rows["ideas"], &{&1["id"], &1["session_id"]})
     groups = Map.new(rows["groups"], &{&1["id"], &1["session_id"]})
     references = Map.new(rows["references"], &{&1["id"], &1["session_id"]})
+    decisions = Map.new(rows["decisions"], &{&1["id"], &1["session_id"]})
 
     grouped =
       Map.new(Inventory.tables(), fn {collection, _, parent, _} ->
@@ -22,6 +23,7 @@ defmodule Storyarn.Ideation.Recovery.Generations do
              :idea_id -> ideas[row["idea_id"]]
              :group_id -> groups[row["group_id"]]
              :reference_id -> references[row["reference_id"]]
+             :decision_id -> decisions[row["decision_id"]]
            end
          end)}
       end)

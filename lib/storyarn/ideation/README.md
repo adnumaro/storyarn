@@ -1,8 +1,8 @@
 # Ideation context
 
 Ideation owns brainstorming sessions, responsibilities, configuration, ideas,
-authored revisions and publication. External callers enter `Storyarn.Ideation`;
-its root facade delegates through Sessions, Ideas, Groups, References and Recovery without importing private
+authored revisions, publication and explicit decisions. External callers enter `Storyarn.Ideation`;
+its root facade delegates through Sessions, Ideas, Groups, Decisions, References and Recovery without importing private
 roles. Capabilities collaborate through their own facades.
 
 ## Sessions capability
@@ -75,6 +75,30 @@ Deleting a group permits only its deleting actor to restore that exact deletion.
 Queries and entities stay passive; events emit content-free invalidations after commit.
 Recovery includes groups, memberships and revisions in its sealed inventory.
 
+## Decisions capability
+
+Decisions owns proposed conclusions, responsibility, explicit acceptance and
+immutable history in `ideation_decisions` and `ideation_decision_revisions`.
+Sources pin shared idea or group revisions and their recovery identities. Frozen
+source text is encrypted separately from its remappable identity metadata.
+The source capability remains authoritative for visibility and published content.
+
+Propose, revise and accept are distinct atomic commands with current Project and
+session authorization, optimistic decision versions and durable request receipts.
+Revising preserves the previously accepted agreement while producing a new
+proposal. Accepting records the exact proposal as a new revision; previous
+agreements and their sources remain in history. Responsibility is explicit and
+does not grant membership or private-content access. Private mode hides decisions
+before decryption and prevents shared mutations.
+
+Decisions do not rewrite their source material, create Drafts, start conversations
+or apply changes to authoring tools. Recovery retains all revisions, accepted
+version numbers, sources and receipts, and never executes acceptance. Receipts in
+replaced generations of the same logical session prevent reexecuting commands
+after rollback; a new acceptance requires a fresh request key. This check exposes
+no historical content. See the
+[decision contract](../../../docs/reference/brainstorming-decisions-contract.md).
+
 ## References capability
 
 References owns explicit, many-to-many links from sessions and shared ideas to
@@ -134,7 +158,7 @@ of the session transaction, not a background side effect. Queries and entities
 never write or acquire locks. Physical project deletion cascades its records;
 archive only changes the session lifecycle and records a revision.
 
-Recovery is the privileged reconstitution capability for the fourteen session/round/timer/idea/group/reference
+Recovery is the privileged reconstitution capability for the sixteen session/round/timer/idea/group/reference/decision
 tables. Its closed inventory uses raw encrypted fields and owns the derived
 `ideation_recovery_captures` cache. `execution/` coordinates capture/reconstitution;
 `adapters/` handles bounded persistence and encryption; `contracts/` owns the

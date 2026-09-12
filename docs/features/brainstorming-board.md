@@ -1,12 +1,47 @@
 # Brainstorming canvas
 
-> Last reviewed: 2026-09-12
-> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165, ENG-166, ENG-182 and ENG-191
+> Last reviewed: 2026-09-13
+> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165, ENG-166, ENG-182, ENG-191 and the decision-recording slice of ENG-141
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
 navigation used by Scenes, Flows and Sheets. Miro, FigJam and Scapple inform the
 interaction; this is not a general-purpose whiteboard or a clone of any of them.
+
+## Record an agreement when the team is ready
+
+**Decisions** opens a panel alongside the exploration. Select shared ideas or use
+a group's **Propose a decision** action to start with those sources. A proposal
+records a title, conclusion, reason and responsible person. Only members who can
+edit the project appear in that assignment picker; the session's decision owner
+is the default when still eligible.
+
+Saving leaves a proposal. The responsible person must explicitly select
+**Accept decision** to record an agreement. Project ownership or facilitating the
+session does not let someone else accept it. An accepted decision can be revised;
+the earlier agreement stays current and accessible until its replacement is
+accepted. History retains the author, responsible person, text and source
+versions for every proposal, revision and acceptance.
+
+Sources preserve the shared version consulted at the time, including when the
+author has newer private edits. A changed source is marked; **Update sources**
+explicitly adopts its current shared version. Deleted, private or inaccessible
+sources have their saved text hidden and must be removed or replaced before a
+proposal can be saved or accepted. Recovery carries the agreement, pending
+revision and history with the project without binding them to unrelated content.
+
+Ordinary collaboration updates preserve unsaved form text. If another member
+changes the proposal, the editor presents that current version before allowing
+the writer to continue with their own text. Leaving a changed form requires
+confirming that those unsaved changes can be discarded.
+
+Decisions are optional and available in shared sessions, including after idea
+contributions close. Archived sessions remain readable. They record agreement;
+they do not create a Draft, modify production content, track application, or add
+a separate decision conversation. Those are subsequent slices of ENG-141.
+
+See the [decision contract](../reference/brainstorming-decisions-contract.md) for
+permissions, immutable history, recovery and bounded collection limits.
 
 ## Explore changes from existing content
 

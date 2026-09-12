@@ -7,6 +7,7 @@ import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import type { Session, Round, SessionTimer } from "@modules/ideation";
 import ExplorationContext from "./ExplorationContext.vue";
+import DecisionsButton from "./DecisionsButton.vue";
 import type { BrainstormingReference } from "./referenceTypes";
 const {
   session,
@@ -95,6 +96,7 @@ function rename(title: string) {
       class="mx-2 min-w-16 max-w-48 flex-1 truncate text-xs font-medium"
       @save="rename"
     />
+    <DecisionsButton :session-id="session.id" :epoch="epoch" />
     <ToolbarTooltip :label="t('ideation.sessionSettings')" side="bottom"
       ><button
         type="button"

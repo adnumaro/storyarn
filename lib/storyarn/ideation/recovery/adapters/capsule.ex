@@ -1,5 +1,6 @@
 defmodule Storyarn.Ideation.Recovery.Capsule do
   @moduledoc false
+  alias Storyarn.Ideation.Recovery.DecisionState
   alias Storyarn.Ideation.Recovery.Inventory
   alias Storyarn.Platform.Vault
 
@@ -24,7 +25,8 @@ defmodule Storyarn.Ideation.Recovery.Capsule do
          {:ok, json} when is_binary(json) and byte_size(json) <= @max_bytes <- Vault.decrypt(encrypted),
          {:ok, data} <- Jason.decode(json),
          :ok <- Inventory.validate(data),
-         :ok <- validate_content_keys(data) do
+         :ok <- validate_content_keys(data),
+         true <- DecisionState.content_valid?(data["rows"]) do
       {:ok, Inventory.normalize(data)}
     else
       _ -> {:error, :invalid_ideation_recovery}

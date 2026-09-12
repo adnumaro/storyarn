@@ -1965,7 +1965,7 @@ web_to_context_internal_denials =
 
 # Ideation capabilities collaborate through their facades. Root calls remain declarative, reads
 # cannot enter effectful roles, and entities cannot orchestrate persistence.
-ideation_capabilities = ~w(sessions ideas groups references recovery)
+ideation_capabilities = ~w(sessions ideas groups references decisions recovery)
 ideation_private_roles = ~w(adapters commands entities execution queries rules events contracts)
 
 ideation_root_facade_path_denials =
@@ -4167,6 +4167,24 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/storyarn/ideation/recovery/contracts/decision_state.ex",
+      target: "lib/storyarn/platform/adapters/security/vault.ex",
+      kinds: ["runtime"],
+      reason: "Decision recovery validates that encrypted frozen text matches its retained source revision"
+    },
+    %{
+      source: "lib/storyarn/ideation/decisions/queries/access.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Decision reads obtain current access and effective editing rights through Projects"
+    },
+    %{
+      source: "lib/storyarn/ideation/decisions/adapters/responsibility.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Decision assignments retain Projects-owned editor eligibility locks until commit"
+    },
+    %{
       source: "lib/storyarn_web/live/shared/contextual_explorations.ex",
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],
@@ -4227,6 +4245,12 @@ policy = %{
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "Brainstorming reference UI checks edit capability through Projects authorization"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/handlers/decision_handlers.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Decision presentation reads current editing rights and eligible assignees through Projects"
     },
     %{
       source: "lib/storyarn/localization/texts/queries/reference_targets.ex",
