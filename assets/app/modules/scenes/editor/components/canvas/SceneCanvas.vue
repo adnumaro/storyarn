@@ -10,6 +10,7 @@ import { useAnnotations, type AnnotationConfig } from "../../composables/useAnno
 import { useCanvasCreation } from "../../composables/useCanvasCreation";
 import { useConnectionDrawing } from "../../composables/useConnectionDrawing";
 import { useOptimisticSceneElements } from "../../composables/useSceneElementOptimism";
+import { useSceneCommentTargets } from "../../composables/useSceneCommentTargets";
 import { useConnections } from "../../../canvas/composables/useConnections";
 import { useDrag } from "../../composables/useDrag";
 import { useKonvaStage } from "../../../canvas/composables/useKonvaStage";
@@ -33,6 +34,7 @@ import SceneFloatingToolbar from "../toolbar/SceneFloatingToolbar.vue";
 import SceneCanvasComments from "../chrome/SceneCanvasComments.vue";
 
 interface SceneDataProps {
+  id?: number | string;
   width: number;
   height: number;
   backgroundUrl: string | null;
@@ -183,6 +185,33 @@ const {
 
 const commentProjection = { percentToPixel, pixelToPercent };
 
+const {
+  targets: commentTargets,
+  effectiveLayers,
+  draftStorageKey,
+  hiddenContext,
+  locallyRevealed,
+  revealContext,
+  resetLocalLayers,
+  trackDrag: trackCommentTargetDrag,
+  clearDrag: clearCommentTargetDrag,
+} = useSceneCommentTargets({
+  sceneId: () => sceneData?.id,
+  userId: () => collaboration.userId,
+  layers: () => layers,
+  pins: () => pinItems.value,
+  zones: () => zoneItems.value,
+  connections: () => connectionItems.value,
+  annotations: () => annotationItems.value,
+  pinConfigs: () => pinConfigs.value,
+  zoneConfigs: () => zoneConfigs.value,
+  connectionConfigs: () => connectionConfigs.value,
+  annotationConfigs: () => annotationConfigs.value,
+  projection: () => commentProjection,
+  context: () => comments?.thread?.context ?? comments?.draftContext,
+  waypointOverride: () => waypointEditOverride.value,
+});
+
 const unregisterPaletteCommands = registerPaletteCommands("scenes", [
   {
     id: "scenes.fit-to-view",
@@ -257,15 +286,13 @@ const {
 
 const selectionRefs = { selectedType, selectedId, isSelectMode };
 
-function hasPinConnections(pinId: number | string): boolean {
-  return connectionItems.value.some(
-    (connection) =>
-      String(connection.fromPinId) === String(pinId) ||
-      String(connection.toPinId) === String(pinId),
-  );
-}
-
-const { isDragging, dragOverrides, onDragStart, onDragMove, onDragEnd } = useDrag({
+const {
+  isDragging,
+  dragOverrides,
+  onDragStart: startElementDrag,
+  onDragMove: moveElementDrag,
+  onDragEnd: endElementDrag,
+} = useDrag({
   onCommit: (type, id, position) => {
     updateElementOptimistically(type, id, {
       positionX: position.x,
@@ -273,8 +300,23 @@ const { isDragging, dragOverrides, onDragStart, onDragMove, onDragEnd } = useDra
     });
   },
   pixelToPercent,
-  shouldTrackDrag: (type, id) => type === "pin" && hasPinConnections(id),
+  shouldTrackDrag: (type) => type === "pin",
 });
+
+function onDragStart(type: string, id: number | string, event: KonvaEventObject<DragEvent>) {
+  trackCommentTargetDrag(type, id, { x: event.target.x(), y: event.target.y() });
+  startElementDrag(type, id, event);
+}
+
+function onDragMove(type: string, id: number | string, event: KonvaEventObject<DragEvent>) {
+  trackCommentTargetDrag(type, id, { x: event.target.x(), y: event.target.y() });
+  moveElementDrag(type, id, event);
+}
+
+function onDragEnd(type: string, id: number | string, event: KonvaEventObject<DragEvent>) {
+  endElementDrag(type, id, event);
+  clearCommentTargetDrag();
+}
 
 const { isDraggingZone, zoneDragOverride, onZoneMouseDown, onZoneDragMove, onZoneDragEnd } =
   useZoneDrag({
@@ -291,7 +333,7 @@ const { isDraggingZone, zoneDragOverride, onZoneMouseDown, onZoneDragMove, onZon
 
 const { pinConfigs } = usePins({
   pins: pinItems,
-  layers: toRef(() => layers),
+  layers: effectiveLayers,
   entityLocks: toRef(() => collaboration.locks),
   currentUserId: toRef(() => collaboration.userId),
   percentToPixel,
@@ -322,7 +364,7 @@ const {
 
 const { zoneConfigs } = useZones({
   zones: zoneItems,
-  layers: toRef(() => layers),
+  layers: effectiveLayers,
   entityLocks: toRef(() => collaboration.locks),
   currentUserId: toRef(() => collaboration.userId),
   percentToPixel,
@@ -335,7 +377,7 @@ const { zoneConfigs } = useZones({
 
 const { annotationConfigs } = useAnnotations({
   annotations: annotationItems,
-  layers: toRef(() => layers),
+  layers: effectiveLayers,
   entityLocks: toRef(() => collaboration.locks),
   currentUserId: toRef(() => collaboration.userId),
   percentToPixel,
@@ -355,7 +397,7 @@ const waypointEditOverride = computed(() => {
 const { connectionConfigs } = useConnections({
   connections: connectionItems,
   pins: pinItems,
-  layers: toRef(() => layers),
+  layers: effectiveLayers,
   percentToPixel,
   ...selectionRefs,
   dragOverrides,
@@ -371,7 +413,7 @@ function clampFogOpacity(value: number | null | undefined): number {
 }
 
 const fogLayers = computed(() =>
-  layers
+  effectiveLayers.value
     .filter((layer) => layer.visible && layer.fogEnabled)
     .slice()
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
@@ -702,6 +744,11 @@ const LABEL_COLOR = "#d1d5db";
       :state="comments"
       :comment-pins="commentPins"
       :focus-thread-id="commentFocusThreadId"
+      :targets="commentTargets"
+      :draft-storage-key="draftStorageKey"
+      :context-visibility="{ hidden: hiddenContext, local: locallyRevealed }"
+      @reveal-context="revealContext"
+      @reset-local-layers="resetLocalLayers"
     />
 
     <!-- Floating toolbar (HTML overlay above canvas) -->

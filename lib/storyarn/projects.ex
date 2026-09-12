@@ -1022,6 +1022,11 @@ defmodule Storyarn.Projects do
     to: Comments,
     as: :validate_flow_context
 
+  @doc "Validates optional draft context against the exact owning Scene without creating a conversation."
+  defdelegate validate_scene_comment_context(scope, project_id, scene_id, context),
+    to: Comments,
+    as: :validate_scene_context
+
   @doc "Validates optional draft context against the exact owning Sheet without creating a conversation."
   defdelegate validate_sheet_comment_context(scope, project_id, sheet_id, context),
     to: Comments,

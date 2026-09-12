@@ -2,6 +2,8 @@ import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick, reactive } from "vue";
 import { createMockLive } from "@app/test/setup";
+import { readCommentDraft, updateCommentDraft } from "@components/comments/commentDraftStorage";
+import type { SceneCommentTargets } from "@modules/scenes/editor/lib/comment-snap-adapter";
 import type { SceneCommentsPanelState, SceneCommentThread } from "@modules/scenes/types/comments";
 
 const live = createMockLive();
@@ -50,6 +52,12 @@ const projection = {
   percentToPixel: (x: number, y: number) => ({ x: x * 10, y: y * 8 }),
   pixelToPercent: (x: number, y: number) => ({ x: x / 10, y: y / 8 }),
 };
+const targets: SceneCommentTargets = {
+  pins: [{ id: 42, x: 200, y: 160, radius: 12, label: "Northern gate", layerId: null, opacity: 1 }],
+  zones: [],
+  connections: [],
+  annotations: [],
+};
 let wrappers: VueWrapper[] = [];
 const disconnect = vi.fn();
 
@@ -60,6 +68,7 @@ function pointer(
   y: number,
   button = 0,
   ctrlKey = false,
+  altKey = false,
 ): MouseEvent {
   const event = new MouseEvent(type, {
     bubbles: true,
@@ -68,6 +77,7 @@ function pointer(
     clientY: y,
     button,
     ctrlKey,
+    altKey,
   });
   Object.defineProperty(event, "pointerId", { value: 1 });
   target.dispatchEvent(event);
@@ -79,6 +89,7 @@ function setup(
   commentPins = [thread],
   focusThreadId: number | null = null,
   backgroundSettled = true,
+  targets: SceneCommentTargets = { pins: [], zones: [], connections: [], annotations: [] },
 ) {
   const container = document.createElement("div");
   const canvas = document.createElement("canvas");
@@ -109,6 +120,7 @@ function setup(
       state: { ...base, ...state },
       commentPins,
       focusThreadId,
+      targets,
     },
     global: { stubs: { SceneCommentsPanel: true } },
   });
@@ -118,6 +130,7 @@ function setup(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -178,6 +191,7 @@ describe("Scene canvas comments", () => {
     expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
       x: 19.5,
       y: 14.375,
+      context: null,
     });
     expect(canvasPointerDown).not.toHaveBeenCalled();
     expect(canvasPointerUp).not.toHaveBeenCalled();
@@ -191,6 +205,7 @@ describe("Scene canvas comments", () => {
     expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
       x: 25,
       y: 21.875,
+      context: null,
     });
     expect(elementClick).not.toHaveBeenCalled();
     expect(live.pushEvent).toHaveBeenCalledTimes(2);
@@ -215,6 +230,7 @@ describe("Scene canvas comments", () => {
     expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
       x: 19.5,
       y: 14.375,
+      context: null,
     });
 
     pointer(canvas, "contextmenu", 510, 340, 2);
@@ -223,6 +239,7 @@ describe("Scene canvas comments", () => {
     expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
       x: 20,
       y: 16.875,
+      context: null,
     });
     expect(live.pushEvent).toHaveBeenCalledTimes(2);
   });
@@ -248,6 +265,7 @@ describe("Scene canvas comments", () => {
     expect(live.pushEvent).toHaveBeenLastCalledWith("comments_place", {
       x: 20,
       y: 16.875,
+      context: null,
     });
     expect(wrapper.find("#scene-comment-context-menu").exists()).toBe(false);
   });
@@ -326,7 +344,7 @@ describe("Scene canvas comments", () => {
     pointer(window, "pointerup", 400, 450);
     expect(live.pushEvent).toHaveBeenCalledWith(
       "comments_move",
-      { thread_id: 12, x: 15, y: 25, expected_revision: 3 },
+      { thread_id: 12, x: 15, y: 25, expected_revision: 3, context: null },
       expect.any(Function),
       expect.any(Function),
     );
@@ -355,7 +373,7 @@ describe("Scene canvas comments", () => {
     pointer(window, "pointerup", 400, 450);
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "comments_move",
-      { thread_id: 12, x: 15, y: 25, expected_revision: 3 },
+      { thread_id: 12, x: 15, y: 25, expected_revision: 3, context: null },
       expect.any(Function),
       expect.any(Function),
     );
@@ -389,7 +407,7 @@ describe("Scene canvas comments", () => {
     pointer(window, "pointerup", 550, 550);
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "comments_move",
-      { thread_id: 12, x: 100, y: 100, expected_revision: 3 },
+      { thread_id: 12, x: 100, y: 100, expected_revision: 3, context: null },
       expect.any(Function),
       expect.any(Function),
     );
@@ -403,7 +421,7 @@ describe("Scene canvas comments", () => {
     pointer(window, "pointerup", 400, 420);
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "comments_move",
-      { thread_id: 12, x: 95, y: 95, expected_revision: 3 },
+      { thread_id: 12, x: 95, y: 95, expected_revision: 3, context: null },
       expect.any(Function),
       expect.any(Function),
     );
@@ -440,6 +458,343 @@ describe("Scene canvas comments", () => {
     expect(stage.x).toBe(200);
     expect(stage.y).toBe(80);
   });
+
+  it("previews a magnetic target without persisting until the gesture is released", async () => {
+    const { wrapper } = setup({}, [thread], null, true, targets);
+    await nextTick();
+    const pin = wrapper.get("#scene-comment-pin-12");
+    pointer(pin.element, "pointerdown", 310, 390);
+    pointer(window, "pointermove", 510, 390);
+    await nextTick();
+
+    expect(wrapper.get("#scene-comment-snap-preview").text()).toContain("Northern gate");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    pointer(window, "pointerup", 510, 390);
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_move",
+      expect.objectContaining({
+        thread_id: thread.id,
+        expected_revision: thread.revision,
+        context: expect.objectContaining({ type: "scene_pin", id: "42" }),
+      }),
+      expect.any(Function),
+      expect.any(Function),
+    );
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    expect(wrapper.find("#scene-comment-snap-preview").exists()).toBe(false);
+  });
+
+  it("supports temporary free placement with Alt and cancels without leaving a hover tooltip", async () => {
+    const { wrapper } = setup({}, [thread], null, true, targets);
+    await nextTick();
+    const pin = wrapper.get("#scene-comment-pin-12");
+    pointer(pin.element, "pointerdown", 310, 390);
+    pointer(window, "pointermove", 510, 390);
+    await nextTick();
+    expect(wrapper.get("#scene-comment-snap-preview").text()).toContain("Northern gate");
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Alt", bubbles: true }));
+    await nextTick();
+    expect(wrapper.get("#scene-comment-snap-preview").text()).toContain("Free position");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    pointer(window, "pointerup", 510, 390);
+    await nextTick();
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    expect(pin.attributes("style")).toContain("left: 300px");
+    expect(wrapper.find("#scene-comment-preview").exists()).toBe(false);
+
+    pointer(pin.element, "pointerdown", 310, 390, 0, false, true);
+    pointer(window, "pointermove", 510, 390, 0, false, true);
+    pointer(window, "pointerup", 510, 390, 0, false, true);
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "comments_move",
+      expect.objectContaining({ context: null }),
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("cycles overlapping contexts by keyboard and persists the chosen one on Enter", async () => {
+    const overlap: SceneCommentTargets = {
+      ...targets,
+      annotations: [
+        { id: 80, x: 180, y: 150, width: 40, height: 30, text: "Lighting note", layerId: null },
+      ],
+    };
+    const nearby = { ...thread, position: { x: 20, y: 20 } };
+    const { wrapper } = setup({}, [nearby], null, true, overlap);
+    await nextTick();
+    const pin = wrapper.get("#scene-comment-pin-12");
+    await pin.trigger("keydown", { key: "ArrowRight" });
+    const first = wrapper.get("#scene-comment-snap-preview").text();
+    await pin.trigger("keydown", { key: "]" });
+    const second = wrapper.get("#scene-comment-snap-preview").text();
+    expect(second).not.toBe(first);
+    expect([first, second].some((text) => text.includes("Northern gate"))).toBe(true);
+    expect([first, second].some((text) => text.includes("Lighting note"))).toBe(true);
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    await pin.trigger("keydown", { key: "Enter" });
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "comments_move",
+      expect.objectContaining({
+        context: expect.objectContaining({ id: second.includes("Lighting note") ? "80" : "42" }),
+      }),
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("ignores an older failure after a newer revision has started another move", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#scene-comment-pin-12");
+    pointer(pin.element, "pointerdown", 300, 370);
+    pointer(window, "pointermove", 400, 450);
+    pointer(window, "pointerup", 400, 450);
+    const oldReply = vi.mocked(live.pushEvent).mock.calls[0][2]!;
+    await wrapper.setProps({
+      commentPins: [{ ...thread, revision: 4, position: { x: 15, y: 25 } }],
+    });
+
+    pointer(pin.element, "pointerdown", 400, 450);
+    pointer(window, "pointermove", 440, 470);
+    pointer(window, "pointerup", 440, 470);
+    oldReply({ ok: false });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    expect(pin.attributes("style")).toContain("left: 440px");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(live.pushEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a draft pending until the server confirms its position and its selected context", async () => {
+    const draft = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "draft-a",
+      draftPosition: { x: 10, y: 20 },
+    };
+    const { wrapper } = setup(draft, [], null, true, targets);
+    await nextTick();
+    const pin = wrapper.get("#scene-comment-draft-pin");
+    pointer(pin.element, "pointerdown", 310, 390);
+    pointer(window, "pointermove", 510, 390);
+    pointer(window, "pointerup", 510, 390);
+    const [, payload, onReply] = vi.mocked(live.pushEvent).mock.calls[0];
+    expect(payload).toMatchObject({
+      moving_draft: true,
+      draft_id: "draft-a",
+      context: { id: "42" },
+    });
+    onReply!({ ok: true });
+    await wrapper.setProps({
+      state: { ...draft, draftPosition: { x: payload!.x as number, y: payload!.y as number } },
+    });
+    expect(pin.attributes("aria-busy")).toBe("true");
+    await wrapper.setProps({
+      state: {
+        ...draft,
+        draftPosition: { x: payload!.x as number, y: payload!.y as number },
+        draftContext: payload!.context as SceneCommentsPanelState["draftContext"],
+      },
+    });
+    expect(pin.attributes("aria-busy")).toBe("false");
+  });
+
+  it("does not apply a pending draft failure to a replacement draft", async () => {
+    const draft = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "draft-a",
+      draftPosition: { x: 10, y: 20 },
+    };
+    const { wrapper } = setup(draft, []);
+    await nextTick();
+    const pin = wrapper.get("#scene-comment-draft-pin");
+    pointer(pin.element, "pointerdown", 300, 370);
+    pointer(window, "pointermove", 400, 450);
+    pointer(window, "pointerup", 400, 450);
+    const oldReply = vi.mocked(live.pushEvent).mock.calls[0][2]!;
+    await wrapper.setProps({
+      state: { ...draft, draftId: "draft-b", draftPosition: { x: 5, y: 5 } },
+    });
+    oldReply({ ok: false });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("false");
+    expect(pin.attributes("style")).toContain("left: 200px");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it("accepts authoritative draft detachment when its target disappears during the move request", async () => {
+    const draft = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "draft-a",
+      draftPosition: { x: 10, y: 20 },
+    };
+    const { wrapper } = setup(draft, [], null, true, targets);
+    await nextTick();
+    const pin = wrapper.get("#scene-comment-draft-pin");
+    pointer(pin.element, "pointerdown", 310, 390);
+    pointer(window, "pointermove", 510, 390);
+    pointer(window, "pointerup", 510, 390);
+    const [, payload, onReply] = vi.mocked(live.pushEvent).mock.calls[0];
+    const position = { x: payload!.x as number, y: payload!.y as number };
+    expect(payload).toMatchObject({ context: { id: "42" } });
+    onReply!({ ok: true, draft: { id: "draft-a", position, context: null } });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    await wrapper.setProps({ state: { ...draft, draftPosition: position, draftContext: null } });
+    expect(pin.attributes("aria-busy")).toBe("false");
+    expect(wrapper.findComponent({ name: "SceneCommentsPanel" }).props("state").draftPending).toBe(
+      false,
+    );
+  });
+
+  it("keeps the latest visible draft position when a moved context is removed", async () => {
+    const draft = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "draft-a",
+      draftPosition: { x: 22, y: 23 },
+      draftContext: { type: "scene_pin", id: "42", offset: { x: 2, y: 3 } },
+    };
+    const { wrapper } = setup(draft, [], null, true, targets);
+    await nextTick();
+    await wrapper.setProps({
+      targets: { ...targets, pins: [{ ...targets.pins[0], x: 300, y: 240 }] },
+    });
+    const pin = wrapper.get("#scene-comment-draft-pin");
+    expect(pin.attributes("style")).toContain("left: 740px");
+    expect(pin.attributes("style")).toContain("top: 578px");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    await wrapper.setProps({
+      targets: { ...targets, pins: [] },
+      state: { ...draft, draftContext: null },
+    });
+    expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "comments_place",
+      { x: 32, y: 33, context: null, moving_draft: true, draft_id: "draft-a" },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    expect(pin.attributes("style")).toContain("left: 740px");
+    expect(pin.attributes("style")).toContain("top: 578px");
+  });
+
+  it("recovers stored context and retries freely when unavailable without losing composer text", async () => {
+    const key = "storyarn:scene-comment-draft:4:scene-canvas-7";
+    const context = { type: "scene_pin", id: "42", offset: { x: 2, y: 3 } };
+    updateCommentDraft(key, {
+      coordinateSpace: "canvas",
+      position: { x: 22, y: 23 },
+      context,
+      body: "Keep this review",
+    });
+    const { wrapper } = setup();
+    await wrapper.setProps({ draftStorageKey: key });
+    await nextTick();
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "comments_place",
+      { x: 22, y: 23, context },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    vi.mocked(live.pushEvent).mock.calls[0][2]!({ ok: false, context_unavailable: true });
+    expect(live.pushEvent).toHaveBeenLastCalledWith(
+      "comments_place",
+      { x: 22, y: 23, context: null },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        draftId: "restored",
+        draftPosition: { x: 22, y: 23 },
+        draftContext: null,
+      },
+    });
+    expect(readCommentDraft(key)).toMatchObject({ body: "Keep this review", context: null });
+    await wrapper.setProps({ state: { ...base } });
+    expect(readCommentDraft(key)).toMatchObject({
+      body: "Keep this review",
+      position: { x: 22, y: 23 },
+    });
+  });
+
+  it("does not reopen a deliberately closed draft when the canvas becomes ready again", async () => {
+    const key = "storyarn:scene-comment-draft:4:7";
+    updateCommentDraft(key, {
+      coordinateSpace: "canvas",
+      position: { x: 10, y: 20 },
+      body: "Keep for reload",
+    });
+    const { wrapper } = setup({
+      open: true,
+      presentation: "canvas",
+      draftId: "active",
+      draftPosition: { x: 10, y: 20 },
+    });
+    await wrapper.setProps({ draftStorageKey: key });
+    await nextTick();
+    vi.mocked(live.pushEvent).mockClear();
+    await wrapper.setProps({ state: { ...base }, backgroundSettled: false });
+    await wrapper.setProps({ backgroundSettled: true });
+    await nextTick();
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    expect(readCommentDraft(key)).toMatchObject({ body: "Keep for reload" });
+  });
+
+  it("does not resurrect a recovery after another draft has been opened and closed", async () => {
+    const key = "storyarn:scene-comment-draft:4:scene-canvas-7";
+    updateCommentDraft(key, {
+      coordinateSpace: "canvas",
+      position: { x: 22, y: 23 },
+      context: { type: "scene_pin", id: "42" },
+      body: "Old draft",
+    });
+    const { wrapper } = setup();
+    await wrapper.setProps({ draftStorageKey: key });
+    await nextTick();
+    const onReply = vi.mocked(live.pushEvent).mock.calls[0][2]!;
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        draftId: "new-draft",
+        draftPosition: { x: 10, y: 10 },
+      },
+    });
+    await wrapper.setProps({ state: { ...base } });
+    onReply({ ok: false, context_unavailable: true });
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+    expect(wrapper.find("#scene-comment-draft-pin").exists()).toBe(false);
+  });
+
+  it.each(["canvas", "panel"] as const)(
+    "offers local hidden-context reveal from %s without pushing a layer mutation",
+    async (presentation) => {
+      const { wrapper } = setup({ open: true, presentation, thread });
+      await wrapper.setProps({ contextVisibility: { hidden: true, local: false } });
+      await wrapper.get("#scene-comment-reveal-context").trigger("click");
+      expect(wrapper.emitted("revealContext")).toHaveLength(1);
+      expect(live.pushEvent).not.toHaveBeenCalled();
+      await wrapper.setProps({ contextVisibility: { hidden: false, local: true } });
+      expect(wrapper.find("#scene-comment-reveal-context").exists()).toBe(false);
+      await wrapper.get("#scene-comment-reset-local-layers").trigger("click");
+      expect(wrapper.emitted("resetLocalLayers")).toHaveLength(1);
+      expect(live.pushEvent).not.toHaveBeenCalled();
+    },
+  );
 
   it("honors keyboard controls and removes every global and canvas listener on unmount", async () => {
     const { wrapper, container, canvas } = setup();

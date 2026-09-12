@@ -42,7 +42,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
 
   def close(%{assigns: %{comments: _state}} = socket) do
     socket
-    |> put_state(%{open: false, placing: false, draftPosition: nil, draftId: nil, error: nil})
+    |> put_state(%{open: false, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
     |> assign(:comment_focus_thread_id, nil)
   end
 
@@ -79,6 +79,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
             presentation: "panel",
             placing: false,
             draftPosition: nil,
+            draftContext: nil,
             draftId: nil,
             thread: nil,
             messages: [],
@@ -129,6 +130,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   def handle("refresh", _params, socket), do: {:noreply, refresh(socket)}
   def handle(_action, _params, socket), do: failure(socket, :invalid_request)
 
+  def refresh(%{assigns: %{compact: true}} = socket), do: socket
   def refresh(%{assigns: %{scene: nil}} = socket), do: socket
 
   def refresh(socket) do
@@ -155,7 +157,22 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   defp refresh_open(socket, state) do
     socket = socket |> load_threads() |> load_members()
 
-    if state.thread, do: load_detail(socket, state.thread.id), else: socket
+    if state.thread, do: load_detail(socket, state.thread.id), else: refresh_draft_context(socket)
+  end
+
+  defp refresh_draft_context(%{assigns: %{comments: %{draftContext: nil}}} = socket), do: socket
+
+  defp refresh_draft_context(socket) do
+    case draft_context(socket, socket.assigns.comments.draftContext) do
+      {:ok, _context} ->
+        socket
+
+      {:error, reason} when reason in [:context_unavailable, :invalid_context] ->
+        put_state(socket, %{draftContext: nil, error: nil})
+
+      _unavailable ->
+        clear(socket)
+    end
   end
 
   def refresh_result({:noreply, socket}), do: {:noreply, refresh(socket)}
@@ -174,33 +191,36 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   end
 
   defp mutate("place", params, socket) do
-    case position(params) do
-      {:ok, position} ->
-        draft_id =
-          if params["moving_draft"] == true && socket.assigns.comments.draftId,
-            do: socket.assigns.comments.draftId,
-            else: Ecto.UUID.generate()
+    with :ok <- validate_draft_move(params, socket),
+         {:ok, position} <- position(params),
+         {:ok, context} <- draft_context(socket, params["context"]) do
+      draft_id =
+        if params["moving_draft"] == true && socket.assigns.comments.draftId,
+          do: socket.assigns.comments.draftId,
+          else: Ecto.UUID.generate()
 
-        socket =
-          socket
-          |> close()
-          |> maybe_select_tool(true)
-          |> assign(:right_panel, nil)
-          |> put_state(%{
-            open: true,
-            presentation: "canvas",
-            draftPosition: position,
-            draftId: draft_id,
-            thread: nil,
-            messages: [],
-            messageNextCursor: nil
-          })
-          |> refresh()
+      socket =
+        socket
+        |> close()
+        |> maybe_select_tool(true)
+        |> assign(:right_panel, nil)
+        |> put_state(%{
+          open: true,
+          presentation: "canvas",
+          draftPosition: position,
+          draftContext: context,
+          draftId: draft_id,
+          thread: nil,
+          messages: [],
+          messageNextCursor: nil
+        })
+        |> refresh()
 
-        {:reply, %{ok: true}, socket}
-
-      {:error, reason} ->
-        failure(socket, reason)
+      state = socket.assigns.comments
+      draft = %{id: state.draftId, position: state.draftPosition, context: state.draftContext}
+      {:reply, %{ok: true, draft: draft}, socket}
+    else
+      {:error, reason} -> failure(socket, reason)
     end
   end
 
@@ -273,6 +293,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
     {:reply, %{ok: true}, socket |> refresh() |> select_thread(thread_id)}
   end
 
+  defp mutation_result({:error, reason}, socket) when reason in [:context_unavailable, :invalid_context],
+    do: failure(refresh_draft_context(socket), reason)
+
   defp mutation_result({:error, reason}, socket), do: failure(socket, reason)
 
   defp open_linked_thread(socket, thread_id) do
@@ -284,7 +307,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   defp select_thread(socket, thread_id) do
     socket
     |> assign(:right_panel, nil)
-    |> put_state(%{open: true, placing: false, draftPosition: nil, draftId: nil, error: nil})
+    |> put_state(%{open: true, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
     |> load_threads()
     |> load_members()
     |> load_detail(thread_id)
@@ -326,6 +349,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
           messages: messages,
           messageNextCursor: next_cursor,
           draftPosition: nil,
+          draftContext: nil,
           draftId: nil,
           presentation: presentation
         })
@@ -340,6 +364,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
             messages: [],
             messageNextCursor: nil,
             draftPosition: nil,
+            draftContext: nil,
             draftId: nil,
             presentation: "panel",
             error: error_message(:not_found)
@@ -365,6 +390,28 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
     else
       _error -> {:error, :not_found}
     end
+  end
+
+  defp validate_draft_move(%{"moving_draft" => true} = params, socket) do
+    if Map.has_key?(params, "context") or Map.has_key?(params, "draft_id") do
+      if matching_draft?(socket.assigns.comments, params["draft_id"]), do: :ok, else: {:error, :stale}
+    else
+      :ok
+    end
+  end
+
+  defp validate_draft_move(_params, _socket), do: :ok
+
+  defp matching_draft?(%{open: true, presentation: "canvas", thread: nil, draftId: id}, id) when is_binary(id), do: true
+  defp matching_draft?(_state, _id), do: false
+
+  defp draft_context(socket, context) do
+    Projects.validate_scene_comment_context(
+      socket.assigns.current_scope,
+      socket.assigns.project.id,
+      socket.assigns.scene.id,
+      context
+    )
   end
 
   defp authorize_read(socket), do: Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view)
@@ -418,11 +465,19 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   defp failure(socket, reason) do
     socket = if match?({:ok, _, _}, authorize_read(socket)), do: socket, else: clear(socket)
     message = error_message(reason)
-    {:reply, %{ok: false, error: message}, put_state(socket, %{error: message})}
+
+    {:reply, %{ok: false, error: message, context_unavailable: reason in [:context_unavailable, :invalid_context]},
+     put_state(socket, %{error: message})}
   end
 
   defp error_message(:stale),
     do: dgettext("scenes", "This conversation changed. Review the latest state and try again.")
+
+  defp error_message(:context_unavailable),
+    do: dgettext("scenes", "The comment context is no longer available. Review the pin's position and try again.")
+
+  defp error_message(:invalid_context),
+    do: dgettext("scenes", "The selected comment context is invalid. Move the pin and try again.")
 
   defp error_message(reason) when reason in [:not_found, :unauthorized, :unavailable, :source_unavailable] do
     dgettext("scenes", "This conversation or its source is no longer available.")
@@ -437,6 +492,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
       presentation: "panel",
       placing: false,
       draftPosition: nil,
+      draftContext: nil,
       draftId: nil,
       threads: [],
       nextCursor: nil,

@@ -18,6 +18,11 @@ const {
   draftStorageKey?: string | null;
 }>();
 const live = useLive();
+const emit = defineEmits<{ close: [] }>();
+function close() {
+  emit("close");
+  live.pushEvent("comments_close", {});
+}
 const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
 </script>
 
@@ -40,7 +45,7 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
         size="icon"
         class="size-7"
         :aria-label="$t(translationKey('close'))"
-        @click="live.pushEvent('comments_close', {})"
+        @click="close"
         ><X class="size-4"
       /></Button>
     </div>
@@ -52,12 +57,7 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
       class="min-h-0 overflow-y-auto overscroll-contain p-3"
     />
   </section>
-  <Sidebar
-    v-else
-    side="right"
-    :open="state.open && state.presentation !== 'canvas'"
-    @close="live.pushEvent('comments_close', {})"
-  >
+  <Sidebar v-else side="right" :open="state.open && state.presentation !== 'canvas'" @close="close">
     <template #header>
       <div class="flex items-center justify-between gap-2 py-2.5">
         <div class="flex min-w-0 items-center gap-2 text-sm font-medium">
@@ -69,7 +69,7 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
           size="icon"
           class="size-7"
           :aria-label="$t(translationKey('close'))"
-          @click="live.pushEvent('comments_close', {})"
+          @click="close"
           ><X class="size-4"
         /></Button>
       </div>

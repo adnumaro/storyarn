@@ -515,7 +515,19 @@
       "empty_hint": "Choose New comment to start a conversation anywhere on the canvas.",
       "readonly_hint": "You can read discussions. Editing access is required to comment.",
       "threads": "Comment threads",
-      "load_threads": "Load more threads"
+      "load_threads": "Load more threads",
+      "magnetism_on": "Magnetism",
+      "magnetism_off": "Free placement",
+      "magnetism_hint": "Toggle magnetism. Hold Alt while moving for free placement.",
+      "keyboard_move_hint": "Use arrow keys to move, Shift for precision, Enter to save, Escape to cancel. Use [ and ] to choose an overlapping context. Hold Alt for free placement.",
+      "snap_context": "Context: {label}",
+      "free_position": "Free position · no context",
+      "next_context": "Next context",
+      "drag_hint": "Alt: free · [ ]: context · Esc: cancel",
+      "hidden_context": "The context is in a hidden layer.",
+      "reveal_context": "Show context for me",
+      "local_context_visible": "These layers are visible only to you.",
+      "reset_local_layers": "Restore shared visibility"
     },
     "canvas": {
       "fit_view": "Fit to view"

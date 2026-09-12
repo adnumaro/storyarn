@@ -1784,6 +1784,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     action
     |> CollaborationHandlers.handle_remote_change(payload, socket)
     |> refresh_scene_health_result()
+    |> CommentHandlers.refresh_result()
   end
 
   def handle_info({:scene_comments_changed, scene_id}, socket) do
@@ -1964,7 +1965,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       Collaboration.broadcast_dashboard_change(socket.assigns.project.id, :scenes)
     end
 
-    {:noreply, socket |> assign(:_broadcast, nil) |> assign_scene_health()}
+    {:noreply, socket |> assign(:_broadcast, nil) |> assign_scene_health() |> CommentHandlers.refresh()}
   end
 
   defp refresh_scene_health_result({:noreply, socket}), do: {:noreply, assign_scene_health(socket)}
