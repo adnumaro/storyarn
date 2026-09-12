@@ -9,6 +9,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.IdeationLive.Handlers.CommentHandlers
+  alias StoryarnWeb.IdeationLive.Handlers.ExplorationContextHandlers
   alias StoryarnWeb.IdeationLive.Handlers.GroupHandlers
   alias StoryarnWeb.IdeationLive.Handlers.IdeaHandlers
   alias StoryarnWeb.IdeationLive.Handlers.ReferenceHandlers
@@ -69,7 +70,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
         rounds-next={@board.rounds_next}
         active-round={@board.active_round}
         timer={@board.timer}
+        context-reference={@exploration_reference}
       />
+
       <.vue
         v-component="live/ideation/BrainstormingBoard"
         v-socket={@socket}
@@ -126,6 +129,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
      socket
      |> CommentHandlers.init()
      |> ReferenceHandlers.init()
+     |> ExplorationContextHandlers.init()
      |> assign(:page_title, gettext("Brainstorming"))
      |> assign(:board, BoardData.empty())
      |> assign(:board_error, nil)
@@ -163,7 +167,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         socket = assign(socket, :filters, filters)
         # A route transition invalidates reads started for the previous session.
         socket = assign(socket, :refresh_running, nil)
-        {:noreply, socket |> load_now() |> CommentHandlers.linked(params)}
+        {:noreply, socket |> load_now() |> CommentHandlers.linked(params) |> ExplorationContextHandlers.linked(params)}
 
       {:error, _} ->
         {:noreply,
@@ -185,6 +189,10 @@ defmodule StoryarnWeb.IdeationLive.Board do
   end
 
   def handle_event("comments_" <> action, params, socket), do: CommentHandlers.handle(action, params, socket)
+
+  def handle_event("exploration_return", params, socket),
+    do: ExplorationContextHandlers.return_to_source(params, socket)
+
   def handle_event("references_" <> action, params, socket), do: ReferenceHandlers.handle(action, params, socket)
 
   def handle_event(event, params, socket)
@@ -383,7 +391,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   def handle_info({:ideation_changed, id}, %{assigns: %{session_id: id}} = socket), do: {:noreply, refresh(socket)}
 
   def handle_info({:ideation_references_changed, id}, %{assigns: %{session_id: id}} = socket),
-    do: {:noreply, ReferenceHandlers.refresh(socket)}
+    do: {:noreply, socket |> ReferenceHandlers.refresh() |> ExplorationContextHandlers.refresh()}
 
   def handle_info({:ideation_comments_changed, id}, %{assigns: %{session_id: id}} = socket),
     do: {:noreply, CommentHandlers.refresh(socket)}
@@ -447,6 +455,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
       {:noreply, socket}
     end
   end
+
+  def handle_info({:tree_changed, _}, socket),
+    do: {:noreply, socket |> ReferenceHandlers.refresh() |> ExplorationContextHandlers.refresh()}
+
+  def handle_info({:entities_deleted, _, _}, socket),
+    do: {:noreply, socket |> ReferenceHandlers.refresh() |> ExplorationContextHandlers.refresh()}
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
@@ -580,6 +594,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         |> assign(board: data, board_error: nil, membership: membership, can_edit: can_edit, canvas_ready: true)
         |> CommentHandlers.refresh()
         |> ReferenceHandlers.refresh()
+        |> ExplorationContextHandlers.refresh()
 
       {:error, _} ->
         lose_access(socket)
@@ -599,6 +614,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   defp lose_access(socket) do
     socket
+    |> ExplorationContextHandlers.init()
     |> CommentHandlers.init()
     |> ReferenceHandlers.init()
     |> canvas_subscription(nil)

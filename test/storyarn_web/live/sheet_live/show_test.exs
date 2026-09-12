@@ -21,7 +21,8 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
   end
 
   defp get_sheet_header_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetHeader")
+    vue = LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")
+    %{vue | props: vue.props["header"]}
   end
 
   defp get_sidebar_props(view, project) do
@@ -183,7 +184,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
-      assert get_sheet_header_vue(view).component == "live/sheet/show/SheetHeader"
+      assert get_sheet_header_vue(view).component == "live/shared/ContextualSourceHeader"
       refute Map.has_key?(get_sheet_surface_vue(view).props, "sheet-health")
 
       health = get_sheet_health_props(view)

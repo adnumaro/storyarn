@@ -16,6 +16,23 @@ defmodule Storyarn.Ideation do
   alias Storyarn.Ideation.References
   alias Storyarn.Ideation.Sessions
 
+  @doc "Opens an authorized editor context with linked explorations and available open sessions."
+  defdelegate get_contextual_brainstorming(scope, project_id, type, id, opts \\ []),
+    to: References,
+    as: :contextual
+
+  @doc "Resumes a readable session only when its whole-session reference still matches the editor context."
+  defdelegate resume_contextual_session(scope, project_id, type, id, session_id), to: References
+
+  @doc "Reads one authorized contextual reference, including changed or unavailable status."
+  defdelegate get_reference(scope, project_id, session_id, idea_id, id), to: References, as: :get
+
+  @doc "Creates a session and its consulted origin atomically, with a durable retry identity."
+  defdelegate create_contextual_session(scope, project_id, attrs), to: References
+
+  @doc "Links an existing open session to an editor context without duplicating an existing session link."
+  defdelegate link_contextual_session(scope, project_id, session_id, attrs), to: References
+
   @doc "Lists contextual references for a shared session or published idea, reauthorizing both endpoints."
   defdelegate list_references(scope, project_id, session_id, idea_id, opts \\ []), to: References, as: :list
 

@@ -35,6 +35,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.VersionHistory
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.ContextualExplorations, as: ExplorationHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
 
@@ -80,32 +81,35 @@ defmodule StoryarnWeb.FlowLive.Show do
     >
       <.vue
         :if={@flow}
-        v-component="live/flow/show/FlowHeader"
+        v-component="live/shared/ContextualSourceHeader"
         v-socket={@socket}
         v-inject:top-left="project-layout"
         id="flow-header"
-        flow-name={@flow.name}
-        flow-shortcut={@flow.shortcut}
-        is-main={@flow.is_main}
-        can-edit={@can_edit}
-        comments={
+        source-type="flow"
+        header={
           %{
-            count: length(@comment_pins),
-            open: @comments.open && @comments.presentation == "panel",
-            placing: @comments.placing,
-            canComment: @comments.canComment
+            flowName: @flow.name,
+            flowShortcut: @flow.shortcut,
+            isMain: @flow.is_main,
+            canEdit: @can_edit,
+            comments: %{
+              count: length(@comment_pins),
+              open: @comments.open && @comments.presentation == "panel",
+              placing: @comments.placing,
+              canComment: @comments.canComment
+            },
+            saveStatus: to_string(@save_status),
+            navHistory: %{
+              back: @nav_history && NavigationHistory.peek_back(@nav_history),
+              forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
+            },
+            flowHealth: %{wordCount: @flow_word_count, health: @flow_health},
+            sceneSelected: %{name: @scene_name, inherited: @scene_inherited},
+            projectScenes: Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))
           }
         }
-        save-status={to_string(@save_status)}
-        nav-history={
-          %{
-            back: @nav_history && NavigationHistory.peek_back(@nav_history),
-            forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
-          }
-        }
-        flow-health={%{wordCount: @flow_word_count, health: @flow_health}}
-        scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
-        project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
+        exploration-state={@explorations}
+        exploration-source-key={"flow:#{@flow.id}"}
       />
 
       <.vue
@@ -252,7 +256,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_has_next, false)
       |> assign(:preview_history, [])
 
-    {:ok, CommentHandlers.init(socket)}
+    {:ok, socket |> ExplorationHandlers.init(:flow) |> CommentHandlers.init()}
   end
 
   defp maybe_restore_debug_session(socket) do
@@ -339,6 +343,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
     {:noreply,
      socket
+     |> ExplorationHandlers.source_changed()
      |> apply_highlight(params["highlight"])
      |> CommentHandlers.handle_params(params)}
   end
@@ -453,6 +458,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
+  def handle_event("exploration_" <> action, params, socket), do: ExplorationHandlers.handle(action, params, socket)
+
   def handle_event("comments_" <> action, params, socket) do
     CommentHandlers.handle(action, params, socket)
   end

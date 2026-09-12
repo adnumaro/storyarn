@@ -38,6 +38,53 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
     end)
   end
 
+  test "concurrent contextual creation retries commit one session and one origin", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      sheet = Storyarn.SheetsFixtures.sheet_fixture(ctx.project)
+      {:ok, %{target: target}} = Ideation.get_contextual_brainstorming(ctx.scope, ctx.project.id, "sheet", sheet.id)
+
+      attrs = %{
+        title: "Explore alternatives",
+        target_type: "sheet",
+        target_id: target.id,
+        target_identity: target.identity,
+        target_fingerprint: target.fingerprint,
+        request_key: Ecto.UUID.generate()
+      }
+
+      parent = self()
+
+      tasks =
+        for _ <- 1..3 do
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              send(parent, {:ready, self()})
+
+              receive do
+                :start -> Ideation.create_contextual_session(ctx.scope, ctx.project.id, attrs)
+              after
+                @timeout -> flunk("contextual creation was not released")
+              end
+            end)
+          end)
+        end
+
+      try do
+        for _ <- tasks, do: assert_receive({:ready, _}, @timeout)
+        Enum.each(tasks, &send(&1.pid, :start))
+        results = Task.await_many(tasks, @timeout)
+        assert Enum.all?(results, &match?({:ok, _}, &1))
+        ids = Enum.map(results, fn {:ok, result} -> {result.session.id, result.reference.id} end)
+        assert length(Enum.uniq(ids)) == 1
+
+        assert {:ok, %{linked_sessions: [_]}} =
+                 Ideation.get_contextual_brainstorming(ctx.scope, ctx.project.id, "sheet", sheet.id)
+      after
+        Enum.each(tasks, &Task.shutdown(&1, :brutal_kill))
+      end
+    end)
+  end
+
   test "competing edits commit exactly one head and one matching revision", ctx do
     Sandbox.unboxed_run(Repo, fn ->
       parent = self()

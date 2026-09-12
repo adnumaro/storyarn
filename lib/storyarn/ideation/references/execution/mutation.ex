@@ -95,6 +95,27 @@ defmodule Storyarn.Ideation.References.Mutation do
     end
   end
 
+  # Internal References port. Caller owns the authorized session lock, duplicate
+  # and capacity checks; this shared writer keeps origin links in the same audit contract.
+  def insert_locked(session_id, idea_id, actor_id, attrs, target, key, fingerprint) do
+    reference = %Reference{
+      session_id: session_id,
+      idea_id: idea_id,
+      created_by_id: actor_id,
+      target_type: attrs.target_type,
+      target_id: attrs.target_id,
+      target_identity: target.identity,
+      relation: attrs.relation,
+      version: 1,
+      context: View.context(target)
+    }
+
+    with {:ok, reference} <- Repo.insert(reference),
+         {:ok, _} <- record(reference, actor_id, %{operation: "create", key: key}, fingerprint) do
+      {:ok, {reference, true}}
+    end
+  end
+
   defp execute(scope, project_id, session_id, idea_id, actor_id, %{operation: "create"} = command, fingerprint) do
     attrs = command.attrs
     query = Catalog.session_query(session_id, idea_id)
@@ -108,22 +129,7 @@ defmodule Storyarn.Ideation.References.Mutation do
            ),
          count when count < 100 <- Repo.aggregate(query, :count),
          {:ok, target} <- Targets.get(scope, project_id, attrs.target_type, attrs.target_id) do
-      reference = %Reference{
-        session_id: session_id,
-        idea_id: idea_id,
-        created_by_id: actor_id,
-        target_type: attrs.target_type,
-        target_id: attrs.target_id,
-        target_identity: target.identity,
-        relation: attrs.relation,
-        version: 1,
-        context: View.context(target)
-      }
-
-      with {:ok, reference} <- Repo.insert(reference),
-           {:ok, _} <- record(reference, actor_id, command, fingerprint) do
-        {:ok, {reference, true}}
-      end
+      insert_locked(session_id, idea_id, actor_id, attrs, target, command.key, fingerprint)
     else
       true -> {:error, :reference_exists}
       count when is_integer(count) -> {:error, :reference_limit}

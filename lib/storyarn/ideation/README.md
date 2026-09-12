@@ -98,9 +98,18 @@ request identities, optimistic revisions and after-commit content-free events.
 Reference changes do not refresh notification inboxes. Snapshots include references
 and retained context, independently of conversations, which are never rewound.
 
-The reverse query is available for ENG-191; creating/retaking an exploration from
-an editor and decision anchors remain separate features. Drafts and automatic
-application of proposed changes are not part of this capability.
+Editors can open a bounded context picker, create an exploration with an origin,
+link an open session, or resume an existing whole-session link. Creation records
+the session and its origin in one transaction; the origin revision carries the
+durable creation receipt and is included in recovery. An exclusive Project lock
+serializes creation retries before a session exists. Receipts in replaced sessions
+fence retries after restoring an earlier snapshot. Existing session links are
+reused without duplicating or changing their relation; an audited `context_linked`
+session revision preserves the reuse receipt and stable reference identity so a
+retry cannot undo a later unlink. New writes compare the
+consulted target identity and overview fingerprint; retries preserve the original
+context and never silently refresh it. Archived linked sessions remain readable.
+Decision anchors, Drafts and automatic application remain separate features.
 
 ## Project authority
 

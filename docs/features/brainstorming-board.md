@@ -1,12 +1,35 @@
 # Brainstorming canvas
 
-> Last reviewed: 2026-09-10
-> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165, ENG-166 and ENG-182
+> Last reviewed: 2026-09-12
+> Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165, ENG-166, ENG-182 and ENG-191
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
 navigation used by Scenes, Flows and Sheets. Miro, FigJam and Scapple inform the
 interaction; this is not a general-purpose whiteboard or a clone of any of them.
+
+## Explore changes from existing content
+
+Open **Explore changes** from a Sheet, Flow or Scene to begin a session with that
+content as its origin. Review the current overview, choose a session title and
+optionally describe the question to explore. The saved context contains the name,
+description and relevant overview metadata available to the participant. It does
+not copy Sheet fields, Flow nodes or Scene geometry, and the source is unchanged.
+
+The same dialog lists linked explorations so participants can resume a session.
+Editors can also search for an existing session and link the source to it. Linking
+retains the session's contributions and adds the source as context. Viewers can
+inspect and resume readable explorations, but cannot create or link sessions.
+
+The brainstorming board displays its origins with controls to return to the
+current content. A changed overview is identified without replacing the context
+saved at linking. Deleted or inaccessible content remains an unavailable
+reference, with its saved details hidden and its return control disabled. Existing reference
+recovery preserves the origin and rebinds it only to the correct restored content
+identity.
+
+This entry point opens a brainstorming session. It does not create a Draft,
+accept a decision or apply proposals to the source. Those are separate workflows.
 
 ## Working on the canvas
 

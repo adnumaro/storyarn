@@ -109,7 +109,7 @@ msgstr ""
 msgid "Renamed sheet"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:503
+#: lib/storyarn_web/live/sheet_live/show.ex:507
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr ""
@@ -309,7 +309,7 @@ msgstr ""
 msgid "Invalid layout."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:1043
+#: lib/storyarn_web/live/sheet_live/show.ex:1049
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr ""
