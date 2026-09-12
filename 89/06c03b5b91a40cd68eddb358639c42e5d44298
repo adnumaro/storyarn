@@ -1,0 +1,233 @@
+lib/storyarn/sheets/editor/queries/reference_targets.ex
+  s_2849957cac15c2::t_81d46d0daed06e 1-6,8,11,34-38
+  s_2849957cac15c2::t_2dd64000e80b7c 7,9-10,12-33
+test/storyarn_web/live/ideation_live/board_test.exs
+  s_2849957cac15c2::t_ca7d44f7e9e974 230-231,239,246,248-251,257
+docs/reference/brainstorming-recovery-contract.md
+  s_2849957cac15c2::t_94c1057fae7cb7 5,7,58-59,89-92,147-178
+  s_194a5688996098::t_71e0883fa39f5c 179
+lib/storyarn/projects/assets/queries/reference_targets.ex
+  s_2849957cac15c2::t_ba51c13d66a757 1-8,11,32-36
+  s_2849957cac15c2::t_88d244299a7478 9-10,12-31
+lib/storyarn_web/live/ideation_live/handlers/reference_handlers.ex
+  s_2849957cac15c2::t_5f98e7dc63512a 37-39
+  s_2849957cac15c2::t_a52291c08348dc 1-36,40-180,183-225,227-253
+  s_2849957cac15c2::t_79f7c4123de360 181-182
+  s_2849957cac15c2::t_bbbcb02c1353b8 226
+test/storyarn/ideation/reference_recovery_test.exs
+  s_2849957cac15c2::t_94c1057fae7cb7 37-45,106,109,112-147,149-150,153-165,251,253,256,272-281,311,365-368,370,375-380,385-390
+  s_2849957cac15c2::t_f60e5f1edb1ca9 339-361
+  s_2849957cac15c2::t_1b61fb2f8bedcc 166-171,173-175,177-178,202-207,209-211,213-220
+  s_2849957cac15c2::t_b45e8486d73edc 1-36,46-105,107-108,110-111,151-152,221-250,252,254-255,257-271,282-310,312-338,362-364,369,371-374,381-384,391-414
+  s_2849957cac15c2::t_768479d23ba2ab 148,172,176,179-201,208,212
+  s_2849957cac15c2::t_4fab2df9affd26 415-424
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_2849957cac15c2::t_e5de4fff24e6e9 4,23,31,35,37-44,94-96,244
+assets/app/live/ideation/ReferencesPanel.vue
+  s_2849957cac15c2::t_cdef6137f72340 4-14,17-23,50-53,56-58,77-79,83-85,92-97,137-142,147-155,161-168,173-178,183-189,191-199,204-206,208-216,219-221,223-230,234-236,238-245,249-251,253-270,272-280,282-291,295-297,301-309,311-314,318-323,329-344,347-349,352-354,356-358,361-363,366-371,374-403,405-408,410-421,426-435,440-452
+  s_2849957cac15c2::t_7de727757cef5b 1-3,15-16,24-49,54-55,59-76,80-82,86-91,98-102,104-108,110-136,143-146,156-160,169-172,179-182,190,200-203,207,217-218,222,231-233,237,246-248,252,271,281,292-294,298-300,310,315-317,324-328,345-346,350-351,355,359-360,364-365,372-373,404,409,422-425,436-439,453-460
+  s_2849957cac15c2::t_b1b97b8ad7f7df 103,109
+lib/storyarn/ideation/references/rules/input.ex
+  s_2849957cac15c2::t_a33a76cdb92043 1-53
+assets/app/live/ideation/referenceTypes.ts
+  s_2849957cac15c2::t_7de727757cef5b 1-26,28-53
+  s_2849957cac15c2::t_a52291c08348dc 27
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_2849957cac15c2::t_c29aa38806f5ae 261,357,359,407-408,446
+lib/storyarn/localization/texts/queries/reference_targets.ex
+  s_2849957cac15c2::t_f339663084c067 1-8,11,39-43
+  s_2849957cac15c2::t_a71eeb44d4a03d 9-10,12-38
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_2849957cac15c2::t_94c1057fae7cb7 245,374
+  s_2849957cac15c2::t_c29aa38806f5ae 173,335,337,369,372,412
+test/storyarn/ideation/reference_targets_test.exs
+  s_2849957cac15c2::t_a79b0d9293c1fc 143-152
+  s_2849957cac15c2::t_4352e12b8a6a3c 1-142,153-224
+  s_2849957cac15c2::t_f761912072b517 225-232
+assets/app/locales/es/brainstorming-references.json
+  s_2849957cac15c2::t_cdef6137f72340 11,27,37,46-48
+  s_2849957cac15c2::t_a52291c08348dc 1-10,12,14-26,28-30,33-36,38-45,49-83
+  s_2849957cac15c2::t_79f7c4123de360 13
+  s_2849957cac15c2::t_07823c79a248bf 31-32
+lib/storyarn/flows/editor/queries/reference_targets.ex
+  s_2849957cac15c2::t_1e486fe3567953 1-8,11,35-39
+  s_2849957cac15c2::t_ccf6c253bb96ec 9-10,12-34
+assets/app/locales/en/brainstorming-references.json
+  s_2849957cac15c2::t_f0ce1abe4113dd 11,27,37,46-48
+  s_2849957cac15c2::t_a52291c08348dc 1-10,12,14-26,28-30,33-36,38-45,49-83
+  s_2849957cac15c2::t_79f7c4123de360 13
+  s_2849957cac15c2::t_07823c79a248bf 31-32
+lib/storyarn/scenes/editor/queries/reference_targets.ex
+  s_2849957cac15c2::t_045458be8ce8c7 1-6,8,11,35-39
+  s_2849957cac15c2::t_2ce55cb146db36 7,9-10,12-34
+assets/app/test/live/ideation/ReferencesPanel.test.ts
+  s_2849957cac15c2::t_b1b97b8ad7f7df 1-147
+  s_2849957cac15c2::t_51e0c244c760a0 148-177
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_2849957cac15c2::t_a52291c08348dc 12,82-85,987-994,1013,1015-1023,1026
+  s_2849957cac15c2::t_c0baeafb945c0b 1014
+  s_2849957cac15c2::t_eccfd5f7e6f956 1024-1025
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_2849957cac15c2::t_fca9d3d4586834 9,191-201,251
+  s_2849957cac15c2::t_f2a5b110619301 249-250
+lib/storyarn/ideation/references/queries/catalog.ex
+  s_2849957cac15c2::t_5fdf24fe0801c3 100-102
+  s_2849957cac15c2::t_fca9d3d4586834 1-6,8-16,18-21,27-31,34-36,40-59,62-82,85-94,99,103,120-127,129-142
+  s_2849957cac15c2::t_a33a76cdb92043 7,17,22-26,32-33,37-39,60-61,83-84,95-98,104-119,128
+lib/storyarn/projects/versioning/execution/ideation_destinations.ex
+  s_2849957cac15c2::t_dba2b413a10073 1-92
+  s_2849957cac15c2::t_1f40236c6790d0 93
+lib/storyarn/projects/versioning/versioning.ex
+  s_2849957cac15c2::t_dba2b413a10073 39-42
+  s_194a5688996098::t_24990807214f30 38
+lib/storyarn/ideation/recovery/adapters/records.ex
+  s_2849957cac15c2::t_1b61fb2f8bedcc 49-63
+  s_2849957cac15c2::t_dba2b413a10073 7,25-26,30,64-78
+  s_2849957cac15c2::t_af5e2c7a15407e 79,100
+lib/storyarn_web/live/ideation_live/board.ex
+  s_2849957cac15c2::t_ca7d44f7e9e974 14,94-103,131,158-164,175,183-189,191,388
+  s_2849957cac15c2::t_11b63e3093d11e 389-390,426,585,606
+lib/storyarn/ideation/README.md
+  s_2849957cac15c2::t_7d6c6c570657b7 5,78-103
+  s_2849957cac15c2::t_bbbcb02c1353b8 128
+  s_2849957cac15c2::t_61b679a6b19f25 104
+test/storyarn_web/live/ideation_live/references_test.exs
+  s_2849957cac15c2::t_79f7c4123de360 1-10,12-112,114-115,130-160,165-193,198-212
+  s_2849957cac15c2::t_ca7d44f7e9e974 11,113,116-129,161-164,194-197
+lib/storyarn/ideation/recovery/execution/restore.ex
+  s_2849957cac15c2::t_fdbfb477cf1e50 92
+  s_2849957cac15c2::t_1b61fb2f8bedcc 28,46-53
+  s_2849957cac15c2::t_dba2b413a10073 14-17,20,26,37,55,57,89-91,93-97,193-194
+  s_194a5688996098::t_79eeb2196a91e3 54
+lib/storyarn/ideation/references/queries/targets.ex
+  s_2849957cac15c2::t_a79b0d9293c1fc 17,23,226,235
+  s_2849957cac15c2::t_26ed6eec905763 1-16,18-21,24-73,75-83,96-149,159-225,227-234,236-241
+  s_2849957cac15c2::t_d13e57e1661d4a 22,74,84-95,150-158
+config/architecture_boundaries.exs
+  s_2849957cac15c2::t_fca9d3d4586834 1967,3142
+  s_2849957cac15c2::t_883c63201e6ff2 4169-4227
+  s_2849957cac15c2::t_dba2b413a10073 3097-3117
+  s_2849957cac15c2::t_94c1057fae7cb7 4168,4333-4339
+test/storyarn/ideation/references_test.exs
+  s_2849957cac15c2::t_f2a5b110619301 1-10,12-19,25-40,42-43,45-51,53-54,56-68,73-74,79,93-104,110-114,116-118,120-126,131-136,147-148,154-160,168-174,184,189,243-244
+  s_2849957cac15c2::t_19d4962eb781e7 119,193-242
+  s_2849957cac15c2::t_7d6c6c570657b7 11,20-24,41,44,52,55,69-72,75-78,80-92,105-109,115,127-130,137-146,149-153,161-167,175-183,185-188,190-192
+test/storyarn_web/live/asset_live/index_test.exs
+  s_2849957cac15c2::t_79f7c4123de360 271-284
+  s_2849957cac15c2::t_33d1ebd68b169e 285-288
+docs/reference/context-map.md
+  s_2849957cac15c2::t_523af4f2e6ee01 24-42
+  s_2849957cac15c2::t_c2c17d9856b6db 43-49
+test/storyarn/architecture/sheets_facade_contract_test.exs
+  s_2849957cac15c2::t_c29aa38806f5ae 165,240,242,259,290-291,329
+lib/storyarn/ideation/references/execution/mutation.ex
+  s_2849957cac15c2::t_6cebb83773e6b4 10,20-27,35-41,55,58,71-76,102-108,111-121,138-139,143-151,156-158,161,170-179
+  s_2849957cac15c2::t_0f18bf5dc2dd0f 52-54,56-57,59-61,63-64
+  s_2849957cac15c2::t_fca9d3d4586834 1-9,11-19,28-34,42-51,62,65-70,77-101,109-110,122-137,140-142,152-155,159-160,162-169,180
+lib/storyarn/ideation/recovery/contracts/references.ex
+  s_2849957cac15c2::t_96f075494247be 49-50,52-53,59-60
+  s_2849957cac15c2::t_b7742dd1e30be1 92-96
+  s_2849957cac15c2::t_1b61fb2f8bedcc 18,45-48,51,54-58
+  s_2849957cac15c2::t_2ceb603860a569 97
+lib/storyarn/projects.ex
+  s_2849957cac15c2::t_dba2b413a10073 55-57,280-282
+  s_194a5688996098::t_3a537555faa93b 283
+lib/storyarn/ideation/recovery/contracts/reference_state.ex
+  s_2849957cac15c2::t_019ee1edd6b5cd 1-16,19-24,27-40,42-48,50-52,54-60,79-97,102,104-105,107-129
+  s_2849957cac15c2::t_e5de4fff24e6e9 17-18,25-26,61-78
+  s_2849957cac15c2::t_b5d384157f3cfa 41,98-101,103,106
+  s_2849957cac15c2::t_f60e5f1edb1ca9 49,53
+assets/app/live/ideation/ReferenceOverview.vue
+  s_2849957cac15c2::t_7de727757cef5b 1-20
+  s_2849957cac15c2::t_708c0b772fa01f 21-28
+lib/storyarn/flows.ex
+  s_2849957cac15c2::t_0fe49ded7795a4 245-248
+lib/storyarn/flows/editor/editor.ex
+  s_2849957cac15c2::t_4a00e097a3ec52 26,150
+lib/storyarn/ideation.ex
+  s_2849957cac15c2::t_90b370b24b0a71 16,19-39,219-220
+lib/storyarn/ideation/recovery/contracts/generations.ex
+  s_2849957cac15c2::t_a0f981f55fce9f 13,24
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_2849957cac15c2::t_f95ec7853de2dc 31-35,38,108,143-146,150-152
+lib/storyarn/ideation/recovery/recovery.ex
+  s_2849957cac15c2::t_8eeac1929430d1 22
+lib/storyarn/ideation/references/contracts/view.ex
+  s_2849957cac15c2::t_08b841a53c6dac 1-46
+lib/storyarn/ideation/references/entities/reference.ex
+  s_2849957cac15c2::t_89672d29dc4a65 1-19
+lib/storyarn/ideation/references/entities/revision.ex
+  s_2849957cac15c2::t_7114576ee9eed5 1-17
+lib/storyarn/ideation/references/events/invalidation.ex
+  s_2849957cac15c2::t_7a3c5ec3585bad 1-11
+lib/storyarn/ideation/references/queries/source.ex
+  s_2849957cac15c2::t_70192a28a25141 1-29
+lib/storyarn/ideation/references/references.ex
+  s_2849957cac15c2::t_05609369830ebc 1-17
+lib/storyarn/localization.ex
+  s_2849957cac15c2::t_a54901a866947d 158-161
+lib/storyarn/localization/texts/texts.ex
+  s_2849957cac15c2::t_ada7a869537e56 16,23
+lib/storyarn/projects/assets/assets.ex
+  s_2849957cac15c2::t_dd6b1f0c12766d 21,30
+lib/storyarn/projects/versioning/execution/project_recovery.ex
+  s_2849957cac15c2::t_b63fd54ac72665 357,1189-1190,1201-1213
+lib/storyarn/scenes.ex
+  s_2849957cac15c2::t_f6d8f86121cd9b 79-82
+lib/storyarn/scenes/editor/editor.ex
+  s_2849957cac15c2::t_6d1433520c2d0b 15
+lib/storyarn/sheets.ex
+  s_2849957cac15c2::t_a3b6f62812746d 176-179
+lib/storyarn/sheets/editor/editor.ex
+  s_2849957cac15c2::t_17afccad8534bb 26,75
+lib/storyarn_web/live/asset_live/index.ex
+  s_2849957cac15c2::t_3567df052f1305 115-126
+priv/gettext/assets.pot
+  s_2849957cac15c2::t_a9f1c726a1f2fd 14,19,24,29,34-35,40,45,50,55
+priv/gettext/default.pot
+  s_2849957cac15c2::t_6f7bf1380d8235 139,149
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_2849957cac15c2::t_2d00e40ec63950 14,19,24,29,34-35,40,45,50,55
+priv/gettext/en/LC_MESSAGES/default.po
+  s_2849957cac15c2::t_af6d2d6047d908 139,149
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_2849957cac15c2::t_1290300b02e5ba 14,19,24,29,34-35,40,45,50,55
+priv/gettext/es/LC_MESSAGES/default.po
+  s_2849957cac15c2::t_ff2e360d561d60 139,149
+priv/repo/migrations/20260912140000_add_ideation_references.exs
+  s_2849957cac15c2::t_0956737e38c8b3 1-71
+test/storyarn/architecture/scenes_facade_contract_test.exs
+  s_2849957cac15c2::t_2ab09e532d225a 124
+test/storyarn/ideation/group_recovery_test.exs
+  s_2849957cac15c2::t_2078a527e2e88e 36,155,159
+test/storyarn/ideation/round_recovery_test.exs
+  s_2849957cac15c2::t_078ac2dd27cc5b 32,73-76,111
+test/storyarn/ideation/timer_recovery_test.exs
+  s_2849957cac15c2::t_157b3211ea49f4 134,200-203
+test/storyarn/localization/facade_contract_test.exs
+  s_2849957cac15c2::t_43c90c3b2f098d 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8906c03b5b91a40cd68eddb358639c42e5d44298",
+  "prompts": {},
+  "sessions": {
+    "s_194a5688996098": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a095dc-b2df-76f2-a3ae-9990c699347a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_2849957cac15c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08cee-7937-74e3-a18f-3dd4680183a0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
