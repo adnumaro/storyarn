@@ -56,7 +56,11 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
   defp dispatch("close", _params, socket), do: {:reply, %{status: "ok"}, reset(socket)}
 
   defp dispatch("search", %{"search" => search}, socket) when is_binary(search) and byte_size(search) <= 500 do
-    socket = socket |> assign(exploration_search: search, exploration_available_cursor: nil) |> load()
+    socket =
+      socket
+      |> assign(exploration_search: search, exploration_available_cursor: nil, exploration_available_history: [])
+      |> load()
+
     reply(socket)
   end
 
@@ -66,8 +70,21 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
 
     with {:ok, id} <- positive_id(cursor),
          true <- id == next do
-      key = if list == "linked", do: :exploration_linked_cursor, else: :exploration_available_cursor
-      socket |> assign(key, id) |> load() |> reply()
+      {key, history_key} = page_keys(list)
+      history = [socket.assigns[key] | socket.assigns[history_key]]
+      socket |> assign(key, id) |> assign(history_key, history) |> load() |> reply()
+    else
+      _ -> failure(socket, :invalid_parameters, false)
+    end
+  end
+
+  defp dispatch("load_previous", %{"list" => list, "cursor" => cursor}, socket) when list in ["linked", "available"] do
+    {key, history_key} = page_keys(list)
+
+    with {:ok, id} <- positive_id(cursor),
+         true <- id == socket.assigns[key],
+         [previous | history] <- socket.assigns[history_key] do
+      socket |> assign(key, previous) |> assign(history_key, history) |> load() |> reply()
     else
       _ -> failure(socket, :invalid_parameters, false)
     end
@@ -160,6 +177,10 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
           available: Enum.map(result.available_sessions, &session/1),
           linkedNext: result.linked_next_cursor,
           availableNext: result.available_next_cursor,
+          linkedPrevious: socket.assigns.exploration_linked_history != [],
+          availablePrevious: socket.assigns.exploration_available_history != [],
+          linkedCursor: socket.assigns.exploration_linked_cursor,
+          availableCursor: socket.assigns.exploration_available_cursor,
           canEdit: match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content)),
           context: if(changed, do: Ecto.UUID.generate(), else: socket.assigns.explorations.context),
           error: if(changed, do: "stale_context")
@@ -168,12 +189,22 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
       {:error, reason} ->
         socket
         |> assign(:exploration_target, nil)
+        |> assign(
+          exploration_linked_cursor: nil,
+          exploration_available_cursor: nil,
+          exploration_linked_history: [],
+          exploration_available_history: []
+        )
         |> put(%{
           target: nil,
           linked: [],
           available: [],
           linkedNext: nil,
           availableNext: nil,
+          linkedPrevious: false,
+          availablePrevious: false,
+          linkedCursor: nil,
+          availableCursor: nil,
           canEdit: false,
           error: error_code(reason)
         })
@@ -196,6 +227,8 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
       exploration_search: "",
       exploration_linked_cursor: nil,
       exploration_available_cursor: nil,
+      exploration_linked_history: [],
+      exploration_available_history: [],
       explorations: %{
         open: false,
         context: Ecto.UUID.generate(),
@@ -204,11 +237,18 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
         available: [],
         linkedNext: nil,
         availableNext: nil,
+        linkedPrevious: false,
+        availablePrevious: false,
+        linkedCursor: nil,
+        availableCursor: nil,
         canEdit: socket.assigns.can_edit,
         error: nil
       }
     )
   end
+
+  defp page_keys("linked"), do: {:exploration_linked_cursor, :exploration_linked_history}
+  defp page_keys("available"), do: {:exploration_available_cursor, :exploration_available_history}
 
   defp handle_info({event, _}, socket) when event in @access_events, do: {:halt, refresh_open(socket)}
 

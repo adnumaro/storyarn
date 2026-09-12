@@ -25,6 +25,7 @@ const references: ReferencesPanelState = {
   open: false,
   context: "references-1",
   ideaId: null,
+  focusedReferenceId: null,
   items: [],
   nextCursor: null,
   results: [],

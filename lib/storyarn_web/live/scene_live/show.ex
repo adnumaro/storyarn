@@ -104,7 +104,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         v-inject:top-left="project-layout"
         id="scene-header"
         source-type="scene"
-        header={%{header: scene_header_props(assigns)}}
+        header={scene_header_props(assigns)}
         exploration-state={@explorations}
         exploration-source-key={"scene:#{@scene.id}"}
       />

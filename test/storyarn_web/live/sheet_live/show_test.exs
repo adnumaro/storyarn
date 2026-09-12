@@ -21,8 +21,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
   end
 
   defp get_sheet_header_vue(view) do
-    vue = LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")
-    %{vue | props: vue.props["header"]}
+    LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")
   end
 
   defp get_sidebar_props(view, project) do

@@ -80,10 +80,12 @@ defmodule StoryarnWeb.SheetLive.Show do
         :if={@sheet}
         v-component="live/shared/ContextualSourceHeader"
         v-socket={@socket}
+        v-diff={Application.get_env(:live_vue, :enable_props_diff, true)}
         v-inject:top-left="project-layout"
         id="sheet-header"
         source-type="sheet"
-        header={%{health: @sheet_health, comments: sheet_header_comment_props(assigns)}}
+        health={@sheet_health}
+        comments={sheet_header_comment_props(assigns)}
         exploration-state={@explorations}
         exploration-source-key={"sheet:#{@sheet.id}"}
       />

@@ -25,9 +25,7 @@ defmodule Storyarn.Ideation.References.ContextualSession do
   defp run(scope, project_id, session_id, attrs, operation) do
     with false <- Repo.in_transaction?(),
          {:ok, attrs} <- ContextualInput.command(attrs, operation) do
-      fingerprint = ContextualInput.fingerprint(attrs, operation, session_id)
-
-      result = Repo.transact(fn -> run_locked(scope, project_id, session_id, attrs, fingerprint) end)
+      result = Repo.transact(fn -> run_locked(scope, project_id, session_id, attrs, operation) end)
 
       complete(result, scope, project_id, operation)
     else
@@ -36,8 +34,12 @@ defmodule Storyarn.Ideation.References.ContextualSession do
     end
   end
 
-  defp run_locked(scope, project_id, session_id, attrs, fingerprint) do
+  defp run_locked(scope, project_id, session_id, attrs, operation) do
     with {:ok, access} <- lock_access(scope, project_id, session_id) do
+      # Recovery can replace the numeric session ID while preserving its identity.
+      session_identity = if operation == :link, do: access.session_identity
+      fingerprint = ContextualInput.fingerprint(attrs, operation, session_identity)
+
       case receipt(project_id, session_id, access.user_id, attrs.request_key) do
         {:ok, nil} -> execute(scope, project_id, session_id, access, attrs, fingerprint)
         {:ok, %{fingerprint: ^fingerprint} = receipt} -> replay(scope, project_id, receipt)

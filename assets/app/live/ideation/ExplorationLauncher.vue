@@ -70,8 +70,7 @@ function errorText(code: string) {
   if (code === "offline") return t("brainstormingExplorations.offline");
   if (code.startsWith("stale")) return t("brainstormingExplorations.stale");
   if (code === "reference_limit") return t("brainstormingReferences.referenceLimit");
-  if (code === "reference_exists") return t("brainstormingExplorations.alreadyLinked");
-  if (code === "archived") return t("brainstormingExplorations.archivedHelp");
+  if (code === "session_archived") return t("brainstormingExplorations.archivedHelp");
   return t("brainstormingExplorations.error");
 }
 
@@ -230,15 +229,30 @@ function link(session: ExplorationSession) {
               >
                 {{ t("brainstormingExplorations.empty") }}
               </p>
-              <Button
-                v-if="state.linkedNext !== null"
-                id="exploration-linked-more"
-                variant="ghost"
-                size="sm"
-                :disabled="!!pending"
-                @click="request('load_more', { list: 'linked', cursor: state.linkedNext })"
-                >{{ t("brainstormingExplorations.loadMore") }}</Button
+              <div
+                v-if="state.linkedPrevious || state.linkedNext !== null"
+                class="flex justify-between gap-2"
               >
+                <Button
+                  v-if="state.linkedPrevious"
+                  id="exploration-linked-previous"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="!!pending"
+                  @click="request('load_previous', { list: 'linked', cursor: state.linkedCursor })"
+                  >{{ t("brainstormingExplorations.previous") }}</Button
+                >
+                <Button
+                  v-if="state.linkedNext !== null"
+                  id="exploration-linked-more"
+                  variant="ghost"
+                  size="sm"
+                  class="ml-auto"
+                  :disabled="!!pending"
+                  @click="request('load_more', { list: 'linked', cursor: state.linkedNext })"
+                  >{{ t("brainstormingExplorations.next") }}</Button
+                >
+              </div>
             </section>
 
             <section
@@ -380,15 +394,34 @@ function link(session: ExplorationSession) {
                 <p v-else class="py-2 text-sm text-muted-foreground">
                   {{ t("brainstormingExplorations.noResults") }}
                 </p>
-                <Button
-                  v-if="state.availableNext !== null"
-                  id="exploration-available-more"
-                  size="sm"
-                  variant="ghost"
-                  :disabled="!!pending"
-                  @click="request('load_more', { list: 'available', cursor: state.availableNext })"
-                  >{{ t("brainstormingExplorations.loadMore") }}</Button
+                <div
+                  v-if="state.availablePrevious || state.availableNext !== null"
+                  class="flex justify-between gap-2"
                 >
+                  <Button
+                    v-if="state.availablePrevious"
+                    id="exploration-available-previous"
+                    size="sm"
+                    variant="ghost"
+                    :disabled="!!pending"
+                    @click="
+                      request('load_previous', { list: 'available', cursor: state.availableCursor })
+                    "
+                    >{{ t("brainstormingExplorations.previous") }}</Button
+                  >
+                  <Button
+                    v-if="state.availableNext !== null"
+                    id="exploration-available-more"
+                    size="sm"
+                    variant="ghost"
+                    class="ml-auto"
+                    :disabled="!!pending"
+                    @click="
+                      request('load_more', { list: 'available', cursor: state.availableNext })
+                    "
+                    >{{ t("brainstormingExplorations.next") }}</Button
+                  >
+                </div>
               </div>
             </section>
             <p v-else-if="!state.canEdit" class="text-xs text-muted-foreground">

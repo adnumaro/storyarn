@@ -105,6 +105,86 @@ defmodule StoryarnWeb.E2E.ContextualExplorationsTest do
     assert session_id == ctx.session.id
   end
 
+  test "opening an older starting context focuses and expands it beyond the first reference page", %{conn: conn} do
+    ctx = context()
+    sheet = source_fixture("sheet", ctx.project)
+    reference = add_origin(ctx, sheet)
+
+    for number <- 1..21 do
+      later = sheet_fixture(ctx.project, %{name: "Later context #{number}"})
+      add_origin(ctx, later)
+    end
+
+    assert {:ok, page} = Ideation.list_references(ctx.author, ctx.project.id, ctx.session.id, nil)
+    refute Enum.any?(page.references, &(&1.id == reference.id))
+    assert {:ok, _} = Sheets.update_sheet(sheet, %{name: "Revised origin", description: "The current design."})
+    selector = "#brainstorming-reference-#{reference.id}"
+
+    conn
+    |> authenticate(ctx.author.user)
+    |> visit(board_path(ctx, ctx.session.id) <> "?context_reference=#{reference.id}")
+    |> assert_has("#brainstorming-origin-#{reference.id}[data-status=changed]", timeout: 20_000)
+    |> click("#brainstorming-origin-details-#{reference.id}")
+    |> assert_has("#{selector}[data-focused=true]:focus")
+    |> assert_has("article#{selector}:first-of-type")
+    |> assert_has(selector, count: 1)
+    |> assert_has("#{selector} details[open]", count: 2)
+    |> assert_has("#{selector} details[open]", text: sheet.description)
+    |> assert_has("#{selector} details[open]", text: "The current design.")
+  end
+
+  test "next and previous exploration pages preserve the search and unfinished creation form", %{conn: conn} do
+    ctx = context()
+    sheet = source_fixture("sheet", ctx.project)
+
+    sessions =
+      for number <- 1..21 do
+        assert {:ok, session} =
+                 Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Paging exploration #{number}"})
+
+        session
+      end
+
+    oldest = hd(sessions)
+    newest = List.last(sessions)
+    title = "A title still being considered"
+    objective = "Compare a different ending before creating an exploration."
+
+    conn
+    |> authenticate(ctx.author.user)
+    |> visit(source_path(ctx, "sheet", sheet.id))
+    |> assert_has("#explore-changes", timeout: 20_000)
+    |> click("#explore-changes")
+    |> fill_in("#exploration-title", "Title", with: title)
+    |> fill_in("#exploration-objective", "What would you like to explore? (optional)", with: objective)
+    |> click("#exploration-link-existing")
+    |> fill_in("#exploration-search-query", "Search explorations", with: "Paging exploration")
+    |> click("#exploration-search")
+    |> assert_has("#exploration-link-#{newest.id}")
+    |> refute_has("#exploration-link-#{oldest.id}")
+    |> refute_has("#exploration-available-previous")
+    |> click("#exploration-available-more")
+    |> assert_has("#exploration-link-#{oldest.id}")
+    |> refute_has("#exploration-link-#{newest.id}")
+    |> assert_has("#exploration-search-query", value: "Paging exploration")
+    |> click("#exploration-new")
+    |> assert_has("#exploration-title", value: title)
+    |> assert_has("#exploration-objective", value: objective)
+    |> click("#exploration-link-existing")
+    |> assert_has("#exploration-link-#{oldest.id}")
+    |> click("#exploration-available-previous")
+    |> assert_has("#exploration-link-#{newest.id}")
+    |> refute_has("#exploration-link-#{oldest.id}")
+    |> refute_has("#exploration-available-previous")
+    |> assert_has("#exploration-search-query", value: "Paging exploration")
+    |> click("#exploration-new")
+    |> assert_has("#exploration-title", value: title)
+    |> assert_has("#exploration-objective", value: objective)
+
+    assert {:ok, unchanged} = Ideation.list_sessions(ctx.author, ctx.project.id)
+    assert length(unchanged) == 22
+  end
+
   test "changed and deleted origins are distinguished without rewriting or exposing saved context", %{conn: conn} do
     ctx = context()
     sheet = source_fixture("sheet", ctx.project)

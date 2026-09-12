@@ -83,31 +83,32 @@ defmodule StoryarnWeb.FlowLive.Show do
         :if={@flow}
         v-component="live/shared/ContextualSourceHeader"
         v-socket={@socket}
+        v-diff={Application.get_env(:live_vue, :enable_props_diff, true)}
         v-inject:top-left="project-layout"
         id="flow-header"
         source-type="flow"
-        header={
+        flow-name={@flow.name}
+        flow-shortcut={@flow.shortcut}
+        is-main={@flow.is_main}
+        can-edit={@can_edit}
+        comments={
           %{
-            flowName: @flow.name,
-            flowShortcut: @flow.shortcut,
-            isMain: @flow.is_main,
-            canEdit: @can_edit,
-            comments: %{
-              count: length(@comment_pins),
-              open: @comments.open && @comments.presentation == "panel",
-              placing: @comments.placing,
-              canComment: @comments.canComment
-            },
-            saveStatus: to_string(@save_status),
-            navHistory: %{
-              back: @nav_history && NavigationHistory.peek_back(@nav_history),
-              forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
-            },
-            flowHealth: %{wordCount: @flow_word_count, health: @flow_health},
-            sceneSelected: %{name: @scene_name, inherited: @scene_inherited},
-            projectScenes: Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))
+            count: length(@comment_pins),
+            open: @comments.open && @comments.presentation == "panel",
+            placing: @comments.placing,
+            canComment: @comments.canComment
           }
         }
+        save-status={to_string(@save_status)}
+        nav-history={
+          %{
+            back: @nav_history && NavigationHistory.peek_back(@nav_history),
+            forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
+          }
+        }
+        flow-health={%{wordCount: @flow_word_count, health: @flow_health}}
+        scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
+        project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
         exploration-state={@explorations}
         exploration-source-key={"flow:#{@flow.id}"}
       />

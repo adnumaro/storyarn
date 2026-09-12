@@ -33,6 +33,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.ContributionAccess do
   def from_session(session, access) do
     Map.merge(access, %{
       session_id: session.id,
+      session_identity: session.recovery_identity,
       session_revision: session.revision,
       facilitator_id: session.facilitator_id,
       configuration: Ecto.embedded_dump(session.configuration, :json),

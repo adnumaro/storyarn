@@ -56,9 +56,9 @@ defmodule Storyarn.Ideation.References.ContextualInput do
 
   def page(_), do: {:error, :invalid_pagination}
 
-  def fingerprint(attrs, operation, session_id) do
+  def fingerprint(attrs, operation, session_identity) do
     attrs = Map.delete(attrs, :request_key)
-    :crypto.hash(:sha256, :erlang.term_to_binary({:contextual_brainstorming_v1, operation, session_id, attrs}))
+    :crypto.hash(:sha256, :erlang.term_to_binary({:contextual_brainstorming_v1, operation, session_identity, attrs}))
   end
 
   defp optional_id?(nil), do: true

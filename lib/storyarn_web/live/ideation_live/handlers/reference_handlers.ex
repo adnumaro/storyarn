@@ -15,6 +15,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.ReferenceHandlers do
       open: false,
       context: Ecto.UUID.generate(),
       ideaId: nil,
+      focusedReferenceId: nil,
       items: [],
       nextCursor: nil,
       results: [],
@@ -50,16 +51,20 @@ defmodule StoryarnWeb.IdeationLive.Handlers.ReferenceHandlers do
   end
 
   defp dispatch("open", params, socket) do
-    case Params.optional_id(params["idea_id"]) do
-      {:ok, idea_id} ->
-        socket = socket |> init() |> put(%{open: true, ideaId: idea_id}) |> refresh()
+    with {:ok, idea_id} <- Params.optional_id(params["idea_id"]),
+         {:ok, reference_id} <- Params.optional_id(params["reference_id"]) do
+      socket =
+        socket
+        |> init()
+        |> put(%{open: true, ideaId: idea_id, focusedReferenceId: reference_id})
+        |> refresh()
 
-        if socket.assigns.references.open,
-          do: {:reply, %{status: "ok"}, CommentHandlers.init(socket)},
-          else: failure(socket, :not_found)
-
+      if socket.assigns.references.open,
+        do: {:reply, %{status: "ok"}, CommentHandlers.init(socket)},
+        else: failure(socket, :not_found)
+    else
       {:error, reason} ->
-        failure(socket, reason)
+        failure(init(socket), reason)
     end
   end
 
@@ -168,23 +173,36 @@ defmodule StoryarnWeb.IdeationLive.Handlers.ReferenceHandlers do
   defp load(socket, cursor \\ nil) do
     %{current_scope: scope, project: project, session_id: id, references: state} = socket.assigns
 
-    case Ideation.list_references(scope, project.id, id, state.ideaId, before_id: cursor) do
-      {:ok, %{references: references, next_cursor: next}} ->
-        items = Enum.map(references, &ReferenceData.reference(&1, socket))
+    with {:ok, %{references: references, next_cursor: next}} <-
+           Ideation.list_references(scope, project.id, id, state.ideaId, before_id: cursor),
+         {:ok, references} <- focus_reference(socket, references) do
+      items = Enum.map(references, &ReferenceData.reference(&1, socket))
 
-        put(socket, %{
-          items: items,
-          nextCursor: next,
-          historyReferenceId: nil,
-          history: [],
-          canEdit:
-            socket.assigns.board.session != nil and socket.assigns.board.session.status == :open and
-              match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content)),
-          error: nil
-        })
-
+      put(socket, %{
+        items: items,
+        nextCursor: next,
+        historyReferenceId: nil,
+        history: [],
+        canEdit:
+          socket.assigns.board.session != nil and socket.assigns.board.session.status == :open and
+            match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content)),
+        error: nil
+      })
+    else
       {:error, _} ->
         init(socket)
+    end
+  end
+
+  defp focus_reference(%{assigns: %{references: %{focusedReferenceId: nil}}}, references), do: {:ok, references}
+
+  defp focus_reference(socket, references) do
+    %{current_scope: scope, project: project, session_id: id, references: state} = socket.assigns
+
+    # Resolve the focused row independently of the page, and reauthorize it on
+    # every refresh. Its inclusion must not alter the ordinary page cursor.
+    with {:ok, reference} <- Ideation.get_reference(scope, project.id, id, state.ideaId, state.focusedReferenceId) do
+      {:ok, [reference | Enum.reject(references, &(&1.id == reference.id))]}
     end
   end
 

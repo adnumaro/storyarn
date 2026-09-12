@@ -35,7 +35,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
       header = LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")
 
-      assert header.props["header"]["flowName"] == "Canonical Flow"
+      assert header.props["flow-name"] == "Canonical Flow"
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"
       refute Map.has_key?(surface.props["surface"]["dock"], "flowId")
       assert surface.props["surface"]["stage"] == %{"status" => "empty"}
@@ -352,7 +352,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       render_async(view, 2000)
 
       header = LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")
-      health = header.props["header"]["flowHealth"]["health"]
+      health = header.props["flow-health"]["health"]
       item = Enum.find(health["warningItems"], &(&1["entityId"] == dialogue.id))
       codes = Enum.map(item["reasons"], & &1["code"])
 

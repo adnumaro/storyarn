@@ -11,6 +11,7 @@ defmodule Storyarn.Ideation.ContextualSessionsTest do
   alias Storyarn.Ideation.Recovery.Capsule
   alias Storyarn.Ideation.References.Reference
   alias Storyarn.Ideation.References.Revision
+  alias Storyarn.Ideation.Sessions.Revision, as: SessionRevision
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Sheets
@@ -290,29 +291,59 @@ defmodule Storyarn.Ideation.ContextualSessionsTest do
              Ideation.get_contextual_brainstorming(ctx.viewer, ctx.project.id, "sheet", ctx.sheet.id)
   end
 
-  test "reused-link receipts survive recovery and remain fenced after unlink", ctx do
+  test "link and reuse receipts survive a replaced session and remain fenced after unlink", ctx do
     attrs = attrs(ctx)
     assert {:ok, first} = Ideation.link_contextual_session(ctx.author, ctx.project.id, ctx.session.id, attrs)
     reused_attrs = %{attrs | request_key: Ecto.UUID.generate()}
-    assert {:ok, _} = Ideation.link_contextual_session(ctx.peer, ctx.project.id, ctx.session.id, reused_attrs)
+    assert {:ok, reused} = Ideation.link_contextual_session(ctx.peer, ctx.project.id, ctx.session.id, reused_attrs)
     capsule = capture_context(ctx)
+
+    assert {:ok, _} =
+             Ideation.update_session(ctx.facilitator, ctx.project.id, ctx.session.id, reused.session.revision, %{
+               title: "Changed after capture"
+             })
+
     maps = restore_context(ctx, capsule)
-    assert maps["sessions"][ctx.session.id] == ctx.session.id
-    assert {:ok, _} = Ideation.link_contextual_session(ctx.peer, ctx.project.id, ctx.session.id, reused_attrs)
+    restored_id = maps["sessions"][ctx.session.id]
+    restored_reference_id = maps["references"][first.reference.id]
+    assert restored_id != ctx.session.id
+    requests = [{ctx.author, attrs}, {ctx.peer, reused_attrs}]
+    counts = contextual_counts()
+
+    for {scope, request_attrs} <- requests do
+      assert {:ok, retried} = Ideation.link_contextual_session(scope, ctx.project.id, restored_id, request_attrs)
+      assert retried.session.id == restored_id
+      assert retried.session.revision == reused.session.revision
+      assert retried.reference.id == restored_reference_id
+      assert retried.reference.version == first.reference.version
+      assert retried.reference.base == first.reference.base
+
+      assert {:error, :not_found} =
+               Ideation.link_contextual_session(scope, ctx.project.id, ctx.session.id, request_attrs)
+    end
+
+    assert contextual_counts() == counts
 
     assert {:ok, _} =
              Ideation.remove_reference(
                ctx.author,
                ctx.project.id,
-               ctx.session.id,
+               restored_id,
                nil,
-               first.reference.id,
+               restored_reference_id,
                first.reference.version,
                Ecto.UUID.generate()
              )
 
-    assert {:error, :not_found} =
-             Ideation.link_contextual_session(ctx.peer, ctx.project.id, ctx.session.id, reused_attrs)
+    counts = contextual_counts()
+
+    for {scope, request_attrs} <- requests do
+      assert {:error, :not_found} =
+               Ideation.link_contextual_session(scope, ctx.project.id, restored_id, request_attrs)
+    end
+
+    assert contextual_counts() == counts
+    assert {:ok, %{references: []}} = Ideation.list_references(ctx.peer, ctx.project.id, restored_id, nil)
   end
 
   test "creation replay prefers the restored active receipt over a replaced generation", ctx do
@@ -362,6 +393,15 @@ defmodule Storyarn.Ideation.ContextualSessionsTest do
              end)
 
     capsule
+  end
+
+  defp contextual_counts do
+    %{
+      sessions: Repo.aggregate(Session, :count),
+      references: Repo.aggregate(Reference, :count),
+      reference_revisions: Repo.aggregate(Revision, :count),
+      session_revisions: Repo.aggregate(SessionRevision, :count)
+    }
   end
 
   defp restore_context(ctx, capsule) do

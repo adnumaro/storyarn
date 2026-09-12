@@ -36,7 +36,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   defp get_scene_header_props(view) do
     view
     |> LiveVue.Test.get_vue(name: "live/shared/ContextualSourceHeader")
-    |> then(& &1.props["header"]["header"])
+    |> then(& &1.props["header"])
   end
 
   defp health_reason_for_entity?(health, entity_type, entity_id, code) do

@@ -15,6 +15,10 @@ export interface ExplorationLauncherState {
   available: ExplorationSession[];
   linkedNext: number | null;
   availableNext: number | null;
+  linkedPrevious: boolean;
+  availablePrevious: boolean;
+  linkedCursor: number | null;
+  availableCursor: number | null;
   canEdit: boolean;
   error: string | null;
 }
@@ -24,6 +28,7 @@ export type ExplorationAction =
   | "close"
   | "search"
   | "load_more"
+  | "load_previous"
   | "create"
   | "link"
   | "resume";

@@ -18,6 +18,10 @@ const state: ExplorationLauncherState = {
   available: [],
   linkedNext: null,
   availableNext: null,
+  linkedPrevious: false,
+  availablePrevious: false,
+  linkedCursor: null,
+  availableCursor: null,
   canEdit: true,
   error: null,
 };
@@ -217,6 +221,88 @@ describe("Contextual exploration launcher", () => {
     await wrapper.vm.$nextTick();
     await wrapper.get("#exploration-linked-more").trigger("click");
     expect(pushEvent.mock.calls[1][1]).toMatchObject({ list: "linked", cursor: 7 });
+    wrapper.unmount();
+  });
+
+  it("returns from the final linked page without accumulating rows or losing the form", async () => {
+    const firstPage: ExplorationLauncherState = {
+      ...state,
+      linked: [{ id: 30, title: "Recent exploration", status: "open" }],
+      linkedNext: 20,
+    };
+    const { wrapper, pushEvent } = launcher(firstPage);
+    await wrapper.get("#exploration-title").setValue("A new motivation");
+    await wrapper.get("#exploration-objective").setValue("What changed?");
+    await wrapper.get("#exploration-linked-more").trigger("click");
+    await wrapper.setProps({
+      state: {
+        ...state,
+        linked: [{ id: 10, title: "Older exploration", status: "open" }],
+        linkedPrevious: true,
+        linkedCursor: 20,
+      },
+    });
+    pushEvent.mock.calls[0][2]({ status: "ok" });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find("#exploration-resume-30").exists()).toBe(false);
+    expect(wrapper.find("#exploration-resume-10").exists()).toBe(true);
+    expect(wrapper.find("#exploration-linked-more").exists()).toBe(false);
+    await wrapper.get("#exploration-linked-previous").trigger("click");
+    expect(pushEvent.mock.calls[1][0]).toBe("exploration_load_previous");
+    expect(pushEvent.mock.calls[1][1]).toMatchObject({ list: "linked", cursor: 20 });
+    expect(wrapper.get("#exploration-linked-previous").attributes("disabled")).toBeDefined();
+    await wrapper.setProps({ state: firstPage });
+    pushEvent.mock.calls[1][2]({ status: "ok" });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find("#exploration-linked-previous").exists()).toBe(false);
+    expect(wrapper.find("#exploration-resume-10").exists()).toBe(false);
+    expect(wrapper.get<HTMLInputElement>("#exploration-title").element.value).toBe(
+      "A new motivation",
+    );
+    expect(wrapper.get<HTMLTextAreaElement>("#exploration-objective").element.value).toBe(
+      "What changed?",
+    );
+    wrapper.unmount();
+  });
+
+  it("keeps the existing-session search while returning to its previous page", async () => {
+    const { wrapper, pushEvent } = launcher({ availableNext: 20 });
+    await wrapper.get("#exploration-link-existing").trigger("click");
+    await wrapper.get("#exploration-search-query").setValue("ending");
+    await wrapper.get("#exploration-search-form").trigger("submit");
+    pushEvent.mock.calls[0][2]({ status: "ok" });
+    await wrapper.vm.$nextTick();
+    await wrapper.get("#exploration-available-more").trigger("click");
+    await wrapper.setProps({
+      state: { ...state, availablePrevious: true, availableCursor: 20 },
+    });
+    pushEvent.mock.calls[1][2]({ status: "ok" });
+    await wrapper.vm.$nextTick();
+    await wrapper.get("#exploration-available-previous").trigger("click");
+    expect(pushEvent.mock.calls[2][0]).toBe("exploration_load_previous");
+    expect(pushEvent.mock.calls[2][1]).toMatchObject({ list: "available", cursor: 20 });
+    await wrapper.setProps({ state: { ...state, availableNext: 20 } });
+    pushEvent.mock.calls[2][2]({ status: "ok" });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.get<HTMLInputElement>("#exploration-search-query").element.value).toBe("ending");
+    expect(wrapper.find("#exploration-available-previous").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each([
+    ["en", "Reopen this exploration before linking content to it."],
+    ["es", "Reabre esta exploración antes de vincular contenido."],
+  ] as const)("explains an archived-session race in %s", async (locale, message) => {
+    setTestLocale(locale);
+    const { wrapper, pushEvent } = launcher({
+      available: [{ id: 11, title: "Alternative ending", status: "open" }],
+    });
+    await wrapper.get("#exploration-link-existing").trigger("click");
+    await wrapper.get("#exploration-link-11").trigger("click");
+    pushEvent.mock.calls[0][2]({ status: "error", code: "session_archived" });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.get("[role=alert]").text()).toBe(message);
+    expect(wrapper.get("#exploration-link-11").attributes("disabled")).toBeUndefined();
     wrapper.unmount();
   });
 

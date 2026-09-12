@@ -109,7 +109,7 @@ msgstr "Destino de referencia no encontrado."
 msgid "Renamed sheet"
 msgstr "Ficha renombrada"
 
-#: lib/storyarn_web/live/sheet_live/show.ex:507
+#: lib/storyarn_web/live/sheet_live/show.ex:509
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
@@ -309,7 +309,7 @@ msgstr "Recurso no encontrado."
 msgid "Invalid layout."
 msgstr "Diseño no válido."
 
-#: lib/storyarn_web/live/sheet_live/show.ex:1049
+#: lib/storyarn_web/live/sheet_live/show.ex:1051
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr "Desconocido"
