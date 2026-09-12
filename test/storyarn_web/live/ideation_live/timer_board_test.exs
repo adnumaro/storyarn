@@ -210,7 +210,7 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
   defp assert_board_eventually(view, assertion, attempts \\ 200)
 
   defp assert_board_eventually(view, assertion, attempts) when attempts > 1 do
-    render_async(view)
+    render_async(view, 5000)
 
     try do
       assertion.(data(view))

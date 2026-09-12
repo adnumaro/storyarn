@@ -11,6 +11,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     authorize: 3,
     authorize_asset_download: 2,
     authorize_locked: 3,
+    authorize_locked: 4,
     auto_versioning_enabled?: 2,
     can?: 2,
     can_manage_project_template?: 2,
@@ -339,9 +340,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     subscribe_sheet_comments: 3,
     unsubscribe_sheet_comments: 2
   ]
-  @docs_digest "4ba898ffe9123082a5e11aff96840f7eee6c978202eb888022a41659389d2af9"
+  @docs_digest "285d32ddf7a2ddb49c68b7ec136a07d691bcd94180a1c4de13214fe47fae8ab8"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
-  @specs_digest "783b269645566df5dcf4c401624f36052bd269c16e0830c9bb58fd64dfbd85df"
+  @specs_digest "049b7a18ecee7d260e776e1671eb3397e9c3cc9ba35349c5fd024c43fc63900d"
 
   test "the root facade preserves every established function and arity" do
     expected = MapSet.new(@public_contract ++ @worker_contract ++ @comment_contract)
@@ -373,10 +374,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 193
+    assert length(established_docs) == 194
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 83, hidden: 16, none: 94}
+             %{documented: 84, hidden: 16, none: 94}
 
     assert length(worker_docs) == 48
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
@@ -416,7 +417,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 48
+    assert length(normalized_specs) == 49
     assert digest(normalized_specs) == @specs_digest
   end
 

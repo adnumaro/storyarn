@@ -407,6 +407,6 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
 
   defp header_comments(view) do
     render(view)
-    LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetHeader").props["comments"]
+    LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader").props["comments"]
   end
 end

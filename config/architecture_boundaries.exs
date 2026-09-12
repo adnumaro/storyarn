@@ -4167,6 +4167,26 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/storyarn_web/live/shared/contextual_explorations.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason:
+        "The contextual exploration coordinator enters session and reference behavior through the public Ideation facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/contextual_explorations.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "The contextual exploration coordinator rechecks project permissions and subscribes to access invalidation through Projects"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/contextual_explorations.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The contextual exploration coordinator subscribes to inherited access invalidation through Workspaces"
+    },
+    %{
       source: "lib/storyarn/flows/editor/queries/reference_targets.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],

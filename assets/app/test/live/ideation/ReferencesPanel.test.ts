@@ -32,6 +32,7 @@ const state: ReferencesPanelState = {
   open: true,
   context: "reference-context-1",
   ideaId: null,
+  focusedReferenceId: null,
   items: [],
   nextCursor: null,
   results: [],
@@ -45,6 +46,7 @@ const state: ReferencesPanelState = {
 function panel(overrides: Partial<ReferencesPanelState> = {}, disconnected = false) {
   const pushEvent = disconnected ? vi.fn().mockRejectedValue(new Error("Disconnected")) : vi.fn();
   const wrapper = mount(Panel, {
+    attachTo: document.body,
     props: { state: { ...state, ...overrides }, epoch: "epoch-1", sessionId: 12 },
     global: {
       provide: {
@@ -71,6 +73,72 @@ function panel(overrides: Partial<ReferencesPanelState> = {}, disconnected = fal
 }
 
 describe("Brainstorming references", () => {
+  it("focuses and expands the requested reference without changing focus on an ordinary refresh", async () => {
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    const focusedState = {
+      ...state,
+      focusedReferenceId: reference.id,
+      items: [reference, { ...reference, id: 9, relation: "reference" as const }],
+      nextCursor: 9,
+    };
+    const { wrapper, pushEvent } = panel(focusedState);
+    await flushPromises();
+    const article = wrapper.get("#brainstorming-reference-4");
+    expect(wrapper.findAll("article")[0].element).toBe(article.element);
+    expect(document.activeElement).toBe(article.element);
+    expect(article.attributes("data-focused")).toBe("true");
+    expect(
+      article.findAll("details").every((details) => (details.element as HTMLDetailsElement).open),
+    ).toBe(true);
+    expect(wrapper.get("#brainstorming-reference-9 details").attributes("open")).toBeUndefined();
+    expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
+    expect(pushEvent).not.toHaveBeenCalled();
+
+    const search = wrapper.get<HTMLInputElement>("#brainstorming-reference-query");
+    search.element.focus();
+    (article.get("details").element as HTMLDetailsElement).open = false;
+    await wrapper.setProps({ state: { ...focusedState, items: [{ ...reference, version: 3 }] } });
+    await flushPromises();
+    expect(document.activeElement).toBe(search.element);
+    expect((article.get("details").element as HTMLDetailsElement).open).toBe(false);
+
+    await wrapper.setProps({ state: { ...focusedState, context: "reopened-reference-context" } });
+    await flushPromises();
+    const reopened = wrapper.get("#brainstorming-reference-4");
+    expect(document.activeElement).toBe(reopened.element);
+    expect(
+      reopened.findAll("details").every((details) => (details.element as HTMLDetailsElement).open),
+    ).toBe(true);
+    await wrapper.get("#brainstorming-reference-load-more").trigger("click");
+    expect(pushEvent.mock.calls[0][0]).toBe("references_load_more");
+    expect(pushEvent.mock.calls[0][1]).toMatchObject({
+      reference_context: "reopened-reference-context",
+    });
+    wrapper.unmount();
+    scroll.mockRestore();
+  });
+
+  it("removes expanded saved and current previews when the focused target becomes unavailable", async () => {
+    const { wrapper } = panel({ items: [reference], focusedReferenceId: reference.id });
+    await flushPromises();
+    expect(wrapper.get("#brainstorming-reference-4").findAll("details[open]")).toHaveLength(2);
+    await wrapper.setProps({
+      state: {
+        ...state,
+        focusedReferenceId: reference.id,
+        items: [
+          { ...reference, status: "unavailable", base: null, current: null, capturedAt: null },
+        ],
+      },
+    });
+    expect(wrapper.find("details").exists()).toBe(false);
+    expect(wrapper.find("a").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("Original hero");
+    expect(wrapper.text()).not.toContain("Current hero");
+    expect(wrapper.text()).toContain("Content unavailable");
+    wrapper.unmount();
+  });
+
   it("searches explicitly using the current board and source context", async () => {
     const { wrapper, pushEvent } = panel();
     expect(pushEvent).not.toHaveBeenCalled();

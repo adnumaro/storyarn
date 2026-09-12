@@ -6,7 +6,19 @@ import { useBoardText, RoundControls, TimerControls } from "@modules/ideation";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import type { Session, Round, SessionTimer } from "@modules/ideation";
-const { session, epoch, canManage, canEdit, rounds, roundsNext, activeRound, timer } = defineProps<{
+import ExplorationContext from "./ExplorationContext.vue";
+import type { BrainstormingReference } from "./referenceTypes";
+const {
+  session,
+  epoch,
+  canManage,
+  canEdit,
+  rounds,
+  roundsNext,
+  activeRound,
+  timer,
+  contextReference = null,
+} = defineProps<{
   session: Session;
   timer: SessionTimer | null;
   rounds: Round[];
@@ -15,6 +27,7 @@ const { session, epoch, canManage, canEdit, rounds, roundsNext, activeRound, tim
   epoch: string;
   canManage: boolean;
   canEdit: boolean;
+  contextReference?: BrainstormingReference | null;
 }>();
 const { t, error } = useBoardText();
 const failure = ref<string | null>(null);
@@ -60,7 +73,14 @@ function rename(title: string) {
 }
 </script>
 <template>
-  <div class="relative flex h-8 min-w-0 items-center gap-1">
+  <div class="@container relative flex h-8 min-w-0 flex-1 items-center gap-1">
+    <ExplorationContext
+      v-if="contextReference"
+      :reference="contextReference"
+      :session-id="session.id"
+      :epoch="epoch"
+      compact
+    />
     <p
       v-if="failure"
       role="alert"
@@ -72,7 +92,7 @@ function rename(title: string) {
       id="brainstorming-session-title"
       :model-value="session.title"
       :disabled="!canManage"
-      class="mx-2 max-w-48 truncate text-xs font-medium"
+      class="mx-2 min-w-16 max-w-48 flex-1 truncate text-xs font-medium"
       @save="rename"
     />
     <ToolbarTooltip :label="t('ideation.sessionSettings')" side="bottom"
@@ -127,7 +147,7 @@ function rename(title: string) {
         <EyeOff v-if="session.configuration.private_mode" class="size-3.5" /><Eye
           v-else
           class="size-3.5"
-        /><span class="hidden sm:inline">{{
+        /><span class="hidden @min-[30rem]:inline">{{
           t(
             session.configuration.private_mode
               ? "ideation.canvas.privateMode"

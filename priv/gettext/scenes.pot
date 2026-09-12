@@ -32,7 +32,7 @@ msgstr ""
 msgid "Annotation pasted."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2035
+#: lib/storyarn_web/live/scene_live/show.ex:2041
 #, elixir-autogen, elixir-format
 msgid "Background image updated."
 msgstr ""
@@ -231,7 +231,7 @@ msgstr ""
 msgid "Could not update annotation."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2039
+#: lib/storyarn_web/live/scene_live/show.ex:2045
 #, elixir-autogen, elixir-format
 msgid "Could not update background."
 msgstr ""
@@ -248,8 +248,8 @@ msgstr ""
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:870
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:892
-#: lib/storyarn_web/live/scene_live/show.ex:1689
-#: lib/storyarn_web/live/scene_live/show.ex:1712
+#: lib/storyarn_web/live/scene_live/show.ex:1695
+#: lib/storyarn_web/live/scene_live/show.ex:1718
 #, elixir-autogen, elixir-format
 msgid "Could not update pin."
 msgstr ""
@@ -270,7 +270,7 @@ msgstr ""
 msgid "Could not update zone."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2020
+#: lib/storyarn_web/live/scene_live/show.ex:2026
 #, elixir-autogen, elixir-format
 msgid "Could not upload background."
 msgstr ""
@@ -286,7 +286,7 @@ msgid "Flow has no entry node."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/exploration_live.ex:596
-#: lib/storyarn_web/live/scene_live/show.ex:1620
+#: lib/storyarn_web/live/scene_live/show.ex:1626
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
@@ -365,7 +365,7 @@ msgstr ""
 msgid "Pin duplicated."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1029
+#: lib/storyarn_web/live/scene_live/show.ex:1035
 #, elixir-autogen, elixir-format
 msgid "Pin icon updated."
 msgstr ""
@@ -382,7 +382,7 @@ msgid "Scene moved to trash."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/exploration_live.ex:136
-#: lib/storyarn_web/live/scene_live/show.ex:509
+#: lib/storyarn_web/live/scene_live/show.ex:513
 #, elixir-autogen, elixir-format
 msgid "Scene not found."
 msgstr ""
@@ -655,23 +655,23 @@ msgstr ""
 msgid "Collection"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1307
-#: lib/storyarn_web/live/scene_live/show.ex:1323
+#: lib/storyarn_web/live/scene_live/show.ex:1313
+#: lib/storyarn_web/live/scene_live/show.ex:1329
 #, elixir-autogen, elixir-format
 msgid "Could not add ambient flow."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:581
+#: lib/storyarn_web/live/scene_live/show.ex:585
 #, elixir-autogen, elixir-format
 msgid "Could not remove ambient flow."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:621
+#: lib/storyarn_web/live/scene_live/show.ex:625
 #, elixir-autogen, elixir-format
 msgid "Could not reorder ambient flows."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:599
+#: lib/storyarn_web/live/scene_live/show.ex:603
 #, elixir-autogen, elixir-format
 msgid "Could not update ambient flow."
 msgstr ""
@@ -681,7 +681,7 @@ msgstr ""
 msgid "Could not update display mode."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:647
+#: lib/storyarn_web/live/scene_live/show.ex:651
 #, elixir-autogen, elixir-format
 msgid "Could not update trigger."
 msgstr ""
@@ -740,17 +740,17 @@ msgstr ""
 msgid "this flow is already linked to this scene"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2164
+#: lib/storyarn_web/live/scene_live/show.ex:2170
 #, elixir-autogen, elixir-format
 msgid "Could not upload file."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2155
+#: lib/storyarn_web/live/scene_live/show.ex:2161
 #, elixir-autogen, elixir-format
 msgid "File is too large. Maximum size is 50 MB."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2158
+#: lib/storyarn_web/live/scene_live/show.ex:2164
 #, elixir-autogen, elixir-format
 msgid "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image."
 msgstr ""
@@ -761,17 +761,17 @@ msgstr ""
 msgid "timed trigger requires interval_ms >= 1000"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1039
+#: lib/storyarn_web/live/scene_live/show.ex:1045
 #, elixir-autogen, elixir-format
 msgid "Could not upload pin icon."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2145
+#: lib/storyarn_web/live/scene_live/show.ex:2151
 #, elixir-autogen, elixir-format
 msgid "Only SVG, PNG, or GIF icons are allowed."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2149
+#: lib/storyarn_web/live/scene_live/show.ex:2155
 #, elixir-autogen, elixir-format
 msgid "Icon is too large. Maximum size is 256 KB."
 msgstr ""
@@ -829,7 +829,7 @@ msgstr ""
 msgid "You don't have permission to edit."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1264
+#: lib/storyarn_web/live/scene_live/show.ex:1270
 #, elixir-autogen, elixir-format
 msgid "Asset not found."
 msgstr ""
@@ -845,7 +845,7 @@ msgstr ""
 msgid "Could not update fog design."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1094
+#: lib/storyarn_web/live/scene_live/show.ex:1100
 #, elixir-autogen, elixir-format
 msgid "Could not upload zone icon."
 msgstr ""
@@ -855,7 +855,7 @@ msgstr ""
 msgid "Runs optional variable instructions and can navigate to another scene or launch a flow"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1084
+#: lib/storyarn_web/live/scene_live/show.ex:1090
 #, elixir-autogen, elixir-format
 msgid "Zone icon updated."
 msgstr ""

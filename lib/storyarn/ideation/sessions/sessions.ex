@@ -78,6 +78,21 @@ defmodule Storyarn.Ideation.Sessions do
 
   # Internal capability port: the caller owns the transaction, Sessions owns
   # project access and the session lifecycle lock. Not exposed by Ideation.
+  defdelegate lock_contextual_creation(scope, project_id),
+    to: Storyarn.Ideation.Sessions.Adapters.ProjectAccess,
+    as: :exclusive_write
+
+  defdelegate contextual_session_choices_query(), to: Queries.ContextualChoices, as: :query
+
+  defdelegate contextual_receipt_sources_query(), to: Queries.ContextualReceipts, as: :sources
+  defdelegate contextual_link_receipts_query(), to: Queries.ContextualReceipts, as: :links
+
+  defdelegate record_contextual_link_receipt(access, key, fingerprint, reference_identity),
+    to: Storyarn.Ideation.Sessions.Execution.ContextualLinkReceipt,
+    as: :record
+
+  defdelegate notify_contextual_session(result, project_id), to: Invalidation, as: :notify
+
   defdelegate lock_for_contribution(scope, project_id, session_id),
     to: Storyarn.Ideation.Sessions.Execution.ContributionAccess,
     as: :lock
