@@ -1,0 +1,68 @@
+lib/storyarn/ideation/sessions/events/invalidation.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 13
+lib/storyarn_web/live/hooks/notifications.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 109-111
+lib/storyarn/projects/comments/queries/ideation_conversations.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 18-31
+lib/storyarn/ideation/ideas/commands/restore.ex
+  s_2849957cac15c2::t_20d05c1f06a383 68,72-73
+  s_2849957cac15c2::t_36b29d2b64cb57 74
+lib/storyarn/projects/comments/comments.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 16,19-22,30-31,54-55,398-402,406-409
+  s_2849957cac15c2::t_69773a3e69b818 13,23-29
+  s_2849957cac15c2::t_8d4157087c0048 410
+lib/storyarn/ideation/ideas/events/invalidation.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 11-14,16
+config/architecture_boundaries.exs
+  s_2849957cac15c2::t_8d85e9c373bee0 4136-4153
+lib/storyarn/projects.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 1060
+test/e2e/workspaces/projects/ideation/canvas_test.exs
+  s_5af6a6d0a150f1::t_09374f4591851d 132,145-148
+  s_2849957cac15c2::t_0917c5bce8d0fd 149
+lib/storyarn/ideation/groups/execution/transaction.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 21,89-90,94
+test/e2e/workspaces/projects/ideation/canvas_refinement_test.exs
+  s_5af6a6d0a150f1::t_4b37175dce088c 106
+lib/storyarn/projects/comments/README.md
+  s_2849957cac15c2::t_8d85e9c373bee0 82-90
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_2849957cac15c2::t_8d85e9c373bee0 289
+lib/storyarn/ideation/ideas/commands/delete.ex
+  s_2849957cac15c2::t_20d05c1f06a383 37-40
+  s_2849957cac15c2::t_b1149c1b75beb1 41
+lib/storyarn/ideation/groups/events/invalidation.ex
+  s_2849957cac15c2::t_8d85e9c373bee0 4-7
+test/storyarn_web/live/hooks/notifications_test.exs
+  s_2849957cac15c2::t_69773a3e69b818 168-192,195-219
+  s_2849957cac15c2::t_08a420ad374477 193-194
+test/storyarn/projects/comments/ideation_conversation_events_test.exs
+  s_2849957cac15c2::t_40d216f2512345 148-151
+  s_2849957cac15c2::t_e849dc2b6f5344 1-64,74-100,102-133,160-167,180,187,194-237,240-251
+  s_2849957cac15c2::t_fe226a3769187e 65-73,101,134-147,152-159,168-179,181-186,188-193
+  s_2849957cac15c2::t_2cc4e9cea5d84f 238-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "28fe8f32a136cdd122aeb2eb59115a7ed00d82e0",
+  "prompts": {},
+  "sessions": {
+    "s_2849957cac15c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08cee-7937-74e3-a18f-3dd4680183a0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
