@@ -59,6 +59,18 @@ defmodule Storyarn.Projects.Access do
 
   def subscribe_membership_changes(_project_id), do: {:error, :invalid_project_id}
 
+  def unsubscribe_ownership_changes(project_id) when is_integer(project_id) and project_id > 0 do
+    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, ownership_topic(project_id))
+  end
+
+  def unsubscribe_ownership_changes(_project_id), do: {:error, :invalid_project_id}
+
+  def unsubscribe_membership_changes(project_id) when is_integer(project_id) and project_id > 0 do
+    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, membership_topic(project_id))
+  end
+
+  def unsubscribe_membership_changes(_project_id), do: {:error, :invalid_project_id}
+
   defdelegate workspace_can?(role, action), to: WorkspaceAccess, as: :can?
   defdelegate authorize_workspace(scope, workspace_id, action), to: WorkspaceAccess, as: :authorize
   defdelegate get_workspace(scope, workspace_id), to: WorkspaceAccess

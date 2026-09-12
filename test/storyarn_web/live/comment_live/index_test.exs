@@ -92,6 +92,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     assert_reply(view, %{ok: true})
     render_hook(view, "comments_reply", request)
     assert_reply(view, %{ok: true})
+    flush_refresh(view)
     assert length(state(view)["conversation"]["messages"]) == 2
 
     revision = state(view)["conversation"]["thread"]["revision"]
@@ -103,6 +104,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     })
 
     assert_reply(view, %{ok: true})
+    flush_refresh(view)
     assert state(view)["conversation"]["thread"]["status"] == "resolved"
     assert state(view)["counts"]["resolved"] == 1
 
@@ -146,6 +148,10 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     membership = membership_fixture(ctx.project, reader, "editor")
     {:ok, view, _} = live(log_in_user(ctx.conn, reader), selected_path(ctx, detail))
     assert state(view)["conversation"]["canComment"]
+    before_topics = MapSet.new(Registry.keys(Storyarn.PubSub, view.pid))
+    send(view.pid, {:comment_conversations_changed, ctx.project.id})
+    render(view)
+    pending = socket_assigns(view).comment_refresh
 
     assert {:ok, _} = Projects.remove_member(ctx.scope, ctx.project.id, membership.id)
 
@@ -154,6 +160,23 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     assert state(view)["conversation"]["messages"] == []
     assert state(view)["contextUrl"] == nil
     refute Enum.any?(state(view)["projects"], &(&1["id"] == ctx.project.id))
+    after_topics = MapSet.new(Registry.keys(Storyarn.PubSub, view.pid))
+    assert MapSet.size(MapSet.difference(before_topics, after_topics)) == 5
+    refute MapSet.member?(socket_assigns(view).subscribed_projects, ctx.project.id)
+    refute MapSet.member?(socket_assigns(view).subscribed_workspaces, ctx.project.workspace_id)
+
+    assert capture_queries(view, fn ->
+             send(view.pid, {:refresh_comment_hub, :comment_refresh, pending.token})
+
+             Phoenix.PubSub.broadcast(
+               Storyarn.PubSub,
+               Storyarn.Platform.Collaboration.dashboard_topic(ctx.project.id),
+               {:dashboard_invalidate, :sheets}
+             )
+
+             render(view)
+             flush_refresh(view)
+           end) == []
 
     render_hook(view, "comments_reply", reply_params(detail, "Stale composer"))
     assert_reply(view, %{ok: false})
@@ -172,6 +195,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
         reply_params(detail, "Another window")
       )
 
+    flush_refresh(view)
     assert List.last(state(view)["conversation"]["messages"])["body"] == "Another window"
     assert hd(state(view)["threads"])["message_count"] == 2
   end
@@ -215,7 +239,8 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     {:ok, view, _} = live(log_in_user(ctx.conn, reader), ~p"/comments")
     assert length(state(view)["threads"]) == 30
     assert state(view)["nextCursor"]
-    render_hook(view, "hub_load_more", %{})
+    more_queries = capture_queries(view, fn -> render_hook(view, "hub_load_more", %{}) end)
+    assert Enum.count(more_queries, &count_query?/1) == 1
     assert_comment_patch(view, %{pages: 2})
     ids = Enum.map(state(view)["threads"], & &1["id"])
     assert length(ids) == 31
@@ -293,6 +318,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
         reply_params(detail, "Reply 62 from another window")
       )
 
+    flush_refresh(view)
     refreshed = state(view)["conversation"]["messages"]
     assert length(refreshed) == 63
     assert Enum.take(refreshed, 62) == complete_history
@@ -329,11 +355,130 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
         true
       )
 
+    flush_refresh(view)
     assert state(view)["threads"] == []
     assert state(view)["selectedThreadId"] == nil
     assert state(view)["conversation"]["messages"] == []
     assert state(view)["contextUrl"] == nil
     assert state(view)["counts"]["all"] == 0
+  end
+
+  test "selecting a thread reads its message page once without querying the list or workspace options", ctx do
+    detail = create_comment(ctx)
+    {:ok, view, _} = live(ctx.conn, ~p"/comments")
+
+    queries =
+      capture_queries(view, fn ->
+        render_hook(view, "hub_select", %{project_id: ctx.project.id, thread_id: detail.thread.id})
+      end)
+
+    assert Enum.count(queries, &message_page_query?/1) == 1
+    refute Enum.any?(queries, &count_query?/1)
+    refute Enum.any?(queries, &project_options_query?/1)
+    assert state(view)["selectedThreadId"] == detail.thread.id
+    assert state(view)["contextUrl"] == sheet_path(ctx, detail.thread.id)
+  end
+
+  test "comment bursts share one refresh and a reply absorbs its own PubSub echo", ctx do
+    detail = create_comment(ctx)
+    {:ok, view, _} = live(ctx.conn, selected_path(ctx, detail))
+
+    burst_queries =
+      capture_queries(view, fn ->
+        for _ <- 1..20, do: send(view.pid, {:comment_conversations_changed, ctx.project.id})
+        flush_refresh(view)
+      end)
+
+    assert Enum.count(burst_queries, &count_query?/1) == 1
+    assert Enum.count(burst_queries, &message_page_query?/1) == 1
+    refute Enum.any?(burst_queries, &project_options_query?/1)
+
+    reply_queries =
+      capture_queries(view, fn ->
+        render_hook(view, "comments_reply", reply_params(detail, "One refresh after replying"))
+        assert_reply(view, %{ok: true})
+        flush_refresh(view)
+      end)
+
+    assert Enum.count(reply_queries, &count_query?/1) == 1
+    refute Enum.any?(reply_queries, &project_options_query?/1)
+    assert List.last(state(view)["conversation"]["messages"])["body"] == "One refresh after replying"
+    assert socket_assigns(view).comment_refresh == nil
+  end
+
+  test "dashboard editing uses trailing debounce and a comment refresh cancels the superseded work", ctx do
+    detail = create_comment(ctx)
+    {:ok, view, _} = live(ctx.conn, selected_path(ctx, detail))
+
+    initial_queries =
+      capture_queries(view, fn ->
+        send(view.pid, {:dashboard_invalidate, :sheets})
+        render(view)
+      end)
+
+    assert initial_queries == []
+    first = socket_assigns(view).source_refresh
+
+    send(view.pid, {:dashboard_invalidate, :sheets})
+    render(view)
+    second = socket_assigns(view).source_refresh
+    refute first.token == second.token
+
+    assert capture_queries(view, fn ->
+             send(view.pid, {:refresh_comment_hub, :source_refresh, first.token})
+             render(view)
+           end) == []
+
+    comment_queries =
+      capture_queries(view, fn ->
+        send(view.pid, {:comment_conversations_changed, ctx.project.id})
+        flush_refresh(view)
+        send(view.pid, {:refresh_comment_hub, :source_refresh, second.token})
+        render(view)
+      end)
+
+    assert Enum.count(comment_queries, &count_query?/1) == 1
+    assert socket_assigns(view).source_refresh == nil
+
+    send(view.pid, {:dashboard_invalidate, :sheets})
+    render(view)
+    assert socket_assigns(view).source_refresh
+
+    fallback_queries =
+      capture_queries(view, fn ->
+        send(view.pid, :refresh_comment_hub)
+        render(view)
+        flush_refresh(view)
+      end)
+
+    assert Enum.count(fallback_queries, &count_query?/1) == 1
+    assert Enum.any?(fallback_queries, &project_options_query?/1)
+    assert socket_assigns(view).source_refresh == nil
+  end
+
+  test "a project filter skips unrelated activity but still refreshes a selected thread outside the filter", ctx do
+    create_comment(ctx)
+    other_project = project_fixture(ctx.user, %{workspace: ctx.project.workspace})
+    other_sheet = sheet_fixture(other_project)
+    other = create_comment(%{ctx | project: other_project, sheet: other_sheet})
+    {:ok, view, _} = live(ctx.conn, ~p"/comments?#{%{project_id: ctx.project.id}}")
+
+    assert capture_queries(view, fn ->
+             send(view.pid, {:comment_conversations_changed, other_project.id})
+             flush_refresh(view)
+           end) == []
+
+    render_hook(view, "hub_select", %{project_id: other_project.id, thread_id: other.thread.id})
+
+    selected_queries =
+      capture_queries(view, fn ->
+        send(view.pid, {:comment_conversations_changed, other_project.id})
+        flush_refresh(view)
+      end)
+
+    assert Enum.count(selected_queries, &count_query?/1) == 1
+    assert state(view)["selectedThreadId"] == other.thread.id
+    assert Enum.all?(state(view)["threads"], &(&1["project_id"] == ctx.project.id))
   end
 
   defp create_comment(ctx, attrs \\ %{}) do
@@ -365,6 +510,52 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     render(view)
     LiveVue.Test.get_vue(view, name: "live/comments/Hub").props["state"]
   end
+
+  defp socket_assigns(view), do: :sys.get_state(view.pid).socket.assigns
+
+  defp flush_refresh(view) do
+    render(view)
+
+    for kind <- [:comment_refresh, :source_refresh] do
+      case socket_assigns(view)[kind] do
+        %{token: token} -> send(view.pid, {:refresh_comment_hub, kind, token})
+        _ -> :ok
+      end
+    end
+
+    render(view)
+  end
+
+  defp capture_queries(view, fun) do
+    marker = make_ref()
+    :ok = :telemetry.attach(marker, [:storyarn, :repo, :query], &record_query/4, {self(), view.pid, marker})
+
+    try do
+      fun.()
+      drain_queries(marker, [])
+    after
+      :telemetry.detach(marker)
+    end
+  end
+
+  defp record_query(_event, _measurements, metadata, {recipient, live_view, marker}) do
+    if self() == live_view, do: send(recipient, {marker, metadata})
+  end
+
+  defp drain_queries(marker, queries) do
+    receive do
+      {^marker, metadata} -> drain_queries(marker, [metadata | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
+
+  defp count_query?(query), do: query.source == "comment_threads" and String.contains?(query.query, "GROUP BY")
+
+  defp message_page_query?(query), do: query.source == "comment_messages" and String.contains?(query.query, "ORDER BY")
+
+  defp project_options_query?(query),
+    do: query.source == "projects" and String.contains?(query.query, ~s(LEFT OUTER JOIN "workspace_memberships"))
 
   defp assert_comment_patch(view, expected_query) do
     path = assert_patch(view)

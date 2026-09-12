@@ -22,6 +22,9 @@ the user has never participated. Project access and restricted-source audience
 checks run before search, aggregation and activity-cursor pagination. This view
 reads the same persisted threads as the editors; notification delivery and
 notification read state do not determine which conversations appear here.
+Search materializes the authorized, filtered candidates before evaluating source
+and context labels. Loaded pages share one count query per refresh; subsequent
+pages use `include_counts: false` and return `counts: nil`.
 
 The list supports workspace, project, source tool, status, participation, mentions
 and search filters. Selecting a conversation reauthorizes its project and source.
@@ -39,9 +42,13 @@ project, thread and reply parent. Unconfirmed replies retain their request ID
 so retrying cannot append a second message. These drafts are best-effort local
 state, not authored project content or a guarantee of offline delivery.
 
-User-scoped, identity-only conversation invalidations trigger fresh authorized
-reads. Project/workspace access signals also refresh the hub, with periodic
-reauthorization as a fallback. These subscriptions do not grow with the number
+User-scoped, identity-only conversation invalidations and local mutation echoes
+share a 150 ms refresh window. Dashboard changes wait for a 500 ms pause in
+editing; a conversation refresh cancels superseded dashboard work. Activity
+refreshes reread authorized conversations without rebuilding workspace/project
+options. Explicit access changes refresh immediately, while manual refresh and
+the 30-second fallback also rebuild options and reconcile subscriptions, removing
+revoked projects and workspaces. These subscriptions do not grow with the number
 of documents. Reconnection reconstructs the view from its URL and persisted
 data rather than treating previous props as current authorization.
 

@@ -141,8 +141,8 @@ defmodule Storyarn.Projects.Comments.Queries do
     |> page(opts)
   end
 
-  def matching_source_threads(text) do
-    from([thread: t, node: n, flow: f, scene: s, sheet: sh] in available_threads(Thread),
+  def matching_source_threads(text, candidates) do
+    from([thread: t, node: n, flow: f, scene: s, sheet: sh] in available_threads(candidates),
       where:
         fragment("strpos(lower(COALESCE(?, '')), lower(?)) > 0", f.name, ^text) or
           fragment("strpos(lower(COALESCE(?, '')), lower(?)) > 0", s.name, ^text) or

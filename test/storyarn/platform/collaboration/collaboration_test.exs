@@ -87,6 +87,10 @@ defmodule Storyarn.CollaborationTest do
       assert :ok = Collaboration.subscribe_dashboard(project_id)
       assert :ok = Collaboration.broadcast_dashboard_change(project_id, :flows)
       assert_receive {:dashboard_invalidate, :flows}
+
+      assert :ok = Collaboration.unsubscribe_dashboard(project_id)
+      assert :ok = Collaboration.broadcast_dashboard_change(project_id, :scenes)
+      refute_receive {:dashboard_invalidate, :scenes}, 10
     end
 
     test "delegates result broadcasting without changing success or error results" do

@@ -86,7 +86,7 @@ defmodule Storyarn.Projects.Comments do
     with {:ok, threads, cursor} <- Conversations.list(scope, opts) do
       dtos = thread_dtos(threads, scope)
       destinations = destinations(scope, Enum.map(dtos, & &1.root_message_id))
-      counts = Conversations.counts(scope, opts)
+      counts = if Keyword.get(opts, :include_counts, true), do: Conversations.counts(scope, opts)
       # Last read before serialization rechecks every page entry's membership
       # and restricted source audience, including canonical project membership.
       metadata = Conversations.metadata(scope, Enum.map(dtos, & &1.id))

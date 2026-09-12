@@ -823,6 +823,14 @@ defmodule Storyarn.Projects do
   @spec subscribe_project_membership_changes(integer()) :: :ok | {:error, :invalid_project_id}
   defdelegate subscribe_project_membership_changes(project_id), to: Access, as: :subscribe_membership_changes
 
+  @doc "Unsubscribes the caller from a project's ownership changes."
+  @spec unsubscribe_project_ownership_changes(integer()) :: :ok | {:error, :invalid_project_id}
+  defdelegate unsubscribe_project_ownership_changes(project_id), to: Access, as: :unsubscribe_ownership_changes
+
+  @doc "Unsubscribes the caller from a project's membership changes."
+  @spec unsubscribe_project_membership_changes(integer()) :: :ok | {:error, :invalid_project_id}
+  defdelegate unsubscribe_project_membership_changes(project_id), to: Access, as: :unsubscribe_membership_changes
+
   @doc """
   Authorizes a user action on a project.
 

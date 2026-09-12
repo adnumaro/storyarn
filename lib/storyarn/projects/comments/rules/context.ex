@@ -12,7 +12,6 @@ defmodule Storyarn.Projects.Comments.Context do
   alias Storyarn.Projects.Comments.Projections.SceneZoneRecord
   alias Storyarn.Projects.Comments.Projections.SheetBlockRecord
   alias Storyarn.Projects.Comments.Projections.SheetRecord
-  alias Storyarn.Projects.Comments.Thread
   alias Storyarn.Repo
 
   @fixed_types ~w(sheet_cover sheet_header sheet_title)
@@ -106,15 +105,16 @@ defmodule Storyarn.Projects.Comments.Context do
 
   # Search the current contextual labels with the same pointer/owner/identity
   # guards used by the DTO resolver; renamed or replaced targets cannot match a
-  # stale captured label. All values stay inside a database-filtered subquery.
-  def matching_threads(text) do
+  # stale captured label. Every UNION branch starts with the caller's authorized
+  # candidates, including fixed labels and grouped Sheet rows.
+  def matching_threads(text, candidates) do
     targets =
       Enum.map(@targets, fn {type, {schema, owner_key, pointer, surface}} ->
         label = search_label(type)
         matches = dynamic(fragment("strpos(lower(?), lower(?)) > 0", ^label, ^text))
 
         active_search_target(
-          from(t in Thread,
+          from(t in candidates,
             as: :thread,
             join: target in ^schema,
             as: :target,
@@ -129,7 +129,10 @@ defmodule Storyarn.Projects.Comments.Context do
         )
       end)
 
-    Enum.reduce([fixed_context_matches(text), column_group_matches(text) | targets], &union_all(&2, ^&1))
+    Enum.reduce(
+      [fixed_context_matches(text, candidates), column_group_matches(text, candidates) | targets],
+      &union_all(&2, ^&1)
+    )
   end
 
   defp search_label("flow_node"),
@@ -173,8 +176,8 @@ defmodule Storyarn.Projects.Comments.Context do
 
   defp active_search_target(query, _), do: query
 
-  defp fixed_context_matches(text) do
-    from(t in Thread,
+  defp fixed_context_matches(text, candidates) do
+    from(t in candidates,
       join: sheet in SheetRecord,
       on: sheet.id == t.sheet_canvas_id and sheet.id == t.container_id and sheet.project_id == t.project_id,
       where: is_nil(sheet.deleted_at) and t.source_type == "sheet_canvas" and t.context_type in ^@fixed_types,
@@ -189,8 +192,8 @@ defmodule Storyarn.Projects.Comments.Context do
     )
   end
 
-  defp column_group_matches(text) do
-    from(t in Thread,
+  defp column_group_matches(text, candidates) do
+    from(t in candidates,
       join: block in SheetBlockRecord,
       on: block.sheet_id == t.container_id and block.column_group_id == t.context_sheet_column_group_id,
       where: t.source_type == "sheet_canvas" and t.context_type == "sheet_column_group" and is_nil(block.deleted_at),

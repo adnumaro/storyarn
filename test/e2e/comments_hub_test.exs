@@ -6,8 +6,6 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
   import Storyarn.SheetsFixtures
   import StoryarnWeb.E2EHelpers
 
-  alias PlaywrightEx.Frame
-  alias PlaywrightEx.Page
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -48,8 +46,6 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
       |> click("#hub-comment-send")
       |> assert_has("#comments-hub-detail", text: "Her promise to the keeper brings her back.")
 
-    capture_review_images(browser)
-
     browser
     |> click("#comments-hub-context")
     |> assert_has("#sheet-comment-popover", text: "Her promise to the keeper brings her back.", timeout: 20_000)
@@ -73,8 +69,6 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
       |> click("#comments-hub-thread-#{thread.id}")
       |> assert_has("#hub-comment-body")
 
-    capture_review_images(browser, "mobile")
-
     browser
     |> click("#comments-hub-back")
     |> assert_has("#comments-hub-thread-#{thread.id}")
@@ -90,29 +84,5 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
       })
 
     thread
-  end
-
-  defp capture_review_images(browser, surface \\ "desktop") do
-    if System.get_env("STORYARN_HUB_REVIEW_IMAGES") == "1" do
-      for theme <- ["light", "dark"] do
-        {:ok, _} =
-          Frame.evaluate(browser.frame_id,
-            expression: """
-            (async () => {
-              document.documentElement.classList.toggle('dark', #{theme == "dark"});
-              await new Promise(requestAnimationFrame);
-              await new Promise(requestAnimationFrame);
-              await Promise.allSettled(document.getAnimations()
-                .filter(animation => animation.effect?.getTiming().iterations !== Infinity)
-                .map(animation => animation.finished));
-            })()
-            """,
-            timeout: 10_000
-          )
-
-        {:ok, encoded} = Page.screenshot(browser.page_id, full_page: false, timeout: 10_000)
-        File.write!("/private/tmp/comments-hub-#{surface}-#{theme}.png", Base.decode64!(encoded))
-      end
-    end
   end
 end

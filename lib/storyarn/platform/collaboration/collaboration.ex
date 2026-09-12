@@ -277,6 +277,9 @@ defmodule Storyarn.Platform.Collaboration do
   """
   defdelegate subscribe_dashboard(project_id), to: Cache
 
+  @doc "Unsubscribes the caller from dashboard invalidation events for a project."
+  defdelegate unsubscribe_dashboard(project_id), to: Cache
+
   @doc """
   Broadcasts a dashboard invalidation event for a project.
   Also directly invalidates the ETS cache.

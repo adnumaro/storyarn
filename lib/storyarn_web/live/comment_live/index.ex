@@ -9,8 +9,9 @@ defmodule StoryarnWeb.CommentLive.Index do
   alias StoryarnWeb.Helpers.Authorize
 
   @refresh_interval 30_000
+  @comment_refresh_delay 150
+  @source_refresh_delay 500
   @access_events ~w(project_membership_changed project_ownership_transferred workspace_membership_changed workspace_ownership_transferred)a
-  @comment_events ~w(comment_conversations_changed ideation_conversations_changed ideation_comment_sources_changed)a
 
   @impl true
   def mount(_params, _session, socket) do
@@ -26,7 +27,10 @@ defmodule StoryarnWeb.CommentLive.Index do
      |> assign(:project_id, nil)
      |> assign(:page_count, 1)
      |> assign(:message_history_bound, nil)
-     |> assign(:source_refresh_pending, false)
+     |> assign(:comment_refresh, nil)
+     |> assign(:source_refresh, nil)
+     |> assign(:refresh_options_pending, false)
+     |> assign(:loaded_query, nil)
      |> assign(:subscribed_projects, MapSet.new())
      |> assign(:subscribed_workspaces, MapSet.new())
      |> assign(:hub_projects, %{})
@@ -55,7 +59,7 @@ defmodule StoryarnWeb.CommentLive.Index do
        selectedProjectId: Params.positive(params["project"]),
        selectedThreadId: Params.positive(params["thread"])
      })
-     |> refresh()}
+     |> refresh_navigation()}
   end
 
   @impl true
@@ -100,19 +104,18 @@ defmodule StoryarnWeb.CommentLive.Index do
        selectedProjectId: Params.positive(params["project_id"]),
        selectedThreadId: Params.positive(params["thread_id"])
      })
-     |> load_selection()
      |> patch()}
   end
 
   def handle_event("hub_clear_selection", _params, socket), do: {:noreply, socket |> clear_selection() |> patch()}
-  def handle_event("hub_refresh", _params, socket), do: {:reply, %{ok: true}, refresh(socket)}
+  def handle_event("hub_refresh", _params, socket), do: {:reply, %{ok: true}, refresh_access(socket)}
 
   def handle_event("hub_load_more", _params, socket) do
     socket =
       if socket.assigns.hub.nextCursor && socket.assigns.page_count < Params.max_pages() do
         socket |> assign(:page_count, socket.assigns.page_count + 1) |> patch()
       else
-        refresh(socket)
+        socket
       end
 
     {:reply, %{ok: true}, socket}
@@ -128,39 +131,119 @@ defmodule StoryarnWeb.CommentLive.Index do
       socket,
       :edit_content,
       &mutate(event, params, &1),
-      fn current, _reason -> failure(refresh(current), :not_found) end
+      fn current, _reason -> failure(refresh_access(current), :not_found) end
     )
   end
 
   # This surface never creates a source or a thread, even through forged events.
-  def handle_event(_event, _params, socket), do: failure(refresh(socket), :not_found)
+  def handle_event(_event, _params, socket), do: failure(socket, :not_found)
 
   @impl true
-  def handle_info({event, _payload}, socket) when event in @access_events or event in @comment_events,
-    do: {:noreply, refresh(socket)}
+  def handle_info({event, _payload}, socket) when event in @access_events, do: {:noreply, refresh_access(socket)}
 
-  def handle_info({:ideation_comment_participation_changed, _project_id, _session_id, _thread_id}, socket),
-    do: {:noreply, refresh(socket)}
+  def handle_info({:comment_conversations_changed, project_id}, socket),
+    do: {:noreply, schedule_comment_refresh(socket, project_id)}
 
   def handle_info({:dashboard_invalidate, _source}, socket) do
-    if !socket.assigns.source_refresh_pending do
-      Process.send_after(self(), :refresh_comment_hub_sources, 150)
-    end
-
-    {:noreply, assign(socket, :source_refresh_pending, true)}
+    {:noreply, schedule_source_refresh(socket)}
   end
 
-  def handle_info(:refresh_comment_hub_sources, socket),
-    do: {:noreply, socket |> assign(:source_refresh_pending, false) |> refresh()}
+  def handle_info({:refresh_comment_hub, kind, token}, socket) when kind in [:comment_refresh, :source_refresh] do
+    case socket.assigns[kind] do
+      %{token: ^token} -> {:noreply, refresh_conversations(socket)}
+      _ -> {:noreply, socket}
+    end
+  end
 
   def handle_info(:refresh_comment_hub, socket) do
     schedule_refresh()
-    {:noreply, refresh(socket)}
+    {:noreply, refresh_access(socket)}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
-  defp refresh(socket), do: socket |> load_options() |> load_threads() |> load_selection()
+  defp refresh_navigation(%{assigns: %{loaded_query: nil}} = socket), do: refresh_access(socket)
+
+  defp refresh_navigation(socket) do
+    if socket.assigns.loaded_query != current_query(socket) or refresh_pending?(socket) do
+      refresh_conversations(socket)
+    else
+      socket |> maybe_load_selected_options() |> load_selection()
+    end
+  end
+
+  defp refresh_access(socket), do: socket |> cancel_refreshes() |> load_options() |> load_threads() |> load_selection()
+
+  defp refresh_conversations(socket) do
+    socket = if socket.assigns.refresh_options_pending, do: load_options(socket), else: socket
+    socket |> cancel_refreshes() |> load_threads() |> maybe_load_selected_options() |> load_selection()
+  end
+
+  defp maybe_load_selected_options(socket) do
+    id = socket.assigns.hub.selectedProjectId
+    if is_integer(id) and not Map.has_key?(socket.assigns.hub_projects, id), do: load_options(socket), else: socket
+  end
+
+  defp current_query(socket), do: {socket.assigns.hub.filters, socket.assigns.page_count}
+
+  defp refresh_pending?(socket), do: socket.assigns.comment_refresh != nil or socket.assigns.source_refresh != nil
+
+  defp schedule_comment_refresh(socket, project_id) do
+    if relevant_project?(socket, project_id) do
+      socket
+      |> assign(
+        :refresh_options_pending,
+        socket.assigns.refresh_options_pending or not Map.has_key?(socket.assigns.hub_projects, project_id)
+      )
+      |> cancel_refresh(:source_refresh)
+      |> start_refresh(:comment_refresh, @comment_refresh_delay)
+    else
+      socket
+    end
+  end
+
+  defp relevant_project?(socket, project_id) do
+    hub = socket.assigns.hub
+
+    case socket.assigns.hub_projects[project_id] do
+      nil ->
+        true
+
+      project ->
+        hub.selectedProjectId == project_id or
+          (hub.filters["project_id"] in ["", to_string(project_id)] and
+             hub.filters["workspace_id"] in ["", to_string(project.workspace_id)])
+    end
+  end
+
+  # Dashboard events have no project identity. Wait for editing to settle;
+  # a pending comment refresh already reads the same source/context state.
+  defp schedule_source_refresh(%{assigns: %{comment_refresh: timer}} = socket) when not is_nil(timer), do: socket
+
+  defp schedule_source_refresh(socket),
+    do: socket |> cancel_refresh(:source_refresh) |> start_refresh(:source_refresh, @source_refresh_delay)
+
+  defp start_refresh(socket, kind, delay) do
+    if socket.assigns[kind] do
+      socket
+    else
+      token = make_ref()
+      timer = Process.send_after(self(), {:refresh_comment_hub, kind, token}, delay)
+      assign(socket, kind, %{timer: timer, token: token})
+    end
+  end
+
+  defp cancel_refreshes(socket) do
+    socket
+    |> cancel_refresh(:comment_refresh)
+    |> cancel_refresh(:source_refresh)
+    |> assign(:refresh_options_pending, false)
+  end
+
+  defp cancel_refresh(socket, kind) do
+    if pending = socket.assigns[kind], do: Process.cancel_timer(pending.timer)
+    assign(socket, kind, nil)
+  end
 
   defp load_options(socket) do
     scope = socket.assigns.current_scope
@@ -197,6 +280,21 @@ defmodule StoryarnWeb.CommentLive.Index do
       workspace_ids = MapSet.new(workspaces, & &1.id)
       project_ids = MapSet.new(projects, & &1.id)
 
+      socket.assigns.subscribed_workspaces
+      |> MapSet.difference(workspace_ids)
+      |> Enum.each(fn id ->
+        Workspaces.unsubscribe_workspace_membership_changes(id)
+        Workspaces.unsubscribe_workspace_ownership_changes(id)
+      end)
+
+      socket.assigns.subscribed_projects
+      |> MapSet.difference(project_ids)
+      |> Enum.each(fn id ->
+        Projects.unsubscribe_project_membership_changes(id)
+        Projects.unsubscribe_project_ownership_changes(id)
+        Collaboration.unsubscribe_dashboard(id)
+      end)
+
       workspace_ids
       |> MapSet.difference(socket.assigns.subscribed_workspaces)
       |> Enum.each(fn id ->
@@ -213,8 +311,8 @@ defmodule StoryarnWeb.CommentLive.Index do
       end)
 
       socket
-      |> assign(:subscribed_workspaces, MapSet.union(socket.assigns.subscribed_workspaces, workspace_ids))
-      |> assign(:subscribed_projects, MapSet.union(socket.assigns.subscribed_projects, project_ids))
+      |> assign(:subscribed_workspaces, workspace_ids)
+      |> assign(:subscribed_projects, project_ids)
     else
       socket
     end
@@ -222,6 +320,7 @@ defmodule StoryarnWeb.CommentLive.Index do
 
   defp load_threads(socket) do
     options = Params.options(socket.assigns.hub.filters)
+    socket = assign(socket, :loaded_query, current_query(socket))
 
     case pages(socket.assigns.current_scope, options, socket.assigns.page_count) do
       {:ok, result} ->
@@ -251,7 +350,9 @@ defmodule StoryarnWeb.CommentLive.Index do
   defp pages(scope, options, remaining) do
     case Projects.list_comment_conversations(scope, options) do
       {:ok, %{next_cursor: cursor} = page} when remaining > 1 and cursor not in [nil, false] ->
-        with {:ok, rest} <- pages(scope, Keyword.put(options, :cursor, cursor), remaining - 1) do
+        next_options = options |> Keyword.put(:cursor, cursor) |> Keyword.put(:include_counts, false)
+
+        with {:ok, rest} <- pages(scope, next_options, remaining - 1) do
           {:ok, %{page | threads: page.threads ++ rest.threads, next_cursor: rest.next_cursor}}
         end
 
@@ -335,12 +436,11 @@ defmodule StoryarnWeb.CommentLive.Index do
     scope = socket.assigns.current_scope
 
     with true <- is_integer(id) and id == selected_id,
-         {:ok, %{thread: %{source: %{status: "available"}}}} <- Projects.get_comment_thread(scope, project_id, id),
          {:ok, _result} <- mutation(event, scope, project_id, id, params) do
-      {:reply, %{ok: true}, refresh(socket)}
+      {:reply, %{ok: true}, schedule_comment_refresh(socket, project_id)}
     else
-      {:error, reason} -> failure(refresh(socket), reason)
-      _ -> failure(refresh(socket), :not_found)
+      {:error, reason} -> failure(refresh_access(socket), reason)
+      _ -> failure(refresh_access(socket), :not_found)
     end
   end
 

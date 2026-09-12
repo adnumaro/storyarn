@@ -87,6 +87,11 @@ defmodule Storyarn.Platform.Dashboards.Cache do
     PubSub.subscribe(Storyarn.PubSub, dashboard_topic(project_id))
   end
 
+  @doc "Unsubscribes the caller from dashboard invalidation events for a project."
+  def unsubscribe_dashboard(project_id) do
+    PubSub.unsubscribe(Storyarn.PubSub, dashboard_topic(project_id))
+  end
+
   @doc """
   Broadcasts a dashboard invalidation event for a project.
   Also directly invalidates the ETS cache.

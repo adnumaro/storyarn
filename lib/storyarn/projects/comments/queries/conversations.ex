@@ -130,7 +130,9 @@ defmodule Storyarn.Projects.Comments.Conversations do
   defp valid_option?({key, value}) when key in [:project_id, :workspace_id, :limit],
     do: is_integer(value) and value > 0 and value <= @max_id
 
-  defp valid_option?({key, value}) when key in [:following, :participated, :mentioned, :unread], do: is_boolean(value)
+  defp valid_option?({key, value}) when key in [:following, :participated, :mentioned, :unread, :include_counts],
+    do: is_boolean(value)
+
   defp valid_option?({:tool, value}), do: is_map_key(@tools, value)
   defp valid_option?({:status, value}), do: value in ~w(open resolved all)
 
@@ -187,6 +189,13 @@ defmodule Storyarn.Projects.Comments.Conversations do
   end
 
   defp search(q, scope, text) when is_binary(text) and byte_size(text) > 0 do
+    # Materialize authorized candidates once, before the expensive label branches.
+    # Every source/context branch reads this relation, never all tenant threads.
+    # Status and pagination remain outside it so counts retain their full scope.
+    candidate_query = select(q, [thread: t], t)
+    candidates = {"comment_search_candidates", Thread}
+    candidate_ids = from(t in candidates, select: t.id)
+
     matching =
       from(m in Message,
         where: m.thread_id == parent_as(:thread).id,
@@ -196,18 +205,27 @@ defmodule Storyarn.Projects.Comments.Conversations do
 
     ideation =
       from([thread: t, comment_source: source] in IdeationConversations.readable_query(scope),
+        where: t.id in subquery(candidate_ids),
         where: fragment("strpos(lower(?), lower(?)) > 0", source.name, ^text),
         select: t.id
       )
 
-    sources = Queries.matching_source_threads(text)
-    contexts = Context.matching_threads(text)
+    sources = Queries.matching_source_threads(text, candidates)
+    contexts = Context.matching_threads(text, candidates)
 
-    where(
-      q,
-      [thread: t, project: p],
-      exists(subquery(matching)) or fragment("strpos(lower(?), lower(?)) > 0", p.name, ^text) or
-        t.id in subquery(sources) or t.id in subquery(contexts) or t.id in subquery(ideation)
+    with_cte(
+      from(t in candidates,
+        as: :thread,
+        join: p in Project,
+        as: :project,
+        on: p.id == t.project_id,
+        where:
+          exists(subquery(matching)) or fragment("strpos(lower(?), lower(?)) > 0", p.name, ^text) or
+            t.id in subquery(sources) or t.id in subquery(contexts) or t.id in subquery(ideation)
+      ),
+      "comment_search_candidates",
+      materialized: true,
+      as: ^candidate_query
     )
   end
 

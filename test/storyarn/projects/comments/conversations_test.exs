@@ -9,6 +9,8 @@ defmodule Storyarn.Projects.CommentConversationsTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Projects
+  alias Storyarn.Projects.Comments.Context
+  alias Storyarn.Projects.Comments.Queries
   alias Storyarn.Projects.Comments.Thread
   alias Storyarn.Projects.ProjectMembership
 
@@ -202,6 +204,65 @@ defmodule Storyarn.Projects.CommentConversationsTest do
     assert_search(ctx, "Pin ##{pin.id}", unnamed.thread.id)
   end
 
+  test "every source and context search branch honors the caller's candidate relation", ctx do
+    source_names = %{"flow" => ctx.flow.name, "sheet" => ctx.sheet.name, "scene" => ctx.scene.name}
+
+    for {tool, type, target_id, text} <- searchable_contexts(ctx) do
+      attrs = %{context: %{type: type, id: target_id}}
+      allowed = create_conversation(ctx, tool, attrs)
+      create_conversation(ctx, tool, attrs)
+      candidates = from(t in Thread, where: t.id == ^allowed.thread.id)
+
+      assert Repo.all(Context.matching_threads(text, candidates)) == [allowed.thread.id], type
+
+      source_name = Map.fetch!(source_names, tool)
+      assert Repo.all(Queries.matching_source_threads(source_name, candidates)) == [allowed.thread.id], type
+    end
+  end
+
+  test "searched pages materialize only authorized prefiltered candidates without a page limit", ctx do
+    for _ <- 1..3, do: create_conversation(ctx, "sheet", %{mention_user_ids: [ctx.peer.user.id]})
+    create_conversation(ctx, "sheet")
+    create_conversation(ctx, "flow", %{mention_user_ids: [ctx.peer.user.id]})
+
+    other_project = project_fixture(ctx.owner.user)
+    membership_fixture(other_project, ctx.peer.user, "viewer")
+    other_sheet = sheet_fixture(other_project, %{name: ctx.sheet.name})
+    other = %{ctx | project: other_project, sheet: other_sheet, author: ctx.owner}
+    create_conversation(other, "sheet", %{mention_user_ids: [ctx.peer.user.id]})
+
+    foreign = ideation_fixture()
+    foreign = Map.put(foreign, :sheet, sheet_fixture(foreign.project, %{name: ctx.sheet.name}))
+    create_conversation(foreign, "sheet")
+
+    opts = [
+      project_id: ctx.project.id,
+      workspace_id: ctx.project.workspace_id,
+      tool: "sheet",
+      mentioned: true,
+      search: ctx.sheet.name,
+      limit: 1,
+      include_counts: false
+    ]
+
+    {page, queries} = captured_page(ctx.peer, opts)
+    assert length(page.threads) == 1
+    assert page.next_cursor
+    assert page.counts == nil
+
+    [{query, params}] = Enum.filter(queries, fn {query, _} -> String.starts_with?(query, "WITH ") end)
+    %{rows: [[[%{"Plan" => plan}]]]} = Repo.query!("EXPLAIN (ANALYZE, FORMAT JSON) " <> query, params)
+    nodes = plan_nodes(plan)
+    candidate_plan = Enum.find(nodes, &(&1["Subplan Name"] == "CTE comment_search_candidates"))
+    assert candidate_plan["Actual Rows"] == 3
+    assert candidate_plan["Actual Loops"] == 1
+    assert Enum.any?(nodes, &(&1["CTE Name"] == "comment_search_candidates"))
+
+    assert {:ok, next} = Projects.list_comment_conversations(ctx.peer, Keyword.put(opts, :cursor, page.next_cursor))
+    assert length(next.threads) == 1
+    refute hd(next.threads).id == hd(page.threads).id
+  end
+
   test "a vanished context retains its conversation and a vanished surface has no destination", ctx do
     block = block_fixture(ctx.sheet, %{config: %{"label" => "Motivation"}})
     detail = create_conversation(ctx, "sheet", %{context: %{type: "sheet_block", id: block.id}})
@@ -299,6 +360,8 @@ defmodule Storyarn.Projects.CommentConversationsTest do
           [tool: "private"],
           [status: "hidden"],
           [participated: "yes"],
+          [include_counts: nil],
+          [include_counts: "false"],
           [surprise: true]
         ] do
       assert {:error, :invalid_options} = Projects.list_comment_conversations(ctx.peer, opts)
@@ -320,18 +383,78 @@ defmodule Storyarn.Projects.CommentConversationsTest do
     assert large_queries == queries
   end
 
-  defp counted_page(scope) do
+  test "subsequent pages can skip counts without changing the authorized rows or cursor", ctx do
+    for _ <- 1..3, do: create_conversation(ctx, "sheet")
+    opts = [tool: "sheet", search: ctx.sheet.name, limit: 1]
+    assert {:ok, first} = Projects.list_comment_conversations(ctx.peer, opts)
+    opts = Keyword.put(opts, :cursor, first.next_cursor)
+    {counted, queries} = counted_page(ctx.peer, opts)
+    {uncounted, fewer_queries} = counted_page(ctx.peer, Keyword.put(opts, :include_counts, false))
+
+    assert counted.counts == %{all: 3, open: 3, resolved: 0}
+    assert uncounted.counts == nil
+    assert uncounted.threads == counted.threads
+    assert uncounted.next_cursor == counted.next_cursor
+    assert fewer_queries == queries - 1
+  end
+
+  defp counted_page(scope, opts \\ []) do
     marker = make_ref()
     Process.put(marker, 0)
     :ok = :telemetry.attach(marker, [:storyarn, :repo, :query], &count_query/4, {self(), marker})
 
     try do
-      assert {:ok, page} = Projects.list_comment_conversations(scope)
+      assert {:ok, page} = Projects.list_comment_conversations(scope, opts)
       {page, Process.get(marker)}
     after
       :telemetry.detach(marker)
       Process.delete(marker)
     end
+  end
+
+  defp captured_page(scope, opts) do
+    marker = make_ref()
+    Process.put(marker, [])
+    :ok = :telemetry.attach(marker, [:storyarn, :repo, :query], &capture_query/4, {self(), marker})
+
+    try do
+      assert {:ok, page} = Projects.list_comment_conversations(scope, opts)
+      {page, Enum.reverse(Process.get(marker))}
+    after
+      :telemetry.detach(marker)
+      Process.delete(marker)
+    end
+  end
+
+  defp capture_query(_event, _measurements, %{query: query, params: params}, {pid, marker}) do
+    if self() == pid, do: Process.put(marker, [{query, params} | Process.get(marker)])
+  end
+
+  defp plan_nodes(node), do: [node | Enum.flat_map(Map.get(node, "Plans", []), &plan_nodes/1)]
+
+  defp searchable_contexts(ctx) do
+    node = node_fixture(ctx.flow, %{data: %{"text" => "A scoped branch"}})
+    block = block_fixture(ctx.sheet, %{config: %{"label" => "A scoped block"}})
+    pin = pin_fixture(ctx.scene, %{"label" => "A scoped pin"})
+    other_pin = pin_fixture(ctx.scene)
+    zone = zone_fixture(ctx.scene, %{"name" => "A scoped zone"})
+    annotation = annotation_fixture(ctx.scene, %{"text" => "A scoped annotation"})
+    connection = Storyarn.ScenesFixtures.connection_fixture(ctx.scene, pin, other_pin, %{"label" => "A scoped road"})
+    blocks = for _ <- 1..2, do: block_fixture(ctx.sheet)
+    assert {:ok, group_id} = Storyarn.Sheets.create_column_group(ctx.sheet.id, Enum.map(blocks, & &1.id))
+
+    [
+      {"flow", "flow_node", node.id, "scoped branch"},
+      {"sheet", "sheet_block", block.id, "scoped block"},
+      {"scene", "scene_pin", pin.id, "scoped pin"},
+      {"scene", "scene_zone", zone.id, "scoped zone"},
+      {"scene", "scene_annotation", annotation.id, "scoped annotation"},
+      {"scene", "scene_connection", connection.id, "scoped road"},
+      {"sheet", "sheet_title", ctx.sheet.id, "title"},
+      {"sheet", "sheet_header", ctx.sheet.id, "header"},
+      {"sheet", "sheet_cover", ctx.sheet.id, "cover"},
+      {"sheet", "sheet_column_group", group_id, "Row of 2 blocks"}
+    ]
   end
 
   defp count_query(_event, _measurements, _metadata, {pid, marker}) do
