@@ -172,7 +172,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     if state.thread do
       load_detail(socket, state.thread.id)
     else
-      refresh_selected_source(socket, state.selectedNodeId)
+      socket
+      |> refresh_selected_source(state.selectedNodeId)
+      |> refresh_draft_context()
+    end
+  end
+
+  defp refresh_draft_context(%{assigns: %{comments: %{draftContext: nil}}} = socket), do: socket
+
+  defp refresh_draft_context(socket) do
+    case draft_context(socket, nil, socket.assigns.comments.draftContext) do
+      {:ok, _context} ->
+        socket
+
+      {:error, reason} when reason in [:context_unavailable, :invalid_context] ->
+        put_state(socket, %{draftContext: nil, error: nil})
+
+      _unavailable ->
+        clear(socket)
     end
   end
 
@@ -311,6 +328,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     {:reply, %{ok: true}, socket |> refresh() |> select_thread(thread_id)}
   end
 
+  defp mutation_result({:error, reason}, socket) when reason in [:context_unavailable, :invalid_context],
+    do: failure(refresh_draft_context(socket), reason)
+
   defp mutation_result({:error, reason}, socket), do: failure(socket, reason)
 
   defp open_linked_thread(socket, thread_id) do
@@ -435,22 +455,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp matching_draft?(%{open: true, presentation: "canvas", thread: nil, draftId: id}, id) when is_binary(id), do: true
   defp matching_draft?(_state, _id), do: false
 
-  defp draft_context(_socket, _node_id, nil), do: {:ok, nil}
-
-  defp draft_context(socket, nil, %{"type" => "flow_node", "id" => raw_id} = context) do
-    with node_id when is_integer(node_id) <- positive_id(raw_id),
-         {:ok, ^node_id} <- optional_node(socket, node_id),
-         {:ok, offset} <- draft_offset(context["offset"]) do
-      {:ok, %{type: "flow_node", id: to_string(node_id), offset: offset}}
-    else
-      _invalid -> {:error, :invalid_context}
-    end
+  defp draft_context(socket, nil, context) do
+    Projects.validate_flow_comment_context(
+      socket.assigns.current_scope,
+      socket.assigns.project.id,
+      socket.assigns.flow.id,
+      context
+    )
   end
 
+  defp draft_context(_socket, _node_id, nil), do: {:ok, nil}
   defp draft_context(_socket, _node_id, _context), do: {:error, :invalid_context}
-
-  defp draft_offset(nil), do: {:ok, nil}
-  defp draft_offset(offset), do: position(offset)
 
   defp authorize_read(socket), do: Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view)
 
@@ -512,10 +527,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp failure(socket, reason) do
     socket = if match?({:ok, _, _}, authorize_read(socket)), do: socket, else: clear(socket)
     message = error_message(reason)
-    {:reply, %{ok: false, error: message}, put_state(socket, %{error: message})}
+
+    {:reply, %{ok: false, error: message, context_unavailable: reason in [:context_unavailable, :invalid_context]},
+     put_state(socket, %{error: message})}
   end
 
   defp error_message(:stale), do: dgettext("flows", "This conversation changed. Review the latest state and try again.")
+
+  defp error_message(:context_unavailable),
+    do: dgettext("flows", "The comment context is no longer available. Review the pin's position and try again.")
+
+  defp error_message(:invalid_context),
+    do: dgettext("flows", "The selected comment context is invalid. Move the pin and try again.")
 
   defp error_message(reason) when reason in [:not_found, :unauthorized, :unavailable, :source_unavailable] do
     dgettext("flows", "This conversation or its source is no longer available.")

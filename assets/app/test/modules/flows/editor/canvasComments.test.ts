@@ -2,6 +2,7 @@ import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 import { createMockLive } from "@app/test/setup";
+import { readCommentDraft, updateCommentDraft } from "@components/comments/commentDraftStorage";
 import type { FlowCommentThread, FlowCommentsPanelState } from "@modules/flows/types/comments";
 import {
   commentCanvasPoint,
@@ -99,6 +100,7 @@ function setup(
   state: Partial<FlowCommentsPanelState> = {},
   pins = [thread],
   focusThreadId: number | null = null,
+  draftStorageKey: string | null = null,
 ) {
   const surface = document.createElement("div");
   const container = document.createElement("div");
@@ -155,6 +157,7 @@ function setup(
       state: { ...base, ...state },
       commentPins: pins,
       focusThreadId,
+      draftStorageKey,
     },
     global: { stubs: { FlowCommentsPanel: true } },
   });
@@ -164,6 +167,7 @@ function setup(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.sessionStorage.clear();
   frames = [];
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     frames.push(callback);
@@ -442,6 +446,7 @@ describe("spatial comment geometry and interactions", () => {
       await nextTick();
       expect(pin.attributes("style")).toContain("left: 420px");
       expect(wrapper.find("#flow-comment-snap-preview").exists()).toBe(false);
+      expect(wrapper.find("#flow-comment-preview").exists()).toBe(false);
       pointer(window, "pointerup", 700, 500);
       expect(live.pushEvent).not.toHaveBeenCalled();
     },
@@ -535,6 +540,21 @@ describe("spatial comment geometry and interactions", () => {
     );
   });
 
+  it("does not reopen the tooltip when a keyboard drag loses focus", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    (pin.element as HTMLElement).focus();
+    key(pin.element, "ArrowRight");
+    (pin.element as HTMLElement).blur();
+    await nextTick();
+    expect(pin.attributes("style")).toContain("left: 420px");
+    expect(wrapper.find("#flow-comment-preview").exists()).toBe(false);
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    await pin.trigger("pointerenter");
+    expect(wrapper.find("#flow-comment-preview").exists()).toBe(true);
+  });
+
   it("does not let an old failed request roll back a newer pending move", async () => {
     const { wrapper } = setup();
     await nextTick();
@@ -585,6 +605,34 @@ describe("spatial comment geometry and interactions", () => {
     await wrapper.setProps({ commentPins: [confirmed] });
     expect(pin.attributes("style")).toContain("left: 460px");
     expect(pin.attributes("aria-busy")).toBe("false");
+  });
+
+  it("unlocks a no-op move only when the unchanged server DTO confirms its placement", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointermove", 470, 310);
+    pointer(window, "pointerup", 430, 290);
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
+    vi.mocked(live.pushEvent).mock.calls[0][2]!({ ok: true, thread });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("false");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointerup", 470, 310);
+    expect(live.pushEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not mistake an unchanged revision with different placement for a no-op", async () => {
+    const { wrapper } = setup();
+    await nextTick();
+    const pin = wrapper.get("#flow-comment-pin-12");
+    pointer(pin.element, "pointerdown", 430, 290);
+    pointer(window, "pointerup", 470, 310);
+    vi.mocked(live.pushEvent).mock.calls[0][2]!({ ok: true, thread });
+    await nextTick();
+    expect(pin.attributes("aria-busy")).toBe("true");
   });
 
   it("confirms a selected resolved thread move from its detail props even without a list pin", async () => {
@@ -857,6 +905,192 @@ describe("spatial comment geometry and interactions", () => {
   });
 });
 
+describe("Flow canvas draft recovery", () => {
+  const storageKey = "storyarn:flow-comment-draft:4:flow-canvas-7";
+  const context = { type: "flow_node", id: "42", offset: { x: 10, y: 20 } };
+  const position = { x: 160, y: 110 };
+  function store() {
+    updateCommentDraft(storageKey, {
+      coordinateSpace: "canvas",
+      position,
+      context,
+      body: "Keep this discussion",
+    });
+  }
+
+  it("restores canvas position and context and keeps text when authoritative props arrive", async () => {
+    store();
+    const { wrapper, area, pipes } = setup({}, [], null, storageKey);
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "comments_place",
+      { node_id: null, ...position, context },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        draftId: "restored",
+        draftPosition: position,
+        draftContext: context,
+      },
+    });
+    const draft = wrapper.get("#flow-comment-draft-pin");
+    expect(draft.attributes("style")).toContain("left: 420px");
+    expect(readCommentDraft(storageKey)).toMatchObject({ body: "Keep this discussion", context });
+    area.nodeViews.set("node-42", { position: { x: 250, y: 180 } });
+    pipes.forEach((pipe) => pipe({ type: "nodetranslated" }));
+    await flushFrames();
+    expect(draft.attributes("style")).toContain("left: 620px");
+    expect(readCommentDraft(storageKey)).toMatchObject({
+      position: { x: 260, y: 200 },
+      body: "Keep this discussion",
+    });
+    await wrapper.setProps({ state: { ...base } });
+    expect(readCommentDraft(storageKey)).toBeNull();
+  });
+
+  it("recovers an unavailable draft context as a free pin without losing the text", async () => {
+    store();
+    const { wrapper } = setup({}, [], null, storageKey);
+    vi.mocked(live.pushEvent).mock.calls[0][2]!({ ok: false, context_unavailable: true });
+    expect(live.pushEvent).toHaveBeenLastCalledWith(
+      "comments_place",
+      { node_id: null, ...position, context: null },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        draftId: "free",
+        draftPosition: position,
+        draftContext: null,
+      },
+    });
+    expect(readCommentDraft(storageKey)).toMatchObject({
+      position,
+      context: null,
+      body: "Keep this discussion",
+    });
+  });
+
+  it("keeps the draft and stored text when a live refresh removes its context", async () => {
+    store();
+    const state = {
+      ...base,
+      open: true,
+      presentation: "canvas" as const,
+      draftId: "active-draft",
+      draftPosition: position,
+      draftContext: context,
+    };
+    const { wrapper, area, node, pipes } = setup(state, [], null, storageKey);
+    await nextTick();
+    node.remove();
+    area.nodeViews.delete("node-42");
+    pipes.forEach((pipe) => pipe({ type: "noderemoved" }));
+    await wrapper.setProps({ state: { ...state, draftContext: null } });
+    await flushFrames();
+    expect(wrapper.find("#flow-comment-popover").exists()).toBe(true);
+    expect(wrapper.get("#flow-comment-draft-pin").attributes("style")).toContain("left: 420px");
+    expect(readCommentDraft(storageKey)).toMatchObject({
+      position,
+      context: null,
+      body: "Keep this discussion",
+    });
+    expect(live.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("does not retry an old recovery after a new draft was opened and discarded", async () => {
+    store();
+    const { wrapper } = setup({}, [], null, storageKey);
+    const oldReply = vi.mocked(live.pushEvent).mock.calls[0][2]!;
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        draftId: "new-draft",
+        draftPosition: { x: 800, y: 400 },
+        draftContext: null,
+      },
+    });
+    await wrapper.setProps({ state: { ...base } });
+    oldReply({ ok: false, context_unavailable: true });
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+    expect(readCommentDraft(storageKey)).toBeNull();
+  });
+
+  it("ignores a recovery reply from another Flow and preserves that Flow's draft", async () => {
+    store();
+    const { wrapper } = setup({}, [], null, storageKey);
+    const oldReply = vi.mocked(live.pushEvent).mock.calls[0][2]!;
+    const nextKey = "storyarn:flow-comment-draft:4:flow-canvas-8";
+    updateCommentDraft(nextKey, {
+      coordinateSpace: "canvas",
+      position: { x: -500, y: 400 },
+      context: null,
+      body: "Other flow",
+    });
+    await wrapper.setProps({ draftStorageKey: nextKey });
+    await nextTick();
+    oldReply({ ok: false, context_unavailable: true });
+    expect(live.pushEvent).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(live.pushEvent).mock.calls[1][1]).toEqual({
+      node_id: null,
+      x: -500,
+      y: 400,
+      context: null,
+    });
+    expect(readCommentDraft(nextKey)).toMatchObject({ body: "Other flow", context: null });
+    expect(readCommentDraft(storageKey)).toMatchObject({ body: "Keep this discussion" });
+  });
+
+  it("leaves saved drafts intact when opening a thread deep link or viewing read-only", () => {
+    store();
+    setup({}, [thread], thread.id, storageKey);
+    setup({ canComment: false }, [], null, storageKey);
+    expect(live.pushEvent).not.toHaveBeenCalled();
+    expect(readCommentDraft(storageKey)).toMatchObject({ body: "Keep this discussion" });
+  });
+
+  it("uses the measured popup height so a short composer follows a low pin", async () => {
+    const observers: Array<() => void> = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          observers.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const { wrapper } = setup({
+      open: true,
+      presentation: "canvas",
+      draftId: "new",
+      draftPosition: { x: 200, y: 250 },
+      draftContext: null,
+    });
+    await nextTick();
+    const popup = wrapper.get("#flow-comment-popover");
+    vi.spyOn(popup.element, "getBoundingClientRect").mockReturnValue({
+      width: 360,
+      height: 200,
+    } as DOMRect);
+    observers.forEach((measure) => measure());
+    await nextTick();
+    expect(popup.attributes("style")).toContain("top: 532px");
+    expect(popup.classes()).toContain("z-30");
+  });
+});
+
 describe("Rete context menu comment placement", () => {
   it("uses the right-click target, not the selection, and snapshots the pointer", () => {
     const selected = new FlowNode("dialogue", 10, {});
@@ -879,12 +1113,23 @@ describe("Rete context menu comment placement", () => {
     };
     const items = createContextMenuItems(hook as never);
     const nodeComment = items(target).list.find((item) => item.key === "add_comment")!;
+    hook._commentContextPoint.x = 600;
     hook._commentContextPoint = { x: 999, y: 999 };
     nodeComment.handler();
-    expect(pushEvent).toHaveBeenLastCalledWith("comments_place", { node_id: 42, x: 90, y: 70 });
+    expect(pushEvent).toHaveBeenLastCalledWith("comments_place", {
+      node_id: null,
+      x: 240,
+      y: 160,
+      context: { type: "flow_node", id: "42", offset: { x: 90, y: 70 } },
+    });
     items("root")
       .list.find((item) => item.key === "add_comment")!
       .handler();
-    expect(pushEvent).toHaveBeenLastCalledWith("comments_place", { node_id: null, x: 999, y: 999 });
+    expect(pushEvent).toHaveBeenLastCalledWith("comments_place", {
+      node_id: null,
+      x: 999,
+      y: 999,
+      context: null,
+    });
   });
 });

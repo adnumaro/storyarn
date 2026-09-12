@@ -1,6 +1,7 @@
 import type { CommentContextReference, CommentPosition } from "./types";
 
 export interface StoredCommentDraft {
+  coordinateSpace?: "canvas";
   position?: CommentPosition;
   context?: CommentContextReference | null;
   body?: string;
@@ -12,6 +13,7 @@ export interface StoredCommentDraft {
 function normalizedDraft(value: unknown): StoredCommentDraft | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as {
+    coordinateSpace?: unknown;
     position?: unknown;
     context?: unknown;
     body?: unknown;
@@ -20,7 +22,7 @@ function normalizedDraft(value: unknown): StoredCommentDraft | null {
     fingerprint?: unknown;
   };
   const draft: StoredCommentDraft = {
-    ...(validPosition(candidate.position) ? { position: candidate.position } : {}),
+    ...draftCoordinates(candidate),
     ...(validContext(candidate.context) ? { context: candidate.context } : {}),
     ...(validBody(candidate.body) ? { body: candidate.body } : {}),
     ...(validMentionIds(candidate.mentionIds)
@@ -30,6 +32,17 @@ function normalizedDraft(value: unknown): StoredCommentDraft | null {
     ...(validFingerprint(candidate.fingerprint) ? { fingerprint: candidate.fingerprint } : {}),
   };
   return Object.keys(draft).length ? draft : null;
+}
+
+function draftCoordinates(candidate: {
+  coordinateSpace?: unknown;
+  position?: unknown;
+}): StoredCommentDraft {
+  const canvas = candidate.coordinateSpace === "canvas";
+  return {
+    ...(canvas ? { coordinateSpace: "canvas" as const } : {}),
+    ...(validPosition(candidate.position, canvas) ? { position: candidate.position } : {}),
+  };
 }
 
 function validBody(value: unknown): value is string {
@@ -69,19 +82,11 @@ function validFingerprint(value: unknown): value is string {
   return typeof value === "string" && value.length <= 25_000;
 }
 
-function validPosition(value: unknown): value is CommentPosition {
+function validPosition(value: unknown, canvas: boolean): value is CommentPosition {
   if (!value || typeof value !== "object") return false;
   const position = value as { x?: unknown; y?: unknown };
-  return (
-    typeof position.x === "number" &&
-    Number.isFinite(position.x) &&
-    position.x >= 0 &&
-    position.x <= 100 &&
-    typeof position.y === "number" &&
-    Number.isFinite(position.y) &&
-    position.y >= 0 &&
-    position.y <= 10_000_000
-  );
+  if (!validOffsetCoordinate(position.x) || !validOffsetCoordinate(position.y)) return false;
+  return canvas || (position.x >= 0 && position.x <= 100 && position.y >= 0);
 }
 
 function validMentionIds(value: unknown): value is number[] {
