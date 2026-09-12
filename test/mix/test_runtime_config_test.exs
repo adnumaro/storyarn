@@ -13,6 +13,12 @@ defmodule Storyarn.TestRuntimeConfigTest do
     end)
   end
 
+  test "the test manifest is runtime configuration and does not invalidate compiled modules" do
+    config = Config.Reader.read!("config/config.exs", env: :test)
+
+    refute config |> Keyword.fetch!(:storyarn) |> Keyword.has_key?(:vite_manifest)
+  end
+
   test "ordinary tests use an inert manifest and do not start the application HTTP listener" do
     System.put_env("STORYARN_E2E_TESTS", "false")
     config = test_runtime_config()

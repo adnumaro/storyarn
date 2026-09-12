@@ -21,7 +21,8 @@ Ecto.Adapters.SQL.Sandbox.mode(Storyarn.Repo, :manual)
 test_port = System.get_env("MIX_TEST_PORT", "4002")
 Application.put_env(:phoenix_test, :base_url, "http://127.0.0.1:#{test_port}")
 
-# Start the browser bridge only when browser tests are requested.
-if Enum.any?(ExUnit.configuration()[:include], &(&1 in [:e2e, {:e2e, true}])) do
+# The Mix alias selects browser mode before runtime config loads. Location
+# filters are only installed by Mix after this helper, so use the same decision.
+if System.get_env("STORYARN_E2E_TESTS") == "true" do
   {:ok, _} = PhoenixTest.Playwright.Supervisor.start_link()
 end

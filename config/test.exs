@@ -189,9 +189,5 @@ config :storyarn, :storage,
   upload_dir: "priv/static/uploads/test",
   public_path: "/uploads/test"
 
-# LiveView tests inspect server output without executing JavaScript. Browser
-# tests select the real Vite build in the test alias instead of this manifest.
-config :storyarn, :vite_manifest, File.read!(Path.expand("../test/fixtures/vite_manifest.json", __DIR__))
-
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false

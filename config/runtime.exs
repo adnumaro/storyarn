@@ -82,10 +82,15 @@ if System.get_env("PHX_SERVER") do
 end
 
 # The test alias selects browser mode before Mix loads runtime configuration.
-# Applying this here survives app.config reloading after the asset build.
-if config_env() == :test and bool_env.("STORYARN_E2E_TESTS") do
-  config :storyarn, StoryarnWeb.Endpoint, server: true
-  config :storyarn, :vite_manifest, {:storyarn, "priv/static/.vite/manifest.json"}
+# Keep fixture contents out of compile configuration: even a formatting change
+# there would invalidate the application's entire incremental build cache.
+if config_env() == :test do
+  if bool_env.("STORYARN_E2E_TESTS") do
+    config :storyarn, StoryarnWeb.Endpoint, server: true
+    config :storyarn, :vite_manifest, {:storyarn, "priv/static/.vite/manifest.json"}
+  else
+    config :storyarn, :vite_manifest, File.read!(Path.expand("../test/fixtures/vite_manifest.json", __DIR__))
+  end
 end
 
 # Block search engine indexing (staging environments)
