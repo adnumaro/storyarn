@@ -57,10 +57,10 @@ export function createContextMenuItems(hook: HookProxy) {
     else if (context === "root") menu = rootMenu(hook, t);
     else menu = nodeMenu(hook, context, t);
 
-    // A comment belongs to the click target, even when graph actions operate
-    // on a different current selection. Snapshot before the pointer enters the menu.
+    // The Flow owns the comment; the right-click target supplies optional context.
+    // Snapshot before the pointer enters the menu, independent of graph selection.
     if (hook._flowContext?.commentsEnabled && !hook.readonly) {
-      const point = hook._commentContextPoint ?? getAreaPointer(hook);
+      const point = { ...(hook._commentContextPoint ?? getAreaPointer(hook)) };
       const nodeId = context === "root" ? null : Number(context.nodeId);
       const placement = commentPlacement(point, nodeId, hook.area.nodeViews);
       menu.list.unshift({
@@ -69,7 +69,18 @@ export function createContextMenuItems(hook: HookProxy) {
         icon: MessageCircle,
         handler: () => {
           cancelFlowPlacement();
-          hook.pushEvent("comments_place", placement);
+          hook.pushEvent("comments_place", {
+            node_id: null,
+            ...point,
+            context:
+              placement.node_id == null
+                ? null
+                : {
+                    type: "flow_node",
+                    id: String(placement.node_id),
+                    offset: { x: placement.x, y: placement.y },
+                  },
+          });
         },
       });
     }

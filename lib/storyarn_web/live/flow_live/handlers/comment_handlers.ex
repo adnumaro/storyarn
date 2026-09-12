@@ -435,22 +435,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp matching_draft?(%{open: true, presentation: "canvas", thread: nil, draftId: id}, id) when is_binary(id), do: true
   defp matching_draft?(_state, _id), do: false
 
-  defp draft_context(_socket, _node_id, nil), do: {:ok, nil}
-
-  defp draft_context(socket, nil, %{"type" => "flow_node", "id" => raw_id} = context) do
-    with node_id when is_integer(node_id) <- positive_id(raw_id),
-         {:ok, ^node_id} <- optional_node(socket, node_id),
-         {:ok, offset} <- draft_offset(context["offset"]) do
-      {:ok, %{type: "flow_node", id: to_string(node_id), offset: offset}}
-    else
-      _invalid -> {:error, :invalid_context}
-    end
+  defp draft_context(socket, nil, context) do
+    Projects.validate_flow_comment_context(
+      socket.assigns.current_scope,
+      socket.assigns.project.id,
+      socket.assigns.flow.id,
+      context
+    )
   end
 
+  defp draft_context(_socket, _node_id, nil), do: {:ok, nil}
   defp draft_context(_socket, _node_id, _context), do: {:error, :invalid_context}
-
-  defp draft_offset(nil), do: {:ok, nil}
-  defp draft_offset(offset), do: position(offset)
 
   defp authorize_read(socket), do: Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view)
 
@@ -512,7 +507,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp failure(socket, reason) do
     socket = if match?({:ok, _, _}, authorize_read(socket)), do: socket, else: clear(socket)
     message = error_message(reason)
-    {:reply, %{ok: false, error: message}, put_state(socket, %{error: message})}
+
+    {:reply, %{ok: false, error: message, context_unavailable: reason in [:context_unavailable, :invalid_context]},
+     put_state(socket, %{error: message})}
   end
 
   defp error_message(:stale), do: dgettext("flows", "This conversation changed. Review the latest state and try again.")

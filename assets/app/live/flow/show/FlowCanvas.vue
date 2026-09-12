@@ -139,6 +139,7 @@ function safeParse(json: string, fallback: Record<string, unknown> = {}): Record
       :state="comments.state"
       :comment-pins="comments.pins"
       :focus-thread-id="comments.focusThreadId"
+      :draft-storage-key="`storyarn:flow-comment-draft:${userId}:${canvasId}`"
     />
 
     <FlowMinimapToggle

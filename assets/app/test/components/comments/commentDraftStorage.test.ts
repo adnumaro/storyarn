@@ -6,6 +6,38 @@ const key = "storyarn:sheet-comment-draft:4:7";
 beforeEach(() => window.sessionStorage.clear());
 
 describe("contextual comment draft recovery", () => {
+  it("keeps signed canvas coordinates and context when the composer writes text", () => {
+    const flowKey = "storyarn:flow-comment-draft:4:flow-canvas-7";
+    const context = { type: "flow_node", id: "42", offset: { x: 10, y: -20 } };
+    updateCommentDraft(flowKey, {
+      coordinateSpace: "canvas",
+      position: { x: -1200, y: 840 },
+      context,
+    });
+    updateCommentDraft(flowKey, { body: "Review this intervention" });
+    expect(readCommentDraft(flowKey)).toEqual({
+      coordinateSpace: "canvas",
+      position: { x: -1200, y: 840 },
+      context,
+      body: "Review this intervention",
+    });
+    expect(readCommentDraft(key)).toBeNull();
+  });
+
+  it("rejects out-of-range canvas positions while keeping text and existing Sheet bounds", () => {
+    updateCommentDraft(key, {
+      coordinateSpace: "canvas",
+      position: { x: 10_000_001, y: 0 },
+      body: "Keep",
+    });
+    expect(readCommentDraft(key)).toEqual({ coordinateSpace: "canvas", body: "Keep" });
+    window.sessionStorage.setItem(
+      key,
+      JSON.stringify({ position: { x: -5, y: 2 }, body: "Sheet" }),
+    );
+    expect(readCommentDraft(key)).toEqual({ body: "Sheet" });
+  });
+
   it("preserves context while the composer updates text, and records explicit free placement", () => {
     const context = { type: "sheet_title", id: "7", offset: { x: -2, y: 18 } };
     updateCommentDraft(key, { position: { x: 40, y: 320 }, context });

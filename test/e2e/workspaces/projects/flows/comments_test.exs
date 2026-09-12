@@ -306,6 +306,10 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
       |> drag_pin_over_node("#flow-comment-draft-pin", node.id)
       |> assert_has("#flow-comment-snap-preview", text: "First encounter")
       |> release_pin()
+      |> assert_has("#flow-comment-draft-pin[aria-busy=false]")
+      |> assert_has("#flow-comment-body", value: feedback)
+      |> reload_page()
+      |> assert_has("#flow-comment-draft-pin[aria-busy=false]", timeout: 20_000)
       |> assert_has("#flow-comment-body", value: feedback)
       |> click("#flow-comment-send")
       |> assert_has("#flow-comment-popover", text: feedback)
@@ -322,6 +326,237 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
     |> assert_has("#flow-comment-pin-#{thread.id}[aria-expanded=true]", timeout: 20_000)
     |> assert_has("#flow-comment-popover", text: feedback)
     |> assert_has("#flow-comment-context", text: "First encounter")
+  end
+
+  test "a draft whose node was deleted recovers its text as a free Flow comment", %{conn: conn} do
+    user = user_fixture()
+    scope = user_scope_fixture(user)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Recoverable draft context"})
+
+    node =
+      node_fixture(flow, %{
+        type: "hub",
+        position_x: 480,
+        position_y: 180,
+        data: %{"label" => "Replaced encounter", "hub_id" => "replaced_encounter"}
+      })
+
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+    feedback = "Keep this observation even if the encounter is replaced."
+
+    session =
+      conn
+      |> authenticate(user)
+      |> visit(path)
+      |> assert_has("[data-flow-comment-node='#{node.id}']", timeout: 20_000)
+      |> right_click("[data-flow-comment-node='#{node.id}']")
+      |> click("[data-testid='flow-context-menu'] [data-key='add_comment']")
+      |> assert_has("#flow-comment-draft-pin[aria-busy=false]")
+      |> fill_in("#flow-comment-body", "New thread", with: feedback)
+
+    assert {:ok, _deleted_node, _metadata} = Flows.delete_node(node)
+
+    session
+    |> reload_page()
+    |> assert_has("#flow-comment-draft-pin[aria-busy=false]", timeout: 20_000)
+    |> refute_has("[data-flow-comment-node='#{node.id}']")
+    |> assert_has("#flow-comment-body", value: feedback)
+    |> click("#flow-comment-send")
+    |> assert_has("#flow-comment-popover", text: feedback)
+    |> refute_has("#flow-comment-context")
+
+    assert {:ok, [thread]} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert thread.source.type == "flow_canvas"
+    assert thread.source.id == flow.id
+    assert is_nil(thread.context)
+    assert thread.message_count == 1
+  end
+
+  test "a contextual pin follows node dragging, zoom and pan without changing its stored offset", %{conn: conn} do
+    user = user_fixture()
+    scope = user_scope_fixture(user)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Moving context"})
+
+    node =
+      node_fixture(flow, %{
+        type: "hub",
+        position_x: 360,
+        position_y: 180,
+        data: %{"label" => "Moving encounter", "hub_id" => "moving_encounter"}
+      })
+
+    offset = %{x: 20, y: 16}
+
+    assert {:ok, created} =
+             Projects.create_flow_node_comment(scope, project.id, flow.id, node.id, %{
+               body: "Keep this discussion attached while arranging the encounter.",
+               client_request_id: Ecto.UUID.generate(),
+               position: offset
+             })
+
+    thread_id = created.thread.id
+    pin = "#flow-comment-pin-#{thread_id}"
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+    conn
+    |> authenticate(user)
+    |> visit(path)
+    |> assert_has("#{pin}[aria-busy=false]", timeout: 20_000)
+    |> assert_pin_offset(node.id, pin, offset)
+    |> drag_pin("[data-flow-comment-node='#{node.id}'] [data-testid='node']", 80, 40)
+    |> assert_pin_offset(node.id, pin, offset)
+    |> click("button[title='Zoom in']")
+    |> assert_pin_offset(node.id, pin, offset)
+    |> pan_canvas(flow.id, pin, 50, -30)
+    |> assert_pin_offset(node.id, pin, offset)
+    |> click("button[title='Zoom out']")
+    |> assert_pin_offset(node.id, pin, offset)
+    |> visit(path <> "?thread=#{thread_id}")
+    |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)
+    |> assert_has("#flow-comment-context", text: "Moving encounter")
+    |> assert_pin_offset(node.id, pin, offset)
+
+    moved_node = Flows.get_node!(flow.id, node.id)
+    assert moved_node.position_x > node.position_x
+    assert moved_node.position_y > node.position_y
+    assert {:ok, [persisted]} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert persisted.id == thread_id
+    assert persisted.context.id == to_string(node.id)
+    assert persisted.context.offset == offset
+    assert persisted.source.type == "flow_canvas"
+    assert persisted.position == created.thread.position
+    assert persisted.revision == created.thread.revision
+  end
+
+  test "Sequence replies to the same contextual conversation created on the Flow canvas", %{conn: conn} do
+    user = user_fixture()
+    scope = user_scope_fixture(user)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Shared Flow and Sequence discussion"})
+
+    node =
+      node_fixture(flow, %{
+        type: "dialogue",
+        position_x: 480,
+        position_y: 180,
+        data: %{"text" => "The guard opens the eastern gate.", "responses" => []}
+      })
+
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+    feedback = "Show why the guard trusts us before opening the gate."
+    reply = "The preceding dialogue will establish that trust."
+
+    session =
+      conn
+      |> authenticate(user)
+      |> visit(path)
+      |> assert_has("[data-flow-comment-node='#{node.id}']", timeout: 20_000)
+      |> right_click("[data-flow-comment-node='#{node.id}']")
+      |> click("[data-testid='flow-context-menu'] [data-key='add_comment']")
+      |> assert_has("#flow-comment-draft-pin[aria-busy=false]")
+      |> fill_in("#flow-comment-body", "New thread", with: feedback)
+      |> click("#flow-comment-send")
+      |> assert_has("#flow-comment-popover", text: feedback)
+
+    assert {:ok, [thread]} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert thread.source.type == "flow_canvas"
+    assert thread.context.id == to_string(node.id)
+
+    session =
+      session
+      |> click("#flow-comment-popover-close")
+      |> click_at("[data-flow-comment-node='#{node.id}'] [data-testid='node']", 40, 20)
+      |> click("[data-toggle-visual-editor]")
+      |> assert_has("[data-sequence-intervention]", text: "The guard opens the eastern gate.")
+      |> click("[data-sequence-comments-toggle]")
+      |> assert_has("#sequence-comment-thread-#{thread.id}", text: feedback)
+      |> click("#sequence-comment-thread-#{thread.id}")
+      |> assert_has("#sequence-comment-message-#{thread.root_message_id}", text: feedback)
+      |> fill_in("#sequence-comment-body", "Reply", with: reply)
+      |> click("#sequence-comment-send")
+      |> assert_has("#sequence-comments-content", text: reply)
+
+    assert {:ok, replied} = Projects.get_comment_thread(scope, project.id, thread.id)
+    assert replied.thread.root_message_id == thread.root_message_id
+    assert replied.thread.message_count == 2
+    assert replied.thread.source == thread.source
+    assert replied.thread.context == thread.context
+    assert [_, reply_message] = replied.messages
+    assert reply_message.thread_id == thread.id
+    assert reply_message.parent_id == thread.root_message_id
+
+    session
+    |> click("#sequence-comments button[aria-label='Close comments']")
+    |> click("[data-toggle-visual-editor]")
+    |> refute_has("[data-sequence-workspace]")
+    |> visit(path <> "?thread=#{thread.id}")
+    |> assert_has("#flow-comment-pin-#{thread.id}[aria-expanded=true]", timeout: 20_000)
+    |> assert_has("#flow-comment-message-#{thread.root_message_id}", text: feedback)
+    |> assert_has("#flow-comment-message-#{reply_message.id}", text: reply)
+
+    assert {:ok, [persisted]} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert persisted.id == thread.id
+    assert persisted.message_count == 2
+  end
+
+  defp assert_pin_offset(session, node_id, pin, offset) do
+    evaluate(
+      session,
+      """
+      (async () => {
+        const node = document.querySelector('[data-flow-comment-node="#{node_id}"]');
+        const pin = document.querySelector(#{Jason.encode!(pin)});
+        let delta;
+        for (let attempt = 0; attempt < 120; attempt++) {
+          const bounds = node.getBoundingClientRect();
+          const badge = pin.getBoundingClientRect();
+          const scale = bounds.width / node.offsetWidth;
+          delta = {
+            x: badge.left + badge.width / 2 - bounds.left - #{offset.x} * scale,
+            y: badge.top + badge.height / 2 - bounds.top - #{offset.y} * scale
+          };
+          if (Math.abs(delta.x) < 2 && Math.abs(delta.y) < 2) break;
+          await new Promise(requestAnimationFrame);
+        }
+        return delta;
+      })()
+      """,
+      fn delta ->
+        assert_in_delta delta["x"], 0, 2
+        assert_in_delta delta["y"], 0, 2
+      end
+    )
+  end
+
+  defp pan_canvas(session, flow_id, pin, dx, dy) do
+    evaluate(
+      session,
+      """
+      ({
+        canvas: document.querySelector('#flow-canvas-#{flow_id}').getBoundingClientRect().toJSON(),
+        pin: document.querySelector(#{Jason.encode!(pin)}).getBoundingClientRect().toJSON()
+      })
+      """,
+      fn before ->
+        x = before["canvas"]["x"] + before["canvas"]["width"] * 0.55
+        y = before["canvas"]["y"] + before["canvas"]["height"] * 0.8
+        {:ok, _} = Page.mouse_move(session.page_id, x: x, y: y, timeout: 10_000)
+        {:ok, _} = Page.mouse_down(session.page_id, timeout: 10_000)
+        {:ok, _} = Page.mouse_move(session.page_id, x: x + dx, y: y + dy, steps: 8, timeout: 10_000)
+        {:ok, _} = Page.mouse_up(session.page_id, timeout: 10_000)
+
+        evaluate(
+          session,
+          "document.querySelector(#{Jason.encode!(pin)}).getBoundingClientRect().toJSON()",
+          fn after_pan ->
+            assert_in_delta after_pan["x"] - before["pin"]["x"], dx, 2
+            assert_in_delta after_pan["y"] - before["pin"]["y"], dy, 2
+          end
+        )
+      end
+    )
   end
 
   defp drag_pin_over_node(session, pin, node_id) do

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Magnet, MessageCircle, Plus, Unlink, Repeat2 } from "@lucide/vue";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { FlowAreaExtra, FlowSchemes } from "../../lib/rete-schemes";
 import type { FlowCommentsPanelState, FlowCommentThread } from "../../../types/comments";
@@ -9,15 +9,25 @@ import { commentPopoverPosition } from "../../lib/comment-geometry";
 import { useCanvasComments } from "../../composables/useCanvasComments";
 import FlowCommentsPanel from "../panels/FlowCommentsPanel.vue";
 
-const { area, container, state, commentPins, focusThreadId } = defineProps<{
+const {
+  area,
+  container,
+  state,
+  commentPins,
+  focusThreadId,
+  draftStorageKey = null,
+} = defineProps<{
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   container: HTMLElement;
   state: FlowCommentsPanelState;
   commentPins: FlowCommentThread[];
   focusThreadId: number | null;
+  draftStorageKey?: string | null;
 }>();
 const live = useLive();
 const popup = ref<HTMLElement | null>(null);
+const measuredPopupSize = ref<{ width: number; height: number } | null>(null);
+let popupObserver: ResizeObserver | null = null;
 const {
   pins,
   placing,
@@ -46,6 +56,7 @@ const {
   state: () => state,
   pins: () => commentPins,
   focusThreadId: () => focusThreadId,
+  draftStorageKey: () => draftStorageKey,
   live,
 });
 const popupOpen = computed(
@@ -59,7 +70,7 @@ const popupPosition = computed(() =>
   commentPopoverPosition(
     activePoint.value ?? { x: bounds.value.width / 2, y: bounds.value.height / 2 },
     bounds.value,
-    popupSize.value,
+    measuredPopupSize.value ?? popupSize.value,
   ),
 );
 const previewSize = computed(() => ({
@@ -82,6 +93,25 @@ watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previou
     document.getElementById(`flow-comment-pin-${previousId}`)?.focus({ preventScroll: true });
   }
 });
+watch(popup, (element) => {
+  popupObserver?.disconnect();
+  measuredPopupSize.value = null;
+  if (!element) return;
+  const measure = () => {
+    const { width, height } = element.getBoundingClientRect();
+    if (
+      width > 0 &&
+      height > 0 &&
+      (measuredPopupSize.value?.width !== width || measuredPopupSize.value.height !== height)
+    ) {
+      measuredPopupSize.value = { width, height };
+    }
+  };
+  popupObserver = new ResizeObserver(measure);
+  popupObserver.observe(element);
+  measure();
+});
+onUnmounted(() => popupObserver?.disconnect());
 </script>
 
 <template>
@@ -232,7 +262,7 @@ watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previou
       role="dialog"
       tabindex="-1"
       :aria-label="$t('flows.comments.title')"
-      class="pointer-events-auto absolute flex flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
+      class="pointer-events-auto absolute z-30 flex flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
       :style="{
         left: `${popupPosition.x}px`,
         top: `${popupPosition.y}px`,
@@ -243,7 +273,7 @@ watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previou
       @wheel.stop
       @contextmenu.stop
     >
-      <FlowCommentsPanel :state="panelState" embedded />
+      <FlowCommentsPanel :state="panelState" :draft-storage-key="draftStorageKey" embedded />
     </div>
   </div>
 </template>

@@ -464,17 +464,17 @@ msgstr ""
 msgid "Node #%{n} (%{type}) — terminal target"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:524
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:521
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:518
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:515
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:521
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:518
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""

@@ -16,8 +16,9 @@ import {
   type CommentNodeView,
   type CommentPoint,
 } from "../lib/comment-geometry";
-import { flowCommentSnapAdapter } from "../lib/comment-snap-adapter";
+import { flowCommentSnapAdapter, resolveFlowCommentPosition } from "../lib/comment-snap-adapter";
 import { activeFlowPlacement, cancelFlowPlacement } from "../lib/flow-placement-state";
+import { useFlowCommentDraftRecovery } from "./useFlowCommentDraftRecovery";
 import type { useLive } from "@shared/composables/useLive";
 
 interface CanvasCommentsOptions {
@@ -26,6 +27,7 @@ interface CanvasCommentsOptions {
   state: () => FlowCommentsPanelState;
   pins: () => FlowCommentThread[];
   focusThreadId: () => number | null;
+  draftStorageKey: () => string | null;
   live: ReturnType<typeof useLive>;
 }
 
@@ -108,6 +110,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   let placedPointer: number | null = null;
   let focusedThreadId: number | null = null;
   let observer: ResizeObserver | null = null;
+  let targetObserver: MutationObserver | null = null;
   let surface: HTMLElement | null = null;
 
   const placing = computed(() => options.state().canComment && options.state().placing === true);
@@ -123,23 +126,21 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     visibleThreads.value.flatMap((thread) => {
       const pending = pendingMoves.value.get(thread.id);
       const moving = drag.value?.thread?.id === thread.id ? dragPreview.value : null;
-      const point =
-        moving?.position ?? pending?.position ?? commentCanvasPoint(thread, nodeViews.value);
+      const point = moving?.position ?? pending?.position ?? threadPoint(thread);
       return point && thread.source.status === "available"
         ? [{ thread, point, screen: commentScreenPoint(point, viewport.value) }]
         : [];
     }),
   );
 
-  function contextualDraftPosition(
-    position: CommentPoint,
-    context: CommentContextReference | null,
-  ) {
-    const node = context?.type === "flow_node" ? area.nodeViews.get(`node-${context.id}`) : null;
-    if (!node || !context?.offset) return position;
-    return { x: node.position.x + context.offset.x, y: node.position.y + context.offset.y };
+  function threadPoint(thread: FlowCommentThread) {
+    void nodeViews.value;
+    return thread.source.type === "flow_canvas" && thread.position
+      ? resolveFlowCommentPosition(thread.position, thread.context, area, container)
+      : commentCanvasPoint(thread, area.nodeViews);
   }
   function currentDraft(): CommentMagneticInitial | null {
+    void nodeViews.value;
     const state = options.state();
     if (!state.open || state.presentation !== "canvas" || state.thread || !state.draftPosition)
       return null;
@@ -157,8 +158,17 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
             id: String(state.selectedNodeId),
             offset: state.draftPosition,
           };
-    return { position: contextualDraftPosition(position, context), context };
+    const resolved = resolveFlowCommentPosition(position, context, area, container);
+    return resolved ? { position: resolved, context } : null;
   }
+  const { restoreStoredDraft } = useFlowCommentDraftRecovery({
+    state: options.state,
+    storageKey: options.draftStorageKey,
+    placement: currentDraft,
+    ready: () =>
+      bounds.value.width > 0 && bounds.value.height > 0 && options.focusThreadId() == null,
+    live,
+  });
   const draftPoint = computed(() => {
     // Node snapshots make legacy relative drafts reactive to canvas changes.
     void nodeViews.value;
@@ -171,7 +181,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     const state = options.state();
     const moving = drag.value && !drag.value.thread ? dragPreview.value : null;
     void nodeViews.value;
-    const confirmed = state.draftContext ? currentDraft() : null;
+    const confirmed = currentDraft();
     const draft = moving ?? pendingDraft.value ?? confirmed;
     return {
       ...state,
@@ -331,7 +341,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   }
   function dragInitial(thread: FlowCommentThread | null): CommentMagneticInitial | null {
     if (!thread) return currentDraft();
-    const position = commentCanvasPoint(thread, area.nodeViews);
+    const position = threadPoint(thread);
     return position ? { position, context: thread.context ?? null } : null;
   }
   function beginDrag(
@@ -418,6 +428,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     dragPreview.value = null;
     if (current?.pointerId != null && current.target.hasPointerCapture?.(current.pointerId))
       current.target.releasePointerCapture(current.pointerId);
+    if (current?.thread) hoverId.value = current.thread.id;
     return current;
   }
   function cancelDrag() {
@@ -475,10 +486,11 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   function persistThread(thread: FlowCommentThread, preview: CommentMagneticInitial) {
     const pending = { ...preview, request: ++request, revision: thread.revision };
     pendingMoves.value.set(thread.id, pending);
-    const finish = (failed: boolean) => {
+    const finish = (failed: boolean, returned?: FlowCommentThread) => {
       if (disposed || pendingMoves.value.get(thread.id)?.request !== pending.request) return;
       const latest = visibleThreads.value.find((item) => item.id === thread.id);
-      if (failed || !latest || latest.revision !== pending.revision)
+      const unchanged = acknowledgedUnchanged(returned, pending, latest);
+      if (failed || !latest || latest.revision !== pending.revision || unchanged)
         pendingMoves.value.delete(thread.id);
       if (failed) moveError.value = true;
     };
@@ -499,7 +511,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
         expected_revision: thread.revision,
         ...(thread.source.type === "flow_canvas" ? { context: preview.context } : {}),
       },
-      (reply) => finish(reply.ok !== true),
+      (reply) => finish(reply.ok !== true, reply.thread as FlowCommentThread | undefined),
       () => finish(true),
     );
   }
@@ -537,6 +549,24 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     return context
       ? JSON.stringify([context.type, context.id, context.offset?.x, context.offset?.y])
       : null;
+  }
+  function samePlacement(thread: FlowCommentThread | undefined, placement: CommentMagneticInitial) {
+    return (
+      thread?.position?.x === placement.position.x &&
+      thread.position.y === placement.position.y &&
+      contextIdentity(thread.context) === contextIdentity(placement.context)
+    );
+  }
+  function acknowledgedUnchanged(
+    returned: FlowCommentThread | undefined,
+    pending: PendingMove,
+    latest: FlowCommentThread | undefined,
+  ) {
+    return (
+      returned?.revision === pending.revision &&
+      samePlacement(returned, pending) &&
+      samePlacement(latest, pending)
+    );
   }
   function confirmDraft() {
     const pending = pendingDraft.value;
@@ -601,6 +631,20 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     window.addEventListener("blur", cancelDrag);
     observer = new ResizeObserver(refresh);
     observer.observe(container);
+    targetObserver = new MutationObserver(scheduleRefresh);
+    targetObserver.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [
+        "hidden",
+        "aria-hidden",
+        "inert",
+        "style",
+        "class",
+        "data-flow-comment-label",
+      ],
+    });
     area.addPipe((context) => {
       if (
         [
@@ -617,12 +661,14 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
       return context;
     });
     refresh();
+    restoreStoredDraft();
   });
   onUnmounted(() => {
     disposed = true;
     cancelDrag();
     if (frame != null) cancelAnimationFrame(frame);
     observer?.disconnect();
+    targetObserver?.disconnect();
     surface?.removeEventListener("pointerdown", placeAt, true);
     surface?.removeEventListener("pointerup", finishPlacement, true);
     surface?.removeEventListener("pointercancel", finishPlacement, true);
