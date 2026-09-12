@@ -1,0 +1,565 @@
+lib/storyarn/scenes/references/commands/entity_projection.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 135-136,156-157
+lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 19-20
+lib/storyarn_web/live/localization_live/edit.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 36,52
+lib/storyarn/projects/interchange/imports/commands/cancellation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 126-130
+test/e2e/workspaces/projects/ideation/canvas_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 111-114,211-213
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 63
+lib/storyarn/projects/versioning/adapters/archive/project_snapshot_archive_reader.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 151-152,177-178,382-384,871-872,1483-1484
+priv/repo/migrations/20260209120000_create_screenplays.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 17
+lib/storyarn_web/live/hooks/notifications.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 64-65
+lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/articy.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 25-26,28-29
+lib/storyarn/projects/versioning/contracts/snapshot_object_format.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 648-649,839-840
+lib/storyarn/projects/assets/execution/storage_compensation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 769-772,1175-1177
+lib/storyarn/projects/versioning/adapters/commercial/storage_reservations.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 74-75
+lib/storyarn_web/live/ideation_live/handlers/idea_handlers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 65-66
+lib/storyarn/flows/editor/commands/node_editor.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 120-127,136-143,203-210,216-223
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 170-171,1284-1285
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 532-535
+test/storyarn/projects/interchange/exports/integration/localization_engine_contract_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 191-193
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 60,167,173-174,209,275,285,291-292,297,302,312,317,322,327,332,338,384,395,425,440,510,546,551,576,596,607,613,624-626,642,648,658-659,665,675,681,686,730,735,740,795,800,805-806,811,816,821,826,831,836,841,846,851,856,861-862,867,922,927,952,957,962,967,972,987,992,997,1007,1027,1039,1044,1049,1054,1069,1074,1084,1089,1094,1099,1104,1109,1114,1119,1124,1232,1280,1311,1316-1317,1322
+test/storyarn/ideation/reveals_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 164-166,207-215,246-253
+lib/storyarn/scenes/editor/commands/pins.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 187-188
+lib/storyarn/projects/interchange/imports/execution/execution.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 613-621
+lib/storyarn/scenes/references/commands/variable_projection.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 157-160
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/review_decisions.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 302-303
+lib/storyarn/platform/discovery/entities/command_palette/definition.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 205-210
+lib/storyarn/workers/ai/reconcile_ai_reservations_worker.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 68-69
+lib/storyarn/ideation/sessions/commands/close_round.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 18-20
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 566-567
+test/storyarn/scenes/versioning/execution/scene_snapshot_contract_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 419-421,447-449,854-856,1017-1019,1228-1230,1286-1288,1405-1407,1438-1440,1620-1622,1648-1650
+lib/storyarn/projects.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 1020-1024
+lib/storyarn_web/live/localization_live/report.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 42,67
+lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/dialogic.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 35-36
+lib/storyarn/projects/templates/execution/installation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 50-55,598-600
+lib/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 159-160,923-924,1800-1801,1883-1884
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 14,25,31,37,42,48,55,68,73,78,83,103,109,115,120,164,169,174,179,184,189,194,199,204,209,214-215
+test/storyarn/scenes/health/rules/checker_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 74-81
+lib/storyarn/localization.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 187-188
+lib/storyarn/localization/providers/adapters/deep_l.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 351-354
+lib/storyarn/projects/access/memberships.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 82-83
+lib/storyarn/projects/assets/execution/storage_multipart_inventory.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 59-62
+lib/storyarn/workers/projects/deliver_project_invitation_worker.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 17-19
+lib/storyarn/projects/assets/execution/asset_operations.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 261-262,2009-2010
+lib/storyarn/projects/templates/adapters/archive/portable_bundle.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 36-37
+lib/storyarn/projects/content/flows/queries/variable_namespace_resolver.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 42-43
+priv/gettext/default.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 132-133
+  s_2849957cac15c2::t_d66ab8905d4edb 139,149
+test/storyarn/architecture/passive_projection_boundary_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 254-258
+test/storyarn/sheets/editor/entities/table_row_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 28-32
+lib/storyarn/scenes/expressions/queries/variable_namespace_resolver.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 42-43
+lib/storyarn/scenes/assets/commands/assets.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 169-170
+test/e2e/workspaces/projects/ideation/rounds_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 101-102
+lib/storyarn/projects/versioning/execution/snapshot_asset_capture.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 263-264,371-372,399-404
+lib/storyarn/flows/editor/commands/sequence_visual_layers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 435-442
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 114-115
+lib/storyarn/flows/versioning/commands/recover_requests.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 42-44
+lib/storyarn_web/live/localization_live/index.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 48,93,256-260
+test/storyarn/projects/comments/comments_concurrency_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 23-27,132-134
+test/storyarn/ideation/canvas_mode_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 135-137
+test/storyarn/sheets/versioning/execution/sheet_snapshot_contract_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 597-599,719-721,769-771,992-994,1214-1216,1275-1276,1346-1347,1584-1586,1669-1671,1872-1873,2022-2024,3214-3218
+test/storyarn/projects/interchange/imports/execution/materializer_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 1889-1891
+lib/storyarn/ideation/sessions/execution/round_contribution.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 33-34
+lib/storyarn/projects/versioning/rules/referenced_tombstone_validator.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 69-75
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 148,150,193-194,253-361,475-571
+  s_2849957cac15c2::t_a6ee8a8876bd4c 572
+test/storyarn/ideation/recovery_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 237-238,251-253,365-367,399-402,597-598
+  s_2849957cac15c2::t_988e2fe69503bc 236
+test/storyarn/ideation/connection_directions_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 115-118,207-209,217-219,233-234
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 176,467,472,477,491-500
+priv/gettext/localization.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 14,25,31,37,42,48,55,68,73,78,83,103,109,115,120,164,169,174,179,184,189,194,199,204,209,214-215
+test/storyarn/ideation/timers_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 178-181,297-298,351-354,450-456
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 57
+lib/storyarn_web/live/export_import_live/index.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 449-450,497-498,933-934
+lib/storyarn/scenes/editor/commands/scenes.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 119-120,151-152
+lib/storyarn_web/live/hooks/palette.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 317-321,480-481
+lib/storyarn_web/user_auth.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 408-409,417-418
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 5,103,160,170,449,543-557,610-637,908-1093,1116,1119-1124,1128-1133
+lib/storyarn/scenes/exploration/execution/player_engine.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 47-55
+lib/storyarn/flows/editor/rules/node_connection_rules.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 103-104
+test/storyarn/flows/versioning/execution/flow_snapshot_restore_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 1466-1468,2482-2483,2611-2613,2693-2695
+test/storyarn_web/live/ideation_live/timer_board_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 206-208
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 35,234,251-252,273,283,288-289,368,395,455,498-499,504-505,510-511,516-517,522-523,529,534-535,540-541,546-547,552-553,558-559,564-565,571,577,582-583,588-589,594-595,600-601,606-607,612-613,618-619,624-625,630-631,636-637,642-643,658-659,709,715,721,726-727,743,748,753,764,769,774,821-822,832,837-838,848,858,889,894-895,901,906-907,912-913,918-919,934,939,944
+priv/gettext/en/LC_MESSAGES/default.po
+  s_2849957cac15c2::t_d66ab8905d4edb 139,149
+  s_2849957cac15c2::t_ff26a85e37dbd5 132-133
+lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 137-138
+.formatter.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 4,6
+lib/storyarn/projects/access/invitations.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 34-35
+lib/storyarn/projects/versioning/execution/builders/scene_builder.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 1196-1197,2403-2404
+test/storyarn/ideation/canvas_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 63-69
+lib/storyarn/projects/references/commands/scene_entity_reference_tracker.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 171-172,195-196
+lib/storyarn/localization/texts/texts.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 69-70
+test/support/fixtures/flows_fixtures.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 185-192
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 14,25,31,37,42,48,55,68,73,78,83,103,109,115,120,164,169,174,179,184,189,194,199,204,209,214-215
+test/storyarn/sheets/versioning/execution/conflicts_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 196-197
+test/storyarn/release_snapshot_cutover_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 305-312,378-381
+lib/storyarn/projects/interchange/imports/adapters/notifications/notification_delivery.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 43-47
+priv/gettext/en/LC_MESSAGES/settings.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 45
+test/storyarn/commercial/execution/storage_accounting_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 622-623
+lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 204-208
+assets/app/test/modules/flows/editor/lib/comment-snap-adapter.test.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 1-286
+lib/storyarn_web/live/scene_live/handlers/undo_redo_handlers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 718-719
+lib/storyarn/sheets/editor/commands/sheets.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 115-116,158-159,170-171
+assets/app/modules/flows/editor/lib/comment-snap-adapter.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 5-20,24,31,80-120
+lib/storyarn/scenes/exploration/execution/formula_runtime.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 45-46
+priv/gettext/flows.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 176,467,472,477,491-500
+lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 462-463,468-469
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 15,21,27,107,112,127,225,231,238-239,245,251,257,263,269,275,281,312,318,324,330,336,342,429,435,441,461,466,471
+lib/storyarn/ideation/sessions/events/timer_invalidation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 9-11
+lib/storyarn/projects/comments/commands/participation_state.ex
+  s_2849957cac15c2::t_478be1760cf15a 62-64
+priv/gettext/workspaces.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 99,130,157,164,171,178,183,188,198
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 301
+test/storyarn/flows/editor/commands/sequence_layer_reorder_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 99-101
+lib/storyarn/localization/texts/commands/update.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 94-95
+test/storyarn/projects/references/rules/entity_reference_extraction_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 100-101
+lib/storyarn/projects/versioning/execution/builders/flow_builder.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 472-473,565-566,2184-2185,2195-2196,2921-2922
+lib/storyarn/projects/references/rules/variable_reference_extraction.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 128-129,785-786
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 99,130,157,164,171,178,183,188,198
+lib/storyarn/projects/trash/execution/flow_project_trash.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 107-110,261-263
+priv/gettext/es/LC_MESSAGES/default.po
+  s_2849957cac15c2::t_d66ab8905d4edb 139,149
+  s_2849957cac15c2::t_ff26a85e37dbd5 132-133
+test/storyarn_web/live/ideation_live/groups_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 24-26,94-96
+  s_2849957cac15c2::t_607e0b6adb5beb 23
+lib/storyarn/projects/comments/queries/ideation_conversations.ex
+  s_2849957cac15c2::t_478be1760cf15a 155-156
+priv/gettext/es/LC_MESSAGES/settings.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 45
+lib/storyarn_web/plugs/noindex_robots.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 21-22
+assets/app/live/flow/show/FlowCanvas.vue
+  s_2849957cac15c2::t_ff26a85e37dbd5 142
+test/e2e/workspaces/projects/ideation/connections_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 35-37,129-133
+lib/storyarn/projects/interchange/imports/adapters/input/source_bundle.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 319-323
+lib/storyarn/projects/content/scenes/queries/variable_namespace_resolver.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 42-43
+lib/storyarn/projects/interchange/imports/execution/materializer.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 446-447,903-904,1015-1016
+test/storyarn/ideation/canvas_shapes_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 47-50,159-162,177-178
+lib/storyarn/flows/versioning/execution/asset_catalog.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 677-678,697-698,890-891,1017-1018
+test/storyarn/projects/comments/comments_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 63-64
+assets/app/components/comments/commentDraftStorage.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 4,16,25,37-47,85,88-89
+assets/app/modules/flows/editor/composables/useFlowCommentDraftRecovery.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 1-136
+lib/storyarn/projects/assets/execution/blob_store.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 75-76,180-181
+test/storyarn_web/live/ideation_live/board_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 185-191,341-344,444-450,461-466,528-533,688-690
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 25-29,390-391,424-425,431-432
+lib/storyarn/projects/interchange/imports/commands/replacement.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 248-249,342-344,531-532
+lib/storyarn/projects/assets/execution/asset_trash.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 101-109
+lib/storyarn/sheets/versioning/commands/materialization_helpers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 28-29
+test/storyarn/platform/adapters/oban/operational_metrics_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 22-23
+lib/storyarn/localization/texts/commands/translation_attributes.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 86-87
+test/storyarn/projects/versioning/execution/project_snapshot_build_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 705-707
+lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 1085-1091,2214-2217
+lib/storyarn_web/live/localization_live/glossary.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 35
+test/storyarn/ideation/sessions_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 231-233
+test/storyarn/ideation/round_recovery_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 168-172,218-220,225-227,234-235
+lib/storyarn_web/live_vue_encoders.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 66-68
+lib/storyarn/flows/expressions/queries/variable_namespace_resolver.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 42-43
+lib/storyarn/ai/operations/commands/results.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 175-176
+lib/storyarn/projects/versioning/commands/project_snapshot_crud.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 116-117
+lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/unreal.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 26-27,29-30
+test/storyarn/ideation/idea_concurrency_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 100-102
+test/storyarn/projects/versioning/integration/workspace_snapshot_referenced_tombstones_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 327-330,341-348,392-397
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 57
+lib/storyarn_web/live/ideation_live/handlers/session_handlers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 33-34
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 34
+test/storyarn/projects/templates/project_templates_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 1006-1008,1025-1026
+test/storyarn/projects/references/execution/variable_reference_validation_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 800-801,820-821
+priv/gettext/settings.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 45
+test/storyarn/sheets/health/integration/dashboard_coverage_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 408-410
+lib/storyarn/commercial/execution/storage_accounting.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 287-288,2067-2069,2350-2358,2904-2905,2907-2908,2937-2940
+lib/storyarn/ai/routing/rules/model_limits.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 63-64
+lib/storyarn/commercial/project_storage_reservations.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 98-99
+assets/app/modules/flows/editor/components/panels/FlowCommentsPanel.vue
+  s_2849957cac15c2::t_ff26a85e37dbd5 7-11,14,21-26
+test/storyarn/flows/editor/commands/sequence_visual_layer_insertion_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 39-40,55-57
+  s_2849957cac15c2::t_b1b2e9f08b6de8 38
+lib/storyarn/flows/editor/commands/flow_crud.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 67-73,685-686
+assets/app/modules/flows/editor/composables/useCanvasComments.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 19,21,30,113,129,136-140,143,161-162,164-171,184,344,431,457,490,493-494,515,554-571,635-648,665,672
+lib/storyarn/flows/expressions/rules/formula_runtime.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 46-47
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 151-152,763-764,1018-1021
+lib/storyarn/sheets/expressions/queries/variable_namespaces.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 49-50
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 380-381
+lib/storyarn/platform/object_storage/adapters/local.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 129-130
+lib/storyarn/projects/content/flows/rules/node_connection_rules.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 103-104
+lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 780-783,1529-1530
+priv/gettext/scenes.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 35,234,251-252,273,283,288-289,368,395,455,498-499,504-505,510-511,516-517,522-523,529,534-535,540-541,546-547,552-553,558-559,564-565,571,577,582-583,588-589,594-595,600-601,606-607,612-613,618-619,624-625,630-631,636-637,642-643,658-659,709,715,721,726-727,743,748,753,764,769,774,821-822,832,837-838,848,858,889,894-895,901,906-907,912-913,918-919,934,939,944
+test/storyarn/architecture/privileged_entrypoint_boundary_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 652-656,679-683,713-714,726-731,756-761,771-777
+test/storyarn/projects/versioning/execution/builders/project_snapshot_builder_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 201-203
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 176,467,472,477,491-500
+lib/storyarn/sheets/expressions/queries/variable_catalog.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 512-513
+lib/storyarn_web/live/scene_live/show.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 662-663,1003-1007
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 331-332,857-858,1484-1486,1492-1494,1520-1523,1900-1903
+lib/storyarn/workers/projects/trash_retention_worker.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 79-80
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 35,234,251-252,273,283,288-289,368,395,455,498-499,504-505,510-511,516-517,522-523,529,534-535,540-541,546-547,552-553,558-559,564-565,571,577,582-583,588-589,594-595,600-601,606-607,612-613,618-619,624-625,630-631,636-637,642-643,658-659,709,715,721,726-727,743,748,753,764,769,774,821-822,832,837-838,848,858,889,894-895,901,906-907,912-913,918-919,934,939,944
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 417-424,436-438,624-630,1598-1599
+lib/storyarn/ai/context_building/execution/builder.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 75
+lib/storyarn/sheets/editor/commands/tables.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 679-684
+test/e2e/workspaces/projects/ideation/canvas_refinement_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 133-134
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 309-312,331-560
+  s_2849957cac15c2::t_cc22cec2a0e7d5 561
+test/storyarn/ideation/ideas_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 110-117,234-241
+test/storyarn/ideation/rounds_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 87-93,119-122,241-244
+lib/storyarn/projects/comments/comments.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 214-227
+lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 2014-2015
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 99,130,157,164,171,178,183,188,198
+lib/storyarn/projects/templates/execution/audit.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 578-579
+config/architecture_boundaries.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 289-290,814-815,828-829,833-834,2492-2493,2579-2580,2666-2667,2859-2860,2963-2964,3419-3420,4181-4182,4236-4237,4365-4366,4372-4373,4928-4929,4935-4936
+lib/storyarn/scenes/references/queries/variable_namespaces.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 42-43
+test/storyarn/projects/interchange/imports/integration/replacement_restore_integration_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 155-157
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/speaker_classifier.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 606-613
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 214-215
+test/storyarn/projects/versioning/execution/builders/sheet_builder_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 987-991
+test/storyarn/ideation/round_contributions_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 108-109,204-205
+lib/storyarn_web/live/ideation_live/board.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 79,248-249,348-351
+lib/storyarn/commercial/entities/storage_reservation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 236-242
+lib/storyarn/ai/routing/contracts/task.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 151-152,259-263
+lib/storyarn_web/live/hooks/workspace_scope.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 31-36
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 175-192,331-333,458-464,467,530-532,537-542,547-548
+lib/mix/tasks/convention_check.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 343-344
+lib/storyarn/platform/object_storage/adapters/r2.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 359-360,483-484,808-809
+lib/storyarn_web/controllers/export_controller.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 178-180
+lib/storyarn_web/live/template_live/show.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 328
+lib/storyarn/scenes/versioning/commands/materialization_helpers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 28-29
+test/storyarn/projects/comments/contextual_comments_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 244-276
+test/storyarn/ideation/group_recovery_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 104-111,288-289
+test/storyarn/architecture/persistence_write_ownership_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 269-271,1669-1670,2693-2696,5126-5127,6122-6130,6168-6169,6288-6289,6458-6459
+test/storyarn_web/live/flow_live/show_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 1103-1105
+assets/app/modules/flows/editor/components/chrome/FlowCanvasComments.vue
+  s_2849957cac15c2::t_ff26a85e37dbd5 3,12-19,25,29-30,59,73,96-114,265,276
+assets/app/test/components/comments/commentDraftStorage.test.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 9-40
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 63
+lib/storyarn/ideation/recovery/adapters/records.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 49-52
+lib/storyarn/sheets/assets/commands/assets.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 169-170
+lib/storyarn/flows/versioning/execution/flow_snapshot_validator.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 155-156,687-688,724-725
+lib/storyarn/projects/templates/execution/publication_runner.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 305-309
+test/storyarn/flows/editor/queries/editor_catalog_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 81-82
+test/storyarn/ideation/idea_privacy_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 121-128
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 58-59
+lib/storyarn/flows/editor/editor.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 324-325
+test/storyarn_web/live/flow_live/sequence_versioning_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 273-276
+lib/storyarn_web/live/sheet_live/show.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 477-480,671-672
+test/storyarn/scenes/versioning/rules/restore_policy_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 33-42
+lib/storyarn/projects/assets/execution/multipart_cleanup.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 776-777,897-898
+assets/app/modules/flows/editor/lib/context_menu_items.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 60-61,63,72-83
+assets/app/modules/flows/editor/lib/comment-geometry.ts
+  s_2849957cac15c2::t_ff26a85e37dbd5 2,18-21,39,47-50,53-63
+lib/storyarn/ideation/recovery/execution/capture.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 19-21
+test/storyarn/workspaces/memberships/commands/actor_aware_membership_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 36-41
+lib/storyarn/projects/access/commands/invitation_operations.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 409-413
+test/storyarn/projects/versioning/execution/builders/flow_builder_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 3384-3386
+lib/storyarn/flows/ai/contracts/context_contract.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 69
+lib/storyarn_web/live/settings_live/integration_detail.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 145-146
+test/storyarn/workers/ideation/expire_ideation_timer_worker_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 32-34
+lib/storyarn/ai/integrations/commands/integration_assignments.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 124-125
+lib/storyarn_web/live/settings_live/workspace_projects.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 242-245
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 312-313
+lib/storyarn/ai/operations/commands/lifecycle.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 213-214,540-541,543-544
+test/storyarn/ideation/timer_recovery_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 255-256
+lib/storyarn_web/live/ideation_live/helpers/round_data.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 38-39
+lib/storyarn_web/live/workspace_live/show.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 160-161
+test/storyarn/sheets/versioning/rules/restore_policy_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 33-42
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 15,21,27,107,112,127,225,231,238-239,245,251,257,263,269,275,281,312,318,324,330,336,342,429,435,441,461,466,471
+lib/storyarn/projects/versioning/execution/materialization_helpers.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 41-42
+lib/storyarn/flows/references/rules/stale_variable_reference_data.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 228-229
+config/runtime.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 177-178,403-404
+test/storyarn/projects/versioning/execution/project_recovery_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 3311-3313
+lib/storyarn/projects/versioning/execution/project_recovery.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 519-520,785-786,1706-1711,1757-1766,3432-3433,3707-3708
+test/support/ai_contract_task.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 94-95
+test/storyarn/projects/comments/ideation_collaboration_test.exs
+  s_2849957cac15c2::t_478be1760cf15a 218-221
+test/storyarn/ideation/recovery_generations_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 87-90
+lib/storyarn/flows/references/commands/variable_reference_tracker.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 280-281,478-479
+priv/gettext/identity.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 63
+test/storyarn/architecture/dependency_policy_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 230-234
+test/storyarn/architecture/ai_web_facade_boundary_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 90-91
+lib/storyarn/scenes/versioning/execution/scene_snapshot.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 1167-1168
+lib/storyarn/projects/versioning/execution/project_snapshot_build.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 79-80,427-434,801-802,891-892,1861-1862,2024-2025
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/materialization.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 38-41
+lib/storyarn/projects/references/execution/variable_reference_validation.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 86-87,170-171
+test/storyarn/projects/comments/ideation_comments_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 72-74,103-105
+test/storyarn/projects/comments/spatial_comments_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 225-231,236-242
+priv/gettext/projects.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 60,167,173-174,209,275,285,291-292,297,302,312,317,322,327,332,338,384,395,425,440,510,546,551,576,596,607,613,624-626,642,648,658-659,665,675,681,686,730,735,740,795,800,805-806,811,816,821,826,831,836,841,846,851,856,861-862,867,922,927,952,957,962,967,972,987,992,997,1007,1027,1039,1044,1049,1054,1069,1074,1084,1089,1094,1099,1104,1109,1114,1119,1124,1232,1280,1311,1316-1317,1322
+test/storyarn/projects/assets/adapters/storage/storage_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 763-764
+lib/storyarn/projects/references/queries/variable_namespace_resolver.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 47-48
+priv/gettext/sheets.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 15,21,27,107,112,127,225,231,238-239,245,251,257,263,269,275,281,312,318,324,330,336,342,429,435,441,461,466,471
+test/storyarn_web/live/dashboard_async_state_test.exs
+  s_2849957cac15c2::t_ff26a85e37dbd5 316-317,321-322
+lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex
+  s_2849957cac15c2::t_ff26a85e37dbd5 1086-1087
+priv/gettext/assets.pot
+  s_2849957cac15c2::t_ff26a85e37dbd5 57
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_2849957cac15c2::t_ff26a85e37dbd5 60,167,173-174,209,275,285,291-292,297,302,312,317,322,327,332,338,384,395,425,440,510,546,551,576,596,607,613,624-626,642,648,658-659,665,675,681,686,730,735,740,795,800,805-806,811,816,821,826,831,836,841,846,851,856,861-862,867,922,927,952,957,962,967,972,987,992,997,1007,1027,1039,1044,1049,1054,1069,1074,1084,1089,1094,1099,1104,1109,1114,1119,1124,1232,1280,1311,1316-1317,1322
+test/storyarn/projects/comments/ideation_conversation_events_test.exs
+  s_2849957cac15c2::t_f9c1a018e5d054 368-375,380-387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "03841443bcab6be28f1cece095bc9b356cf24308",
+  "prompts": {},
+  "sessions": {
+    "s_2849957cac15c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08cee-7937-74e3-a18f-3dd4680183a0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
