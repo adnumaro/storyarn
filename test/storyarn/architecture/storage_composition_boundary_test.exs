@@ -1,5 +1,5 @@
 defmodule Storyarn.Architecture.StorageCompositionBoundaryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: true, group: :source_scans
 
   alias Storyarn.Architecture.DependencyPolicy
   alias Storyarn.Platform.ObjectStorage
@@ -163,31 +163,36 @@ defmodule Storyarn.Architecture.StorageCompositionBoundaryTest do
   end
 
   test "production code reaches only the public facade from the approved seams" do
-    external_sources = @production_sources -- @platform_sources
+    external_sources = Map.new(@production_sources -- @platform_sources, &{&1, File.read!(&1)})
 
     consumers =
       external_sources
-      |> Enum.filter(&(File.read!(&1) =~ "Storyarn.Platform.ObjectStorage"))
+      |> Enum.filter(fn {_path, source} -> source =~ "Storyarn.Platform.ObjectStorage" end)
+      |> Enum.map(&elem(&1, 0))
       |> Enum.sort()
 
     assert consumers == Enum.sort(@approved_consumers)
 
     private_reference_violations =
-      Enum.filter(external_sources, fn path ->
+      external_sources
+      |> Enum.filter(fn {_path, source} ->
         Regex.match?(
           ~r/\bStoryarn\.Platform\.ObjectStorage\.(?:Adapters|Hashing|KeyLock)\b/,
-          File.read!(path)
+          source
         )
       end)
+      |> Enum.map(&elem(&1, 0))
 
     assert private_reference_violations == [],
            "ObjectStorage providers, hashing and lock engine are private to Platform: " <>
              inspect(private_reference_violations)
 
     adapter_escape_violations =
-      Enum.filter(external_sources, fn path ->
-        Regex.match?(~r/\b(?:ObjectStorage|Storage)\.adapter\s*\(/, File.read!(path))
+      external_sources
+      |> Enum.filter(fn {_path, source} ->
+        Regex.match?(~r/\b(?:ObjectStorage|Storage)\.adapter\s*\(/, source)
       end)
+      |> Enum.map(&elem(&1, 0))
 
     assert adapter_escape_violations == [],
            "Consumers must not obtain the configured provider module: " <>

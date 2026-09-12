@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { MessageCircle, Plus } from "@lucide/vue";
-import { computed, nextTick, ref, watch } from "vue";
+import { Magnet, MessageCircle, Plus, Unlink, Repeat2, Eye, EyeOff } from "@lucide/vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import type { SceneCommentsPanelState, SceneCommentThread } from "../../../types/comments";
@@ -8,22 +8,39 @@ import type {
   SceneCommentProjection,
   SceneCommentStageTransform,
 } from "../../lib/comment-geometry";
+import type { SceneCommentTargets } from "../../lib/comment-snap-adapter";
 import { useSceneCanvasComments } from "../../composables/useSceneCanvasComments";
 import SceneCommentsPanel from "../panels/SceneCommentsPanel.vue";
 
-const { container, stage, projection, backgroundSettled, state, commentPins, focusThreadId } =
-  defineProps<{
-    container: HTMLElement;
-    stage: SceneCommentStageTransform;
-    projection: SceneCommentProjection;
-    backgroundSettled: boolean;
-    state: SceneCommentsPanelState;
-    commentPins: SceneCommentThread[];
-    focusThreadId: number | null;
-  }>();
+const {
+  container,
+  stage,
+  projection,
+  backgroundSettled,
+  state,
+  commentPins,
+  focusThreadId,
+  targets = { pins: [], zones: [], connections: [], annotations: [] },
+  draftStorageKey = null,
+  contextVisibility = { hidden: false, local: false },
+} = defineProps<{
+  container: HTMLElement;
+  stage: SceneCommentStageTransform;
+  projection: SceneCommentProjection;
+  backgroundSettled: boolean;
+  state: SceneCommentsPanelState;
+  commentPins: SceneCommentThread[];
+  focusThreadId: number | null;
+  targets?: SceneCommentTargets;
+  draftStorageKey?: string | null;
+  contextVisibility?: { hidden: boolean; local: boolean };
+}>();
 
+const emit = defineEmits<{ revealContext: []; resetLocalLayers: [] }>();
 const live = useLive();
 const popup = ref<HTMLElement | null>(null);
+const measuredPopupSize = ref<{ width: number; height: number } | null>(null);
+let popupObserver: ResizeObserver | null = null;
 const contextMenu = ref<HTMLElement | null>(null);
 const {
   pins,
@@ -34,6 +51,19 @@ const {
   activePoint,
   draftPoint,
   moveError,
+  panelState,
+  magnetism,
+  moving,
+  keyboardDragging,
+  dragPreview,
+  snapOutline,
+  isPending,
+  onPinKeyDown,
+  onPinBlur,
+  onLostCapture,
+  toggleMagnetism,
+  cycleContext,
+  discardStoredDraft,
   contextMenuPoint,
   selectThread,
   startDrag,
@@ -47,6 +77,8 @@ const {
   state: () => state,
   pins: () => commentPins,
   focusThreadId: () => focusThreadId,
+  targets: () => targets,
+  draftStorageKey: () => draftStorageKey,
   live,
 });
 
@@ -61,7 +93,7 @@ const popupPosition = computed(() =>
   commentPopoverPosition(
     activePoint.value ?? { x: bounds.value.width / 2, y: bounds.value.height / 2 },
     bounds.value,
-    popupSize.value,
+    measuredPopupSize.value ?? popupSize.value,
   ),
 );
 const previewSize = computed(() => ({
@@ -98,6 +130,25 @@ watch(contextMenuPoint, async (point) => {
   await nextTick();
   contextMenu.value?.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
 });
+watch(popup, (element) => {
+  popupObserver?.disconnect();
+  measuredPopupSize.value = null;
+  if (!element) return;
+  const measure = () => {
+    const { width, height } = element.getBoundingClientRect();
+    if (
+      width > 0 &&
+      height > 0 &&
+      (measuredPopupSize.value?.width !== width || measuredPopupSize.value.height !== height)
+    ) {
+      measuredPopupSize.value = { width, height };
+    }
+  };
+  popupObserver = new ResizeObserver(measure);
+  popupObserver.observe(element);
+  measure();
+});
+onUnmounted(() => popupObserver?.disconnect());
 </script>
 
 <template>
@@ -106,6 +157,119 @@ watch(contextMenuPoint, async (point) => {
     data-testid="scene-canvas-comments"
     data-scene-comment-ui="true"
   >
+    <div
+      v-if="state.canComment && (pins.length || placing || draftPoint)"
+      class="pointer-events-auto absolute right-4 top-4 z-10 flex items-center gap-2"
+      @pointerdown.stop
+    >
+      <button
+        id="scene-comment-magnetism-toggle"
+        type="button"
+        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        :aria-pressed="magnetism"
+        :title="$t('scenes.comments.magnetism_hint')"
+        @click.stop="toggleMagnetism"
+      >
+        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
+        {{ $t(magnetism ? "scenes.comments.magnetism_on" : "scenes.comments.magnetism_off") }}
+      </button>
+    </div>
+    <div
+      v-if="contextVisibility.local || (state.open && contextVisibility.hidden)"
+      class="pointer-events-auto absolute left-4 top-4 z-20 max-w-xs rounded-lg border border-border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-md"
+      @pointerdown.stop
+    >
+      <p>
+        {{
+          $t(
+            contextVisibility.hidden
+              ? "scenes.comments.hidden_context"
+              : "scenes.comments.local_context_visible",
+          )
+        }}
+      </p>
+      <button
+        v-if="contextVisibility.hidden"
+        id="scene-comment-reveal-context"
+        type="button"
+        class="mt-1 inline-flex items-center gap-1 rounded px-1 py-1 text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+        @click="emit('revealContext')"
+      >
+        <Eye class="size-3.5" />{{ $t("scenes.comments.reveal_context") }}
+      </button>
+      <button
+        v-else
+        id="scene-comment-reset-local-layers"
+        type="button"
+        class="mt-1 inline-flex items-center gap-1 rounded px-1 py-1 text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+        @click="emit('resetLocalLayers')"
+      >
+        <EyeOff class="size-3.5" />{{ $t("scenes.comments.reset_local_layers") }}
+      </button>
+    </div>
+    <p id="scene-comment-move-instructions" class="sr-only">
+      {{ $t("scenes.comments.keyboard_move_hint") }}
+    </p>
+    <svg
+      v-if="moving && snapOutline"
+      class="absolute inset-0 size-full overflow-visible"
+      aria-hidden="true"
+    >
+      <rect
+        v-if="snapOutline.kind === 'rect'"
+        :x="snapOutline.left"
+        :y="snapOutline.top"
+        :width="snapOutline.width"
+        :height="snapOutline.height"
+        rx="4"
+        class="fill-primary/5 stroke-primary"
+        stroke-width="2"
+      />
+      <circle
+        v-else-if="snapOutline.kind === 'point'"
+        :cx="snapOutline.x"
+        :cy="snapOutline.y"
+        r="6"
+        class="fill-primary/5 stroke-primary"
+        stroke-width="2"
+      />
+      <polyline
+        v-else
+        :points="
+          [...snapOutline.points, ...(snapOutline.closed ? snapOutline.points.slice(0, 1) : [])]
+            .map((p) => `${p.x},${p.y}`)
+            .join(' ')
+        "
+        :class="snapOutline.closed ? 'fill-primary/5 stroke-primary' : 'fill-none stroke-primary'"
+        stroke-width="2"
+        stroke-linejoin="round"
+      />
+    </svg>
+    <div
+      v-if="moving"
+      id="scene-comment-snap-preview"
+      role="status"
+      aria-live="polite"
+      class="absolute bottom-5 left-1/2 flex max-w-[90%] -translate-x-1/2 items-center gap-2 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
+    >
+      <span class="truncate">{{
+        dragPreview?.candidate
+          ? $t("scenes.comments.snap_context", { label: dragPreview.candidate.label })
+          : $t("scenes.comments.free_position")
+      }}</span>
+      <button
+        v-if="keyboardDragging && (dragPreview?.candidates.length ?? 0) > 1"
+        type="button"
+        class="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+        @pointerdown.stop.prevent
+        @click.stop="cycleContext(1)"
+      >
+        <Repeat2 class="size-3.5" />{{ $t("scenes.comments.next_context") }}
+      </button>
+      <span class="hidden text-muted-foreground sm:inline">{{
+        $t("scenes.comments.drag_hint")
+      }}</span>
+    </div>
     <p
       v-if="placing"
       role="status"
@@ -133,14 +297,21 @@ watch(contextMenuPoint, async (point) => {
       }"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('scenes.comments.pin_label', { author: pin.thread.author.display_name })"
-      :aria-describedby="hoverId === pin.thread.id ? 'scene-comment-preview' : undefined"
+      :aria-describedby="
+        hoverId === pin.thread.id
+          ? 'scene-comment-preview scene-comment-move-instructions'
+          : 'scene-comment-move-instructions'
+      "
+      :aria-busy="isPending(pin.thread.id)"
       :aria-expanded="state.thread?.id === pin.thread.id && popupOpen"
       aria-haspopup="dialog"
       @pointerdown.stop="startDrag($event, pin.thread)"
+      @keydown="onPinKeyDown($event, pin.thread)"
+      @lostpointercapture="onLostCapture"
       @pointerenter="hoverId = pin.thread.id"
       @pointerleave="hoverId = null"
       @focus="hoverId = pin.thread.id"
-      @blur="hoverId = null"
+      @blur="onPinBlur"
       @click.stop="selectThread(pin.thread, $event)"
     >
       <MessageCircle class="size-4" />
@@ -153,7 +324,12 @@ watch(contextMenuPoint, async (point) => {
       class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40 active:cursor-grabbing"
       :style="{ left: `${draftPoint.x}px`, top: `${draftPoint.y}px` }"
       :aria-label="$t('scenes.comments.move_pin')"
+      aria-describedby="scene-comment-move-instructions"
+      :aria-busy="panelState.draftPending"
       @pointerdown.stop="startDrag($event, null)"
+      @keydown="onPinKeyDown($event, null)"
+      @blur="onPinBlur"
+      @lostpointercapture="onLostCapture"
     >
       <Plus class="size-4" />
     </button>
@@ -208,7 +384,7 @@ watch(contextMenuPoint, async (point) => {
       role="dialog"
       tabindex="-1"
       :aria-label="$t('scenes.comments.title')"
-      class="pointer-events-auto absolute flex flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
+      class="pointer-events-auto absolute z-30 flex flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
       :style="{
         left: `${popupPosition.x}px`,
         top: `${popupPosition.y}px`,
@@ -219,7 +395,12 @@ watch(contextMenuPoint, async (point) => {
       @wheel.stop
       @contextmenu.stop
     >
-      <SceneCommentsPanel :state="state" embedded />
+      <SceneCommentsPanel
+        :state="panelState"
+        :draft-storage-key="draftStorageKey"
+        embedded
+        @close="discardStoredDraft"
+      />
     </div>
   </div>
 </template>

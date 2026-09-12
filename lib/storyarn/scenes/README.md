@@ -120,3 +120,23 @@ commands or queries.
   owning command, rule, event, or execution workflow.
 - `Repo` and SQL tables remain shared in this phase. Code ownership is isolated
   now so schema and database separation can happen independently later.
+
+## Comment context deletion contract
+
+Scene element deletion has one database-level cross-context write: the
+Projects-owned comment triggers in
+`priv/repo/migrations/20260912120000_capture_scene_comment_context_positions.exs`
+capture a contextual thread's last position before its pin, zone, connection or
+annotation disappears. The `BEFORE DELETE` triggers run in the deleting
+transaction, including endpoint cascades, and update only
+`comment_threads.position_x` and `position_y`. They match the owning Scene,
+context pointer, immutable ID and creation timestamp, and require a saved offset.
+The delete and comment-row update use PostgreSQL row locks in that transaction.
+
+This is a lifecycle exception over the shared database, not ordinary comment
+write authority for Scenes. Projects still owns threads, messages, revisions and
+discussion activity; these triggers do not change them or create a replacement
+context. See [the comment contract](../projects/comments/README.md#spatial-positions).
+`mix architecture.check` checks application source edges and does not inspect
+these migration-defined trigger bodies. The deletion and cascade contract is
+covered by `test/storyarn/projects/comments/scene_context_comments_test.exs`.

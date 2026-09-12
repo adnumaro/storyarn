@@ -1,0 +1,4 @@
+{
+  "assets/js/app.js": { "file": "/assets/test-app.js", "isEntry": true },
+  "assets/css/app.css": { "file": "/assets/test-app.css", "isEntry": true }
+}

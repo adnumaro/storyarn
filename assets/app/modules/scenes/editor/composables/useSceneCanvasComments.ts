@@ -3,12 +3,24 @@ import type { useLive } from "@shared/composables/useLive";
 import type { SceneCommentsPanelState, SceneCommentThread } from "../../types/comments";
 import {
   sceneCommentCanvasPoint,
-  sceneCommentDragPosition,
   sceneCommentPointFromClient,
   sceneCommentScreenPoint,
   type SceneCommentProjection,
   type SceneCommentStageTransform,
 } from "../lib/comment-geometry";
+import {
+  CommentMagneticDrag,
+  type CommentMagneticInitial,
+  type CommentMagneticPreview,
+} from "@components/comments/commentMagnetism";
+import type { CommentContextReference } from "@components/comments/types";
+import { commentContextCycleDirection } from "@components/comments/commentKeyboard";
+import {
+  sceneCommentSnapAdapter,
+  resolveSceneCommentPosition,
+  type SceneCommentTargets,
+} from "../lib/comment-snap-adapter";
+import { useSceneCommentDraftRecovery } from "./useSceneCommentDraftRecovery";
 import type { SceneCommentPosition } from "../../types/comments";
 
 interface SceneCanvasCommentsOptions {
@@ -19,16 +31,31 @@ interface SceneCanvasCommentsOptions {
   state: () => SceneCommentsPanelState;
   pins: () => SceneCommentThread[];
   focusThreadId: () => number | null;
+  targets: () => SceneCommentTargets;
+  draftStorageKey: () => string | null;
   live: ReturnType<typeof useLive>;
 }
 
 interface PinDrag {
   thread: SceneCommentThread | null;
-  pointerId: number;
+  draftId: string | null;
+  pointerId: number | null;
+  target: HTMLElement;
   start: SceneCommentPosition;
-  position: SceneCommentPosition;
-  stage: SceneCommentStageTransform;
+  pointer: SceneCommentPosition;
+  session: CommentMagneticDrag;
   moved: boolean;
+}
+interface PendingMove extends CommentMagneticInitial {
+  request: number;
+  revision: number;
+}
+interface DraftAcknowledgement extends CommentMagneticInitial {
+  id: string | null;
+}
+interface PendingDraft extends CommentMagneticInitial {
+  request: number;
+  draftId: string | null;
 }
 
 function editableTarget(target: EventTarget | null): boolean {
@@ -73,18 +100,36 @@ function interactiveTarget(target: EventTarget | null): boolean {
   );
 }
 
+const keyboardDirections: Partial<Record<string, SceneCommentPosition>> = {
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+};
+function ignorePinShortcut(event: KeyboardEvent): boolean {
+  return editableTarget(event.target) || event.ctrlKey || event.metaKey;
+}
+
 export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
   const { container, stage, projection, live } = options;
+  const adapter = sceneCommentSnapAdapter({
+    container: () => container,
+    stage: () => stage,
+    projection: () => projection,
+    targets: options.targets,
+  });
   const bounds = shallowRef({ width: 0, height: 0 });
   const hoverId = ref<number | null>(null);
   const drag = shallowRef<PinDrag | null>(null);
-  const movedPositions = ref(
-    new Map<number, { position: SceneCommentPosition; revision: number }>(),
-  );
-  const draftPosition = ref<SceneCommentPosition | null>(null);
+  const dragPreview = shallowRef<CommentMagneticPreview | null>(null);
+  const pendingMoves = ref(new Map<number, PendingMove>());
+  const pendingDraft = shallowRef<PendingDraft | null>(null);
+  const magnetism = ref(true);
   const contextPosition = ref<SceneCommentPosition | null>(null);
   const contextMenuPoint = ref<SceneCommentPosition | null>(null);
   const moveError = ref(false);
+  let request = 0;
+  let altHeld = false;
   let disposed = false;
   let suppressedClick = false;
   let placedPointer: number | null = null;
@@ -107,26 +152,85 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
   });
   const pins = computed(() =>
     visibleThreads.value.flatMap((thread) => {
-      const position = movedPositions.value.get(thread.id)?.position ?? thread.position;
-      const point = sceneCommentCanvasPoint(thread, position);
-      return point
+      const pending = pendingMoves.value.get(thread.id);
+      const moving = drag.value?.thread?.id === thread.id ? dragPreview.value : null;
+      const point = moving?.position ?? pending?.position ?? threadPoint(thread);
+      return point && thread.source.status === "available"
         ? [{ thread, point, screen: sceneCommentScreenPoint(point, stage, projection) }]
         : [];
     }),
   );
-  const draftPoint = computed(() => {
+  function threadPoint(thread: SceneCommentThread) {
+    const position = sceneCommentCanvasPoint(thread);
+    return resolveSceneCommentPosition(position, thread.context, options.targets(), projection);
+  }
+  function currentDraft(): CommentMagneticInitial | null {
     const state = options.state();
-    const position = draftPosition.value ?? state.draftPosition;
-    if (!state.open || state.presentation !== "canvas" || state.thread || !position) return null;
-    return sceneCommentScreenPoint(position, stage, projection);
+    if (!state.open || state.presentation !== "canvas" || state.thread || !state.draftPosition)
+      return null;
+    const context = state.draftContext ?? null;
+    const position = resolveSceneCommentPosition(
+      state.draftPosition,
+      context,
+      options.targets(),
+      projection,
+    );
+    return position ? { position, context } : null;
+  }
+  const { restoreStoredDraft, discardStoredDraft } = useSceneCommentDraftRecovery({
+    state: options.state,
+    storageKey: options.draftStorageKey,
+    placement: currentDraft,
+    ready: () =>
+      bounds.value.width > 0 &&
+      bounds.value.height > 0 &&
+      options.backgroundSettled() &&
+      options.focusThreadId() == null,
+    live,
+  });
+  const draftPoint = computed(() => {
+    const confirmed = currentDraft();
+    if (!confirmed) return null;
+    const moving = drag.value && !drag.value.thread ? dragPreview.value : null;
+    return sceneCommentScreenPoint(
+      (moving ?? pendingDraft.value ?? confirmed).position,
+      stage,
+      projection,
+    );
+  });
+  const panelState = computed<SceneCommentsPanelState>(() => {
+    const moving = drag.value && !drag.value.thread ? dragPreview.value : null;
+    const draft = moving ?? pendingDraft.value ?? currentDraft();
+    return {
+      ...options.state(),
+      ...(draft ? { draftPosition: draft.position, draftContext: draft.context } : {}),
+      draftPending: Boolean(moving || pendingDraft.value),
+    };
   });
   const activePoint = computed(() =>
     selectedThread.value
       ? (pins.value.find((pin) => pin.thread.id === selectedThread.value?.id)?.screen ?? null)
       : draftPoint.value,
   );
-  const hoveredPin = computed(() => pins.value.find((pin) => pin.thread.id === hoverId.value));
-
+  const hoveredPin = computed(() =>
+    drag.value ? null : pins.value.find((pin) => pin.thread.id === hoverId.value),
+  );
+  const moving = computed(() => Boolean(drag.value?.moved));
+  const keyboardDragging = computed(() => drag.value?.pointerId === null);
+  const isPending = (id: number) => pendingMoves.value.has(id);
+  const snapOutline = computed(() => {
+    const geometry = dragPreview.value?.candidate?.geometry;
+    if (!geometry) return null;
+    const rect = container.getBoundingClientRect();
+    if (geometry.kind === "rect")
+      return { ...geometry, left: geometry.left - rect.left, top: geometry.top - rect.top };
+    if (geometry.kind === "point")
+      return { ...geometry, x: geometry.x - rect.left, y: geometry.y - rect.top };
+    return {
+      ...geometry,
+      points: geometry.points.map((p) => ({ x: p.x - rect.left, y: p.y - rect.top })),
+    };
+  });
   function pointFromClient(clientX: number, clientY: number): SceneCommentPosition {
     return sceneCommentPointFromClient(
       { x: clientX, y: clientY },
@@ -151,7 +255,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
       return;
 
     const thread = visibleThreads.value.find((item) => item.id === id);
-    const point = thread && sceneCommentCanvasPoint(thread);
+    const point = thread && threadPoint(thread);
     if (!point) return;
 
     const world = projection.percentToPixel(point.x, point.y);
@@ -165,6 +269,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     const rect = container.getBoundingClientRect();
     bounds.value = { width: rect.width, height: rect.height };
     focusThread();
+    restoreStoredDraft();
   }
 
   function canvasTarget(event: MouseEvent): event is MouseEvent & { target: Element } {
@@ -192,8 +297,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
       consumeContextClick = true;
       return;
     }
-    if (!placing.value || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey)
-      return;
+    if (!placing.value || event.button !== 0 || event.ctrlKey || event.metaKey) return;
 
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -201,7 +305,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     consumePlacedClick = true;
     if (!options.backgroundSettled()) return;
     const position = pointFromClient(event.clientX, event.clientY);
-    live.pushEvent("comments_place", { x: position.x, y: position.y });
+    placeAt(position, { x: event.clientX, y: event.clientY }, event.altKey);
   }
 
   function blockContextMouseCompatibility(event: MouseEvent): void {
@@ -260,7 +364,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
       closeContextMenu();
       return;
     }
-    live.pushEvent("comments_place", contextPosition.value);
+    placeAt(contextPosition.value, adapter.toScreen(contextPosition.value));
     contextPosition.value = null;
     contextMenuPoint.value = null;
   }
@@ -283,6 +387,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     event.preventDefault();
     event.stopImmediatePropagation();
     hoverId.value = null;
+    if (!placing.value) discardStoredDraft();
     live.pushEvent(
       placing.value ? "comments_mode" : "comments_close",
       placing.value ? { active: false } : {},
@@ -290,6 +395,11 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
   }
 
   function onKeyDown(event: KeyboardEvent): void {
+    if (handleDragKey(event)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     if (ignoreCommentShortcut(event)) return;
     if (event.key === "Escape") {
       if (contextMenuPoint.value) {
@@ -306,6 +416,39 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     }
   }
 
+  function placeAt(position: SceneCommentPosition, pointer: SceneCommentPosition, free = false) {
+    const session = new CommentMagneticDrag(adapter, { position, context: null }, pointer);
+    const preview = session.update(pointer, !magnetism.value || free);
+    live.pushEvent("comments_place", { ...preview.position, context: preview.context });
+  }
+  function handleDragKey(event: KeyboardEvent): boolean {
+    if (!drag.value) return false;
+    if (event.key === "Escape") {
+      cancelDrag();
+      return true;
+    }
+    if (editableTarget(event.target)) return false;
+    if (event.key === "Alt") {
+      altHeld = true;
+      updatePreview();
+    }
+    const cycleDirection = commentContextCycleDirection(event);
+    if (cycleDirection != null) {
+      cycleContext(cycleDirection);
+      return true;
+    }
+    if (event.key === "Enter" && drag.value.pointerId == null) {
+      commitDrag();
+      return true;
+    }
+    return false;
+  }
+  function onKeyUp(event: KeyboardEvent) {
+    if (event.key === "Alt") {
+      altHeld = false;
+      if (drag.value?.moved) updatePreview();
+    }
+  }
   function selectThread(thread: SceneCommentThread, event: MouseEvent): void {
     if (suppressedClick && event.detail !== 0) {
       suppressedClick = false;
@@ -313,143 +456,343 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     }
     suppressedClick = false;
     hoverId.value = null;
+    discardStoredDraft();
     live.pushEvent("comments_select_thread", { thread_id: thread.id, presentation: "canvas" });
   }
 
-  function startDrag(event: PointerEvent, thread: SceneCommentThread | null): void {
-    if (!commentGeometryReady() || event.button !== 0) return;
-    if (thread && movedPositions.value.has(thread.id)) return;
-    const position = thread
-      ? (thread.position ?? null)
-      : (draftPosition.value ?? options.state().draftPosition);
-    if (!position) return;
-
-    suppressedClick = false;
-    moveError.value = false;
+  function dragInitial(thread: SceneCommentThread | null): CommentMagneticInitial | null {
+    if (!thread) return currentDraft();
+    const position = threadPoint(thread);
+    return position ? { position, context: thread.context ?? null } : null;
+  }
+  function beginDrag(
+    target: HTMLElement,
+    thread: SceneCommentThread | null,
+    pointerId: number | null,
+    pointer?: SceneCommentPosition,
+  ) {
+    if (drag.value || !commentGeometryReady()) return false;
+    if (thread ? isPending(thread.id) : pendingDraft.value) return false;
+    const initial = dragInitial(thread);
+    if (!initial) return false;
+    const { position, context } = initial;
+    const start = pointer ?? adapter.toScreen(position);
     drag.value = {
       thread,
-      pointerId: event.pointerId,
-      start: { x: event.clientX, y: event.clientY },
-      position: { ...position },
-      stage: { x: stage.x, y: stage.y, scaleX: stage.scaleX, scaleY: stage.scaleY },
+      draftId: options.state().draftId ?? null,
+      pointerId,
+      target,
+      start,
+      pointer: start,
+      session: new CommentMagneticDrag(adapter, { position, context }, start),
       moved: false,
     };
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    dragPreview.value = null;
+    suppressedClick = false;
+    moveError.value = false;
+    return true;
   }
-
-  function onDragMove(event: PointerEvent): void {
-    const current = drag.value;
-    if (!current || current.pointerId !== event.pointerId) return;
-    if (!options.backgroundSettled()) {
-      cancelActiveDrag();
-      return;
-    }
-    const delta = { x: event.clientX - current.start.x, y: event.clientY - current.start.y };
-    if (!current.moved && Math.hypot(delta.x, delta.y) < 4) return;
-
-    const position = sceneCommentDragPosition(current.position, delta, current.stage, projection);
-    drag.value = { ...current, moved: true };
-    hoverId.value = null;
-    if (current.thread)
-      movedPositions.value.set(current.thread.id, { position, revision: current.thread.revision });
-    else draftPosition.value = position;
+  function startDrag(event: PointerEvent, thread: SceneCommentThread | null) {
+    if (event.button !== 0) return;
+    const target = event.currentTarget as HTMLElement;
+    if (!beginDrag(target, thread, event.pointerId, { x: event.clientX, y: event.clientY })) return;
+    event.preventDefault();
+    altHeld = event.altKey;
+    target.focus({ preventScroll: true });
+    target.setPointerCapture?.(event.pointerId);
   }
-
-  function onDragEnd(event: PointerEvent): void {
-    const current = drag.value;
-    if (!current || current.pointerId !== event.pointerId) return;
-    if (!options.backgroundSettled()) {
-      cancelActiveDrag();
-      return;
-    }
-    drag.value = null;
-    if (!current.moved) return;
-    suppressedClick = event.type !== "pointercancel";
-    if (event.type === "pointercancel" || !options.state().canComment) {
-      if (current.thread) movedPositions.value.delete(current.thread.id);
-      draftPosition.value = null;
-      return;
-    }
-    if (current.thread) persistThreadPosition(current.thread);
-    else persistDraftPosition();
-  }
-
-  function cancelActiveDrag(): void {
+  function updatePreview() {
     const current = drag.value;
     if (!current) return;
-    drag.value = null;
-    suppressedClick = current.moved;
-    if (current.thread) movedPositions.value.delete(current.thread.id);
-    else draftPosition.value = null;
+    dragPreview.value = current.session.update(current.pointer, !magnetism.value || altHeld);
+    hoverId.value = null;
   }
-
-  function persistDraftPosition(): void {
-    const position = draftPosition.value;
-    if (!position) return;
-    const rollbackDraft = () => {
-      if (draftPosition.value !== position) return;
-      draftPosition.value = null;
+  function onDragMove(event: PointerEvent) {
+    const current = drag.value;
+    if (!current || current.pointerId !== event.pointerId) return;
+    if (!options.backgroundSettled()) {
+      cancelDrag();
+      return;
+    }
+    const pointer = { x: event.clientX, y: event.clientY };
+    if (!current.moved && Math.hypot(pointer.x - current.start.x, pointer.y - current.start.y) < 4)
+      return;
+    event.preventDefault();
+    altHeld = event.altKey;
+    drag.value = { ...current, pointer, moved: true };
+    updatePreview();
+  }
+  function onPinKeyDown(event: KeyboardEvent, thread: SceneCommentThread | null) {
+    const direction = keyboardDirections[event.key];
+    if (!direction || ignorePinShortcut(event) || !commentGeometryReady()) return;
+    const target = event.currentTarget as HTMLElement;
+    if (!drag.value && !beginDrag(target, thread, null)) return;
+    const current = drag.value;
+    if (!current || current.pointerId != null || current.target !== target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const step = event.shiftKey ? 1 : 10;
+    altHeld = event.altKey;
+    drag.value = {
+      ...current,
+      moved: true,
+      pointer: {
+        x: current.pointer.x + direction.x * step,
+        y: current.pointer.y + direction.y * step,
+      },
+    };
+    updatePreview();
+  }
+  function onPinBlur() {
+    hoverId.value = null;
+    if (drag.value?.pointerId === null) cancelDrag();
+  }
+  function endSession() {
+    const current = drag.value;
+    drag.value = null;
+    dragPreview.value = null;
+    if (current?.pointerId != null && current.target.hasPointerCapture?.(current.pointerId))
+      current.target.releasePointerCapture(current.pointerId);
+    hoverId.value = null;
+    return current;
+  }
+  function cancelDrag() {
+    if (drag.value?.moved && drag.value.pointerId != null) suppressedClick = true;
+    drag.value?.session.cancel();
+    endSession();
+  }
+  function onLostCapture(event: PointerEvent) {
+    if (drag.value?.pointerId === event.pointerId) cancelDrag();
+  }
+  function onDragEnd(event: PointerEvent) {
+    if (!drag.value || drag.value.pointerId !== event.pointerId) return;
+    if (event.type === "pointercancel" || !options.backgroundSettled()) cancelDrag();
+    else {
+      onDragMove(event);
+      commitDrag();
+    }
+  }
+  function commitDrag() {
+    const current = drag.value;
+    if (!current) return;
+    // Re-read transforms and targets at commit, including an element deleted during this gesture.
+    if (current.moved) updatePreview();
+    const preview = dragPreview.value;
+    endSession();
+    if (current.thread) hoverId.value = current.thread.id;
+    if (!current.moved || !preview || !options.state().canComment) return;
+    suppressedClick = current.pointerId != null;
+    if (current.thread) persistThread(current.thread, preview);
+    else persistDraft(current.draftId, preview);
+  }
+  function persistDraft(draftId: string | null, preview: CommentMagneticInitial) {
+    const pending = { ...preview, draftId, request: ++request };
+    pendingDraft.value = pending;
+    const rollback = () => {
+      if (disposed || pendingDraft.value?.request !== pending.request) return;
+      pendingDraft.value = null;
       moveError.value = true;
     };
     live.pushEvent(
       "comments_place",
-      { ...position, moving_draft: true },
-      (reply) => {
-        if (reply.ok !== true) rollbackDraft();
+      {
+        ...preview.position,
+        context: preview.context,
+        moving_draft: true,
+        draft_id: draftId,
       },
-      rollbackDraft,
-    );
-  }
-
-  function persistThreadPosition({ id, revision }: SceneCommentThread): void {
-    const position = movedPositions.value.get(id)?.position;
-    if (!position) return;
-    const rollback = () => {
-      if (movedPositions.value.get(id)?.revision !== revision) return;
-      movedPositions.value.delete(id);
-      moveError.value = true;
-    };
-    live.pushEvent(
-      "comments_move",
-      { thread_id: id, ...position, expected_revision: revision },
       (reply) => {
-        if (reply.ok !== true) {
-          rollback();
-          return;
+        if (reply.ok !== true) rollback();
+        else if (pendingDraft.value?.request === pending.request) {
+          const returned = reply.draft as DraftAcknowledgement | undefined;
+          if (returned?.id === pending.draftId && returned.position) {
+            // Refresh can detach a deleted context between validation and acknowledgement.
+            pendingDraft.value = {
+              ...pending,
+              position: returned.position,
+              context: returned.context,
+            };
+          }
+          confirmDraft();
         }
-
-        const returnedThread = reply.thread;
-        if (!returnedThread || typeof returnedThread !== "object") return;
-        const returned = returnedThread as {
-          position?: { x?: unknown; y?: unknown } | null;
-          revision?: unknown;
-        };
-        if (
-          returned.revision === revision &&
-          returned.position?.x === position.x &&
-          returned.position.y === position.y &&
-          movedPositions.value.get(id)?.revision === revision
-        )
-          movedPositions.value.delete(id);
       },
       rollback,
     );
   }
+  function persistThread(thread: SceneCommentThread, preview: CommentMagneticInitial) {
+    const pending = { ...preview, request: ++request, revision: thread.revision };
+    pendingMoves.value.set(thread.id, pending);
+    const finish = (failed: boolean, returned?: SceneCommentThread) => {
+      if (disposed || pendingMoves.value.get(thread.id)?.request !== pending.request) return;
+      const latest = visibleThreads.value.find((item) => item.id === thread.id);
+      const unchanged = acknowledgedUnchanged(returned, pending, latest);
+      if (failed || !latest || latest.revision !== pending.revision || unchanged)
+        pendingMoves.value.delete(thread.id);
+      if (failed) moveError.value = true;
+    };
+    live.pushEvent(
+      "comments_move",
+      {
+        thread_id: thread.id,
+        ...preview.position,
+        expected_revision: thread.revision,
+        context: preview.context,
+      },
+      (reply) => finish(reply.ok !== true, reply.thread as SceneCommentThread | undefined),
+      () => finish(true),
+    );
+  }
+  function toggleMagnetism() {
+    magnetism.value = !magnetism.value;
+    if (drag.value?.moved) updatePreview();
+  }
+  function cycleContext(direction: 1 | -1 = 1) {
+    if (!drag.value?.moved || !magnetism.value || altHeld) return;
+    dragPreview.value = drag.value.session.cycle(direction);
+  }
 
   watch(
-    () => options.pins().map((thread) => [thread.id, thread.revision]),
+    () => [
+      options.pins().map((thread) => [thread.id, thread.revision]),
+      selectedThread.value?.revision,
+    ],
     () => {
-      for (const [id, pending] of movedPositions.value) {
-        const latest = options.pins().find((thread) => thread.id === id);
-        if (!latest || latest.revision !== pending.revision) movedPositions.value.delete(id);
+      for (const [id, pending] of pendingMoves.value) {
+        const latest = visibleThreads.value.find((thread) => thread.id === id);
+        if (!latest || latest.revision !== pending.revision) pendingMoves.value.delete(id);
       }
+      const active = drag.value?.thread;
+      if (
+        active &&
+        !visibleThreads.value.some(
+          (thread) => thread.id === active.id && thread.revision === active.revision,
+        )
+      )
+        cancelDrag();
       focusThread();
     },
   );
+  function contextIdentity(context: CommentContextReference | null | undefined) {
+    return context
+      ? JSON.stringify([context.type, context.id, context.offset?.x, context.offset?.y])
+      : null;
+  }
+  function samePlacement(
+    thread: SceneCommentThread | undefined,
+    placement: CommentMagneticInitial,
+  ) {
+    return (
+      thread?.position?.x === placement.position.x &&
+      thread.position.y === placement.position.y &&
+      contextIdentity(thread.context) === contextIdentity(placement.context)
+    );
+  }
+  function acknowledgedUnchanged(
+    returned: SceneCommentThread | undefined,
+    pending: PendingMove,
+    latest: SceneCommentThread | undefined,
+  ) {
+    return (
+      returned?.revision === pending.revision &&
+      samePlacement(returned, pending) &&
+      samePlacement(latest, pending)
+    );
+  }
+  function confirmDraft() {
+    const pending = pendingDraft.value;
+    if (!pending) return;
+    const state = options.state();
+    const matches =
+      (state.draftId ?? null) === pending.draftId &&
+      state.draftPosition?.x === pending.position.x &&
+      state.draftPosition?.y === pending.position.y &&
+      contextIdentity(state.draftContext) === contextIdentity(pending.context);
+    if (matches) pendingDraft.value = null;
+  }
+  // Drafts have no database row for the deletion trigger to preserve. Keep their
+  // last rendered position when a collaborator removes a context that has moved.
+  interface DraftLocation {
+    id: string | null;
+    saved: SceneCommentPosition;
+    position: SceneCommentPosition;
+  }
+  let lastContextualDraft: DraftLocation | null = null;
+  function contextExists(context: CommentContextReference) {
+    const targets = options.targets();
+    const lists: { [type: string]: readonly { id: string | number }[] } = {
+      scene_pin: targets.pins,
+      scene_zone: targets.zones,
+      scene_connection: targets.connections,
+      scene_annotation: targets.annotations,
+    };
+    return (
+      (lists[context.type] ?? []).some((item) => String(item.id) === context.id) ||
+      targets.origins?.some((item) => item.type === context.type && String(item.id) === context.id)
+    );
+  }
+  function needsDraftPositionRecovery(current: DraftLocation, previous: DraftLocation | null) {
+    if (!previous || previous.id !== current.id || drag.value || pendingDraft.value) return false;
+    return (
+      options.state().canComment &&
+      current.saved.x === previous.saved.x &&
+      current.saved.y === previous.saved.y &&
+      (current.position.x !== previous.position.x || current.position.y !== previous.position.y)
+    );
+  }
   watch(
-    () => [options.state().draftPosition, options.state().thread?.id],
+    () => [
+      options.state().draftId,
+      options.state().draftPosition,
+      options.state().draftContext,
+      options.state().open,
+      options.state().thread?.id,
+      options.targets(),
+    ],
     () => {
-      draftPosition.value = null;
+      const state = options.state();
+      const current = currentDraft();
+      if (!current || !state.draftPosition) {
+        lastContextualDraft = null;
+        return;
+      }
+      const location = {
+        id: state.draftId ?? null,
+        saved: { ...state.draftPosition },
+        position: current.position,
+      };
+      if (current.context) {
+        if (contextExists(current.context)) lastContextualDraft = location;
+        return;
+      }
+      const previous = lastContextualDraft;
+      lastContextualDraft = null;
+      if (previous && needsDraftPositionRecovery(location, previous))
+        persistDraft(location.id, { position: previous.position, context: null });
+    },
+    { immediate: true },
+  );
+  watch(() => [options.state().draftPosition, options.state().draftContext], confirmDraft);
+  function draftIsCurrent(id: string | null) {
+    return Boolean(currentDraft()) && (options.state().draftId ?? null) === id;
+  }
+  watch(
+    () => [options.state().draftId, options.state().open, options.state().thread?.id],
+    () => {
+      if (pendingDraft.value && !draftIsCurrent(pendingDraft.value.draftId))
+        pendingDraft.value = null;
+      if (drag.value && !drag.value.thread && !draftIsCurrent(drag.value.draftId)) cancelDrag();
+    },
+  );
+  watch(
+    () => options.state().canComment,
+    (allowed) => {
+      if (!allowed) cancelDrag();
+    },
+  );
+  watch(
+    () => [stage.x, stage.y, stage.scaleX, stage.scaleY, options.targets()],
+    () => {
+      if (drag.value?.moved) updatePreview();
     },
   );
   watch(() => options.focusThreadId(), focusThread);
@@ -458,10 +801,11 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     (settled) => {
       if (!settled) {
         closeContextMenu();
-        cancelActiveDrag();
+        cancelDrag();
         return;
       }
       focusThread();
+      restoreStoredDraft();
     },
   );
   watch(
@@ -483,6 +827,8 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     container.addEventListener("contextmenu", onContextMenu, true);
     document.addEventListener("pointerdown", closeContextMenuFromOutside, true);
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keyup", onKeyUp, true);
+    window.addEventListener("blur", cancelDrag);
     window.addEventListener("pointermove", onDragMove);
     window.addEventListener("pointerup", onDragEnd);
     window.addEventListener("pointercancel", onDragEnd);
@@ -493,6 +839,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
 
   onUnmounted(() => {
     disposed = true;
+    cancelDrag();
     if (placedClickTimer) clearTimeout(placedClickTimer);
     if (contextClickTimer) clearTimeout(contextClickTimer);
     observer?.disconnect();
@@ -506,6 +853,8 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     container.removeEventListener("contextmenu", onContextMenu, true);
     document.removeEventListener("pointerdown", closeContextMenuFromOutside, true);
     document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("keyup", onKeyUp, true);
+    window.removeEventListener("blur", cancelDrag);
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragEnd);
     window.removeEventListener("pointercancel", onDragEnd);
@@ -521,6 +870,19 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     activePoint,
     draftPoint,
     moveError,
+    panelState,
+    magnetism,
+    moving,
+    keyboardDragging,
+    dragPreview,
+    snapOutline,
+    isPending,
+    onPinKeyDown,
+    onPinBlur,
+    onLostCapture,
+    toggleMagnetism,
+    cycleContext,
+    discardStoredDraft,
     contextMenuPoint,
     selectThread,
     startDrag,

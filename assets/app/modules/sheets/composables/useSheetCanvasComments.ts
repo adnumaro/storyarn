@@ -10,6 +10,7 @@ import {
   type CommentMagneticPreview,
 } from "@components/comments/commentMagnetism";
 import type { CommentContextReference } from "@components/comments/types";
+import { commentContextCycleDirection } from "@components/comments/commentKeyboard";
 import {
   resolveSheetCommentPosition,
   sheetCommentSnapAdapter,
@@ -290,6 +291,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     draftPending: Boolean((drag.value && !drag.value.thread) || pendingDraft.value),
   }));
   const moving = computed(() => Boolean(drag.value?.moved));
+  const keyboardDragging = computed(() => drag.value?.pointerId === null);
   const snapOutline = computed(() => {
     const geometry = dragPreview.value?.candidate?.geometry;
     if (geometry?.kind !== "rect" || !container) return null;
@@ -517,8 +519,9 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
       altHeld = true;
       updatePreview();
     }
-    if (event.key === "[" || event.key === "]") {
-      cycleContext(event.key === "]" ? 1 : -1);
+    const cycleDirection = commentContextCycleDirection(event);
+    if (cycleDirection != null) {
+      cycleContext(cycleDirection);
       return true;
     }
     if (event.key === "Enter" && drag.value.pointerId == null) {
@@ -1059,6 +1062,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     dragPreview,
     snapOutline,
     moving,
+    keyboardDragging,
     magnetism,
     isPending,
     toggleMagnetism,

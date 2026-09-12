@@ -225,6 +225,20 @@ defmodule Storyarn.Projects.Comments do
     end
   end
 
+  def validate_scene_context(scope, project_id, scene_id, input) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(scene_id),
+         scene when not is_nil(scene) <- Queries.scene_source(project_id, scene_id),
+         {:ok, context} <- Context.normalize(input),
+         {:ok, _attributes} <-
+           Context.attributes(%{source_type: "scene_canvas", container_id: scene.id, project_id: project_id}, context) do
+      {:ok, context}
+    else
+      {:error, _reason} = error -> error
+      _unavailable -> {:error, :source_unavailable}
+    end
+  end
+
   def validate_sheet_context(scope, project_id, sheet_id, input) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(sheet_id),

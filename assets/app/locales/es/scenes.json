@@ -515,7 +515,19 @@
       "empty_hint": "Elige Nuevo comentario para iniciar una conversación en cualquier lugar del lienzo.",
       "readonly_hint": "Puedes leer las conversaciones. Se necesitan permisos de edición para comentar.",
       "threads": "Hilos de comentarios",
-      "load_threads": "Cargar más hilos"
+      "load_threads": "Cargar más hilos",
+      "magnetism_on": "Magnetismo",
+      "magnetism_off": "Posición libre",
+      "magnetism_hint": "Activa o desactiva el magnetismo. Mantén Alt al mover para colocar libremente.",
+      "keyboard_move_hint": "Usa las flechas para mover, Mayús para mayor precisión, Intro para guardar y Escape para cancelar. Usa Re Pág y Av Pág para elegir entre contextos superpuestos. Mantén Alt para colocar libremente.",
+      "snap_context": "Contexto: {label}",
+      "free_position": "Posición libre · sin contexto",
+      "next_context": "Siguiente contexto",
+      "drag_hint": "Alt: libre · Re Pág/Av Pág: contexto · Esc: cancelar",
+      "hidden_context": "El contexto está en una capa oculta.",
+      "reveal_context": "Mostrar contexto para mí",
+      "local_context_visible": "Estas capas están visibles solo para ti.",
+      "reset_local_layers": "Restaurar visibilidad compartida"
     },
     "canvas": {
       "fit_view": "Ajustar a la vista"

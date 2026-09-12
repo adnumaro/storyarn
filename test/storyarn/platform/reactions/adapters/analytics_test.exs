@@ -68,7 +68,7 @@ defmodule Storyarn.AnalyticsTest do
   test "track ignores unknown event names" do
     Analytics.track(%User{id: 42}, "custom free form event", %{project_id: 7})
 
-    refute_receive {:analytics_capture, _payload}
+    refute_received {:analytics_capture, _payload}
   end
 
   test "project creation deliberately excludes free-form project type details" do
@@ -99,7 +99,7 @@ defmodule Storyarn.AnalyticsTest do
           %{entity_type: "sheet", project_id: 0}
         ] do
       Analytics.track(%User{id: 42}, event_name, invalid_properties)
-      refute_receive {:analytics_capture, %{event: ^event_name}}
+      refute_received {:analytics_capture, %{event: ^event_name}}
     end
   end
 
@@ -145,13 +145,13 @@ defmodule Storyarn.AnalyticsTest do
   test "track drops events a consumer contract did not declare" do
     Analytics.track(%User{id: 42}, StoryarnTest.AnalyticsEventContract, :unknown, %{item_id: 11})
 
-    refute_receive {:analytics_capture, _payload}
+    refute_received {:analytics_capture, _payload}
   end
 
   test "track contains a broken consumer contract" do
     assert Analytics.track(%User{id: 42}, StoryarnTest.AnalyticsBrokenEventContract, :usage, %{item_id: 11}) == :ok
 
-    refute_receive {:analytics_capture, _payload}
+    refute_received {:analytics_capture, _payload}
   end
 
   test "track cannot bypass a consumer contract's value validation" do
@@ -163,7 +163,7 @@ defmodule Storyarn.AnalyticsTest do
       project_id: 7
     })
 
-    refute_receive {:analytics_capture, _payload}
+    refute_received {:analytics_capture, _payload}
 
     Analytics.track(%User{id: 42}, ProductMetrics, {:flows, :node_created}, %{
       content: "private story content",

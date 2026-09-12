@@ -1,5 +1,6 @@
 defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
-  use Storyarn.DataCase, async: false
+  # Table-locking rollback coverage lives in FlowBuilderRollbackTest.
+  use Storyarn.DataCase, async: true
   use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
@@ -2557,54 +2558,6 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
         Assets.storage_delete(cloned_audio.key)
         Assets.storage_delete(cloned_blob_key)
       end)
-    end
-
-    test "rolls back and compensates copied assets when transactional localization raises", %{
-      user: user,
-      project: project,
-      flow: flow
-    } do
-      audio = uploaded_asset(project, user, "post-commit.mp3", "post-commit audio", "audio/mpeg")
-
-      _node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker" => "Narrator", "text" => "Hello", "audio_asset_id" => audio.id}
-        })
-
-      snapshot = FlowBuilder.build_snapshot(flow)
-      target_project = project_fixture(user)
-      _language = language_fixture(target_project, %{locale_code: "es", name: "Spanish"})
-      constraint_name = "localized_texts_post_commit_#{System.unique_integer([:positive])}"
-      copied_asset_paths_before = stored_asset_paths(target_project.id, audio.filename)
-
-      copied_blob_key =
-        BlobStore.blob_key(
-          target_project.id,
-          audio.blob_hash,
-          BlobStore.ext_from_content_type(audio.content_type)
-        )
-
-      on_exit(fn -> Assets.storage_delete(copied_blob_key) end)
-
-      Repo.query!(
-        "ALTER TABLE localized_texts ADD CONSTRAINT #{constraint_name} " <>
-          "CHECK (project_id <> #{target_project.id})"
-      )
-
-      assert_raise Postgrex.Error, ~r/#{constraint_name}/, fn ->
-        FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
-          asset_mode: :copy,
-          user_id: user.id,
-          reset_shortcut: true
-        )
-      end
-
-      refute Repo.exists?(from flow in Flow, where: flow.project_id == ^target_project.id)
-      refute Repo.exists?(from asset in Asset, where: asset.project_id == ^target_project.id)
-      assert stored_asset_paths(target_project.id, audio.filename) == copied_asset_paths_before
-      assert {:ok, "post-commit audio"} = Assets.storage_download(copied_blob_key)
-      assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
     end
 
     test "immediately cleans unique copied assets and retains the canonical blob after rollback", %{

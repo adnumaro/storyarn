@@ -140,6 +140,252 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
     assert detached["position"] == %{"x" => 45.0, "y" => 65.0}
   end
 
+  test "a magnetic draft moves between element contexts and persists without duplicating its thread", context do
+    pin = pin_fixture(context.scene)
+    zone = zone_fixture(context.scene)
+    view = open_scene(context)
+    reference = %{type: "scene_pin", id: to_string(pin.id), offset: %{x: 2, y: 3}}
+    render_hook(view, "comments_place", %{x: 52, y: 53, context: reference})
+    placed = panel(view)
+    assert placed["draftContext"]["id"] == to_string(pin.id)
+
+    expected_draft = %{
+      id: placed["draftId"],
+      position: %{x: 52, y: 53},
+      context: %{type: "scene_pin", id: to_string(pin.id), offset: %{x: 2.0, y: 3.0}}
+    }
+
+    assert_reply(view, %{ok: true, draft: ^expected_draft})
+
+    render_hook(view, "comments_place", %{
+      x: 14,
+      y: 15,
+      moving_draft: true,
+      draft_id: placed["draftId"],
+      context: %{type: "scene_zone", id: to_string(zone.id), offset: %{x: 4, y: 5}}
+    })
+
+    moved = panel(view)
+    assert moved["draftId"] == placed["draftId"]
+    assert moved["draftContext"]["id"] == to_string(zone.id)
+
+    attrs = %{
+      position: moved["draftPosition"],
+      context: moved["draftContext"],
+      body: "Review the area",
+      client_request_id: Ecto.UUID.generate()
+    }
+
+    render_hook(view, "comments_create", attrs)
+    thread = panel(view)["thread"]
+    assert thread["source"]["type"] == "scene_canvas"
+    assert thread["source"]["id"] == context.scene.id
+    assert thread["context"]["type"] == "scene_zone"
+    assert thread["context"]["offset"] == %{"x" => 4.0, "y" => 5.0}
+    assert panel(view)["draftContext"] == nil
+
+    render_hook(view, "comments_create", attrs)
+    assert panel(view)["thread"]["id"] == thread["id"]
+    assert panel(view)["thread"]["message_count"] == 1
+    reloaded = open_scene(context, "?thread=#{thread["id"]}")
+    assert panel(reloaded)["thread"]["context"] == thread["context"]
+  end
+
+  test "canvas draft placement validates its context once without loading the hidden thread list", context do
+    pin = pin_fixture(context.scene)
+    view = open_scene(context)
+
+    queries =
+      capture_queries(view, fn ->
+        render_hook(view, "comments_place", %{x: 25, y: 35, context: %{type: "scene_pin", id: pin.id}})
+      end)
+
+    assert Enum.count(queries, &(&1.source == "scene_pins")) == 1
+    assert Enum.count(queries, &(&1.source == "comment_threads")) == 1
+    assert panel(view)["draftContext"]["id"] == to_string(pin.id)
+
+    refresh_queries = capture_queries(view, fn -> render_hook(view, "comments_refresh", %{}) end)
+    assert Enum.count(refresh_queries, &(&1.source == "scene_pins")) == 1
+    assert Enum.count(refresh_queries, &(&1.source == "comment_threads")) == 1
+  end
+
+  test "canvas refresh keeps mention membership fresh and opening the panel loads its threads", context do
+    detail = create_comment(context)
+    view = open_scene(context)
+    render_hook(view, "comments_place", %{x: 25, y: 35})
+    assert panel(view)["threads"] == []
+
+    collaborator = user_fixture()
+    membership = membership_fixture(context.project, collaborator)
+    render_hook(view, "comments_refresh", %{})
+    assert Enum.any?(panel(view)["members"], &(&1["id"] == collaborator.id))
+    assert panel(view)["threads"] == []
+
+    Repo.delete!(membership)
+    render_hook(view, "comments_refresh", %{})
+    refute Enum.any?(panel(view)["members"], &(&1["id"] == collaborator.id))
+
+    render_hook(view, "comments_open", %{})
+    assert [%{"id" => thread_id}] = panel(view)["threads"]
+    assert thread_id == detail.thread.id
+  end
+
+  test "refresh removes a canvas draft and its data when the editor loses project access", context do
+    editor = user_fixture()
+    membership = membership_fixture(context.project, editor)
+    pin = pin_fixture(context.scene)
+    editor_context = %{context | conn: log_in_user(build_conn(), editor)}
+    view = open_scene(editor_context)
+    render_hook(view, "comments_place", %{x: 25, y: 35, context: %{type: "scene_pin", id: pin.id}})
+    assert panel(view)["draftContext"]
+
+    Repo.delete!(membership)
+    render_hook(view, "comments_refresh", %{})
+
+    assert %{
+             "draftPosition" => nil,
+             "draftContext" => nil,
+             "draftId" => nil,
+             "threads" => [],
+             "members" => [],
+             "canComment" => false
+           } = panel(view)
+
+    assert canvas(view)["commentPins"] == []
+  end
+
+  test "live element deletion detaches a draft without replacing its composer or position", context do
+    from_pin = pin_fixture(context.scene)
+    to_pin = pin_fixture(context.scene)
+    connection = connection_fixture(context.scene, from_pin, to_pin)
+
+    for {type, target, action} <- [
+          {"scene_connection", connection, :connection_deleted},
+          {"scene_pin", pin_fixture(context.scene), :pin_deleted},
+          {"scene_zone", zone_fixture(context.scene), :zone_deleted},
+          {"scene_annotation", annotation_fixture(context.scene), :annotation_deleted}
+        ] do
+      view = open_scene(context)
+      render_hook(view, "comments_place", %{x: 25, y: 35, context: %{type: type, id: target.id}})
+      placed = panel(view)
+      render_hook(view, "comments_refresh", %{})
+      assert panel(view)["draftContext"] == placed["draftContext"]
+      Repo.delete!(target)
+      send(view.pid, {:remote_change, action, %{id: target.id}})
+      detached = panel(view)
+      assert detached["open"]
+      assert detached["draftId"] == placed["draftId"]
+      assert detached["draftPosition"] == placed["draftPosition"]
+      assert detached["draftContext"] == nil
+      assert detached["error"] == nil
+    end
+  end
+
+  test "local element deletion and undo keep the same conversation with its unavailable context", context do
+    pin = pin_fixture(context.scene)
+    view = open_scene(context)
+
+    render_hook(view, "comments_create", %{
+      position: %{x: 52, y: 53},
+      context: %{type: "scene_pin", id: pin.id, offset: %{x: 2, y: 3}},
+      body: "Discuss this marker",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    thread = panel(view)["thread"]
+    render_hook(view, "delete_pin", %{id: pin.id})
+    assert panel(view)["thread"]["id"] == thread["id"]
+    assert panel(view)["thread"]["context"]["status"] == "unavailable"
+    assert panel(view)["thread"]["source"]["status"] == "available"
+    assert [%{"body" => "Discuss this marker"}] = panel(view)["messages"]
+
+    render_hook(view, "undo", %{})
+    assert panel(view)["thread"]["id"] == thread["id"]
+    assert panel(view)["thread"]["context"]["status"] == "unavailable"
+    assert panel(view)["thread"]["message_count"] == 1
+    assert [comment] = canvas(view)["commentPins"]
+    assert comment["id"] == thread["id"]
+  end
+
+  test "create racing a context deletion reports the cause and can retry as free placement", context do
+    pin = pin_fixture(context.scene)
+    view = open_scene(context)
+    render_hook(view, "comments_place", %{x: 52, y: 53, context: %{type: "scene_pin", id: pin.id}})
+    placed = panel(view)
+
+    attrs = %{
+      position: placed["draftPosition"],
+      context: placed["draftContext"],
+      body: "Keep this draft",
+      client_request_id: Ecto.UUID.generate()
+    }
+
+    Repo.delete!(pin)
+    render_hook(view, "comments_create", attrs)
+
+    assert_reply(view, %{
+      ok: false,
+      context_unavailable: true,
+      error: "The comment context is no longer available. Review the pin's position and try again."
+    })
+
+    assert panel(view)["draftContext"] == nil
+    assert panel(view)["draftId"] == placed["draftId"]
+    assert panel(view)["draftPosition"] == placed["draftPosition"]
+    render_hook(view, "comments_create", %{attrs | context: nil})
+    assert_reply(view, %{ok: true})
+    assert panel(view)["thread"]["context"] == nil
+    assert [%{"body" => "Keep this draft"}] = panel(view)["messages"]
+  end
+
+  test "late draft moves cannot reopen a closed draft or replace another composer", context do
+    pin = pin_fixture(context.scene)
+    view = open_scene(context)
+    reference = %{type: "scene_pin", id: pin.id}
+    render_hook(view, "comments_place", %{x: 10, y: 20, context: reference})
+    draft_id = panel(view)["draftId"]
+    move = %{x: 30, y: 40, context: nil, moving_draft: true, draft_id: draft_id}
+    render_hook(view, "comments_place", move)
+    assert panel(view)["draftId"] == draft_id
+    assert panel(view)["draftContext"] == nil
+    assert_reply(view, %{ok: true, draft: %{id: ^draft_id, position: %{x: 30, y: 40}, context: nil}})
+    render_hook(view, "comments_close", %{})
+    render_hook(view, "comments_place", move)
+    refute panel(view)["open"]
+    assert panel(view)["draftPosition"] == nil
+    render_hook(view, "comments_place", %{x: 60, y: 70, context: reference})
+    current_id = panel(view)["draftId"]
+    refute current_id == draft_id
+    render_hook(view, "comments_place", move)
+    render_hook(view, "comments_place", Map.delete(move, :draft_id))
+    assert panel(view)["draftId"] == current_id
+    assert panel(view)["draftPosition"] == %{"x" => 60, "y" => 70}
+    assert panel(view)["draftContext"]["id"] == to_string(pin.id)
+    render_hook(view, "comments_open", %{})
+    assert panel(view)["draftContext"] == nil
+  end
+
+  test "draft placement validates foreign, deleted and malformed references before opening", context do
+    pin = pin_fixture(context.scene)
+    foreign_pin = context.project |> scene_fixture() |> pin_fixture()
+    deleted_pin = pin_fixture(context.scene)
+    Repo.delete!(deleted_pin)
+    view = open_scene(context)
+
+    for reference <- [
+          %{type: "scene_pin", id: foreign_pin.id},
+          %{type: "scene_pin", id: deleted_pin.id},
+          %{type: "scene_pin", id: "invalid"},
+          %{type: "flow_node", id: pin.id},
+          %{type: "scene_pin", id: pin.id, offset: %{x: 10_000_001, y: 0}}
+        ] do
+      render_hook(view, "comments_place", %{x: 10, y: 20, context: reference})
+      assert panel(view)["draftPosition"] == nil
+      assert panel(view)["draftContext"] == nil
+      assert is_binary(panel(view)["error"])
+    end
+  end
+
   test "viewers read conversations but forged comment mutations do not change them", context do
     detail = create_comment(context)
     viewer = user_fixture()
@@ -294,6 +540,30 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
       })
 
     detail
+  end
+
+  defp capture_queries(view, fun) do
+    marker = make_ref()
+    :ok = :telemetry.attach(marker, [:storyarn, :repo, :query], &record_query/4, {self(), view.pid, marker})
+
+    try do
+      fun.()
+      drain_queries(marker, [])
+    after
+      :telemetry.detach(marker)
+    end
+  end
+
+  defp record_query(_event, _measurements, metadata, {recipient, live_view, marker}) do
+    if self() == live_view, do: send(recipient, {marker, metadata})
+  end
+
+  defp drain_queries(marker, queries) do
+    receive do
+      {^marker, metadata} -> drain_queries(marker, [metadata | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
   end
 
   defp colliding_sources(project) do

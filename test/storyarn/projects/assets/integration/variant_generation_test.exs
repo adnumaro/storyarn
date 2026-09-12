@@ -20,6 +20,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
       project: project,
       user: user
     } do
+      unrelated_task = start_unrelated_task()
       binary = File.read!(@test_png_path)
 
       assert {:ok, asset} =
@@ -33,8 +34,8 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
       assert asset.content_type == "image/png"
       assert asset.project_id == project.id
 
-      # Variant is generated async — wait briefly for the Task to complete
-      Process.sleep(2000)
+      await_asset_tasks()
+      assert Process.alive?(unrelated_task)
 
       # Reload the asset to check if metadata was updated with web_url
       updated = Assets.get_asset(project.id, asset.id)
@@ -59,7 +60,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                )
 
       # JPEG is already optimal for gallery — no variant
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
@@ -78,7 +79,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
@@ -105,7 +106,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
@@ -127,7 +128,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(2000)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"]
@@ -155,12 +156,74 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
 
       Assets.storage_delete(asset.key)
     end
+  end
+
+  # Upload schedules the task before returning. A task absent from this snapshot
+  # has already finished; only await tasks whose caller chain includes this test.
+  # This module is synchronous because the task uses the shared SQL sandbox.
+  defp await_asset_tasks do
+    caller = self()
+    deadline = System.monotonic_time(:millisecond) + 5_000
+
+    monitors =
+      Storyarn.TaskSupervisor
+      |> Task.Supervisor.children()
+      |> Enum.filter(&task_from_test?(&1, caller, deadline))
+      |> Enum.map(&{&1, Process.monitor(&1)})
+
+    for {pid, reference} <- monitors do
+      assert_receive {:DOWN, ^reference, :process, ^pid, reason}, 5_000
+      assert reason in [:normal, :noproc]
+    end
+  end
+
+  defp task_from_test?(pid, caller, deadline) do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} ->
+        case Keyword.fetch(dictionary, :"$callers") do
+          {:ok, callers} ->
+            caller in callers
+
+          :error ->
+            # start_child returns before the task publishes its caller chain.
+            # Retry only that initialization window, never the task's work.
+            assert System.monotonic_time(:millisecond) < deadline,
+                   "supervised task did not initialize its caller chain"
+
+            Process.sleep(1)
+            task_from_test?(pid, caller, deadline)
+        end
+
+      nil ->
+        false
+    end
+  end
+
+  defp start_unrelated_task do
+    test_pid = self()
+
+    # A raw process does not inherit the test's $callers chain. Its supervised
+    # task stays alive until cleanup, so awaiting it would fail the upload test.
+    spawn(fn ->
+      {:ok, pid} =
+        Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+          receive do
+            :stop -> :ok
+          end
+        end)
+
+      send(test_pid, {:unrelated_task, pid})
+    end)
+
+    assert_receive {:unrelated_task, pid}
+    on_exit(fn -> Task.Supervisor.terminate_child(Storyarn.TaskSupervisor, pid) end)
+    pid
   end
 end

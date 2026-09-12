@@ -1,5 +1,5 @@
 defmodule Storyarn.Architecture.WorkerOwnershipBoundaryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: true, group: :source_scans
 
   @sealed_worker_owners ~w(accounts ai flows ideation localization projects workspaces)
   @recognized_worker_owners ~w(accounts ai commercial flows ideation localization platform projects scenes sheets workspaces)

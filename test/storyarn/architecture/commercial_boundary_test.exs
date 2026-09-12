@@ -1,5 +1,5 @@
 defmodule Storyarn.Architecture.CommercialBoundaryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: true, group: :source_scans
 
   @commercial_sources ["lib/storyarn/commercial.ex" | Path.wildcard("lib/storyarn/commercial/**/*.ex")]
   @obsolete_namespaces Enum.map(
