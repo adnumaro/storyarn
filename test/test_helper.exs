@@ -21,7 +21,7 @@ Ecto.Adapters.SQL.Sandbox.mode(Storyarn.Repo, :manual)
 test_port = System.get_env("MIX_TEST_PORT", "4002")
 Application.put_env(:phoenix_test, :base_url, "http://127.0.0.1:#{test_port}")
 
-# Start Playwright supervisor only when Playwright is installed (not in CI unit test job)
-if File.dir?(Path.join(["node_modules", "playwright"])) do
+# Start the browser bridge only when browser tests are requested.
+if Enum.any?(ExUnit.configuration()[:include], &(&1 in [:e2e, {:e2e, true}])) do
   {:ok, _} = PhoenixTest.Playwright.Supervisor.start_link()
 end

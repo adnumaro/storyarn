@@ -1,5 +1,7 @@
 defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
-  use ExUnit.Case, async: false
+  # Pure source analysis can overlap database tests. Serialize the widest scans
+  # with each other to avoid contention on the BEAM file server.
+  use ExUnit.Case, async: true, group: :source_scans
 
   alias Storyarn.Architecture.DependencyPolicy
 
@@ -677,6 +679,58 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
     Opaque calls: #{inspect(calls, pretty: true, limit: :infinity)}
     """
+  end
+
+  test "indexed schema provenance preserves pipelines, overloads and escaped captures" do
+    source = """
+    defmodule IndexedBulkWriter do
+      alias Storyarn.Repo
+      def run(rows), do: "flow_nodes" |> bulk(rows)
+      def unrelated(schema, rows, options), do: bulk(schema, rows, options)
+      defp bulk(schema, rows), do: insert(schema, rows)
+      defp bulk(_schema, rows, _options), do: rows
+      defp insert(schema, rows), do: Repo.insert_all(schema, rows)
+    end
+    """
+
+    assert opaque_insert_all_calls_in_source(source, "indexed.ex") == []
+
+    captured = String.replace(source, "def run(rows)", "def escaped, do: &bulk/2\n  def run(rows)")
+
+    assert [%{function: "defp insert/2"}] = opaque_insert_all_calls_in_source(captured, "indexed.ex")
+  end
+
+  test "clause indexing retains every guarded clause and default arity" do
+    source = ~S"""
+    defmodule IndexedClauses do
+      def run(value), do: choose(value)
+      defp choose(value, options \\ []) when is_atom(value), do: {value, options}
+      defp choose(value, options), do: {options, value}
+      defp choose(value, options, extra), do: {value, options, extra}
+    end
+    """
+
+    clauses = source |> quoted!("indexed.ex") |> function_clauses()
+    index = clause_index(clauses)
+
+    for name <- [:run, :choose, :absent], arity <- 0..4 do
+      assert matching_clauses(index, name, arity) == matching_clauses(clauses, name, arity)
+    end
+
+    assert length(matching_clauses(index, :choose, 1)) == 1
+    assert length(matching_clauses(index, :choose, 2)) == 2
+
+    default_target = ~S"""
+    defmodule DefaultTarget do
+      alias Storyarn.Repo
+      def run(rows), do: bulk(rows)
+      defp bulk(rows, schema \\ "flow_nodes"), do: Repo.insert_all(schema, rows)
+    end
+    """
+
+    # An omitted argument is still opaque: indexing must not invent provenance
+    # for defaults that the dataflow analyzer does not evaluate.
+    assert [%{function: "defp bulk/2"}] = opaque_insert_all_calls_in_source(default_target, "default.ex")
   end
 
   test "runtime schema constructors cannot hide a persistence target" do
@@ -3167,9 +3221,11 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   defp proven_literal_schema_parameters(clauses, literal_attributes) do
+    callsites = local_parameter_call_index(clauses)
+
     fixed_point(MapSet.new(), fn proven ->
       Enum.reduce(clauses, proven, fn clause, next ->
-        prove_literal_schema_parameters_for_clause(clause, clauses, literal_attributes, proven, next)
+        prove_literal_schema_parameters_for_clause(clause, callsites, literal_attributes, proven, next)
       end)
     end)
   end
@@ -3208,54 +3264,54 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     end)
   end
 
-  defp local_parameter_callsites(clauses, target_clause, parameter_index) do
-    calls = Enum.flat_map(clauses, &local_parameter_callsites_for_caller(&1, target_clause, parameter_index))
-    captures = Enum.flat_map(clauses, &local_parameter_capture_for_caller(&1, target_clause))
+  # Walk each caller once. The previous implementation walked the whole module
+  # again for every private parameter on every fixed-point iteration.
+  defp local_parameter_call_index(clauses) do
+    Enum.reduce(clauses, %{}, fn caller, index ->
+      provenance = Map.take(caller, [:id, :params])
 
-    (calls ++ captures)
-    |> Enum.reverse()
-    |> Enum.uniq()
+      {_body, index} =
+        caller.body
+        |> normalize_pipeline_calls()
+        |> Macro.prewalk(index, fn node, current ->
+          {node, index_local_parameter_call(node, provenance, current)}
+        end)
+
+      index
+    end)
   end
 
-  defp local_parameter_callsites_for_caller(caller, target_clause, parameter_index) do
-    {_body, found} =
-      caller.body
-      |> normalize_pipeline_calls()
-      |> Macro.prewalk([], fn node, current ->
-        {node, collect_local_parameter_call(node, current, caller, target_clause, parameter_index)}
-      end)
-
-    found
+  defp index_local_parameter_call({:&, _, [{:/, _, [{name, _, context}, arity]}]}, _caller, index)
+       when is_atom(name) and is_atom(context) do
+    Map.update(index, {name, arity}, [:opaque], &[:opaque | &1])
   end
 
-  defp collect_local_parameter_call(node, current, caller, target_clause, parameter_index) do
-    with {:ok, name, arguments} <- local_call(node),
-         true <- name == target_clause.name,
-         true <- MapSet.member?(target_clause.accepted_arities, length(arguments)) do
-      case Enum.fetch(arguments, parameter_index) do
-        {:ok, argument} -> [{:call, caller, argument} | current]
-        :error -> [:opaque | current]
-      end
-    else
-      _other -> current
+  defp index_local_parameter_call(node, caller, index) do
+    case local_call(node) do
+      {:ok, name, arguments} ->
+        call = {:call, caller, arguments}
+        Map.update(index, {name, length(arguments)}, [call], &[call | &1])
+
+      :not_a_local_call ->
+        index
     end
   end
 
-  defp local_parameter_capture_for_caller(caller, target_clause) do
-    {_body, found?} =
-      Macro.prewalk(caller.body, false, fn node, current ->
-        {node, current or local_function_capture?(node, target_clause)}
-      end)
+  defp local_parameter_callsites(index, target_clause, parameter_index) do
+    target_clause.accepted_arities
+    |> Enum.flat_map(&Map.get(index, {target_clause.name, &1}, []))
+    |> Enum.map(fn
+      {:call, caller, arguments} ->
+        case Enum.fetch(arguments, parameter_index) do
+          {:ok, argument} -> {:call, caller, argument}
+          :error -> :opaque
+        end
 
-    if found?, do: [:opaque], else: []
+      :opaque ->
+        :opaque
+    end)
+    |> Enum.uniq()
   end
-
-  defp local_function_capture?({:&, _, [{:/, _, [{name, _, context}, arity]}]}, target_clause)
-       when is_atom(name) and is_atom(context) do
-    name == target_clause.name and MapSet.member?(target_clause.accepted_arities, arity)
-  end
-
-  defp local_function_capture?(_node, _target_clause), do: false
 
   defp proven_schema_parameter?({name, _, context}, clause, proven_schema_parameters)
        when is_atom(name) and is_atom(context) do
@@ -4784,6 +4840,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     imports = imported_modules(ast, aliases)
     clauses = function_clauses(ast)
     attributes = binary_module_attributes(ast)
+    index = clause_index(clauses)
 
     repo_parameters =
       fixed_point(MapSet.new(), fn parameters ->
@@ -4799,7 +4856,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
       aliases: aliases,
       analysis: analysis,
       attributes: attributes,
-      clauses: clauses,
+      clauses: index,
       imports: imports,
       repo_parameters: repo_parameters,
       schemas: schemas,
@@ -4808,7 +4865,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
     {violations, unresolved} =
       Enum.reduce(clauses, {[], []}, fn clause, {violations, unresolved} ->
-        tainted = clause_tainted_variables(clause, schemas, aliases, analysis, clauses, table)
+        tainted = clause_tainted_variables(clause, schemas, aliases, analysis, index, table)
         repo_variables = clause_repo_variables(clause, aliases, repo_parameters)
         sql_bindings = resolved_sql_variables(clause.body, attributes, variable_names(clause.params))
 
@@ -5444,13 +5501,15 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   defp strip_default_argument(argument), do: argument
 
   defp propagate_module_taint(clauses, schemas, aliases, analysis, table) do
+    index = clause_index(clauses)
+
     Enum.reduce(clauses, analysis, fn clause, next_analysis ->
-      tainted = clause_tainted_variables(clause, schemas, aliases, analysis, clauses, table)
+      tainted = clause_tainted_variables(clause, schemas, aliases, analysis, index, table)
 
       next_analysis =
         propagate_local_call_parameters(
           clause.body,
-          clauses,
+          index,
           schemas,
           aliases,
           tainted,
@@ -5459,7 +5518,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
           next_analysis
         )
 
-      if clause_returns_target?(clause.body, schemas, aliases, tainted, table, analysis, clauses) do
+      if clause_returns_target?(clause.body, schemas, aliases, tainted, table, analysis, index) do
         %{next_analysis | returns: MapSet.put(next_analysis.returns, clause.id)}
       else
         next_analysis
@@ -5721,8 +5780,20 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
   defp branch_return_expressions(expression), do: return_expressions(expression)
 
+  defp matching_clauses(index, name, arity) when is_map(index), do: Map.get(index, {name, arity}, [])
+
   defp matching_clauses(clauses, name, arity) do
     Enum.filter(clauses, &(&1.name == name and MapSet.member?(&1.accepted_arities, arity)))
+  end
+
+  defp clause_index(clauses) do
+    clauses
+    |> Enum.reverse()
+    |> Enum.reduce(%{}, fn clause, index ->
+      Enum.reduce(clause.accepted_arities, index, fn arity, current ->
+        Map.update(current, {clause.name, arity}, [clause], &[clause | &1])
+      end)
+    end)
   end
 
   defp local_call({:|>, _, [left, {name, _, arguments}]}) when is_atom(name) and is_list(arguments),
@@ -5800,6 +5871,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   defp propagate_repo_parameters(clauses, aliases, repo_parameters) do
+    index = clause_index(clauses)
+
     votes =
       Enum.reduce(clauses, %{}, fn clause, votes ->
         repo_variables = clause_repo_variables(clause, aliases, repo_parameters)
@@ -5809,13 +5882,13 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
         {_body, votes} =
           Macro.prewalk(body_without_multi_callbacks, votes, fn node, current_votes ->
-            current_votes = record_local_repo_call_votes(node, clauses, aliases, repo_variables, current_votes)
+            current_votes = record_local_repo_call_votes(node, index, aliases, repo_variables, current_votes)
             {node, current_votes}
           end)
 
         record_multi_run_callback_votes(
           body,
-          clauses,
+          index,
           aliases,
           repo_variables,
           votes

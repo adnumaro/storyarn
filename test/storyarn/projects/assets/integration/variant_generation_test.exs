@@ -33,8 +33,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
       assert asset.content_type == "image/png"
       assert asset.project_id == project.id
 
-      # Variant is generated async — wait briefly for the Task to complete
-      Process.sleep(2000)
+      await_asset_tasks()
 
       # Reload the asset to check if metadata was updated with web_url
       updated = Assets.get_asset(project.id, asset.id)
@@ -59,7 +58,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                )
 
       # JPEG is already optimal for gallery — no variant
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
@@ -78,7 +77,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
@@ -105,7 +104,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
@@ -127,7 +126,7 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(2000)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"]
@@ -155,12 +154,27 @@ defmodule Storyarn.Projects.Assets.VariantGenerationTest do
                  user
                )
 
-      Process.sleep(500)
+      await_asset_tasks()
 
       updated = Assets.get_asset(project.id, asset.id)
       assert updated.metadata["web_url"] == nil
 
       Assets.storage_delete(asset.key)
+    end
+  end
+
+  # Upload schedules the task before returning. A task absent from this snapshot
+  # has already finished; monitor every remaining task before checking metadata.
+  # This module is synchronous because the task uses the shared SQL sandbox.
+  defp await_asset_tasks do
+    monitors =
+      Storyarn.TaskSupervisor
+      |> Task.Supervisor.children()
+      |> Enum.map(&{&1, Process.monitor(&1)})
+
+    for {pid, reference} <- monitors do
+      assert_receive {:DOWN, ^reference, :process, ^pid, reason}, 5_000
+      assert reason in [:normal, :noproc]
     end
   end
 end

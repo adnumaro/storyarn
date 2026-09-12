@@ -76,7 +76,7 @@
     </.live_title>
     <PhoenixVite.Components.assets
       names={["assets/js/app.js", "assets/css/app.css"]}
-      manifest={{:storyarn, "priv/static/.vite/manifest.json"}}
+      manifest={Application.get_env(:storyarn, :vite_manifest, {:storyarn, "priv/static/.vite/manifest.json"})}
       dev_server={PhoenixVite.Components.has_vite_watcher?(StoryarnWeb.Endpoint)}
       to_url={
         fn path ->

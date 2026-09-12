@@ -138,8 +138,8 @@ defmodule Storyarn.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "assets.build", "test"],
-      "test.e2e": ["assets.build", "test test/e2e --include e2e"],
+      test: &run_tests/1,
+      "test.e2e": ["test test/e2e --include e2e"],
       "assets.setup": ["tailwind.install --if-missing"],
       "assets.build": ["compile", "tailwind storyarn", "phoenix_vite.npm vite build"],
       "assets.deploy": [
@@ -170,5 +170,23 @@ defmodule Storyarn.MixProject do
       ],
       dialyzer: ["dialyzer --format short"]
     ]
+  end
+
+  # Mix forwards CLI arguments only to the final alias entry. Keep preparation
+  # and execution together so --include/--only reach the browser-mode selector.
+  defp run_tests(args) do
+    prepare_tests(args)
+    Mix.Task.run("ecto.create", ["--quiet"])
+    Mix.Task.run("ecto.migrate", ["--quiet"])
+    Mix.Task.run("test", args)
+  end
+
+  defp prepare_tests(args) do
+    {options, _paths, _invalid} = OptionParser.parse(args, switches: [include: :keep, only: :keep])
+
+    e2e? = Enum.any?(options, fn {tag, value} -> tag in [:include, :only] and value in ["e2e", "e2e:true"] end)
+    System.put_env("STORYARN_E2E_TESTS", to_string(e2e?))
+
+    if e2e?, do: Mix.Task.run("assets.build")
   end
 end
