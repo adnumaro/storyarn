@@ -645,7 +645,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
       else: {:error, {:invalid_blob_path, path}}
   end
 
-  defp validate_descriptor_path(path, _kind, _sha256, _content_type), do: {:error, {:invalid_snapshot_object_path, path}}
+  defp validate_descriptor_path(path, _kind, _sha256, _content_type),
+    do: {:error, {:invalid_snapshot_object_path, path}}
 
   defp validate_project_descriptor(%{"kind" => "project", "path" => @project_path} = project, limits) do
     validate_object_descriptor(project, limits)
@@ -835,7 +836,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp validate_source_key(key, _project_id, _hash, _content_type, _mode), do: {:error, {:invalid_asset_source_key, key}}
+  defp validate_source_key(key, _project_id, _hash, _content_type, _mode),
+    do: {:error, {:invalid_asset_source_key, key}}
 
   defp validate_catalog_asset_size(0, _max_size, :strict), do: {:error, {:invalid_size, :asset, 0}}
 

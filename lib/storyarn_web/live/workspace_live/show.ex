@@ -157,7 +157,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
          put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
 
       _reason ->
-        {:reply, %{status: "error"}, put_flash(socket, :error, dgettext("projects", "Template could not be installed."))}
+        {:reply, %{status: "error"},
+         put_flash(socket, :error, dgettext("projects", "Template could not be installed."))}
     end
   end
 

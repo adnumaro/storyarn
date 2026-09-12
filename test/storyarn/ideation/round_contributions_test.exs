@@ -105,7 +105,8 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     refute created.late_contribution
 
     for modified <- [Map.put(attrs, :round_id, second.id), Map.put(attrs, :round_id, nil), Map.delete(attrs, :round_id)] do
-      assert {:error, :idempotency_conflict} = Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, modified)
+      assert {:error, :idempotency_conflict} =
+               Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, modified)
     end
 
     assert Repo.aggregate(Idea, :count) == 2
@@ -200,7 +201,8 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     assert {:ok, %{active: 1, parked: 0, discarded: 0}} =
              Ideation.count_ideas(ctx.viewer, ctx.project.id, ctx.session.id, round_id: nil)
 
-    assert {:ok, %{active: 3, parked: 1, discarded: 0}} = Ideation.count_ideas(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert {:ok, %{active: 3, parked: 1, discarded: 0}} =
+             Ideation.count_ideas(ctx.viewer, ctx.project.id, ctx.session.id)
 
     assert {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})
     assert {:error, :round_not_found} = Ideation.list_ideas(ctx.author, ctx.project.id, other.id, round_id: second.id)

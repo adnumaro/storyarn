@@ -107,7 +107,14 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert idea.body == "<p><strong>bold</strong> <em>and</em> <u>more</u> plain</p>"
 
     assert {:ok, %{revision: 1}} =
-             Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, 1, edit_attrs(%{body: idea.body}))
+             Ideation.update_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea.id,
+               1,
+               edit_attrs(%{body: idea.body})
+             )
 
     for body <- ["<p> </p>", "<p>\t</p>", "<p><strong> </strong></p>"] do
       assert {:error, %Ecto.Changeset{valid?: false}} =
@@ -224,7 +231,14 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert {:ok, ^winner} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id)
 
     assert {:ok, recovered} =
-             Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, 2, edit_attrs(conflict.attempted))
+             Ideation.update_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea.id,
+               2,
+               edit_attrs(conflict.attempted)
+             )
 
     assert recovered.body == "Unsent alternative"
     assert recovered.revision == 3

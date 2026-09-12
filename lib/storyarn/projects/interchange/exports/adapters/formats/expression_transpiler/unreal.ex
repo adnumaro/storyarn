@@ -23,9 +23,11 @@ defmodule Storyarn.Projects.Exports.ExpressionTranspiler.Unreal do
 
   defp emit_condition_op(ref, "contains", val), do: "Contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "not_contains", val), do: "!Contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "not_contains", val),
+    do: "!Contains(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "starts_with", val), do: "StartsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "starts_with", val),
+    do: "StartsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
   defp emit_condition_op(ref, "ends_with", val), do: "EndsWith(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 

@@ -33,8 +33,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
           "can_edit" => @can_edit,
           "membership" => @membership,
           "active_tool" => "localization",
-          "dashboard_url" =>
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
           "current_scope" => @current_scope,
           "locale" => @locale
         }
@@ -50,9 +49,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         form={@form}
         has-provider={@has_provider}
         can-edit={@can_edit}
-        back-url={
-          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/texts/#{@text.locale_code}"
-        }
+        back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/texts/#{@text.locale_code}"}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """

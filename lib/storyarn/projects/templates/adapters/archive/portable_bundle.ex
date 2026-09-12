@@ -33,7 +33,8 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableBundle do
     with :ok <- validate_output_path(path),
          :ok <- File.mkdir_p(Path.dirname(path)),
          :ok <- validate_file_paths(files) do
-      entries = Enum.map(files, fn {entry_path, data} -> {String.to_charlist(entry_path), IO.iodata_to_binary(data)} end)
+      entries =
+        Enum.map(files, fn {entry_path, data} -> {String.to_charlist(entry_path), IO.iodata_to_binary(data)} end)
 
       case :erl_tar.create(String.to_charlist(path), entries, [:compressed]) do
         :ok -> {:ok, path}

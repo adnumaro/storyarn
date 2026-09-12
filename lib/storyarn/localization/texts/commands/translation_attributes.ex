@@ -83,7 +83,8 @@ defmodule Storyarn.Localization.Texts.Commands.TranslationAttributes do
     |> Map.put(:vo_asset_id, nil)
   end
 
-  def invalidated_vo_status(%{vo_eligible: true, vo_status: status}) when status in ["recorded", "approved"], do: "needed"
+  def invalidated_vo_status(%{vo_eligible: true, vo_status: status}) when status in ["recorded", "approved"],
+    do: "needed"
 
   def invalidated_vo_status(%{vo_eligible: true, vo_asset_id: asset_id}) when not is_nil(asset_id), do: "needed"
   def invalidated_vo_status(text), do: text.vo_status

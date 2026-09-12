@@ -83,7 +83,8 @@ defmodule Storyarn.Projects.References.VariableReferenceValidation do
   @spec validate_scene_element_variable_targets([map()], integer(), String.t()) ::
           :ok | {:error, term()}
   def validate_scene_element_variable_targets(elements, project_id, source_type)
-      when is_list(elements) and is_integer(project_id) and project_id > 0 and source_type in ["scene_pin", "scene_zone"] do
+      when is_list(elements) and is_integer(project_id) and project_id > 0 and
+             source_type in ["scene_pin", "scene_zone"] do
     elements
     |> Enum.reduce_while({:ok, []}, fn element, {:ok, specs} ->
       case VariableReferenceExtraction.strict_scene_element_specs(element, source_type) do
@@ -166,7 +167,8 @@ defmodule Storyarn.Projects.References.VariableReferenceValidation do
         source_type = Map.get(spec, :source_type, source_type)
 
         {:error,
-         {:unresolved_variable_reference, source_type, spec.source_id, spec.kind, spec.source_sheet, spec.source_variable}}
+         {:unresolved_variable_reference, source_type, spec.source_id, spec.kind, spec.source_sheet,
+          spec.source_variable}}
     end
   end
 end

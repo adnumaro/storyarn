@@ -16,7 +16,9 @@ defmodule Storyarn.Ideation.Recovery.Capture do
 
       cached =
         Repo.one(
-          from c in "ideation_recovery_captures", where: c.project_id == ^project_id, select: map(c, [:digest, :capsule])
+          from c in "ideation_recovery_captures",
+            where: c.project_id == ^project_id,
+            select: map(c, [:digest, :capsule])
         )
 
       case cached do

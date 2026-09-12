@@ -416,7 +416,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
       trashed_scene = Repo.get!(Scene, scene.id)
 
       assert {:error, {:scene_not_active, scene_id}} =
-               SceneBuilder.restore_snapshot(trashed_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(trashed_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert scene_id == scene.id
       assert Repo.get!(Scene, scene.id).name == "Current trashed scene"
@@ -442,7 +444,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
       {:ok, current_scene} = Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene"})
 
       assert {:error, reason} =
-               SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(current_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert {:scene_layer_ownership_mismatch, :scene_pin, pin_id, owner_scene_id, layer_id, restored_scene_id} = reason
 
@@ -847,7 +851,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
       extra_connection = connection_fixture(scene, extra_pin, pin_b)
 
       assert {:ok, restored} =
-               SceneBuilder.restore_snapshot(modified_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(modified_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert restored.exploration_display_mode == "scaled"
 
@@ -1008,7 +1014,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
 
       assert {:error,
               {:unresolved_variable_reference, "scene_ambient_flow", ambient_id, "read", "missing.sheet", "health"}} =
-               SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(current_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert ambient_id == ambient_flow.id
       assert persisted_scene_state(scene.id) == before_restore
@@ -1217,7 +1225,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
         })
 
       assert {:ok, restored} =
-               SceneBuilder.restore_snapshot(modified_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(modified_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert restored.fog_opacity == 0.0
       assert %{visible: false, fog_enabled: false} = Repo.get!(SceneLayer, layer.id)
@@ -1273,7 +1283,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
         Storyarn.Scenes.update_scene(scene, %{"name" => "Modified after hard delete"})
 
       assert {:ok, restored} =
-               SceneBuilder.restore_snapshot(modified_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(modified_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert %ScenePin{id: restored_pin_id, layer_id: restored_layer_id} =
                Repo.get(ScenePin, pin_a.id)
@@ -1390,7 +1402,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
         Storyarn.Scenes.update_scene(scene, %{"name" => "Must survive"})
 
       assert {:error, {:snapshot_original_id_ownership_mismatch, :scene_pin, foreign_pin_id, scene_id}} =
-               SceneBuilder.restore_snapshot(modified_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(modified_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert foreign_pin_id == foreign_pin.id
       assert scene_id == scene.id
@@ -1421,7 +1435,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
         Storyarn.Scenes.update_scene(scene, %{"name" => "Still modified"})
 
       assert {:error, {:scene_connection_pin_not_in_snapshot, 9_999_999}} =
-               SceneBuilder.restore_snapshot(modified_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(modified_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert Repo.get!(Scene, scene.id).name == "Still modified"
       assert Repo.get!(SceneConnection, connection.id).id == connection.id
@@ -1601,7 +1617,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
       before_restore = persisted_scene_state(scene.id)
 
       assert {:error, {:unresolved_variable_reference, "scene_pin", pin_id, "read", "missing.sheet", "health"}} =
-               SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(current_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert pin_id == pin.id
       assert persisted_scene_state(scene.id) == before_restore
@@ -1627,7 +1645,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.SceneSnapshotContractTest do
       before_restore = persisted_scene_state(scene.id)
 
       assert {:error, {:unresolved_variable_reference, "scene_zone", zone_id, "write", "missing.sheet", "health"}} =
-               SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+               SceneBuilder.restore_snapshot(current_scene, snapshot,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
 
       assert zone_id == zone.id
       assert persisted_scene_state(scene.id) == before_restore

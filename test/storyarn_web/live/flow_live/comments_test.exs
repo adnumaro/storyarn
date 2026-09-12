@@ -145,7 +145,9 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert canvas(view)["commentCounts"] == %{}
 
     render_hook(view, "comments_close", %{})
+
     render_hook(view, "comments_move", %{thread_id: thread["id"], x: 300, y: 120, expected_revision: thread["revision"]})
+
     refute panel(view)["open"]
     assert canvas(view)["commentFocusThreadId"] == nil
     assert [%{"position" => %{"x" => 300.0, "y" => 120.0}}] = canvas(view)["commentPins"]
@@ -188,7 +190,8 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
   end
 
-  test "a magnetic draft keeps absolute coordinates and context through movement, creation, retry and reload", context do
+  test "a magnetic draft keeps absolute coordinates and context through movement, creation, retry and reload",
+       context do
     view = open_flow(context)
     reference = %{type: "flow_node", id: to_string(context.node.id), offset: %{x: 25, y: 30}}
     position = %{x: context.node.position_x + 25, y: context.node.position_y + 30}

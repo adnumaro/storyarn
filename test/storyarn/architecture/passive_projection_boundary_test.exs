@@ -251,7 +251,11 @@ defmodule Storyarn.Architecture.PassiveProjectionBoundaryTest do
     classify_apply(module_ast, function_ast, arguments_ast, meta, context, violations)
   end
 
-  defp detect_node({{:., meta, [kernel_ast, :apply]}, _, [module_ast, function_ast, arguments_ast]}, context, violations) do
+  defp detect_node(
+         {{:., meta, [kernel_ast, :apply]}, _, [module_ast, function_ast, arguments_ast]},
+         context,
+         violations
+       ) do
     if module_name(kernel_ast, context) == "Kernel" do
       classify_apply(module_ast, function_ast, arguments_ast, meta, context, violations)
     else

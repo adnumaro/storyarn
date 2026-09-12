@@ -184,7 +184,8 @@ defmodule Storyarn.Localization do
   defdelegate get_texts_for_source(source_type, source_id), to: Texts
 
   @doc "Gets source texts including archived rows for lifecycle and restore operations."
-  def list_all_texts(project_id, opts \\ []), do: Texts.list_texts(project_id, Keyword.put(opts, :include_archived, true))
+  def list_all_texts(project_id, opts \\ []),
+    do: Texts.list_texts(project_id, Keyword.put(opts, :include_archived, true))
 
   @doc "Gets translation progress stats for a project and locale."
   @spec get_progress(id(), String.t()) :: map()

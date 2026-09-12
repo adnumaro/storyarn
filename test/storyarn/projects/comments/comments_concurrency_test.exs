@@ -20,7 +20,11 @@ defmodule Storyarn.Projects.CommentsConcurrencyTest do
   test "simultaneous identical creates persist one thread and one message" do
     with_project(fn ctx ->
       attrs = %{body: "One durable request", client_request_id: Ecto.UUID.generate(), mention_user_ids: []}
-      operation = fn -> Projects.create_flow_node_comment(ctx.scope, ctx.project.id, ctx.flow.id, ctx.node.id, attrs) end
+
+      operation = fn ->
+        Projects.create_flow_node_comment(ctx.scope, ctx.project.id, ctx.flow.id, ctx.node.id, attrs)
+      end
+
       results = concurrently([operation, operation])
       assert [{:ok, first}, {:ok, second}] = results
       assert first.thread.id == second.thread.id
@@ -125,7 +129,9 @@ defmodule Storyarn.Projects.CommentsConcurrencyTest do
   end
 
   defp move_operation(ctx, detail, position) do
-    fn -> Projects.move_comment_thread(ctx.scope, ctx.project.id, detail.thread.id, position, detail.thread.revision) end
+    fn ->
+      Projects.move_comment_thread(ctx.scope, ctx.project.id, detail.thread.id, position, detail.thread.revision)
+    end
   end
 
   defp concurrently(operations) do

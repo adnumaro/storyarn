@@ -43,7 +43,8 @@ defmodule Storyarn.Flows.FormulaRuntime do
 
   def translate_same_row(_formula_ref, _raw_bindings), do: %{}
 
-  defp translate_binding(%{"type" => "same_row", "column_slug" => column_slug}, row_prefix) when is_binary(row_prefix) do
+  defp translate_binding(%{"type" => "same_row", "column_slug" => column_slug}, row_prefix)
+       when is_binary(row_prefix) do
     "#{row_prefix}.#{column_slug}"
   end
 

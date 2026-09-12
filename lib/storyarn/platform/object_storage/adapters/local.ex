@@ -126,7 +126,8 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
   end
 
   @impl true
-  def stream(key, offset, length, _opts) when is_integer(offset) and offset >= 0 and is_integer(length) and length >= 0 do
+  def stream(key, offset, length, _opts)
+      when is_integer(offset) and offset >= 0 and is_integer(length) and length >= 0 do
     with {:ok, path} <- file_path(key) do
       {:ok, file_stream(path, offset, length)}
     end

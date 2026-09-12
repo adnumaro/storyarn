@@ -116,7 +116,8 @@ defmodule Storyarn.Scenes.Editor.Commands.Scenes do
   end
 
   @doc false
-  def create_scene_in_transaction(%{user: %{id: actor_id}}, project, attrs) when is_integer(actor_id) and actor_id > 0 do
+  def create_scene_in_transaction(%{user: %{id: actor_id}}, project, attrs)
+      when is_integer(actor_id) and actor_id > 0 do
     project_id = project_id!(project)
     scene = create_scene_in_transaction(project_id, attrs)
     {scene, deliver_content_activity!(actor_id, project_id, :created, scene)}
@@ -147,7 +148,8 @@ defmodule Storyarn.Scenes.Editor.Commands.Scenes do
     with {:ok, %{entity: entity}} <- delete_scene_subtree(scene), do: {:ok, entity}
   end
 
-  def delete_scene(%{user: %{id: actor_id}} = actor_scope, %Scene{} = scene) when is_integer(actor_id) and actor_id > 0 do
+  def delete_scene(%{user: %{id: actor_id}} = actor_scope, %Scene{} = scene)
+      when is_integer(actor_id) and actor_id > 0 do
     with {:ok, %{entity: entity}} <- delete_scene_subtree(actor_scope, scene),
          do: {:ok, entity}
   end

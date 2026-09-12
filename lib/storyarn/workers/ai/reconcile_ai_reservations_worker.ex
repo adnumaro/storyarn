@@ -65,7 +65,8 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorker do
 
   defp put_allowance_state(args, _batch), do: Map.put(args, "allowance_done", true)
 
-  defp put_stale_operations_state(args, %{more?: true, next_operation_id: operation_id}) when is_integer(operation_id) do
+  defp put_stale_operations_state(args, %{more?: true, next_operation_id: operation_id})
+       when is_integer(operation_id) do
     Map.put(args, "after_operation_id", operation_id)
   end
 

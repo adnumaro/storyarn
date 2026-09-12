@@ -125,7 +125,8 @@ defmodule Storyarn.Projects.References.VariableReferenceExtraction do
     strict_snapshot_source_reference_specs(source, source_type, source_id)
   end
 
-  defp strict_snapshot_source_reference_specs(source), do: {:error, {:invalid_variable_reference_source, :mixed, source}}
+  defp strict_snapshot_source_reference_specs(source),
+    do: {:error, {:invalid_variable_reference_source, :mixed, source}}
 
   defp strict_snapshot_source_reference_specs(source, "flow_node" = source_type, source_id) do
     node = %{
@@ -781,7 +782,8 @@ defmodule Storyarn.Projects.References.VariableReferenceExtraction do
 
   defp reference_specs(_node_id, _kind, _sheet_shortcut, _variable_name), do: []
 
-  defp qualified_reference_specs(source_id, kind, qualified_ref) when is_binary(qualified_ref) and qualified_ref != "" do
+  defp qualified_reference_specs(source_id, kind, qualified_ref)
+       when is_binary(qualified_ref) and qualified_ref != "" do
     if String.trim(qualified_ref) == "" do
       []
     else

@@ -193,7 +193,8 @@ defmodule Storyarn.Sheets.Versioning.Execution.ConflictsTest do
           %{
             "type" => "rich_text",
             "value" => %{
-              "content" => ~s(<p><span class="mention" data-type="sheet" data-id="#{missing_sheet_id}">Missing</span></p>)
+              "content" =>
+                ~s(<p><span class="mention" data-type="sheet" data-id="#{missing_sheet_id}">Missing</span></p>)
             }
           }
         ]

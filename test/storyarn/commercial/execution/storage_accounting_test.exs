@@ -619,7 +619,8 @@ defmodule Storyarn.Commercial.Billing.StorageAccountingTest do
       assert {:error, :storage_reservation_terminal} = Billing.reserve_storage(attrs)
     end
 
-    test "snapshot slots count a build target once and exclude terminal targets without an active reservation", context do
+    test "snapshot slots count a build target once and exclude terminal targets without an active reservation",
+         context do
       target = insert_pending_snapshot!(context.project, 1)
 
       assert {:ok, reservation} =

@@ -228,7 +228,9 @@ defmodule Storyarn.Ideation.SessionsTest do
       assert {:error, _} = Ideation.reopen_session(scope, project_id, session.id, 1)
 
       assert {:error, _} =
-               Ideation.assign_session_responsibilities(scope, project_id, session.id, 1, %{facilitator_id: scope.user.id})
+               Ideation.assign_session_responsibilities(scope, project_id, session.id, 1, %{
+                 facilitator_id: scope.user.id
+               })
     end
 
     assert {:error, _} = Ideation.list_sessions(outsider_scope, ctx.project.id)

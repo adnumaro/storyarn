@@ -111,7 +111,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply, socket}
   end
 
-  def handle_remote_change(:sequence_track_upserted, _payload, socket), do: {:noreply, refresh_sequence_surfaces(socket)}
+  def handle_remote_change(:sequence_track_upserted, _payload, socket),
+    do: {:noreply, refresh_sequence_surfaces(socket)}
 
   def handle_remote_change(:sequence_track_cleared, _payload, socket), do: {:noreply, refresh_sequence_surfaces(socket)}
 

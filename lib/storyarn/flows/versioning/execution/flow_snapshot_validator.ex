@@ -152,7 +152,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
     end
   end
 
-  defp validate_node_payload(%{"original_id" => id, "type" => "exit", "data" => data}), do: validate_exit_target(id, data)
+  defp validate_node_payload(%{"original_id" => id, "type" => "exit", "data" => data}),
+    do: validate_exit_target(id, data)
 
   defp validate_node_payload(%{"original_id" => id, "type" => "dialogue", "data" => data} = node) do
     with :ok <- validate_dialogue_runtime_ids(id, data), do: validate_composition_resources(node)
@@ -683,7 +684,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
   defp validate_localization_translation_state(row) do
     if coherent_translation?(row),
       do: :ok,
-      else: {:error, {:invalid_localization_translation_state, row["source_id"], row["source_field"], row["locale_code"]}}
+      else:
+        {:error, {:invalid_localization_translation_state, row["source_id"], row["source_field"], row["locale_code"]}}
   end
 
   defp coherent_translation?(row) do
@@ -719,7 +721,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
         :ok
 
       {:error, details} ->
-        {:error, {:invalid_localization_placeholders, row["source_id"], row["source_field"], row["locale_code"], details}}
+        {:error,
+         {:invalid_localization_placeholders, row["source_id"], row["source_field"], row["locale_code"], details}}
     end
   end
 

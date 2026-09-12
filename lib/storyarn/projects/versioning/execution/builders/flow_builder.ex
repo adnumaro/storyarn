@@ -469,7 +469,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
 
         {:error, reason} ->
           {:halt,
-           {:error, {:flow_external_reference_not_materializable, {:flow_node, node["original_id"], "avatar_id"}, reason}}}
+           {:error,
+            {:flow_external_reference_not_materializable, {:flow_node, node["original_id"], "avatar_id"}, reason}}}
       end
     end)
   end
@@ -561,7 +562,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
           raise ArgumentError,
                 "cannot build a flow snapshot with an invalid dynamic exit pin: " <>
                   inspect(
-                    {:dynamic_exit_pin_not_materializable, connection.id, connection.source_pin, :missing_referenced_flow}
+                    {:dynamic_exit_pin_not_materializable, connection.id, connection.source_pin,
+                     :missing_referenced_flow}
                   )
         end
 
@@ -2179,7 +2181,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp validate_localization_translation_state(row) do
     if coherent_translation_state?(row),
       do: :ok,
-      else: {:error, {:invalid_localization_translation_state, row["source_id"], row["source_field"], row["locale_code"]}}
+      else:
+        {:error, {:invalid_localization_translation_state, row["source_id"], row["source_field"], row["locale_code"]}}
   end
 
   defp validate_localization_placeholders(%{"translated_text" => translated_text} = row)
@@ -2189,7 +2192,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
         :ok
 
       {:error, details} ->
-        {:error, {:invalid_localization_placeholders, row["source_id"], row["source_field"], row["locale_code"], details}}
+        {:error,
+         {:invalid_localization_placeholders, row["source_id"], row["source_field"], row["locale_code"], details}}
     end
   end
 
@@ -2914,7 +2918,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
     insert_sequence_config(repo, node_id, config_data, now)
   end
 
-  defp insert_sequence_config(_repo, node_id, nil, _now), do: {:error, {:invalid_sequence_config_snapshot, node_id, nil}}
+  defp insert_sequence_config(_repo, node_id, nil, _now),
+    do: {:error, {:invalid_sequence_config_snapshot, node_id, nil}}
 
   defp insert_sequence_config(repo, node_id, config_data, now) when is_map(config_data) do
     attrs =

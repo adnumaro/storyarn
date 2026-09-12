@@ -25,7 +25,11 @@ defmodule Storyarn.Sheets.Editor.Entities.TableRowTest do
 
     test "valid attrs produce a valid changeset", %{block: block} do
       changeset =
-        TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Strength", position: 5, cells: %{"value" => 10}})
+        TableRow.create_changeset(%TableRow{block_id: block.id}, %{
+          name: "Strength",
+          position: 5,
+          cells: %{"value" => 10}
+        })
 
       assert changeset.valid?
       assert get_change(changeset, :name) == "Strength"

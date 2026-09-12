@@ -97,7 +97,9 @@ defmodule Storyarn.Ideation.IdeaConcurrencyTest do
     assert first.revision == 2
 
     Sandbox.unboxed_run(Repo, fn ->
-      assert {:error, :stale_revision} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id, 1)
+      assert {:error, :stale_revision} =
+               Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id, 1)
+
       assert {:ok, %{revision: 2}} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id)
       assert Repo.aggregate(from(r in Revision, where: r.idea_id == ^ctx.idea.id), :count) == 2
     end)

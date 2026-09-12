@@ -118,7 +118,14 @@ defmodule Storyarn.Ideation.IdeaPrivacyTest do
       assert {:error, :not_found} = Ideation.get_idea(ctx.author, project_id, session_id, idea.id)
 
       assert {:error, :not_found} =
-               Ideation.update_idea(ctx.author, project_id, session_id, idea.id, 1, edit_attrs(%{body: "Wrong context"}))
+               Ideation.update_idea(
+                 ctx.author,
+                 project_id,
+                 session_id,
+                 idea.id,
+                 1,
+                 edit_attrs(%{body: "Wrong context"})
+               )
     end
 
     outsider = user_scope_fixture()

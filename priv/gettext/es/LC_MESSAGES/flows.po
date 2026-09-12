@@ -173,7 +173,7 @@ msgstr "Esto crearía una referencia circular."
 
 #: lib/storyarn_web/live/flow_sidebar_live.ex:86
 #: lib/storyarn_web/live/flow_sidebar_live.ex:102
-#: lib/storyarn_web/live/hooks/palette.ex:586
+#: lib/storyarn_web/live/hooks/palette.ex:591
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"
@@ -464,7 +464,7 @@ msgstr "Nodo #%{n} (%{type}) — mención de texto enriquecido"
 msgid "Node #%{n} (%{type}) — terminal target"
 msgstr "Nodo #%{n} (%{type}) — destino terminal"
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:547
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:548
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr "No se pudo guardar el comentario. Revisa el texto y las menciones seleccionadas."

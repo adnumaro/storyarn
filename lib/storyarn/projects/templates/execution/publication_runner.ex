@@ -302,8 +302,11 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   defp publication_to_template_result(_scope, publication),
     do: {:error, {:unexpected_publication_status, publication.status}}
 
-  defp publication_failure_report(%ProjectTemplatePublication{audit_report: %{"status" => _status} = report}), do: report
-  defp publication_failure_report(%ProjectTemplatePublication{error_report: report}) when map_size(report) > 0, do: report
+  defp publication_failure_report(%ProjectTemplatePublication{audit_report: %{"status" => _status} = report}),
+    do: report
+
+  defp publication_failure_report(%ProjectTemplatePublication{error_report: report}) when map_size(report) > 0,
+    do: report
 
   defp publication_failure_report(%ProjectTemplatePublication{error_code: code}) when not is_nil(code) do
     {:publication_failed, code}

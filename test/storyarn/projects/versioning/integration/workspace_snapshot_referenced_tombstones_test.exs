@@ -324,8 +324,10 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
     [
       {"flow.scene_id", new.flow_scene_source, :scene_id, new.flow_scene_target, old.flow_scene_target},
       {"block.inherited_from_block_id", new.block_source, :inherited_from_block_id, new.block_target, old.block_target},
-      {"flow_connection.source_node_id", new.connection, :source_node_id, new.source_node_target, old.source_node_target},
-      {"flow_connection.target_node_id", new.connection, :target_node_id, new.target_node_target, old.target_node_target},
+      {"flow_connection.source_node_id", new.connection, :source_node_id, new.source_node_target,
+       old.source_node_target},
+      {"flow_connection.target_node_id", new.connection, :target_node_id, new.target_node_target,
+       old.target_node_target},
       {"scene.parent_id", new.scene_child, :parent_id, new.scene_parent, old.scene_parent},
       {"scene_pin.sheet_id", new.pin, :sheet_id, new.pin_sheet_target, old.pin_sheet_target},
       {"scene_pin.flow_id", new.pin, :flow_id, new.shared_flow_target, old.shared_flow_target},
@@ -336,8 +338,14 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
   end
 
   defp assert_unrelated_trash_absent(project_id) do
-    refute Repo.exists?(from row in Scene, where: row.project_id == ^project_id and row.name == "unrelated-trashed-scene")
-    refute Repo.exists?(from row in Sheet, where: row.project_id == ^project_id and row.name == "unrelated-trashed-sheet")
+    refute Repo.exists?(
+             from row in Scene, where: row.project_id == ^project_id and row.name == "unrelated-trashed-scene"
+           )
+
+    refute Repo.exists?(
+             from row in Sheet, where: row.project_id == ^project_id and row.name == "unrelated-trashed-sheet"
+           )
+
     refute Repo.exists?(from row in Flow, where: row.project_id == ^project_id and row.name == "unrelated-trashed-flow")
     refute Repo.exists?(from row in Block, where: row.variable_name == "unrelated_trashed_block")
     refute Repo.exists?(from row in FlowNode, where: row.data["text"] == "unrelated-trashed-node")
@@ -381,7 +389,12 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
 
   defp upload_asset!(project, user, filename, bytes) do
     assert {:ok, asset} =
-             Assets.upload_binary_and_create_asset(bytes, %{filename: filename, content_type: "image/png"}, project, user)
+             Assets.upload_binary_and_create_asset(
+               bytes,
+               %{filename: filename, content_type: "image/png"},
+               project,
+               user
+             )
 
     on_exit(fn ->
       ObjectStorage.delete(asset.key)

@@ -79,7 +79,8 @@ defmodule Storyarn.Projects.Memberships do
   def create_membership(project_id, user_id, role),
     do: MembershipOperations.create_membership(@config, project_id, user_id, role)
 
-  def update_member_role(scope, project_id, membership_id, role) when valid_id(project_id) and valid_id(membership_id) do
+  def update_member_role(scope, project_id, membership_id, role)
+      when valid_id(project_id) and valid_id(membership_id) do
     Repo.transact(fn ->
       with {:ok, _project, _actor_membership} <-
              authorize_locked(scope, project_id, :manage_members, :update),

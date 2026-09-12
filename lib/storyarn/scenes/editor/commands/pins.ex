@@ -184,7 +184,8 @@ defmodule Storyarn.Scenes.Editor.Commands.Pins do
     end
   end
 
-  defp label_being_cleared?(attrs, new_label), do: Map.has_key?(attrs, "label") and (is_nil(new_label) or new_label == "")
+  defp label_being_cleared?(attrs, new_label),
+    do: Map.has_key?(attrs, "label") and (is_nil(new_label) or new_label == "")
 
   defp label_changing?(new_label, current_label),
     do: is_binary(new_label) and new_label != "" and new_label != current_label

@@ -19,8 +19,8 @@ defmodule Storyarn.Platform.Adapters.Oban.OperationalMetricsTest do
       {"imports", "retryable", 3, 1, DateTime.shift(now, second: -30), DateTime.shift(now, second: -30), nil, 4},
       {"imports", "scheduled", 1, 0, nil, DateTime.shift(now, hour: -2), nil, 0},
       {"imports", "executing", 1, 0, nil, DateTime.shift(now, minute: -5), DateTime.shift(now, second: -5), 2},
-      {"snapshot_archives", "available", 99, 99, DateTime.shift(now, minute: -15), DateTime.shift(now, minute: -15), nil,
-       8}
+      {"snapshot_archives", "available", 99, 99, DateTime.shift(now, minute: -15), DateTime.shift(now, minute: -15),
+       nil, 8}
     ]
 
     assert OperationalMetrics.measurements_for_queue(rows, :imports, 2, now) == %{

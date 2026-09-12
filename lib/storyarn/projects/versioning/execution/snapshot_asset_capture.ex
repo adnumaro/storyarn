@@ -260,7 +260,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotAssetCapture do
     end
   end
 
-  defp bounded_source_size(%{size: size}) when is_integer(size) and size >= 0 and size <= @max_asset_size, do: {:ok, size}
+  defp bounded_source_size(%{size: size}) when is_integer(size) and size >= 0 and size <= @max_asset_size,
+    do: {:ok, size}
 
   defp bounded_source_size(_stat), do: {:error, :snapshot_asset_source_size_invalid}
 
@@ -367,7 +368,8 @@ defmodule Storyarn.Projects.Versioning.SnapshotAssetCapture do
   defp validate_expected_identity(%{blob_hash: hash, size: size, content_type: content_type}, hash, size, content_type),
     do: :ok
 
-  defp validate_expected_identity(_expected, _hash, _size, _content_type), do: {:error, :snapshot_asset_identity_changed}
+  defp validate_expected_identity(_expected, _hash, _size, _content_type),
+    do: {:error, :snapshot_asset_identity_changed}
 
   defp expected_identity(%Asset{} = asset) do
     %{blob_hash: asset.blob_hash, size: asset.size, content_type: asset.content_type}
@@ -394,7 +396,12 @@ defmodule Storyarn.Projects.Versioning.SnapshotAssetCapture do
     {:ok, normalized_assets}
   end
 
-  defp ensure_blob_spec(project_id, %{blob_hash: blob_hash, size: size, content_type: content_type, asset_ids: asset_ids})
+  defp ensure_blob_spec(project_id, %{
+         blob_hash: blob_hash,
+         size: size,
+         content_type: content_type,
+         asset_ids: asset_ids
+       })
        when is_binary(blob_hash) and is_integer(size) and size >= 0 and is_binary(content_type) do
     ensure_blob_spec_assets(project_id, blob_hash, size, content_type, asset_ids)
   end

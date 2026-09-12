@@ -222,12 +222,24 @@ defmodule Storyarn.Projects.SpatialCommentsTest do
     assert {:error, :unauthorized} = create_canvas(%{ctx | scope: scope})
 
     assert {:error, :unauthorized} =
-             Projects.move_comment_thread(scope, ctx.project.id, detail.thread.id, %{x: 1, y: 2}, detail.thread.revision)
+             Projects.move_comment_thread(
+               scope,
+               ctx.project.id,
+               detail.thread.id,
+               %{x: 1, y: 2},
+               detail.thread.revision
+             )
 
     membership |> change(role: "editor") |> Repo.update!()
 
     assert {:ok, moved} =
-             Projects.move_comment_thread(scope, ctx.project.id, detail.thread.id, %{x: 1, y: 2}, detail.thread.revision)
+             Projects.move_comment_thread(
+               scope,
+               ctx.project.id,
+               detail.thread.id,
+               %{x: 1, y: 2},
+               detail.thread.revision
+             )
 
     Repo.delete!(membership)
 

@@ -239,7 +239,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjects do
       maybe_cancel_upload_owner(socket, meta)
 
       {:noreply,
-       socket |> cancel_upload(:snapshot_zip, entry.ref) |> assign(:upload_error_code, "unavailable") |> reload_imports()}
+       socket
+       |> cancel_upload(:snapshot_zip, entry.ref)
+       |> assign(:upload_error_code, "unavailable")
+       |> reload_imports()}
     end
   end
 

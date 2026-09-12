@@ -328,7 +328,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
       else: {:error, :invalid_project_snapshot_project_fields}
   end
 
-  defp validate_canonical_project_fields(_project, _project_data), do: {:error, :invalid_project_snapshot_project_fields}
+  defp validate_canonical_project_fields(_project, _project_data),
+    do: {:error, :invalid_project_snapshot_project_fields}
 
   defp technically_valid_project_fields?(attrs) do
     technically_valid_project_text_fields?(attrs) and
@@ -853,7 +854,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
          :ok <- rebuild_active_reference_sources(project_id),
          :ok <- verify_previous_roots_trashed(previous),
          :ok <- verify_project_fields(project_id, project_data["project"]),
-         :ok <- Storyarn.Ideation.verify_recovery(project_id, project_data["ideation"], Map.get(id_maps, :ideation, %{})) do
+         :ok <-
+           Storyarn.Ideation.verify_recovery(project_id, project_data["ideation"], Map.get(id_maps, :ideation, %{})) do
       verify_semantic_snapshot(
         project_id,
         project_data,
@@ -1479,13 +1481,17 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp active_graph_ids(project_id) do
     sheet_ids =
-      Repo.all(from sheet in Sheet, where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at), select: sheet.id)
+      Repo.all(
+        from sheet in Sheet, where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at), select: sheet.id
+      )
 
     flow_ids =
       Repo.all(from flow in Flow, where: flow.project_id == ^project_id and is_nil(flow.deleted_at), select: flow.id)
 
     scene_ids =
-      Repo.all(from scene in Scene, where: scene.project_id == ^project_id and is_nil(scene.deleted_at), select: scene.id)
+      Repo.all(
+        from scene in Scene, where: scene.project_id == ^project_id and is_nil(scene.deleted_at), select: scene.id
+      )
 
     block_ids = active_child_ids(Block, :sheet_id, sheet_ids)
     node_ids = active_child_ids(FlowNode, :flow_id, flow_ids)
@@ -1511,7 +1517,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   defp active_graph_count(FlowConnection, ids), do: count_by_parent(FlowConnection, :flow_id, ids.flow_ids)
   defp active_graph_count(SequenceConfig, ids), do: count_by_parent(SequenceConfig, :flow_node_id, ids.node_ids)
   defp active_graph_count(SequenceTrack, ids), do: count_by_parent(SequenceTrack, :flow_node_id, ids.node_ids)
-  defp active_graph_count(SequenceVisualLayer, ids), do: count_by_parent(SequenceVisualLayer, :flow_node_id, ids.node_ids)
+
+  defp active_graph_count(SequenceVisualLayer, ids),
+    do: count_by_parent(SequenceVisualLayer, :flow_node_id, ids.node_ids)
+
   defp active_graph_count(ScenePin, ids), do: count_by_parent(ScenePin, :scene_id, ids.scene_ids)
   defp active_graph_count(SceneZone, ids), do: count_by_parent(SceneZone, :scene_id, ids.scene_ids)
   defp active_graph_count(SceneAnnotation, ids), do: count_by_parent(SceneAnnotation, :scene_id, ids.scene_ids)
@@ -1888,8 +1897,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   defp normalize_cleanup_ownership({:ok, _request}), do: :ok
   defp normalize_cleanup_ownership({:error, _reason} = error), do: error
 
-  defp release_bound_reservation(%StorageReservation{status: "active", storage_started_at: nil} = reservation, _context),
-    do: release_without_writes(reservation)
+  defp release_bound_reservation(
+         %StorageReservation{status: "active", storage_started_at: nil} = reservation,
+         _context
+       ), do: release_without_writes(reservation)
 
   defp release_bound_reservation(%StorageReservation{status: "active"} = reservation, context),
     do: release_with_cleanup(reservation, context)

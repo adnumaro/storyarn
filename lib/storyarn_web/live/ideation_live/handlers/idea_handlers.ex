@@ -62,7 +62,8 @@ defmodule StoryarnWeb.IdeationLive.Handlers.IdeaHandlers do
 
   def run("prepare_reveal", scope, project_id, session_id, params) do
     with {:ok, selection} <- selection(params),
-         {:ok, operation} <- Ideation.prepare_idea_reveal(scope, project_id, session_id, params["request_key"], selection) do
+         {:ok, operation} <-
+           Ideation.prepare_idea_reveal(scope, project_id, session_id, params["request_key"], selection) do
       # A manager confirms only a count. Never send opaque private IDs or content
       # to the board; the durable operation owns the frozen manifest.
       {:ok, %{id: operation.id, count: length(operation.manifest), status: operation.status}}

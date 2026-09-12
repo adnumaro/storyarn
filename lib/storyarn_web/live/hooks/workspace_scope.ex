@@ -28,7 +28,12 @@ defmodule StoryarnWeb.Live.Hooks.WorkspaceScope do
     load_workspace(socket, slug, ~p"/users/settings")
   end
 
-  def on_mount(:load_workspace, %{"workspace_slug" => _workspace_slug, "project_slug" => _project_slug}, _session, socket) do
+  def on_mount(
+        :load_workspace,
+        %{"workspace_slug" => _workspace_slug, "project_slug" => _project_slug},
+        _session,
+        socket
+      ) do
     {:cont, socket}
   end
 

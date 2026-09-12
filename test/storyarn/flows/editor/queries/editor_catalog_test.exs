@@ -78,7 +78,8 @@ defmodule Storyarn.Flows.EditorCatalogTest do
                filename: "banner-original.png"
              }
 
-      assert %{asset: %{filename: "hero-gallery.png"}, label: "Portrait"} = List.first(catalog.gallery_by_sheet[sheet.id])
+      assert %{asset: %{filename: "hero-gallery.png"}, label: "Portrait"} =
+               List.first(catalog.gallery_by_sheet[sheet.id])
     end
 
     test "isolates projects, excludes soft-deleted rows and preserves consumer ordering" do

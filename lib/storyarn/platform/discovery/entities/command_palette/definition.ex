@@ -202,7 +202,12 @@ defmodule Storyarn.Platform.CommandPalette.Definition do
 
   defp phrase_parameter_ids(_phrase), do: []
 
-  defp valid_help?(%{label_key: label_key, description_key: description_key, example_key: example_key, pattern: pattern}) do
+  defp valid_help?(%{
+         label_key: label_key,
+         description_key: description_key,
+         example_key: example_key,
+         pattern: pattern
+       }) do
     non_empty_string?(label_key) and non_empty_string?(description_key) and
       non_empty_string?(example_key) and (is_nil(pattern) or non_empty_string?(pattern))
   end

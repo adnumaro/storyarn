@@ -14,7 +14,9 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorker do
   require Logger
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"context" => "project", "encrypted_token" => encrypted_token, "locale" => locale}} = job) do
+  def perform(
+        %Oban.Job{args: %{"context" => "project", "encrypted_token" => encrypted_token, "locale" => locale}} = job
+      ) do
     opts = inviter_opts(job.args)
 
     case decrypt_token(encrypted_token) do

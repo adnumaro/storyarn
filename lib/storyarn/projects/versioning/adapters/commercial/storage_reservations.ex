@@ -71,7 +71,8 @@ defmodule Storyarn.Projects.CommercialStorageReservations do
           non_neg_integer(),
           (StorageReservationRecord.t() -> term())
         ) :: commit_result()
-  def commit(reservation_id, lease_token, expected_generation, actual_bytes, owner_fun) when is_function(owner_fun, 1) do
+  def commit(reservation_id, lease_token, expected_generation, actual_bytes, owner_fun)
+      when is_function(owner_fun, 1) do
     reservation_id
     |> Commercial.commit_project_storage_reservation(
       lease_token,

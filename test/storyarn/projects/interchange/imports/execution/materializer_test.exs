@@ -1886,7 +1886,9 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
         })
 
       [source_text] = Localization.get_texts_for_source("flow_node", source_node.id)
-      assert {:ok, _text} = Localization.update_text(source_text, %{translated_text: "Línea importada", status: "final"})
+
+      assert {:ok, _text} =
+               Localization.update_text(source_text, %{translated_text: "Línea importada", status: "final"})
 
       target_flow = flow_fixture(target, %{name: "Existing Target"})
 

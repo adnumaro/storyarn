@@ -98,7 +98,15 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
           cleanup_targets(),
           keyword()
         ) :: {:ok, Asset.t()} | {:error, term()}
-  def purge_locked(project_id, workspace_id, asset_id, expected_generation, reference_check, cleanup_targets, opts \\ [])
+  def purge_locked(
+        project_id,
+        workspace_id,
+        asset_id,
+        expected_generation,
+        reference_check,
+        cleanup_targets,
+        opts \\ []
+      )
       when is_integer(asset_id) and asset_id > 0 and is_integer(expected_generation) and expected_generation >= 0 and
              is_function(reference_check, 2) and is_function(cleanup_targets, 1) and is_list(opts) do
     with :ok <- require_workspace_lock(workspace_id),

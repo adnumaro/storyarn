@@ -108,7 +108,10 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
       |> press("#{selector} [contenteditable=true]", "Escape")
 
     browser = browser |> assert_has(selector, text: "Edited in the same note") |> assert_has(".canvas-note", count: 1)
-    browser = browser |> assert_has("#{selector}[aria-selected=true]") |> refute_has("#{selector} [contenteditable=true]")
+
+    browser =
+      browser |> assert_has("#{selector}[aria-selected=true]") |> refute_has("#{selector} [contenteditable=true]")
+
     browser = browser |> press(selector, "Delete") |> refute_has(selector)
     assert_deleted(ctx, original.id)
     # Reload only after the server projection has caught up with the optimistic
@@ -202,7 +205,9 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
 
     facilitator = assert_has(facilitator, ".canvas-note", text: "A forgotten promise changed the river.")
     peer = peer |> press("[contenteditable=true]", "Escape") |> assert_has("#canvas-note-#{prompt.id}")
-    {:ok, _} = PlaywrightEx.Frame.click(peer.frame_id, selector: "#canvas-note-#{own.id}", clickCount: 2, timeout: 10_000)
+
+    {:ok, _} =
+      PlaywrightEx.Frame.click(peer.frame_id, selector: "#canvas-note-#{own.id}", clickCount: 2, timeout: 10_000)
 
     peer
     |> press("[contenteditable=true]", "ControlOrMeta+a")

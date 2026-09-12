@@ -674,7 +674,8 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
 
   defp snapshot_restore_content_type?("image/svg+xml", metadata), do: metadata["sanitized_svg"] == true
 
-  defp snapshot_restore_content_type?(content_type, _metadata), do: content_type in @snapshot_restore_asset_content_types
+  defp snapshot_restore_content_type?(content_type, _metadata),
+    do: content_type in @snapshot_restore_asset_content_types
 
   defp validate_snapshot_asset_expected_type(asset_id, metadata, opts) do
     case Keyword.get(opts, :expected_content_type_prefix) do
@@ -693,7 +694,8 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
     end
   end
 
-  defp maybe_put_snapshot_svg_metadata(metadata, %{"sanitized_svg" => true}), do: Map.put(metadata, "sanitized_svg", true)
+  defp maybe_put_snapshot_svg_metadata(metadata, %{"sanitized_svg" => true}),
+    do: Map.put(metadata, "sanitized_svg", true)
 
   defp maybe_put_snapshot_svg_metadata(metadata, _catalog_metadata), do: metadata
 
@@ -885,7 +887,8 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
       sanitized_svg_asset?(asset) == fingerprint.sanitized_svg
   end
 
-  defp check_storage_capacity(workspace_id, requested_bytes) when is_integer(requested_bytes) and requested_bytes >= 0 do
+  defp check_storage_capacity(workspace_id, requested_bytes)
+       when is_integer(requested_bytes) and requested_bytes >= 0 do
     used = workspace_storage_bytes(workspace_id)
     reserved = workspace_reservation_bytes(workspace_id) + workspace_import_reservation_bytes(workspace_id)
     limit = Commercial.entitlement_limit(workspace_id, :storage_bytes_per_workspace)
@@ -1011,7 +1014,8 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
 
   defp verify_stored_content_type(_stat, expected), do: {:error, {:asset_blob_content_type_mismatch, expected, nil}}
 
-  defp compatible_content_type?(actual, expected) when is_binary(actual) and actual != "" and actual == expected, do: true
+  defp compatible_content_type?(actual, expected) when is_binary(actual) and actual != "" and actual == expected,
+    do: true
 
   defp compatible_content_type?("application/octet-stream", "audio/ogg"), do: true
   defp compatible_content_type?("video/webm", "audio/webm"), do: true

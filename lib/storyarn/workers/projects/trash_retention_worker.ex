@@ -76,7 +76,8 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
       Logger.error("Trash retention failed for #{item.type} #{item.id}: #{Exception.message(e)}")
   end
 
-  defp expired?(_deleted_at, %{purge_at: %DateTime{} = purge_at}, now), do: DateTime.compare(now, purge_at) in [:eq, :gt]
+  defp expired?(_deleted_at, %{purge_at: %DateTime{} = purge_at}, now),
+    do: DateTime.compare(now, purge_at) in [:eq, :gt]
 
   defp expired?(_deleted_at, _item, _now), do: false
 

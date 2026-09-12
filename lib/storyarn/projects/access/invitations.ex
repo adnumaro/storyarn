@@ -31,7 +31,8 @@ defmodule Storyarn.Projects.Invitations do
     do: InvitationOperations.create_admin_invitation(@config, project, email, role, opts)
 
   @doc false
-  def deliver_invitation_email(token, opts \\ []), do: InvitationOperations.deliver_invitation_email(@config, token, opts)
+  def deliver_invitation_email(token, opts \\ []),
+    do: InvitationOperations.deliver_invitation_email(@config, token, opts)
 
   @doc false
   def cancel_invitation_delivery(token), do: InvitationOperations.cancel_invitation_delivery(@config, token)

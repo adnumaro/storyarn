@@ -797,7 +797,8 @@ defmodule Storyarn.Projects.References.VariableReferenceValidationTest do
       ]
 
       for invalid_source <- invalid_sources do
-        assert {:error, {:unresolved_variable_reference, "scene_zone", source_id, _kind, _source_sheet, missing_variable}} =
+        assert {:error,
+                {:unresolved_variable_reference, "scene_zone", source_id, _kind, _source_sheet, missing_variable}} =
                  VariableReferenceValidation.validate_snapshot_variable_references(
                    ctx.project.id,
                    [invalid_source]
@@ -816,7 +817,8 @@ defmodule Storyarn.Projects.References.VariableReferenceValidationTest do
 
       malformed = put_in(source, [:action_data, "items"], ["not-an-item-map"])
 
-      assert {:error, {:malformed_variable_reference, "scene_zone", source_id, {:collection_item, 0}, "not-an-item-map"}} =
+      assert {:error,
+              {:malformed_variable_reference, "scene_zone", source_id, {:collection_item, 0}, "not-an-item-map"}} =
                VariableReferenceValidation.validate_snapshot_variable_references(
                  ctx.project.id,
                  [malformed]

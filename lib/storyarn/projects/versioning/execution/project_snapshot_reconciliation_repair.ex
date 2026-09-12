@@ -148,7 +148,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   @doc false
   @spec perform_with_lock(pos_integer(), (String.t(), (-> term()) -> term())) ::
           {:ok, atom()} | {:error, term()}
-  def perform_with_lock(action_id, lock_fun) when is_integer(action_id) and action_id > 0 and is_function(lock_fun, 2) do
+  def perform_with_lock(action_id, lock_fun)
+      when is_integer(action_id) and action_id > 0 and is_function(lock_fun, 2) do
     with {:ok, action} <- record_attempt(action_id) do
       continue_recorded_action(action, action_id, lock_fun)
     end
@@ -759,7 +760,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   defp normalize_cleanup_replay_result({:ok, %SnapshotCleanupIntent{}}),
     do: {:ok, "repaired", "cleanup_intent_replayed", %{}}
 
-  defp normalize_cleanup_replay_result({:ok, :already_completed}), do: {:ok, "resolved", "cleanup_intent_completed", %{}}
+  defp normalize_cleanup_replay_result({:ok, :already_completed}),
+    do: {:ok, "resolved", "cleanup_intent_completed", %{}}
 
   defp normalize_cleanup_replay_result({:ok, :already_active}),
     do: {:ok, "repaired", "cleanup_intent_already_active", %{}}
@@ -1013,7 +1015,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   defp increment_recovery_count(counts, :already_terminal), do: Map.update!(counts, :already_terminal_count, &(&1 + 1))
 
   defp validate_completed_run(%ProjectSnapshotReconciliationRun{status: "completed"}), do: :ok
-  defp validate_completed_run(%ProjectSnapshotReconciliationRun{}), do: {:error, :snapshot_reconciliation_run_incomplete}
+
+  defp validate_completed_run(%ProjectSnapshotReconciliationRun{}),
+    do: {:error, :snapshot_reconciliation_run_incomplete}
+
   defp validate_completed_run(nil), do: {:error, :snapshot_reconciliation_run_not_found}
 
   defp validate_namespace(expected) do

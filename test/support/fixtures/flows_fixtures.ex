@@ -182,9 +182,14 @@ defmodule Storyarn.FlowsFixtures do
   defp normalize_fixture_attrs(attrs, allowed_fields) do
     Enum.reduce(allowed_fields, %{}, fn field, normalized ->
       cond do
-        Map.has_key?(attrs, field) -> Map.put(normalized, field, Map.fetch!(attrs, field))
-        Map.has_key?(attrs, Atom.to_string(field)) -> Map.put(normalized, field, Map.fetch!(attrs, Atom.to_string(field)))
-        true -> normalized
+        Map.has_key?(attrs, field) ->
+          Map.put(normalized, field, Map.fetch!(attrs, field))
+
+        Map.has_key?(attrs, Atom.to_string(field)) ->
+          Map.put(normalized, field, Map.fetch!(attrs, Atom.to_string(field)))
+
+        true ->
+          normalized
       end
     end)
   end

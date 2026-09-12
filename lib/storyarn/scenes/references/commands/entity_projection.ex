@@ -132,7 +132,8 @@ defmodule Storyarn.Scenes.References.Commands.EntityProjection do
     |> Kernel.++(zone_action_references(zone, project_id))
   end
 
-  defp zone_action_references(%{action_type: "action", action_data: action_data}, project_id) when is_map(action_data) do
+  defp zone_action_references(%{action_type: "action", action_data: action_data}, project_id)
+       when is_map(action_data) do
     assignments = Map.get(action_data, "assignments", [])
 
     namespaces =
@@ -152,7 +153,8 @@ defmodule Storyarn.Scenes.References.Commands.EntityProjection do
     |> Enum.uniq_by(&{&1.type, &1.id})
   end
 
-  defp zone_action_references(%{action_type: "display", action_data: action_data}, project_id) when is_map(action_data) do
+  defp zone_action_references(%{action_type: "display", action_data: action_data}, project_id)
+       when is_map(action_data) do
     with variable_ref when is_binary(variable_ref) and variable_ref != "" <-
            Map.get(action_data, "variable_ref"),
          [namespace, _variable] <- String.split(variable_ref, ".", parts: 2),

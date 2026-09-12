@@ -314,7 +314,11 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     {:halt, socket}
   end
 
-  defp handle_palette_event("palette_search_no_results", %{"query_length" => query_length, "surface" => surface}, socket)
+  defp handle_palette_event(
+         "palette_search_no_results",
+         %{"query_length" => query_length, "surface" => surface},
+         socket
+       )
        when is_integer(query_length) and query_length >= 0 and query_length <= 100 and surface in @known_surfaces do
     Platform.track_analytics(socket.assigns.current_scope, "palette search no results", %{
       query_length: query_length,
@@ -473,7 +477,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp append_search_focus(base, %{type: type, id: id}) when type in [:pin, :zone] and valid_database_id(id),
     do: "#{base}?highlight=#{type}:#{id}"
 
-  defp append_search_focus(base, %{type: :block, id: id}) when valid_database_id(id), do: "#{base}?highlight=block:#{id}"
+  defp append_search_focus(base, %{type: :block, id: id}) when valid_database_id(id),
+    do: "#{base}?highlight=block:#{id}"
 
   defp append_search_focus(base, %{type: :cell, block_id: block_id, row_id: row_id, column_id: column_id})
        when valid_database_id(block_id) and valid_database_id(row_id) and valid_database_id(column_id),

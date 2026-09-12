@@ -66,7 +66,7 @@ defmodule Storyarn.Flows.AI.ContextContract do
 
   @impl true
   def subject_matches_policy?(%SubjectRef{contract: __MODULE__, kind: kind}, %Policy{contract: __MODULE__, scope: kind}),
-    do: true
+      do: true
 
   def subject_matches_policy?(_ref, _policy), do: false
 

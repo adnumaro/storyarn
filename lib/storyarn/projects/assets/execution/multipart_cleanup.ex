@@ -773,7 +773,8 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
   defp retain_observed_object(request, targets, {:present, _identity}),
     do: persist_object_outcome(request, targets, "object_retained")
 
-  defp retain_observed_object(request, targets, :absent_now), do: fail_claim(request, "retained_object_missing", targets)
+  defp retain_observed_object(request, targets, :absent_now),
+    do: fail_claim(request, "retained_object_missing", targets)
 
   defp safe_object_delete(delete_fun, key, identity) do
     case delete_fun.(key, identity) do
@@ -893,7 +894,8 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
   defp finish_inventory_phase(request, targets, :verify_references),
     do: transition_phase(request, targets, "verify_references", %{multipart_cleanup_cursor: 0})
 
-  defp finish_inventory_phase(request, targets, {:confirmed, consume?}), do: persist_confirmed(request, targets, consume?)
+  defp finish_inventory_phase(request, targets, {:confirmed, consume?}),
+    do: persist_confirmed(request, targets, consume?)
 
   defp persist_confirmation_residue(request, inventory, targets) do
     result =

@@ -1003,7 +1003,9 @@ defmodule Storyarn.ProjectTemplatesTest do
       workspace = WorkspacesFixtures.workspace_fixture(user)
       project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Archived Source"})
 
-      assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Archived Starter"})
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, project, %{name: "Archived Starter"})
+
       version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
 
       template
@@ -1020,7 +1022,8 @@ defmodule Storyarn.ProjectTemplatesTest do
       workspace = WorkspacesFixtures.workspace_fixture(user)
       project = ProjectsFixtures.project_fixture(user, %{workspace: workspace, name: "Checksum Source"})
 
-      assert {:ok, template} = ProjectTemplates.create_template_from_project(scope, project, %{name: "Checksum Starter"})
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, project, %{name: "Checksum Starter"})
 
       version =
         ProjectTemplateVersion

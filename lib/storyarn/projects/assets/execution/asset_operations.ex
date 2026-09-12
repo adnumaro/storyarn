@@ -258,7 +258,8 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
     end
   end
 
-  def prepare_parent_hard_delete_locked(_workspace_id, _project_scope), do: {:error, :invalid_parent_asset_cleanup_scope}
+  def prepare_parent_hard_delete_locked(_workspace_id, _project_scope),
+    do: {:error, :invalid_parent_asset_cleanup_scope}
 
   @doc false
   @spec lock_active_asset_references_for_restore(pos_integer(), keyword()) ::
@@ -2005,7 +2006,8 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
     end
   end
 
-  def import_snapshot_assets_locked(_project, _uploaded_by_id, _attrs_list), do: {:error, :invalid_snapshot_asset_import}
+  def import_snapshot_assets_locked(_project, _uploaded_by_id, _attrs_list),
+    do: {:error, :invalid_snapshot_asset_import}
 
   defp with_snapshot_asset_insert_storage_locks(project, storage_keys, fun) do
     if workspace_snapshot_import_owns_asset_keys?(project, storage_keys) do

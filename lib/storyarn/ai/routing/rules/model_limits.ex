@@ -60,7 +60,8 @@ defmodule Storyarn.AI.Routing.Rules.ModelLimits do
     end
   end
 
-  def validate_provider_request(provider, %{contextual?: false}, body) when is_binary(provider) and is_map(body), do: :ok
+  def validate_provider_request(provider, %{contextual?: false}, body) when is_binary(provider) and is_map(body),
+    do: :ok
 
   def validate_provider_request(_provider, _request, _body), do: {:error, :model_context_limits_unavailable}
 

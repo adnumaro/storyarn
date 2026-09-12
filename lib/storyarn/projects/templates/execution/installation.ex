@@ -47,7 +47,12 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
   @spec request_template_instantiation(Scope.t(), ProjectTemplateVersion.t(), Workspace.t(), map()) ::
           {:ok, ProjectTemplateInstall.t()} | {:error, term()}
-  def request_template_instantiation(%{user: _} = scope, %ProjectTemplateVersion{} = version, %{id: _} = workspace, attrs) do
+  def request_template_instantiation(
+        %{user: _} = scope,
+        %ProjectTemplateVersion{} = version,
+        %{id: _} = workspace,
+        attrs
+      ) do
     version = Repo.preload(version, [:project_template])
 
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
@@ -590,7 +595,9 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
     end
   end
 
-  defp lock_and_authorize_instantiation(%{user: %{id: user_id}}, %ProjectTemplateVersion{} = version, %{id: workspace_id}) do
+  defp lock_and_authorize_instantiation(%{user: %{id: user_id}}, %ProjectTemplateVersion{} = version, %{
+         id: workspace_id
+       }) do
     membership =
       WorkspaceMembership
       |> where([membership], membership.workspace_id == ^workspace_id and membership.user_id == ^user_id)

@@ -32,8 +32,7 @@ defmodule StoryarnWeb.LocalizationLive.Glossary do
           "can_edit" => @can_edit,
           "membership" => @membership,
           "active_tool" => "localization",
-          "dashboard_url" =>
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
           "current_scope" => @current_scope,
           "locale" => @locale
         }

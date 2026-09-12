@@ -446,8 +446,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         },
         socket
       )
-      when valid_import_attempt_id(attempt_id) and is_binary(fingerprint) and import_mode in ~w(additive replace_project) and
-             is_boolean(replace_acknowledged?) do
+      when valid_import_attempt_id(attempt_id) and is_binary(fingerprint) and
+             import_mode in ~w(additive replace_project) and is_boolean(replace_acknowledged?) do
     execute_import_event(socket, attempt_id, fingerprint, import_mode, replace_acknowledged?)
   end
 
@@ -494,7 +494,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     reconcile_import_attempt(socket, attempt_id, wake_queue: true, protect_active: true)
   end
 
-  def handle_event("reconcile_import", %{"attempt_id" => attempt_id}, socket) when valid_import_attempt_id(attempt_id) do
+  def handle_event("reconcile_import", %{"attempt_id" => attempt_id}, socket)
+      when valid_import_attempt_id(attempt_id) do
     if socket.assigns.import_state.attempt_id == attempt_id do
       reconcile_import_attempt(socket, attempt_id)
     else
@@ -929,7 +930,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         # These failures happen before queue acceptance and leave the durable
         # attempt ready. Keep the review usable, adopt any mode changed by a
         # concurrent tab, and expose only a stable code for localized copy.
-        {:reply, %{ok: false, reason: "recoverable"}, reconcile_recoverable_import_preflight(socket, attempt_id, reason)}
+        {:reply, %{ok: false, reason: "recoverable"},
+         reconcile_recoverable_import_preflight(socket, attempt_id, reason)}
 
       {:error, reason} when reason in [:import_review_required, :invalid_import_review_selection] ->
         # The stored review no longer authorizes this fingerprint; the client

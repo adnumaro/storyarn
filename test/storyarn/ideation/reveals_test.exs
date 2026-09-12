@@ -161,7 +161,9 @@ defmodule Storyarn.Ideation.RevealsTest do
                edit_attrs(%{body: "New draft after preparation"})
              )
 
-    assert {:error, :stale_reveal} = Ideation.reveal_ideas(ctx.facilitator, ctx.project.id, ctx.session.id, operation.id)
+    assert {:error, :stale_reveal} =
+             Ideation.reveal_ideas(ctx.facilitator, ctx.project.id, ctx.session.id, operation.id)
+
     assert Repo.get!(Idea, first.id).published_revision == nil
     assert Repo.get!(Idea, second.id).published_revision == nil
     assert Repo.get!(Reveal, operation.id).status == :prepared
@@ -202,9 +204,15 @@ defmodule Storyarn.Ideation.RevealsTest do
     assert {:error, :not_found} = Ideation.reveal_ideas(ctx.peer, ctx.project.id, ctx.session.id, operation.id)
 
     assert {:ok, _} =
-             Ideation.assign_session_responsibilities(ctx.owner, ctx.project.id, ctx.session.id, ctx.session.revision, %{
-               facilitator_id: ctx.peer.user.id
-             })
+             Ideation.assign_session_responsibilities(
+               ctx.owner,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               %{
+                 facilitator_id: ctx.peer.user.id
+               }
+             )
 
     assert {:error, :not_found} = Ideation.reveal_ideas(ctx.facilitator, ctx.project.id, ctx.session.id, operation.id)
     assert Repo.get!(Idea, idea.id).published_revision == nil
@@ -235,7 +243,14 @@ defmodule Storyarn.Ideation.RevealsTest do
                %{idea_id: second.id, revision: 1}
              ])
 
-    for selection <- [[], %{}, [nil], targets ++ targets, [%{idea_id: first.id, revision: -1}], List.duplicate(%{}, 201)] do
+    for selection <- [
+          [],
+          %{},
+          [nil],
+          targets ++ targets,
+          [%{idea_id: first.id, revision: -1}],
+          List.duplicate(%{}, 201)
+        ] do
       assert {:error, :invalid_selection} =
                Ideation.prepare_idea_reveal(ctx.author, ctx.project.id, ctx.session.id, Ecto.UUID.generate(), selection)
     end

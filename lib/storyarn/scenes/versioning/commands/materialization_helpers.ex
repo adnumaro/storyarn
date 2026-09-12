@@ -25,7 +25,8 @@ defmodule Storyarn.Scenes.Versioning.Commands.MaterializationHelpers do
   def exact_materialization?(opts), do: Keyword.get(opts, :materialization_mode, :portable) == :exact
   def preserve_external_refs?(opts), do: Keyword.get(opts, :preserve_external_refs, true)
 
-  def with_project_storage_lock(project_id, fun) when is_integer(project_id) and project_id > 0 and is_function(fun, 0) do
+  def with_project_storage_lock(project_id, fun)
+      when is_integer(project_id) and project_id > 0 and is_function(fun, 0) do
     Assets.with_project_storage_lock(project_id, fun)
   end
 

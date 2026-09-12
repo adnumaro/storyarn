@@ -340,7 +340,8 @@ defmodule Mix.Tasks.Convention.Check do
   defp fix_suggestion(:facade_bypass),
     do: "Use the context facade (e.g., Sheets.function() not Sheets.SheetCrud.function())"
 
-  defp fix_suggestion(:string_to_atom), do: "Use String.to_existing_atom/1 with a `when field in ~w(...)` allowlist guard"
+  defp fix_suggestion(:string_to_atom),
+    do: "Use String.to_existing_atom/1 with a `when field in ~w(...)` allowlist guard"
 
   defp fix_suggestion(:sql_interpolation), do: "Use ^variable pinning in Ecto queries instead of \#{interpolation}"
 

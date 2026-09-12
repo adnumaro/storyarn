@@ -575,7 +575,8 @@ defmodule Storyarn.Projects.ProjectTemplates.Audit do
         join: scene in Scene,
         on: scene.id == z.scene_id,
         left_join: target_scene in Scene,
-        on: target_scene.id == z.target_id and target_scene.project_id == ^project_id and is_nil(target_scene.deleted_at),
+        on:
+          target_scene.id == z.target_id and target_scene.project_id == ^project_id and is_nil(target_scene.deleted_at),
         where: scene.project_id == ^project_id and is_nil(scene.deleted_at),
         where: z.target_type == "scene" and not is_nil(z.target_id) and is_nil(target_scene.id),
         select: %{

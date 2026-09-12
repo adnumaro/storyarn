@@ -30,7 +30,8 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundContribution do
 
   defp select_round(_session_id, _round_id), do: {:error, :invalid_round}
 
-  defp active_round(session_id), do: Repo.one(from r in Round, where: r.session_id == ^session_id and r.status == :active)
+  defp active_round(session_id),
+    do: Repo.one(from r in Round, where: r.session_id == ^session_id and r.status == :active)
 
   defp contribution(nil), do: {:ok, %{round_id: nil, late_contribution: false}}
   defp contribution(%{status: :planned}), do: {:error, :round_not_started}

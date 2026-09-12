@@ -348,7 +348,10 @@ defmodule Storyarn.Localization.Providers.DeepL do
 
   defp request_options(api_key, extra \\ []) do
     defaults =
-      Keyword.merge([headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}], retry: :transient, max_retries: 2], extra)
+      Keyword.merge(
+        [headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}], retry: :transient, max_retries: 2],
+        extra
+      )
 
     Keyword.merge(defaults, Application.get_env(:storyarn, :deepl_req_options, []))
   end

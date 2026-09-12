@@ -91,7 +91,8 @@ defmodule Storyarn.Localization.Texts.Commands.Update do
   defp update_text_error({:invalid_project_reference, :vo_asset_id, _value}),
     do: {:vo_asset_id, "must reference an asset in this project"}
 
-  defp update_text_error({:invalid_voiceover_asset_type, _asset_id}), do: {:vo_asset_id, "must reference an audio asset"}
+  defp update_text_error({:invalid_voiceover_asset_type, _asset_id}),
+    do: {:vo_asset_id, "must reference an audio asset"}
 
   defp update_text_error(_reason), do: {:base, "could not be updated"}
 

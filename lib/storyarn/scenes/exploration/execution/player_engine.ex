@@ -44,7 +44,15 @@ defmodule Storyarn.Scenes.FlowRuntime.PlayerEngine do
     {:error, state, Enum.reverse(skipped)}
   end
 
-  defp do_step(%State{status: :finished} = state, _nodes, _connections, _max, _count, skipped, _advance_current_dialogue?) do
+  defp do_step(
+         %State{status: :finished} = state,
+         _nodes,
+         _connections,
+         _max,
+         _count,
+         skipped,
+         _advance_current_dialogue?
+       ) do
     {:finished, state, Enum.reverse(skipped)}
   end
 
