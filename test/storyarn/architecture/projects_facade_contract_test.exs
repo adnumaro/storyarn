@@ -201,6 +201,8 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     subscribe_project_imports: 1,
     subscribe_project_ownership_changes: 1,
     subscribe_project_membership_changes: 1,
+    unsubscribe_project_membership_changes: 1,
+    unsubscribe_project_ownership_changes: 1,
     subscribe_project_snapshot_restores: 1,
     subscribe_project_snapshots: 1,
     subscribe_project_template_publications: 1,
@@ -284,6 +286,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
   @comment_contract [
+    list_comment_conversations: 1,
+    list_comment_conversations: 2,
+    subscribe_comment_conversations: 1,
+    invalidate_comment_conversations: 1,
     restricted_comment_message_ids_query: 0,
     readable_comment_message_ids_query: 1,
     list_ideation_conversations: 1,
@@ -334,9 +340,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     subscribe_sheet_comments: 3,
     unsubscribe_sheet_comments: 2
   ]
-  @docs_digest "8a364084fc3eb4bbd72d5a3d6de6282204852c43109e5265c44017f0a86e8d41"
+  @docs_digest "285d32ddf7a2ddb49c68b7ec136a07d691bcd94180a1c4de13214fe47fae8ab8"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
-  @specs_digest "4fe9d2fe1a96f8245500bfd2b9922c71e57eeb68f79f1413233fc36998951671"
+  @specs_digest "049b7a18ecee7d260e776e1671eb3397e9c3cc9ba35349c5fd024c43fc63900d"
 
   test "the root facade preserves every established function and arity" do
     expected = MapSet.new(@public_contract ++ @worker_contract ++ @comment_contract)
@@ -368,10 +374,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 192
+    assert length(established_docs) == 194
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 82, hidden: 16, none: 94}
+             %{documented: 84, hidden: 16, none: 94}
 
     assert length(worker_docs) == 48
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
@@ -411,7 +417,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 47
+    assert length(normalized_specs) == 49
     assert digest(normalized_specs) == @specs_digest
   end
 

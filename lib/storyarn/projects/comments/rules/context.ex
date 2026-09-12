@@ -103,6 +103,110 @@ defmodule Storyarn.Projects.Comments.Context do
     end)
   end
 
+  # Search the current contextual labels with the same pointer/owner/identity
+  # guards used by the DTO resolver; renamed or replaced targets cannot match a
+  # stale captured label. Every UNION branch starts with the caller's authorized
+  # candidates, including fixed labels and grouped Sheet rows.
+  def matching_threads(text, candidates) do
+    targets =
+      Enum.map(@targets, fn {type, {schema, owner_key, pointer, surface}} ->
+        label = search_label(type)
+        matches = dynamic(fragment("strpos(lower(?), lower(?)) > 0", ^label, ^text))
+
+        active_search_target(
+          from(t in candidates,
+            as: :thread,
+            join: target in ^schema,
+            as: :target,
+            on:
+              field(t, ^pointer) == target.id and field(target, ^owner_key) == t.container_id and
+                t.context_id == fragment("CAST(? AS text)", target.id) and t.context_inserted_at == target.inserted_at,
+            where: t.source_type == ^surface and t.context_type == ^type,
+            where: ^matches,
+            select: t.id
+          ),
+          type
+        )
+      end)
+
+    Enum.reduce(
+      [fixed_context_matches(text, candidates), column_group_matches(text, candidates) | targets],
+      &union_all(&2, ^&1)
+    )
+  end
+
+  defp search_label("flow_node"),
+    do:
+      dynamic(
+        [target: n],
+        fragment(
+          "COALESCE(?->>'name', ?->>'text', ?->>'label', initcap(?) || ' #' || CAST(? AS text))",
+          n.data,
+          n.data,
+          n.data,
+          n.type,
+          n.id
+        )
+      )
+
+  defp search_label("sheet_block") do
+    value = dynamic([target: b], fragment("COALESCE(?->>'label', ?)", b.config, b.variable_name))
+    searchable_label(value, "Block")
+  end
+
+  defp search_label("scene_zone"), do: searchable_label(dynamic([target: t], t.name), "Zone")
+  defp search_label("scene_annotation"), do: searchable_label(dynamic([target: t], t.text), "Annotation")
+  defp search_label("scene_pin"), do: searchable_label(dynamic([target: t], t.label), "Pin")
+  defp search_label("scene_connection"), do: searchable_label(dynamic([target: t], t.label), "Connection")
+
+  defp searchable_label(value, fallback) do
+    dynamic(
+      [target: target],
+      fragment(
+        "COALESCE(NULLIF(btrim(regexp_replace(?, '<[^>]*>', '', 'g')), ''), ? || ' #' || CAST(? AS text))",
+        ^value,
+        ^fallback,
+        target.id
+      )
+    )
+  end
+
+  defp active_search_target(query, type) when type in ~w(flow_node sheet_block),
+    do: where(query, [target: target], is_nil(target.deleted_at))
+
+  defp active_search_target(query, _), do: query
+
+  defp fixed_context_matches(text, candidates) do
+    from(t in candidates,
+      join: sheet in SheetRecord,
+      on: sheet.id == t.sheet_canvas_id and sheet.id == t.container_id and sheet.project_id == t.project_id,
+      where: is_nil(sheet.deleted_at) and t.source_type == "sheet_canvas" and t.context_type in ^@fixed_types,
+      where: t.context_id == fragment("CAST(? AS text)", sheet.id) and t.context_inserted_at == sheet.inserted_at,
+      where:
+        fragment(
+          "strpos(lower(CASE ? WHEN 'sheet_cover' THEN 'Cover' WHEN 'sheet_header' THEN 'Header' ELSE 'Title' END), lower(?)) > 0",
+          t.context_type,
+          ^text
+        ),
+      select: t.id
+    )
+  end
+
+  defp column_group_matches(text, candidates) do
+    from(t in candidates,
+      join: block in SheetBlockRecord,
+      on: block.sheet_id == t.container_id and block.column_group_id == t.context_sheet_column_group_id,
+      where: t.source_type == "sheet_canvas" and t.context_type == "sheet_column_group" and is_nil(block.deleted_at),
+      where: t.sheet_canvas_id == t.container_id,
+      where: t.context_id == fragment("CAST(? AS text)", block.column_group_id),
+      group_by: t.id,
+      having: count(block.id) >= 2,
+      having:
+        fragment("strpos(lower('Row of ' || CAST(? AS text) || ' blocks'), lower(?)) > 0", count(block.id), ^text),
+      select: t.id
+    )
+  end
+
   defp resolve_group(type, threads) do
     targets = batch_targets(type, threads)
 

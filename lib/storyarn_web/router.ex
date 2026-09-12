@@ -215,6 +215,9 @@ defmodule StoryarnWeb.Router do
       # settings can navigate to it without a document reload.
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
 
+      # Cross-project collaboration shares the authenticated shell, outside tool navigation.
+      live "/comments", CommentLive.Index, :index
+
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
       live "/workspaces/new", WorkspaceLive.New, :new

@@ -47,6 +47,7 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
       end)
 
     %{
+      comments: ~p"/comments?#{[project_id: project.id]}",
       workspace: ~p"/workspaces/#{workspace.slug}",
       projectSettings: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings",
       trash: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings/trash",

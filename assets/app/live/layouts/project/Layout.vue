@@ -13,6 +13,7 @@ import {
 import { onMounted, onUnmounted, ref } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import NotificationBell from "@components/notifications/NotificationBell.vue";
+import CommentsHubLink from "@components/comments/CommentsHubLink.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
@@ -169,7 +170,8 @@ onUnmounted(() => {
           <div class="flex shrink-0 items-center gap-2">
             <slot name="top-right" />
 
-            <div :class="['shrink-0', sidebarOpen && 'hidden lg:block']">
+            <div :class="['shrink-0 flex items-center gap-1', sidebarOpen && 'hidden lg:flex']">
+              <CommentsHubLink :to="urls.comments" />
               <NotificationBell />
             </div>
 

@@ -278,6 +278,16 @@ defmodule Storyarn.Workspaces do
   @spec subscribe_workspace_membership_changes(pos_integer()) :: :ok | {:error, :invalid_workspace_id}
   defdelegate subscribe_workspace_membership_changes(workspace_id), to: Memberships, as: :subscribe_membership_changes
 
+  @doc "Unsubscribes the caller from a workspace's ownership changes."
+  @spec unsubscribe_workspace_ownership_changes(pos_integer()) :: :ok | {:error, :invalid_workspace_id}
+  defdelegate unsubscribe_workspace_ownership_changes(workspace_id), to: Memberships, as: :unsubscribe_ownership_changes
+
+  @doc "Unsubscribes the caller from a workspace's membership changes."
+  @spec unsubscribe_workspace_membership_changes(pos_integer()) :: :ok | {:error, :invalid_workspace_id}
+  defdelegate unsubscribe_workspace_membership_changes(workspace_id),
+    to: Memberships,
+    as: :unsubscribe_membership_changes
+
   @doc """
   Authorizes a user action on a workspace.
 

@@ -4,6 +4,7 @@ defmodule Storyarn.Projects.Comments do
   alias Storyarn.Platform
   alias Storyarn.Projects.Access
   alias Storyarn.Projects.Comments.Context
+  alias Storyarn.Projects.Comments.Conversations
   alias Storyarn.Projects.Comments.DTO
   alias Storyarn.Projects.Comments.IdeationConversations
   alias Storyarn.Projects.Comments.Mutations
@@ -11,6 +12,15 @@ defmodule Storyarn.Projects.Comments do
   alias Storyarn.Projects.Comments.Payload
   alias Storyarn.Projects.Comments.Queries
   alias Storyarn.Repo
+
+  def subscribe_comment_conversations(%{user: %{id: id}}) when is_integer(id) and id > 0,
+    do: subscribe_topic(hub_topic(id))
+
+  def subscribe_comment_conversations(_), do: {:error, :not_found}
+
+  def invalidate_comment_conversations(project_id) do
+    publish_to_members(project_id, &hub_topic/1, {:comment_conversations_changed, project_id})
+  end
 
   def subscribe_conversations(%{user: %{id: id}} = scope) when is_integer(id) and id > 0 do
     with :ok <- subscribe_topic(conversation_topic(id)),
@@ -41,10 +51,12 @@ defmodule Storyarn.Projects.Comments do
   # inbox spans projects and must also observe newly granted memberships.
   def invalidate_ideation_sources(project_id) do
     publish_to_members(project_id, &source_topic/1, {:ideation_comment_sources_changed, project_id})
+    invalidate_comment_conversations(project_id)
   end
 
   def invalidate_ideation_activity(project_id) do
     publish_to_members(project_id, &conversation_topic/1, {:ideation_conversations_changed, project_id})
+    invalidate_comment_conversations(project_id)
   end
 
   defp publish_to_members(project_id, topic, event) do
@@ -70,6 +82,30 @@ defmodule Storyarn.Projects.Comments do
 
   def list_ideation_conversations(_, _), do: {:error, :not_found}
 
+  def list_comment_conversations(%{user: %{id: id}} = scope, opts) when is_integer(id) and id > 0 do
+    with {:ok, threads, cursor} <- Conversations.list(scope, opts) do
+      dtos = thread_dtos(threads, scope)
+      destinations = destinations(scope, Enum.map(dtos, & &1.root_message_id))
+      counts = if Keyword.get(opts, :include_counts, true), do: Conversations.counts(scope, opts)
+      # Last read before serialization rechecks every page entry's membership
+      # and restricted source audience, including canonical project membership.
+      metadata = Conversations.metadata(scope, Enum.map(dtos, & &1.id))
+
+      dtos =
+        for dto <- dtos, info = metadata[dto.id], info != nil do
+          dto
+          |> Map.merge(info)
+          |> Map.put(:destination, destinations[{info.project_id, dto.root_message_id}])
+        end
+
+      # A source revoked during this read must not survive as a cursor identity.
+      cursor = if cursor && dtos != [], do: %{at: List.last(dtos).last_activity_at, id: List.last(dtos).id}
+      {:ok, %{threads: dtos, next_cursor: cursor, counts: counts}}
+    end
+  end
+
+  def list_comment_conversations(_, _), do: {:error, :not_found}
+
   def set_following(scope, project_id, thread_id, following),
     do: update_participation(scope, project_id, thread_id, {:follow, following})
 
@@ -83,6 +119,8 @@ defmodule Storyarn.Projects.Comments do
         participation_topic(scope.user.id),
         {:ideation_comment_participation_changed, project_id, thread.container_id, thread.id}
       )
+
+      PubSub.broadcast(Storyarn.PubSub, hub_topic(scope.user.id), {:comment_conversations_changed, project_id})
 
       get_thread(scope, project_id, thread_id)
     end
@@ -442,14 +480,17 @@ defmodule Storyarn.Projects.Comments do
   defp publish_change(project_id, %{source_type: source_type, container_id: flow_id})
        when source_type in ["flow_node", "flow_canvas"] do
     PubSub.broadcast(Storyarn.PubSub, flow_topic(project_id, flow_id), {:flow_comments_changed, flow_id})
+    invalidate_comment_conversations(project_id)
   end
 
   defp publish_change(project_id, %{source_type: "scene_canvas", container_id: scene_id}) do
     PubSub.broadcast(Storyarn.PubSub, scene_topic(project_id, scene_id), {:scene_comments_changed, scene_id})
+    invalidate_comment_conversations(project_id)
   end
 
   defp publish_change(project_id, %{source_type: "sheet_canvas", container_id: sheet_id}) do
     PubSub.broadcast(Storyarn.PubSub, sheet_topic(project_id, sheet_id), {:sheet_comments_changed, sheet_id})
+    invalidate_comment_conversations(project_id)
   end
 
   defp publish_change(project_id, %{source_type: type, container_id: session_id})
@@ -463,6 +504,7 @@ defmodule Storyarn.Projects.Comments do
   end
 
   defp conversation_topic(user_id), do: "ideation:conversations:user:#{user_id}"
+  defp hub_topic(user_id), do: "comments:conversations:user:#{user_id}"
   defp source_topic(user_id), do: "ideation:comment_sources:user:#{user_id}"
   defp participation_topic(user_id), do: "ideation:comment_participation:user:#{user_id}"
 

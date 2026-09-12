@@ -63,6 +63,18 @@ defmodule Storyarn.Workspaces.Memberships do
 
   def subscribe_membership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
 
+  def unsubscribe_ownership_changes(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
+    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, ownership_topic(workspace_id))
+  end
+
+  def unsubscribe_ownership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
+
+  def unsubscribe_membership_changes(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
+    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, membership_topic(workspace_id))
+  end
+
+  def unsubscribe_membership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
+
   @doc false
   defdelegate transact_as_owner(scope, workspace_id, operation), to: OwnerAuthority
 

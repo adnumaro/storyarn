@@ -16,6 +16,8 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
   attr :current_workspace, :map, default: nil
   attr :workspaces, :list, default: []
   attr :socket, :any, required: true
+  attr :content_mode, :string, default: "scroll", values: ["scroll", "fill"]
+  attr :comments_active, :boolean, default: false
   attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_guide, :atom, default: nil
   attr :onboarding_autostart, :boolean, default: false
@@ -38,6 +40,8 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
         current-user={serialize_current_user(@current_scope)}
         workspaces={serialize_workspaces(@workspaces)}
         current-workspace-slug={workspace_slug(@current_workspace)}
+        content-mode={@content_mode}
+        comments-active={@comments_active}
         onboarding={
           OnboardingHelpers.client_config(
             @onboarding,

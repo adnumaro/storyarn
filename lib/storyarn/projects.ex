@@ -823,6 +823,14 @@ defmodule Storyarn.Projects do
   @spec subscribe_project_membership_changes(integer()) :: :ok | {:error, :invalid_project_id}
   defdelegate subscribe_project_membership_changes(project_id), to: Access, as: :subscribe_membership_changes
 
+  @doc "Unsubscribes the caller from a project's ownership changes."
+  @spec unsubscribe_project_ownership_changes(integer()) :: :ok | {:error, :invalid_project_id}
+  defdelegate unsubscribe_project_ownership_changes(project_id), to: Access, as: :unsubscribe_ownership_changes
+
+  @doc "Unsubscribes the caller from a project's membership changes."
+  @spec unsubscribe_project_membership_changes(integer()) :: :ok | {:error, :invalid_project_id}
+  defdelegate unsubscribe_project_membership_changes(project_id), to: Access, as: :unsubscribe_membership_changes
+
   @doc """
   Authorizes a user action on a project.
 
@@ -1070,6 +1078,15 @@ defmodule Storyarn.Projects do
   defdelegate flow_comment_counts(scope, project_id, flow_id), to: Comments, as: :flow_counts
   defdelegate comment_destination(scope, project_id, comment_id), to: Comments, as: :destination
   defdelegate comment_destinations(scope, comment_ids), to: Comments, as: :destinations
+
+  @doc "Lists authorized editor and brainstorming conversations with activity pagination and status counts."
+  defdelegate list_comment_conversations(scope, opts \\ []), to: Comments
+
+  @doc "Subscribes once to identity-only activity and source invalidations across the user's projects."
+  defdelegate subscribe_comment_conversations(scope), to: Comments
+
+  @doc false
+  defdelegate invalidate_comment_conversations(project_id), to: Comments
   defdelegate subscribe_flow_comments(scope, project_id, flow_id), to: Comments, as: :subscribe_flow
   defdelegate unsubscribe_flow_comments(project_id, flow_id), to: Comments, as: :unsubscribe_flow
   defdelegate subscribe_scene_comments(scope, project_id, scene_id), to: Comments, as: :subscribe_scene

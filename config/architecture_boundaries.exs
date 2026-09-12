@@ -1834,6 +1834,7 @@ boundaries = %{
     "lib/storyarn_web/controllers/upload_controller.ex",
     "lib/storyarn_web/live/asset_live/",
     "lib/storyarn_web/live/asset_sidebar_live.ex",
+    "lib/storyarn_web/live/comment_live/",
     "lib/storyarn_web/live/project_live/",
     "lib/storyarn_web/live/project_settings_live/",
     "lib/storyarn_web/live/project_sidebar_live.ex",
@@ -4274,6 +4275,12 @@ policy = %{
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],
       reason: "Comment Hub and inbox queries consume audience-safe Ideation source projections before pagination"
+    },
+    %{
+      source: "lib/storyarn_web/live/comment_live/index.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The project-owned conversation hub reads accessible workspace filters and subscribes to access changes"
     },
     %{
       source: "lib/storyarn/notification_inbox.ex",
