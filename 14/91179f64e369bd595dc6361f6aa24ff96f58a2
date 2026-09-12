@@ -1,0 +1,174 @@
+assets/app/live/ideation/explorationTypes.ts
+  s_93251447e419b7::t_b26c5b03611fdf 1-29
+docs/features/brainstorming-board.md
+  s_93251447e419b7::t_597fcac7c958c5 3-4,11-26,28-32
+  s_93251447e419b7::t_1e773163394f14 27
+  s_93251447e419b7::t_3522e71063544f 33
+lib/storyarn_web/live/shared/contextual_explorations.ex
+  s_93251447e419b7::t_a5f075f0e16b68 1-260
+assets/app/locales/en/brainstorming-explorations.json
+  s_93251447e419b7::t_dbfffbd82e6ba2 16
+  s_93251447e419b7::t_b26c5b03611fdf 1-15,17-45
+assets/app/live/ideation/ExplorationLauncher.vue
+  s_93251447e419b7::t_a701d6d84870fb 33,38,54-56,107-123,129-133,135-151,153-166,168-170,172-180,182,184-229,231-232,234-236,239-240,242,244-246,248-258,260-261,263-268,270-272,276-279,281-308,310,312-320,322-327,329-338,340-346,348-358,360-397,399
+  s_93251447e419b7::t_aee833600bac1b 2,46,82-88,106,127,152,181,183,243,400-401
+  s_93251447e419b7::t_dbfffbd82e6ba2 4-14,29-32,34,67,171,230,233,237-238,241,247,259,262,269,275,280,309,311,328,339,347,359
+  s_93251447e419b7::t_f31458ceb800e0 1,3,15-28,35-37,39-45,47-53,57-66,68-81,89-105,124-126,128,134,167,273-274,321,398,402
+test/e2e/workspaces/projects/ideation/contextual_explorations_test.exs
+  s_93251447e419b7::t_1e773163394f14 4,12,137,144-204,261-262
+  s_93251447e419b7::t_af120a748cdb69 1-3,5-11,13-136,138-143,205-260,263
+assets/app/test/live/ideation/ExplorationLauncher.test.ts
+  s_93251447e419b7::t_aee833600bac1b 44-51,294-296,299-301,309-311
+  s_93251447e419b7::t_bfcc04b83bd6bd 76-78,115-139,155-157,191-194,202-204,242-246,251-253
+  s_93251447e419b7::t_1fbf0528489e42 25-29,33,279-293,297-298,302-308,312-318
+  s_93251447e419b7::t_1decad2981550d 1-24,30-32,34-43,52-75,79-114,140-154,158-190,195-201,205-241,247-250,254-278,319-321
+lib/storyarn_web/live/ideation_live/handlers/exploration_context_handlers.ex
+  s_93251447e419b7::t_01003999c2e201 1-46
+  s_93251447e419b7::t_2b39df0aaea176 47
+assets/app/live/ideation/ExplorationContext.vue
+  s_93251447e419b7::t_5621bbe2a73ec5 6,81,83,89-91,156-158,160-166,168-169
+  s_93251447e419b7::t_dc9c8569a2587a 10-15,29-31,33-38
+  s_93251447e419b7::t_a701d6d84870fb 19,27-28,32,82,154
+  s_93251447e419b7::t_64490119c3728a 84-88,92-153,159,167
+  s_93251447e419b7::t_f31458ceb800e0 1-5,7-9,16-18,20-26,39-80,155,170
+test/storyarn_web/live/ideation_live/contextual_explorations_test.exs
+  s_93251447e419b7::t_8efeedf5d1f846 11,21-25,27,33-43,48,55,59,62-66,69,73-75,78-87,119-128,133-147,172-176,184-195,197,205-207,213-220,223-225,227-228,235
+  s_93251447e419b7::t_b68def6bbef68e 1-10,12-20,26,28-32,44-47,49-54,56-58,60-61,67-68,70-72,76-77,88-118,129-132,148-171,177-183,196,198-204,208-212,221-222,226,229-234,236-242
+assets/app/live/ideation/BoardHeader.vue
+  s_93251447e419b7::t_a701d6d84870fb 9-20
+  s_93251447e419b7::t_938c82387589bd 21,30,76-83,95
+assets/app/live/shared/ContextualSourceHeader.vue
+  s_93251447e419b7::t_a701d6d84870fb 1-27
+assets/app/test/live/shared/ContextualSourceHeader.test.ts
+  s_93251447e419b7::t_abf68320c91da5 1-86
+  s_93251447e419b7::t_1549f8895e3ef3 87-96
+assets/app/test/live/ideation/ExplorationContext.test.ts
+  s_93251447e419b7::t_1decad2981550d 1-20,22-47,53-60,66-76,78-82,88-92,115
+  s_93251447e419b7::t_5621bbe2a73ec5 21,97-114
+  s_93251447e419b7::t_dc9c8569a2587a 48-52,61-65,77,83-87,93-96
+assets/app/locales/es/brainstorming-explorations.json
+  s_93251447e419b7::t_b26c5b03611fdf 1-15,17-45
+  s_93251447e419b7::t_dbfffbd82e6ba2 16
+assets/app/test/live/ideation/BoardHeaderContext.test.ts
+  s_93251447e419b7::t_abf68320c91da5 1-59
+  s_93251447e419b7::t_49c14973cea9e7 60-68
+test/storyarn_web/live/ideation_live/timer_board_test.exs
+  s_93251447e419b7::t_d139e70c2ff52b 213
+assets/app/live/ideation/useExplorationRequests.ts
+  s_93251447e419b7::t_b26c5b03611fdf 1-17,19-32,42,44-73
+  s_93251447e419b7::t_bfcc04b83bd6bd 18,33-41,43
+config/architecture_boundaries.exs
+  s_93251447e419b7::t_548a5d9922c4df 4168-4187
+docs/reference/context-map.md
+  s_93251447e419b7::t_eeb71497392092 34-41
+lib/storyarn/ideation.ex
+  s_93251447e419b7::t_92eca13960a02e 19-35
+lib/storyarn/ideation/README.md
+  s_93251447e419b7::t_0e59e56a41a097 101-112
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_93251447e419b7::t_e15b95ee368eab 59-60,195-220
+lib/storyarn/ideation/references/execution/contextual_session.ex
+  s_93251447e419b7::t_252bc279c4b6c2 1-208
+lib/storyarn/ideation/references/execution/mutation.ex
+  s_93251447e419b7::t_8345f7fc0ec72d 98-118,132
+lib/storyarn/ideation/references/queries/contextual_catalog.ex
+  s_93251447e419b7::t_de0ccd535db8e7 1-151
+lib/storyarn/ideation/references/references.ex
+  s_93251447e419b7::t_3dc9e732751ed1 4-5,8-13
+lib/storyarn/ideation/references/rules/contextual_input.ex
+  s_93251447e419b7::t_0366d66fbb3772 1-70
+lib/storyarn/ideation/sessions/adapters/project_access.ex
+  s_93251447e419b7::t_d18d15c9d1e2dd 8-9,17-18
+lib/storyarn/ideation/sessions/entities/revision.ex
+  s_93251447e419b7::t_17f32ce67c18ce 6-9,11,14,34,36
+lib/storyarn/ideation/sessions/execution/contextual_link_receipt.ex
+  s_93251447e419b7::t_39a5b093373b62 1-28
+lib/storyarn/ideation/sessions/queries/contextual_choices.ex
+  s_93251447e419b7::t_76c53f6116f652 1-15
+lib/storyarn/ideation/sessions/queries/contextual_receipts.ex
+  s_93251447e419b7::t_1d770002e3d4cf 1-26
+lib/storyarn/ideation/sessions/sessions.ex
+  s_93251447e419b7::t_6cc4a24a2d39e1 81-95
+lib/storyarn/projects.ex
+  s_93251447e419b7::t_977a84ec5a29f8 858-862
+lib/storyarn_web/live/flow_live/show.ex
+  s_93251447e419b7::t_86e59f5b3e2814 38,84,88-89,91-108,111-112,259,346,461-462
+lib/storyarn_web/live/ideation_live/board.ex
+  s_93251447e419b7::t_b8137d377fa263 12,73,75,132,170,192-195,394,459-464,597,617
+lib/storyarn_web/live/ideation_live/handlers/reference_handlers.ex
+  s_93251447e419b7::t_2b40a91e854c7c 11,88,106,173
+lib/storyarn_web/live/scene_live/show.ex
+  s_93251447e419b7::t_b648a829838bee 34,102,106-109,462,500,739-740
+lib/storyarn_web/live/shared/ideation_reference_data.ex
+  s_93251447e419b7::t_cd61d1acd73489 1-61
+lib/storyarn_web/live/sheet_live/show.ex
+  s_93251447e419b7::t_6838c205f1c695 21,81,85-88,375,417,571-572
+priv/gettext/assets.pot
+  s_93251447e419b7::t_030e66b67f4805 57
+priv/gettext/default.pot
+  s_93251447e419b7::t_68639fa87a5780 53,139,149
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_93251447e419b7::t_3caa03ff8e95d6 57
+priv/gettext/en/LC_MESSAGES/default.po
+  s_93251447e419b7::t_486d881715ac89 53,139,149
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_93251447e419b7::t_b2179a6d516abd 48,106,191,201,347,379,384,389,394
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_93251447e419b7::t_4d3d11d491e0a4 35,234,251-252,273,289,368,385,658-659,664,669,674,684,743,748,753,764,769,774,832,848,858
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_93251447e419b7::t_289293576376c9 112,312
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_93251447e419b7::t_102b1176b264e1 34-35,102
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_93251447e419b7::t_6fc51f4db14297 57
+priv/gettext/es/LC_MESSAGES/default.po
+  s_93251447e419b7::t_6a28a70f8e02f3 53,139,149
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_93251447e419b7::t_2b2505fdd9e8fa 48,106,191,201,347,379,384,389,394
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_93251447e419b7::t_2816eff35b2172 35,234,251-252,273,289,368,385,658-659,664,669,674,684,743,748,753,764,769,774,832,848,858
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_93251447e419b7::t_6c7aedf2fae824 112,312
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_93251447e419b7::t_33f517917eabf7 34-35,102
+priv/gettext/flows.pot
+  s_93251447e419b7::t_3b7ca8cc3a5254 48,106,191,201,347,379,384,389,394
+priv/gettext/scenes.pot
+  s_93251447e419b7::t_35c1cc028a5742 35,234,251-252,273,289,368,385,658-659,664,669,674,684,743,748,753,764,769,774,832,848,858
+priv/gettext/sheets.pot
+  s_93251447e419b7::t_3d64b530685765 112,312
+priv/gettext/versioning.pot
+  s_93251447e419b7::t_c2de518ceef193 34-35,102
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_93251447e419b7::t_bcd9b6ab1f2f69 192-197,233-238
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_93251447e419b7::t_c26f87bd81e932 14,337,339,371,374,414
+test/storyarn/ideation/contextual_sessions_test.exs
+  s_93251447e419b7::t_110274ea5f496c 1-390
+test/storyarn/ideation/session_concurrency_test.exs
+  s_93251447e419b7::t_de6eeb9579aa5e 41-87
+test/storyarn_web/live/flow_live/show_test.exs
+  s_93251447e419b7::t_336b7d86d7c532 36,38,354-355
+test/storyarn_web/live/scene_live/show_test.exs
+  s_93251447e419b7::t_c7d519b81c1148 38-39
+test/storyarn_web/live/sheet_live/comments_test.exs
+  s_93251447e419b7::t_a1b0004245659d 410
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_93251447e419b7::t_25f9565aec0f6c 24-25,187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1491179f64e369bd595dc6361f6aa24ff96f58a2",
+  "prompts": {},
+  "sessions": {
+    "s_93251447e419b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09690-e161-7403-be42-d1df684f0dc6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
