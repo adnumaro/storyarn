@@ -6,7 +6,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
   @root "lib/storyarn/ideation"
   @session_roles ~w(adapters commands entities events execution queries)
   @roles ~w(adapters commands contracts entities events execution queries rules)
-  @capabilities ~w(groups ideas recovery references sessions)
+  @capabilities ~w(decisions groups ideas recovery references sessions)
   @forbidden_role_edges [
     {"queries", "commands"},
     {"queries", "execution"},
@@ -53,6 +53,14 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
 
     assert "#{@root}/groups/entities/*.ex" |> Path.wildcard() |> Enum.map(&Path.basename/1) ==
              ~w(group.ex membership.ex revision.ex)
+  end
+
+  test "Decisions owns its write workflow and immutable agreement history" do
+    assert directories_in("#{@root}/decisions") == @roles
+    assert Path.wildcard("#{@root}/decisions/*.ex") == ["#{@root}/decisions/decisions.ex"]
+
+    assert "#{@root}/decisions/entities/*.ex" |> Path.wildcard() |> Enum.map(&Path.basename/1) ==
+             ~w(decision.ex revision.ex)
   end
 
   test "queries stay read-only and do not acquire locks or own transactions" do
@@ -172,7 +180,10 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
     ]
 
     assert Storyarn.Ideation.Groups.__info__(:functions) ==
-             Enum.sort(group_operations ++ [comment_source: 5, comment_sources_query: 0])
+             Enum.sort(
+               group_operations ++
+                 [comment_source: 5, comment_sources_query: 0, decision_sources: 2, search_decision_sources: 2]
+             )
 
     assert Storyarn.Ideation.__info__(:functions) ==
              Enum.sort(
@@ -206,6 +217,19 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    list_reference_backlinks: 4,
                    list_reference_backlinks: 5,
                    verify_recovery: 3
+                 ] ++
+                 [
+                   preview_decision_sources: 4,
+                   search_decision_sources: 3,
+                   search_decision_sources: 4,
+                   list_decisions: 3,
+                   list_decisions: 4,
+                   get_decision: 4,
+                   decision_history: 4,
+                   decision_history: 5,
+                   propose_decision: 4,
+                   revise_decision: 6,
+                   accept_decision: 6
                  ]
              )
 
@@ -218,6 +242,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    set_private_mode_locked: 3,
                    notify_timer_reveal: 2,
                    group_sources: 2,
+                   decision_sources: 2,
+                   search_decision_sources: 2,
                    move_group_sources: 5
                  ]
              )
@@ -235,6 +261,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    contextual_session_choices_query: 0,
                    contextual_receipt_sources_query: 0,
                    contextual_link_receipts_query: 0,
+                   receipt_generations_query: 0,
                    record_contextual_link_receipt: 4,
                    set_canvas_mode_locked: 3,
                    notify_canvas_mode: 2,
@@ -260,7 +287,9 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       "reveals" => Storyarn.Ideation.Ideas.Reveal,
       "publications" => Storyarn.Ideation.Ideas.Publication,
       "references" => Storyarn.Ideation.References.Reference,
-      "reference_revisions" => Storyarn.Ideation.References.Revision
+      "reference_revisions" => Storyarn.Ideation.References.Revision,
+      "decisions" => Storyarn.Ideation.Decisions.Decision,
+      "decision_revisions" => Storyarn.Ideation.Decisions.Revision
     }
 
     for {collection, table, _, fields} <- Storyarn.Ideation.Recovery.Inventory.tables() do

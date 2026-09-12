@@ -48,6 +48,15 @@ This includes localization rows whose identities are not in the canonical
 project snapshot. Neither references nor recovery make decisions or create
 Drafts; those remain separate workflows.
 
+Ideation's Decisions capability records explicit proposals and acceptance from
+shared idea or group revisions. It consumes source projections through their
+owning capability facades and owns conclusion, rationale, responsibility and
+immutable agreement history. Revising preserves the previous accepted version;
+acceptance does not write to authoring tools. Decision records and frozen source
+context participate in sealed recovery, which remaps identities and retains
+prior agreement without executing a new acceptance. Drafts, application,
+decision conversations and external delivery remain separate workflows.
+
 Before sealing recovery data, Ideation's Records adapter verifies target
 generations through a caller-restricted Projects recovery port. It returns
 identities only, in bounded batches under the authorized Project transaction,

@@ -16,6 +16,7 @@ defmodule Storyarn.Ideation.Recovery.References do
     |> remap(:idea_id, &lookup(maps, "ideas", &1))
     |> remap(:group_id, &lookup(maps, "groups", &1))
     |> remap(:reference_id, &lookup(maps, "references", &1))
+    |> remap(:decision_id, &lookup(maps, "decisions", &1))
     |> remap(:operation_id, &lookup(maps, "reveals", &1))
     |> remap(:source_idea_id, &lookup(maps, "ideas", &1))
     |> rewrite_payload(collection, actors, maps)
@@ -65,6 +66,19 @@ defmodule Storyarn.Ideation.Recovery.References do
       end)
 
     %{row | idea_ids: Enum.map(row.idea_ids, &lookup(maps, "ideas", &1)), sources: sources}
+  end
+
+  defp rewrite_payload(row, "decision_revisions", actors, maps) do
+    items =
+      Enum.map(row.sources["items"], fn source ->
+        collection = if source["type"] == "idea", do: "ideas", else: "groups"
+
+        source
+        |> Map.update!("id", &lookup(maps, collection, &1))
+        |> Map.update!("author_id", &Map.get(actors, &1))
+      end)
+
+    %{row | sources: %{"items" => items}}
   end
 
   defp rewrite_payload(row, "session_revisions", actors, _) do

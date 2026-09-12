@@ -10,11 +10,36 @@ defmodule Storyarn.Ideation do
   membership remain authoritative in Projects.
   """
 
+  alias Storyarn.Ideation.Decisions
   alias Storyarn.Ideation.Groups
   alias Storyarn.Ideation.Ideas
   alias Storyarn.Ideation.Recovery
   alias Storyarn.Ideation.References
   alias Storyarn.Ideation.Sessions
+
+  @doc "Previews only currently shared sources for an explicit decision proposal."
+  defdelegate preview_decision_sources(scope, project_id, session_id, sources), to: Decisions, as: :preview_sources
+
+  @doc "Searches shared idea and group sources with bounded cursor pagination."
+  defdelegate search_decision_sources(scope, project_id, session_id, opts \\ []), to: Decisions, as: :search_sources
+
+  @doc "Lists readable decisions with their current proposal and last accepted agreement."
+  defdelegate list_decisions(scope, project_id, session_id, opts \\ []), to: Decisions, as: :list
+
+  @doc "Reads a decision and its retained agreement using current session and source access."
+  defdelegate get_decision(scope, project_id, session_id, id), to: Decisions, as: :get
+
+  @doc "Lists immutable authored proposals and explicit acceptances, with bounded pagination."
+  defdelegate decision_history(scope, project_id, session_id, id, opts \\ []), to: Decisions, as: :history
+
+  @doc "Proposes a decision from exact shared source previews without publishing private content."
+  defdelegate propose_decision(scope, project_id, session_id, attrs), to: Decisions, as: :propose
+
+  @doc "Creates a revised proposal while preserving the last accepted agreement."
+  defdelegate revise_decision(scope, project_id, session_id, id, version, attrs), to: Decisions, as: :revise
+
+  @doc "Records explicit acceptance only by the assigned responsible editor."
+  defdelegate accept_decision(scope, project_id, session_id, id, version, key), to: Decisions, as: :accept
 
   @doc "Opens an authorized editor context with linked explorations and available open sessions."
   defdelegate get_contextual_brainstorming(scope, project_id, type, id, opts \\ []),

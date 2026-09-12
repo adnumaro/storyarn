@@ -32,11 +32,16 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"references", "ideation_references", :session_id,
      ~w(id recovery_identity session_id idea_id created_by_id target_type target_id target_identity relation version context deleted_at inserted_at updated_at)a},
     {"reference_revisions", "ideation_reference_revisions", :reference_id,
-     ~w(id recovery_identity session_id reference_id actor_id number operation request_key fingerprint context inserted_at)a}
+     ~w(id recovery_identity session_id reference_id actor_id number operation request_key fingerprint context inserted_at)a},
+    {"decisions", "ideation_decisions", :session_id,
+     ~w(id recovery_identity session_id author_id version status accepted_version inserted_at updated_at)a},
+    {"decision_revisions", "ideation_decision_revisions", :decision_id,
+     ~w(id recovery_identity session_id decision_id number operation actor_id responsible_id title conclusion reason sources source_context request_key fingerprint inserted_at)a}
   ]
   @group_collections ~w(groups group_memberships group_revisions)
   @reference_collections ~w(references reference_revisions)
-  @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id)a
+  @decision_collections ~w(decisions decision_revisions)
+  @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id responsible_id)a
   @dates ~w(archived_at deleted_at removed_at inserted_at updated_at completed_at started_at closed_at deadline_at)a
   @max_rows 100_000
 
@@ -105,7 +110,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3, 4, 5] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3, 4, 5, 6] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -143,12 +148,16 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     do: normalize(%{data | "version" => 4, "rows" => Enum.reduce(@group_collections, rows, &Map.put(&2, &1, []))})
 
   def normalize(%{"version" => 4, "rows" => rows} = data),
-    do: %{data | "version" => 5, "rows" => Enum.reduce(@reference_collections, rows, &Map.put(&2, &1, []))}
+    do: normalize(%{data | "version" => 5, "rows" => Enum.reduce(@reference_collections, rows, &Map.put(&2, &1, []))})
+
+  def normalize(%{"version" => 5, "rows" => rows} = data),
+    do: %{data | "version" => 6, "rows" => Enum.reduce(@decision_collections, rows, &Map.put(&2, &1, []))}
 
   def normalize(data), do: data
 
-  defp tables_for(5), do: @tables
-  defp tables_for(4), do: Enum.reject(@tables, &(elem(&1, 0) in @reference_collections))
+  defp tables_for(6), do: @tables
+  defp tables_for(5), do: Enum.reject(@tables, &(elem(&1, 0) in @decision_collections))
+  defp tables_for(4), do: Enum.reject(tables_for(5), &(elem(&1, 0) in @reference_collections))
   defp tables_for(3), do: Enum.reject(tables_for(4), &(elem(&1, 0) in @group_collections))
 
   defp tables_for(2) do
@@ -205,6 +214,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   defp binary_field?(collection, key) do
     key in [:recovery_identity, :creation_key, :request_key, :fingerprint] or
       (collection in ["revisions", "edits"] and key in [:title, :body]) or
-      (collection in ["groups", "group_revisions"] and key in [:title, :synthesis])
+      (collection in ["groups", "group_revisions"] and key in [:title, :synthesis]) or
+      (collection == "decision_revisions" and key in [:title, :conclusion, :reason, :source_context])
   end
 end

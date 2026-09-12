@@ -157,6 +157,67 @@ defmodule Storyarn.Projects.MembershipsTest do
     end
   end
 
+  test "editor candidates include inherited editors and direct editors without adding memberships" do
+    owner = user_fixture()
+    workspace = workspace_fixture(owner)
+    project = project_fixture(owner, %{workspace: workspace})
+    inherited = user_fixture()
+    direct = user_fixture()
+    viewer = user_fixture()
+    workspace_membership_fixture(workspace, inherited, "admin")
+    workspace_membership_fixture(workspace, direct, "viewer")
+    membership_fixture(project, direct, "editor")
+    workspace_membership_fixture(workspace, viewer, "viewer")
+
+    assert {:ok, candidates} = Projects.list_editor_candidates(user_scope_fixture(inherited), project.id)
+    assert MapSet.new(candidates, & &1.id) == MapSet.new([owner.id, inherited.id, direct.id])
+    assert Projects.get_membership(project.id, inherited.id) == nil
+  end
+
+  test "editor candidates respect a direct viewer membership over inherited editing permission" do
+    owner = user_fixture()
+    workspace = workspace_fixture(owner)
+    project = project_fixture(owner, %{workspace: workspace})
+    member = user_fixture()
+    workspace_membership_fixture(workspace, member, "member")
+    membership_fixture(project, member, "viewer")
+
+    assert {:ok, candidates} = Projects.list_editor_candidates(user_scope_fixture(owner), project.id)
+    assert Enum.map(candidates, & &1.id) == [owner.id]
+  end
+
+  test "editor candidates requery current access after direct and inherited access is revoked" do
+    owner = user_fixture()
+    workspace = workspace_fixture(owner)
+    project = project_fixture(owner, %{workspace: workspace})
+    scope = user_scope_fixture(owner)
+    inherited = user_fixture()
+    direct = user_fixture()
+    inherited_membership = workspace_membership_fixture(workspace, inherited, "member")
+    direct_membership = membership_fixture(project, direct, "editor")
+
+    assert {:ok, candidates} = Projects.list_editor_candidates(scope, project.id)
+    assert MapSet.new(candidates, & &1.id) == MapSet.new([owner.id, inherited.id, direct.id])
+    assert {:ok, _} = Storyarn.Workspaces.remove_member(scope, workspace.id, inherited_membership.id)
+    assert {:ok, _} = Projects.remove_member(scope, project.id, direct_membership.id)
+
+    assert {:ok, candidates} = Projects.list_editor_candidates(scope, project.id)
+    assert Enum.map(candidates, & &1.id) == [owner.id]
+  end
+
+  test "editor candidates are unavailable to outsiders and callers whose access was revoked" do
+    owner = user_fixture()
+    project = project_fixture(owner)
+    editor = user_fixture()
+    membership = membership_fixture(project, editor, "editor")
+    scope = user_scope_fixture(editor)
+
+    assert {:error, :not_found} = Projects.list_editor_candidates(user_scope_fixture(), project.id)
+    assert {:ok, _} = Projects.list_editor_candidates(scope, project.id)
+    assert {:ok, _} = Projects.remove_member(user_scope_fixture(owner), project.id, membership.id)
+    assert {:error, :not_found} = Projects.list_editor_candidates(scope, project.id)
+  end
+
   test "candidate eligibility uses current direct and inherited permissions without assigning membership" do
     owner = user_fixture()
     workspace = workspace_fixture(owner)

@@ -35,13 +35,19 @@ Project policy.
 | Permanently purge a replaced session                            | Only when also owner             | No                               | Only when also owner                                | Explicit action with current edit permission    |
 | Read groups and synthesis                                       | Shared mode and current access   | Shared mode and current access   | Same rule                                           | Same rule                                       |
 | Group published ideas and edit synthesis                        | Current edit access; shared mode | Current edit access; shared mode | Same rule                                           | Same rule                                       |
-| Decide, invoke shared AI, attach private files                  | Not implemented                  | Not implemented                  | Not implemented                                     | Not implemented                                 |
+| Read shared decisions and their history                         | Shared mode and current access   | Shared mode and current access   | Same rule                                           | Same rule                                       |
+| Propose or revise a shared decision                             | Current edit access; shared mode | Current edit access; shared mode | Same rule                                           | Same rule                                       |
+| Accept a shared decision                                       | Only its responsible participant | Only its responsible participant | Only its responsible participant                    | Only its responsible participant                |
+| Invoke shared AI or attach private files                       | Not implemented                  | Not implemented                  | Not implemented                                     | Not implemented                                 |
 
 All managerial actions remain subject to current project edit permission. The
 owner can recover or delete project data through Project lifecycle operations;
-that does not permit reading another author's private content. Decision-owner
-assignment reserves a responsibility; decision commands are not implemented in
-this slice.
+that does not permit reading another author's private content. Decision authority
+and proposal responsibility are separate from facilitation and project access.
+Acceptance belongs only to the proposal's responsible participant with current
+edit permission. Ownership can repair responsibility but never accepts on
+another participant's behalf. See the
+[decision contract](brainstorming-decisions-contract.md).
 
 Publication is separate from creative state. An assisted-consent discarded idea
 can be explicitly selected for publication. The board must not preselect such
@@ -55,7 +61,8 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **5**. Version **4** inventories normalize to no
+The inner inventory is version **6**. Version **5** inventories normalize to no
+decisions or decision revisions. Version **4** inventories also normalize to no
 content references or reference revisions. Version **3** inventories also normalize to no
 groups, memberships or group revisions. Version **2** inventories also normalize to no
 timer and open contributions. Version **1** additionally normalizes to no rounds
@@ -90,8 +97,12 @@ The inventory covers:
   identity, relationship, removal marker and frozen overview context. Immutable
   create/refresh/remove revisions preserve actor and idempotent request receipts.
   Reference context is shared overview metadata, not a graph snapshot or a draft.
+- Decisions, current proposal and accepted-version pointers, immutable revisions,
+  authors, responsible participants, exact published idea/group source versions,
+  encrypted conclusion/reason and frozen source text, and durable write receipts.
 
-Ciphertext for title/body/conflicting input and group title/synthesis is copied from persistence; it is
+Ciphertext for title/body/conflicting input, group title/synthesis, and decision
+text and frozen source context is copied from persistence; it is
 not loaded through the ordinary decrypted-content schema. The whole inventory,
 including actor bindings, is additionally encrypted and authenticated. Encrypting
 only draft bodies would leave authorship metadata forgeable by an archive holder.
@@ -127,7 +138,7 @@ reconstitution transaction. The architecture ratchet restricts these ports to
 exact Project capture, validation, materialization and verification callers;
 ordinary Web code cannot use them as a draft-reading API.
 
-Each persisted session, round, timer, idea, group, membership, revision, receipt, reveal and publication carries
+Each persisted session, round, timer, idea, group, decision, membership, revision, receipt, reveal and publication carries
 an immutable recovery UUID. Restore compares complete session generations using
 those identities and content, independent of database IDs and replacement time.
 An identical generation already present in the destination is reused; a distinct
@@ -143,6 +154,25 @@ lists and source-map keys are remapped while source revision numbers remain
 unchanged. A group's entire membership history and all revision receipts
 participate in generation matching, so repeated recovery reuses the same
 complete generation.
+
+Decisions are inserted after their idea and group sources, followed by their
+immutable revisions in the same transaction. Decision IDs, source IDs and direct
+or historical source-author IDs are remapped. Source recovery UUIDs and pinned
+revision numbers remain unchanged; frozen source text is encrypted JSON indexed
+by those UUIDs and contains no database IDs. `accepted_version` is a stable
+revision number, so reconstitution preserves the recorded acceptance without
+invoking an acceptance command or changing a newer pending proposal.
+
+Decision validation requires 1–100 contiguous revisions, a coherent latest state
+and accepted-version pointer, unique durable receipts, and same-session sources
+with matching creation identities and published idea or group revisions. It also
+decrypts frozen source context to verify that it matches the cited shared
+revision. Acceptance cannot change the preceding proposal's content, sources or
+responsible participant. Every revision participates in generation matching;
+unavailable source tombstones, previous agreements and pending revisions remain
+recoverable. Private-mode decisions stay hidden after restoration. Versions
+before decisions normalize empty collections without discarding later retained
+generations.
 
 References are inserted after their session and optional idea, followed by their
 immutable context revisions. All internal IDs and actors are remapped. Current
@@ -272,8 +302,8 @@ rejects an Ideation compartment outside the exact snapshot-import path. Runtime
 exports (Yarn/Ink and the existing tool-oriented exports) do not export
 brainstorming. They are not whole-project backups.
 
-No private attachments, shared AI outputs, decisions,
-brainstorming conversations, cross-tool references or external credentials exist
+No private attachments, shared AI outputs,
+brainstorming conversations or external credentials exist
 in this persisted slice. Their tickets must extend this contract and its
 restoration tests before admitting those data. ENG-147 remains open for that
 future coverage; this delivery does not claim those features or complete V1.
