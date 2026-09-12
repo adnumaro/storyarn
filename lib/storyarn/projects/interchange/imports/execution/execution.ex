@@ -610,7 +610,15 @@ defmodule Storyarn.Projects.Imports.Execution do
     end
   end
 
-  defp transition_execution_error(%{status: status} = attempt, _notification_context, code, _message, number, max, false)
+  defp transition_execution_error(
+         %{status: status} = attempt,
+         _notification_context,
+         code,
+         _message,
+         number,
+         max,
+         false
+       )
        when status in ["queued", "running", "retrying"] do
     attrs = %{
       status: "retrying",

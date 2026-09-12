@@ -594,7 +594,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       trashed_sheet = Repo.get!(Sheet, sheet.id)
 
       assert {:error, {:sheet_not_active, sheet_id}} =
-               SheetBuilder.restore_snapshot(trashed_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(trashed_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       assert sheet_id == sheet.id
       assert Repo.get!(Sheet, sheet.id).name == "Current trashed sheet"
@@ -714,7 +716,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       assert length(archived_locale_state) == 2
 
       assert {:ok, _restored} =
-               SheetBuilder.restore_snapshot(current_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(current_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       assert Repo.all(
                from(text in LocalizedText,
@@ -762,7 +766,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       assert {:ok, _current_block} = Sheets.update_block_value(block, %{"content" => "Current biography"})
 
       assert {:ok, _restored} =
-               SheetBuilder.restore_snapshot(current_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(current_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       restored_fr = Repo.get!(LocalizedText, translated_fr.id)
       assert restored_fr.translated_text == "Biographie actuelle"
@@ -983,7 +989,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       orphaned_instance = Repo.get!(Block, instance.id)
 
       assert {:error, {:property_inheritance_restore_conflict, source_id, :missing_historical_children_source, []}} =
-               SheetBuilder.restore_snapshot(current_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(current_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       assert source_id == source.id
       assert is_nil(Repo.get(Block, source.id))
@@ -1203,7 +1211,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       assert {:ok, _trashed_target} = Sheets.trash_sheet(historical_target)
 
       assert {:error, {:invalid_project_reference, {:block, :content, "sheet"}, target_id}} =
-               SheetBuilder.restore_snapshot(current_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(current_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       assert target_id == to_string(historical_target.id)
       assert Repo.get!(Sheet, sheet.id).name == "Current state"
@@ -1262,7 +1272,8 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
 
       for {context, invalid_snapshot} <- invalid_snapshots do
         assert {:error,
-                {:asset_materialization_failed, asset_id, {:invalid_asset_content_type, ^context, asset_id, "audio/mpeg"}}} =
+                {:asset_materialization_failed, asset_id,
+                 {:invalid_asset_content_type, ^context, asset_id, "audio/mpeg"}}} =
                  SheetBuilder.restore_snapshot(current_sheet, invalid_snapshot,
                    restore_action: {:entity_version_restore, "sheet"}
                  )
@@ -1332,7 +1343,8 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
 
       for {context, invalid_snapshot} <- invalid_snapshots do
         assert {:error,
-                {:asset_materialization_failed, asset_id, {:invalid_asset_content_type, ^context, asset_id, "audio/mpeg"}}} =
+                {:asset_materialization_failed, asset_id,
+                 {:invalid_asset_content_type, ^context, asset_id, "audio/mpeg"}}} =
                  SheetBuilder.restore_snapshot(current_sheet, invalid_snapshot,
                    user_id: user.id,
                    restore_action: {:entity_version_restore, "sheet"}
@@ -1569,7 +1581,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       {:ok, current_sheet} = Sheets.update_sheet(sheet, %{name: "Must remain"})
 
       assert {:error, {:property_inheritance_restore_conflict, source_id, {:scope_change, "self", "children"}, []}} =
-               SheetBuilder.restore_snapshot(current_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(current_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       assert source_id == source.id
       assert Repo.get!(Sheet, sheet.id).name == "Must remain"
@@ -1652,7 +1666,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
 
       assert {:error,
               {:property_inheritance_restore_conflict, source_id, {:scope_change, "self", "children"}, instance_ids}} =
-               SheetBuilder.restore_snapshot(modified_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(modified_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       assert source_id == source.id
       assert instance_ids == [instance.id]
@@ -1853,7 +1869,8 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       )
       |> Repo.update!()
 
-      assert {:error, {:property_inheritance_restore_conflict, source_id, {:type_change, "number", "text"}, instance_ids}} =
+      assert {:error,
+              {:property_inheritance_restore_conflict, source_id, {:type_change, "number", "text"}, instance_ids}} =
                SheetBuilder.restore_snapshot(sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
 
       assert source_id == source.id
@@ -2002,7 +2019,9 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       {:ok, current_sheet} = Sheets.update_sheet(sheet, %{name: "Current state"})
 
       assert {:error, {:avatar_restore_conflict, avatar_id, {:referenced_by_flow_nodes, 1}}} =
-               SheetBuilder.restore_snapshot(current_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+               SheetBuilder.restore_snapshot(current_sheet, snapshot,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
 
       assert avatar_id == referenced_avatar.id
       assert Repo.get!(SheetAvatar, referenced_avatar.id).sheet_id == sheet.id
@@ -3192,7 +3211,11 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
       refute block_reference_exists?(cross_project_maps.block[mention.id], "sheet", source_target.id)
     end
 
-    test "copies avatars and gallery image assets into destination project", %{project: project, sheet: sheet, user: user} do
+    test "copies avatars and gallery image assets into destination project", %{
+      project: project,
+      sheet: sheet,
+      user: user
+    } do
       avatar_asset = uploaded_image_asset(project, user, "hero-avatar.png", "hero-avatar")
       expression_asset = uploaded_image_asset(project, user, "hero-expression.png", "hero-expression")
       gallery_asset = uploaded_image_asset(project, user, "hero-gallery.png", "hero-gallery")

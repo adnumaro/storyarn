@@ -172,7 +172,8 @@ defmodule Storyarn.AI.Results do
   """
   @spec apply(scope(), pos_integer(), String.t() | nil, (term(), map() -> {:ok, term()} | {:error, term()})) ::
           {:ok, term()} | {:error, term()}
-  def apply(%{user: %{id: actor_id}} = scope, operation_id, current_revision, apply_fun) when is_function(apply_fun, 2) do
+  def apply(%{user: %{id: actor_id}} = scope, operation_id, current_revision, apply_fun)
+      when is_function(apply_fun, 2) do
     Repo.transaction(fn ->
       snapshot = get_actor_operation(operation_id, actor_id)
       preauthorization = prepare_apply_reauthorization(snapshot, current_revision)

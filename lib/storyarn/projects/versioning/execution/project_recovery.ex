@@ -516,7 +516,8 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
     end
   end
 
-  defp validate_project_snapshot_envelope(%{"format_version" => version}) when version not in @snapshot_format_versions do
+  defp validate_project_snapshot_envelope(%{"format_version" => version})
+       when version not in @snapshot_format_versions do
     {:error, {:unsupported_project_snapshot_format, version}}
   end
 
@@ -781,7 +782,8 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
     validate_preflight_graph_cycles(parents, :flow)
   end
 
-  defp preflight_flow_reference_targets(%{"type" => "subflow", "data" => %{"referenced_flow_id" => target}}), do: [target]
+  defp preflight_flow_reference_targets(%{"type" => "subflow", "data" => %{"referenced_flow_id" => target}}),
+    do: [target]
 
   defp preflight_flow_reference_targets(%{
          "type" => "exit",
@@ -1701,7 +1703,12 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   end
 
   defp remap_snapshot_import_tombstone_payload(
-         %{"entity_type" => "flow_node", "id" => source_id, "owner" => %{"id" => source_flow_id}, "snapshot" => snapshot},
+         %{
+           "entity_type" => "flow_node",
+           "id" => source_id,
+           "owner" => %{"id" => source_flow_id},
+           "snapshot" => snapshot
+         },
          id_maps,
          opts
        ) do
@@ -1747,7 +1754,16 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
     end)
   end
 
-  defp recover_flows(project_id, snapshot_data, sheet_id_map, scene_id_map, avatar_id_map, tombstone_maps, user_id, opts) do
+  defp recover_flows(
+         project_id,
+         snapshot_data,
+         sheet_id_map,
+         scene_id_map,
+         avatar_id_map,
+         tombstone_maps,
+         user_id,
+         opts
+       ) do
     builder_opts =
       user_id
       |> materialization_opts(opts,
@@ -3413,7 +3429,8 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
         {:error, {:duplicate_project_snapshot_tree_identity, entity_type}}
 
       not MapSet.equal?(MapSet.new(source_ids), MapSet.new(expected_ids)) ->
-        {:error, {:project_snapshot_tree_coverage_mismatch, entity_type, Enum.sort(expected_ids), Enum.sort(source_ids)}}
+        {:error,
+         {:project_snapshot_tree_coverage_mismatch, entity_type, Enum.sort(expected_ids), Enum.sort(source_ids)}}
 
       Enum.any?(entries, &invalid_tree_parent?(&1, id_map)) ->
         {:error, {:invalid_project_snapshot_tree_parent, entity_type}}
@@ -3687,7 +3704,8 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
       :ok
     else
       {:error,
-       {:invalid_project_snapshot_localization_source_hash, text["source_type"], text["source_id"], text["source_field"]}}
+       {:invalid_project_snapshot_localization_source_hash, text["source_type"], text["source_id"],
+        text["source_field"]}}
     end
   end
 

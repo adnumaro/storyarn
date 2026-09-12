@@ -174,7 +174,8 @@ registered_tasks = []
 
     config :storyarn, Storyarn.AI.PersonalProviders, providers: configured_personal_providers
 
-    {Map.merge(inference_providers, personal_inference_providers), Map.put(credential_adapters, :personal_byok, Personal)}
+    {Map.merge(inference_providers, personal_inference_providers),
+     Map.put(credential_adapters, :personal_byok, Personal)}
   end
 
 {inference_providers, credential_adapters, registered_tasks} =
@@ -399,7 +400,8 @@ if config_env() != :test do
 
   config :storyarn, :posthog_frontend,
     frontend_enabled: posthog_configured? and posthog_frontend_enabled?,
-    error_tracking_enabled: posthog_configured? and posthog_frontend_enabled? and posthog_frontend_error_tracking_enabled?
+    error_tracking_enabled:
+      posthog_configured? and posthog_frontend_enabled? and posthog_frontend_error_tracking_enabled?
 end
 
 # Trust X-Forwarded-For header when behind a reverse proxy (CloudFlare, AWS ELB, etc.)

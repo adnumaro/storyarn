@@ -603,7 +603,14 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.SpeakerClassifier do
 
   defp more_and_less_frequent(left, _left_count, right, _right_count), do: {right, left}
 
-  defp build_review(speaker_stats, channel_scopes, scope_counts, aliases, possible_alias_count, alias_analysis_truncated?) do
+  defp build_review(
+         speaker_stats,
+         channel_scopes,
+         scope_counts,
+         aliases,
+         possible_alias_count,
+         alias_analysis_truncated?
+       ) do
     preserved_speaker_set =
       speaker_stats
       |> Map.keys()

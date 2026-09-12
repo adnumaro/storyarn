@@ -123,7 +123,11 @@ defmodule Storyarn.Projects.Imports.Cancellation do
     expire_cancelled_attempt(attempt)
   end
 
-  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "queued", oban_job_id: job_id} = attempt, job_id, opts) do
+  defp transition_cancelled_attempt(
+         %ProjectImportAttempt{status: "queued", oban_job_id: job_id} = attempt,
+         job_id,
+         opts
+       ) do
     with :ok <- cancel_queued_import_job(attempt, opts) do
       expire_cancelled_attempt(attempt)
     end

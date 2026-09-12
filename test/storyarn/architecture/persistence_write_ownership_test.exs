@@ -266,7 +266,9 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     """
 
     assert alternate_dispatch_source
-           |> transparent_delegate_alternate_dispatches_in_source("lib/storyarn/projects/alternate_delegate_dispatch.ex")
+           |> transparent_delegate_alternate_dispatches_in_source(
+             "lib/storyarn/projects/alternate_delegate_dispatch.ex"
+           )
            |> Enum.map(&{&1.function, &1.kind}) == [
              {:insert_all, :apply},
              {:insert_one_returning_id, :apply},
@@ -1664,7 +1666,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
       expected = declared_reference_writes(contract)
 
       for declared <- expected do
-        assert declared in actual, "declared #{name} writer has no statically detected table effect: #{inspect(declared)}"
+        assert declared in actual,
+               "declared #{name} writer has no statically detected table effect: #{inspect(declared)}"
       end
 
       assert actual == expected, """
@@ -2687,7 +2690,10 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
       do: persistence_dispatch_violation(:repo_import, nil, meta)
   end
 
-  defp unsupported_persistence_dispatch({:&, meta, [{:/, _, [{{:., _, [receiver, operation]}, _, []}, arity]}]}, aliases)
+  defp unsupported_persistence_dispatch(
+         {:&, meta, [{:/, _, [{{:., _, [receiver, operation]}, _, []}, arity]}]},
+         aliases
+       )
        when is_atom(operation) and is_integer(arity) do
     case unsupported_dispatch_operation(receiver, operation, arity, aliases) do
       nil -> nil
@@ -5117,7 +5123,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   # A pipeline inserts its left side as the first argument. Normalize it before
   # selecting the SQL argument because Repo expects SQL first while
   # Ecto.Adapters.SQL expects the Repo followed by SQL.
-  defp resolved_raw_sql_write(sql_ast, _meta, _attributes, _sql_bindings, _table) when is_list(sql_ast), do: :not_raw_sql
+  defp resolved_raw_sql_write(sql_ast, _meta, _attributes, _sql_bindings, _table) when is_list(sql_ast),
+    do: :not_raw_sql
 
   defp resolved_raw_sql_write(sql_ast, meta, attributes, sql_bindings, table) do
     case resolve_sql(sql_ast, attributes, sql_bindings) do
@@ -6112,7 +6119,15 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     end
   end
 
-  defp targets_table?({{:., _, [receiver, function]}, _, arguments}, schemas, aliases, tainted, table, analysis, clauses)
+  defp targets_table?(
+         {{:., _, [receiver, function]}, _, arguments},
+         schemas,
+         aliases,
+         tainted,
+         table,
+         analysis,
+         clauses
+       )
        when is_atom(function) and is_list(arguments) do
     remote_call_returns_target?(
       receiver,
@@ -6150,7 +6165,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     targets_table?(first, schemas, aliases, tainted, table, analysis, clauses)
   end
 
-  defp kernel_constructor_target?(_name, _arguments, _schemas, _aliases, _tainted, _table, _analysis, _clauses), do: false
+  defp kernel_constructor_target?(_name, _arguments, _schemas, _aliases, _tainted, _table, _analysis, _clauses),
+    do: false
 
   defp query_builder_target?(:from, [source | options], schemas, aliases, tainted, table, analysis, clauses) do
     from_query_result_targets_table?(
@@ -6269,7 +6285,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     targets_table?(source, schemas, aliases, tainted, table, analysis, clauses)
   end
 
-  defp query_binding_targets({:in, _, [binding, _source]}, target?), do: Map.new(variable_names(binding), &{&1, target?})
+  defp query_binding_targets({:in, _, [binding, _source]}, target?),
+    do: Map.new(variable_names(binding), &{&1, target?})
 
   defp query_binding_targets(bindings, target?) when is_list(bindings),
     do: Map.new(variable_names(bindings), &{&1, target?})
@@ -6438,7 +6455,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     do: repo_module?(modules) and function in [:all, :get, :get!, :get_by, :get_by!, :one, :one!, :preload]
 
   defp injected_repo_read_call?({name, _, context}, function, repo_variables) when is_atom(name) and is_atom(context),
-    do: MapSet.member?(repo_variables, name) and function in [:all, :get, :get!, :get_by, :get_by!, :one, :one!, :preload]
+    do:
+      MapSet.member?(repo_variables, name) and function in [:all, :get, :get!, :get_by, :get_by!, :one, :one!, :preload]
 
   defp injected_repo_read_call?(_receiver, _function, _repo_variables), do: false
 

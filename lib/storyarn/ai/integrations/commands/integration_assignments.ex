@@ -121,7 +121,8 @@ defmodule Storyarn.AI.IntegrationAssignments do
       else: {:error, :assignment_required}
   end
 
-  def authorize_route(_user_id, _workspace_id, %Integration{}, _configuration, _opts), do: {:error, :assignment_required}
+  def authorize_route(_user_id, _workspace_id, %Integration{}, _configuration, _opts),
+    do: {:error, :assignment_required}
 
   @doc false
   @spec revoke_for_integration(pos_integer(), DateTime.t()) :: non_neg_integer()

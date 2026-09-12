@@ -60,7 +60,13 @@ defmodule Storyarn.Ideation.CanvasTest do
     assert {:error, :not_found} =
              Ideation.update_idea_canvas(ctx.author, ctx.project.id, other.id, idea.id, 0, placement())
 
-    for invalid <- [nil, %{}, placement(%{"width" => -1}), placement(%{"x" => "3"}), placement(%{"color" => "url(evil)"})] do
+    for invalid <- [
+          nil,
+          %{},
+          placement(%{"width" => -1}),
+          placement(%{"x" => "3"}),
+          placement(%{"color" => "url(evil)"})
+        ] do
       assert {:error, _} = Ideation.update_idea_canvas(ctx.author, ctx.project.id, ctx.session.id, idea.id, 0, invalid)
     end
 

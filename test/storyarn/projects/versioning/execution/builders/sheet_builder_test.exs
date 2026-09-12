@@ -984,7 +984,11 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
       refute block_reference_exists?(cross_project_maps.block[mention.id], "sheet", source_target.id)
     end
 
-    test "copies avatars and gallery image assets into destination project", %{project: project, sheet: sheet, user: user} do
+    test "copies avatars and gallery image assets into destination project", %{
+      project: project,
+      sheet: sheet,
+      user: user
+    } do
       avatar_asset = uploaded_image_asset(project, user, "hero-avatar.png", "hero-avatar")
       expression_asset = uploaded_image_asset(project, user, "hero-expression.png", "hero-expression")
       gallery_asset = uploaded_image_asset(project, user, "hero-gallery.png", "hero-gallery")

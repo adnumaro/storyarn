@@ -760,7 +760,8 @@ defmodule Storyarn.Projects.Assets.StorageTest do
   defp restore_env(key, nil), do: Application.delete_env(:storyarn, key)
   defp restore_env(key, value), do: Application.put_env(:storyarn, key, value)
 
-  defp persist_multipart_handoff!(storage_key) when is_binary(storage_key), do: persist_multipart_handoff!([storage_key])
+  defp persist_multipart_handoff!(storage_key) when is_binary(storage_key),
+    do: persist_multipart_handoff!([storage_key])
 
   defp persist_multipart_handoff!(storage_keys) when is_list(storage_keys) do
     %StorageCleanupRequest{}

@@ -84,7 +84,10 @@ defmodule Storyarn.Ideation.RecoveryGenerationsTest do
 
     assert {:error, :stale_revision} = Ideation.purge_replaced_session(ctx.owner, ctx.project.id, updated.id, 1)
     assert {:ok, :purged} = Ideation.purge_replaced_session(ctx.owner, ctx.project.id, updated.id, updated.revision)
-    assert {:error, :not_found} = Ideation.purge_replaced_session(ctx.owner, ctx.project.id, updated.id, updated.revision)
+
+    assert {:error, :not_found} =
+             Ideation.purge_replaced_session(ctx.owner, ctx.project.id, updated.id, updated.revision)
+
     assert {:ok, []} = Ideation.list_sessions(ctx.owner, ctx.project.id, status: :replaced)
 
     restore(ctx, retained)

@@ -154,7 +154,10 @@ defmodule Storyarn.Scenes.References.Commands.VariableProjection do
     Enum.flat_map(specs, &resolved_reference(&1, resolved))
   end
 
-  defp ambient_flow_references(%{trigger_type: "on_event", trigger_config: %{"variable_ref" => variable_ref}}, project_id) do
+  defp ambient_flow_references(
+         %{trigger_type: "on_event", trigger_config: %{"variable_ref" => variable_ref}},
+         project_id
+       ) do
     specs = qualified_specs(0, "read", variable_ref)
     resolved = resolve_specs(project_id, specs)
     Enum.flat_map(specs, &resolved_reference(&1, resolved))

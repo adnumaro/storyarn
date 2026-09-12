@@ -100,7 +100,8 @@ defmodule Storyarn.Projects.FlowNodeConnectionRules do
 
   @doc "Returns every source pin accepted for a node, including verified legacy aliases."
   @spec accepted_output_pins(String.t(), map()) :: [String.t()]
-  def accepted_output_pins("dialogue", %{"responses" => responses} = data) when is_list(responses) and responses != [] do
+  def accepted_output_pins("dialogue", %{"responses" => responses} = data)
+      when is_list(responses) and responses != [] do
     "dialogue"
     |> output_pins(data)
     |> Enum.flat_map(&dialogue_pin_aliases/1)

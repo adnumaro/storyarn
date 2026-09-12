@@ -321,7 +321,8 @@ defmodule Storyarn.Flows.Editor do
     to: SequenceCompositionHistory,
     as: :restore
 
-  def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id), do: Sequences.list_visual_layers(sequence_id)
+  def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id),
+    do: Sequences.list_visual_layers(sequence_id)
 
   def get_sequence_visual_layer(sequence_id, id) when is_integer(sequence_id) and is_integer(id),
     do: Sequences.get_visual_layer(sequence_id, id)

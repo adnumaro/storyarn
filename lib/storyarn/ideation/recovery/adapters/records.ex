@@ -46,7 +46,10 @@ defmodule Storyarn.Ideation.Recovery.Records do
 
   defp read_pages(query, collection, cursor, pages, bytes, count) do
     entries = query |> where([row], row.id > ^cursor) |> limit(100) |> Repo.all()
-    page_bytes = Enum.sum(Enum.map(entries, &(collection |> Inventory.encode_row(&1) |> Jason.encode!() |> byte_size())))
+
+    page_bytes =
+      Enum.sum(Enum.map(entries, &(collection |> Inventory.encode_row(&1) |> Jason.encode!() |> byte_size())))
+
     bytes = bytes + page_bytes
     count = count + length(entries)
     if bytes > Inventory.max_bytes() or count > Inventory.max_rows(), do: throw(:ideation_recovery_too_large)

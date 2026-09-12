@@ -766,7 +766,10 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     end
   end
 
-  defp deferred_quiescence_result(%StorageCleanupRequest{multipart_quiescence_not_before: %DateTime{} = not_before}, now) do
+  defp deferred_quiescence_result(
+         %StorageCleanupRequest{multipart_quiescence_not_before: %DateTime{} = not_before},
+         now
+       ) do
     if DateTime.after?(not_before, now),
       do: {:deferred, seconds_until(not_before, now)},
       else: {:deferred, 1}
@@ -1169,7 +1172,9 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       {:error, {:exception, error.__struct__}}
   catch
     kind, reason ->
-      Logger.error("Could not persist #{cleanup_persistence_label(persistence_kind)} error=#{safe_error({kind, reason})}")
+      Logger.error(
+        "Could not persist #{cleanup_persistence_label(persistence_kind)} error=#{safe_error({kind, reason})}"
+      )
 
       {:error, {kind, safe_error(reason)}}
   end

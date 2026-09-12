@@ -33,7 +33,12 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ActorAwareMembershipTest do
     assert {:error, :forced_rollback} =
              Repo.transaction(fn ->
                assert {:error, :membership_change_requires_top_level_transaction} =
-                        Memberships.update_member_role(context.owner_scope, workspace_id, context.membership.id, "viewer")
+                        Memberships.update_member_role(
+                          context.owner_scope,
+                          workspace_id,
+                          context.membership.id,
+                          "viewer"
+                        )
 
                assert {:error, :membership_change_requires_top_level_transaction} =
                         Memberships.remove_member(context.owner_scope, workspace_id, context.membership.id)

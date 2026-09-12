@@ -29,7 +29,9 @@ defmodule Storyarn.Workers.ExpireIdeationTimerWorkerTest do
   test "rolling back the enclosing command also rolls back its durable expiry", ctx do
     assert {:error, :abort} =
              Repo.transact(fn ->
-               assert {:ok, _} = Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{seconds: 30})
+               assert {:ok, _} =
+                        Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{seconds: 30})
+
                assert [_] = all_enqueued(worker: ExpireIdeationTimerWorker)
                {:error, :abort}
              end)

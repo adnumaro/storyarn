@@ -173,7 +173,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_sidebar_live.ex:86
 #: lib/storyarn_web/live/flow_sidebar_live.ex:102
-#: lib/storyarn_web/live/hooks/palette.ex:586
+#: lib/storyarn_web/live/hooks/palette.ex:591
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -464,7 +464,7 @@ msgstr ""
 msgid "Node #%{n} (%{type}) — terminal target"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:547
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:548
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""

@@ -72,7 +72,7 @@ defmodule Storyarn.AI.Context.Execution.Builder do
   @doc "Reauthorizes and verifies the context bound to a durable operation."
   @spec operation_current?(Governance.scope(), Task.t(), Operation.t()) :: :ok | {:error, atom()}
   def operation_current?(%{user: _}, %Task{}, %Operation{context_hash: nil, context_manifest: nil, context_subject: nil}),
-    do: :ok
+      do: :ok
 
   def operation_current?(
         %{user: _} = scope,

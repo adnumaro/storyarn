@@ -22,7 +22,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
 
   def loaded(socket) do
     if connected?(socket) do
-      Projects.subscribe_scene_comments(socket.assigns.current_scope, socket.assigns.project.id, socket.assigns.scene.id)
+      Projects.subscribe_scene_comments(
+        socket.assigns.current_scope,
+        socket.assigns.project.id,
+        socket.assigns.scene.id
+      )
     end
 
     refresh(socket)
@@ -383,8 +387,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
 
   defp maybe_select_tool(socket, _active?), do: socket
 
-  defp position(%{"x" => x, "y" => y}) when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 100,
-    do: {:ok, %{x: x, y: y}}
+  defp position(%{"x" => x, "y" => y})
+       when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 100, do: {:ok, %{x: x, y: y}}
 
   defp position(_params), do: {:error, :invalid_position}
 
@@ -417,13 +421,15 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
     {:reply, %{ok: false, error: message}, put_state(socket, %{error: message})}
   end
 
-  defp error_message(:stale), do: dgettext("scenes", "This conversation changed. Review the latest state and try again.")
+  defp error_message(:stale),
+    do: dgettext("scenes", "This conversation changed. Review the latest state and try again.")
 
   defp error_message(reason) when reason in [:not_found, :unauthorized, :unavailable, :source_unavailable] do
     dgettext("scenes", "This conversation or its source is no longer available.")
   end
 
-  defp error_message(_reason), do: dgettext("scenes", "Could not save the comment. Check the text and selected mentions.")
+  defp error_message(_reason),
+    do: dgettext("scenes", "Could not save the comment. Check the text and selected mentions.")
 
   defp empty_state do
     %{

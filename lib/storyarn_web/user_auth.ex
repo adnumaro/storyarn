@@ -405,7 +405,8 @@ defmodule StoryarnWeb.UserAuth do
   def sudo_mode?(user), do: Accounts.sudo_mode?(user, @sudo_mode_minutes)
 
   @doc "Issues a 20-minute sudo grant bound to one user and one session token."
-  def issue_sudo_grant(%{id: user_id}, session_token, opts \\ []) when is_integer(user_id) and is_binary(session_token) do
+  def issue_sudo_grant(%{id: user_id}, session_token, opts \\ [])
+      when is_integer(user_id) and is_binary(session_token) do
     payload = {:sudo_grant, user_id, session_fingerprint(session_token)}
     token_opts = [max_age: @sudo_grant_max_age] ++ Keyword.take(opts, [:signed_at])
 
@@ -413,7 +414,8 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   @doc "Authorizes sudo mode using either recent authentication or a valid signed grant."
-  def authorize_sudo(%{id: user_id} = user, session_token, grant) when is_integer(user_id) and is_binary(session_token) do
+  def authorize_sudo(%{id: user_id} = user, session_token, grant)
+      when is_integer(user_id) and is_binary(session_token) do
     scope = Accounts.scope_for_user(user)
 
     if Accounts.session_token_active?(scope, session_token) do

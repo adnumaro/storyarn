@@ -66,8 +66,13 @@ defmodule Storyarn.Projects.Versioning.ReferencedTombstoneValidator do
   end
 
   defp validate_entry(
-         %{"entity_type" => entity_type, "id" => id, "deleted_at" => deleted_at, "owner" => owner, "snapshot" => snapshot} =
-           entry
+         %{
+           "entity_type" => entity_type,
+           "id" => id,
+           "deleted_at" => deleted_at,
+           "owner" => owner,
+           "snapshot" => snapshot
+         } = entry
        ) do
     with true <- Map.has_key?(@entity_rank, entity_type),
          :ok <- exact_keys(entry, @entry_keys, :entry),

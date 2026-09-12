@@ -132,7 +132,9 @@ defmodule Storyarn.Ideation.CanvasModeTest do
 
     notes =
       for state <- [:active, :parked, :discarded], into: %{} do
-        {:ok, note} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{state: state}))
+        {:ok, note} =
+          Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{state: state}))
+
         {state, note}
       end
 

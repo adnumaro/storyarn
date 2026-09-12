@@ -1463,7 +1463,9 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
         })
 
       assert {:ok, _restored} =
-               FlowSnapshot.restore_snapshot(referenced_flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+               FlowSnapshot.restore_snapshot(referenced_flow, snapshot,
+                 restore_action: {:entity_version_restore, "flow"}
+               )
 
       assert Repo.get!(FlowNode, referenced_exit.id).deleted_at == nil
 
@@ -2477,7 +2479,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
           put_in(node, ["data", "assignments", Access.at(0), "sheet"], nil)
         end)
 
-      assert {:error, {:malformed_variable_reference, "flow_node", ^node_id, :assignment_target, {nil, ^source_variable}}} =
+      assert {:error,
+              {:malformed_variable_reference, "flow_node", ^node_id, :assignment_target, {nil, ^source_variable}}} =
                FlowSnapshot.restore_snapshot(current_flow, malformed_snapshot,
                  restore_action: {:entity_version_restore, "flow"}
                )
@@ -2605,7 +2608,9 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
         end)
 
       assert {:error, {:invalid_snapshot_original_id, :sequence_track, _invalid}} =
-               FlowSnapshot.restore_snapshot(flow, malformed_snapshot, restore_action: {:entity_version_restore, "flow"})
+               FlowSnapshot.restore_snapshot(flow, malformed_snapshot,
+                 restore_action: {:entity_version_restore, "flow"}
+               )
 
       assert Repo.get!(SequenceTrack, track.id).flow_node_id == sequence.id
     end
@@ -2685,7 +2690,9 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
     on_exit(fn ->
       Assets.storage_delete(asset.key)
 
-      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type)))
+      delete_storage_blob(
+        BlobStore.blob_key(project.id, asset.blob_hash, BlobStore.ext_from_content_type(content_type))
+      )
     end)
 
     asset

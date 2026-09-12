@@ -544,7 +544,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     dgettext("flows", "This conversation or its source is no longer available.")
   end
 
-  defp error_message(_reason), do: dgettext("flows", "Could not save the comment. Check the text and selected mentions.")
+  defp error_message(_reason),
+    do: dgettext("flows", "Could not save the comment. Check the text and selected mentions.")
 
   defp empty_state do
     %{

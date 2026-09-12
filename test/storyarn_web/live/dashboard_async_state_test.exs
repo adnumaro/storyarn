@@ -313,11 +313,13 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
     end
   end
 
-  defp handle_dashboard_async(SheetDashboard, task, result, socket), do: SheetDashboard.handle_async(task, result, socket)
+  defp handle_dashboard_async(SheetDashboard, task, result, socket),
+    do: SheetDashboard.handle_async(task, result, socket)
 
   defp handle_dashboard_async(FlowDashboard, task, result, socket), do: FlowDashboard.handle_async(task, result, socket)
 
-  defp handle_dashboard_async(SceneDashboard, task, result, socket), do: SceneDashboard.handle_async(task, result, socket)
+  defp handle_dashboard_async(SceneDashboard, task, result, socket),
+    do: SceneDashboard.handle_async(task, result, socket)
 
   defp handle_dashboard_event(SheetDashboard, event, socket), do: SheetDashboard.handle_event(event, %{}, socket)
 

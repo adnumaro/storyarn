@@ -1164,7 +1164,8 @@ defmodule Storyarn.Scenes.Versioning.SceneSnapshot do
     if valid? do
       :ok
     else
-      {:error, {:invalid_scene_zone_target_contract, zone["original_id"], normalized_action_type, target_type, target_id}}
+      {:error,
+       {:invalid_scene_zone_target_contract, zone["original_id"], normalized_action_type, target_type, target_id}}
     end
   end
 

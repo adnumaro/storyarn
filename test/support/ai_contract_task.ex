@@ -91,7 +91,8 @@ defmodule StoryarnTest.AI.ContractTask do
   end
 
   @impl true
-  def acquire_source_locks(operation), do: delegate_context(:acquire_source_locks, [operation], {:error, :stale_context})
+  def acquire_source_locks(operation),
+    do: delegate_context(:acquire_source_locks, [operation], {:error, :stale_context})
 
   defp delegate_context(function, args, fallback) do
     with adapter when is_atom(adapter) <- context_adapter(),

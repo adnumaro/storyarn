@@ -459,12 +459,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
      put_state(socket, %{error: message})}
   end
 
-  defp error_message(:stale), do: dgettext("sheets", "This conversation changed. Review the latest state and try again.")
+  defp error_message(:stale),
+    do: dgettext("sheets", "This conversation changed. Review the latest state and try again.")
 
   defp error_message(reason) when reason in [:not_found, :unauthorized, :unavailable, :source_unavailable],
     do: dgettext("sheets", "This conversation or its source is no longer available.")
 
-  defp error_message(_reason), do: dgettext("sheets", "Could not save the comment. Check the text and selected mentions.")
+  defp error_message(_reason),
+    do: dgettext("sheets", "Could not save the comment. Check the text and selected mentions.")
 
   defp empty_state do
     %{

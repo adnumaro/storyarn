@@ -39,7 +39,9 @@ defmodule Storyarn.Flows.Versioning.Commands.RecoverRequests do
     result =
       Repo.transaction(fn ->
         request =
-          Repo.one(from r in VersionRequest, where: r.id == ^id and r.status == "pending", lock: "FOR UPDATE SKIP LOCKED")
+          Repo.one(
+            from r in VersionRequest, where: r.id == ^id and r.status == "pending", lock: "FOR UPDATE SKIP LOCKED"
+          )
 
         not is_nil(request) and terminal_delivery?(request)
       end)

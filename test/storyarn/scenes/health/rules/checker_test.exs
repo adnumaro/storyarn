@@ -71,7 +71,14 @@ defmodule Storyarn.Scenes.Health.Rules.CheckerTest do
 
   test "separates invalid, empty, incomplete, stale, and mistyped action data" do
     invalid = %{base_zone() | id: 41, action_type: "display", action_data: %{}}
-    empty_action = %{base_zone() | id: 42, action_type: "action", is_walkable: false, action_data: %{"assignments" => []}}
+
+    empty_action = %{
+      base_zone()
+      | id: 42,
+        action_type: "action",
+        is_walkable: false,
+        action_data: %{"assignments" => []}
+    }
 
     incomplete_assignment = %{
       base_zone()

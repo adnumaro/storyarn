@@ -64,7 +64,13 @@ defmodule Storyarn.Flows.FlowCrud do
     create_linked_flow_for_actor(nil, project, parent_flow, node, opts)
   end
 
-  def create_linked_flow(%{user: %{id: actor_id}} = actor_scope, project, %Flow{} = parent_flow, %FlowNode{} = node, opts)
+  def create_linked_flow(
+        %{user: %{id: actor_id}} = actor_scope,
+        project,
+        %Flow{} = parent_flow,
+        %FlowNode{} = node,
+        opts
+      )
       when is_integer(actor_id) and actor_id > 0 and is_list(opts) do
     create_linked_flow_for_actor(actor_scope, project, parent_flow, node, opts)
   end
@@ -676,7 +682,8 @@ defmodule Storyarn.Flows.FlowCrud do
     end
   end
 
-  defp trash_ref_would_restore?(%EntityTrashRef{source_field: "data." <> key}, %FlowNode{data: data}) when is_map(data) do
+  defp trash_ref_would_restore?(%EntityTrashRef{source_field: "data." <> key}, %FlowNode{data: data})
+       when is_map(data) do
     Map.get(data, key) == nil
   end
 

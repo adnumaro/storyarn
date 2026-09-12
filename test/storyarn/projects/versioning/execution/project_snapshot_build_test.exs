@@ -702,7 +702,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
         "custom_url" => "https://content.invalid/asset",
         "deep_content" => %{
           "one" => %{
-            "two" => %{"three" => %{"four" => %{"five" => %{"six" => %{"seven" => %{"eight" => %{"nine" => "exact"}}}}}}}
+            "two" => %{
+              "three" => %{"four" => %{"five" => %{"six" => %{"seven" => %{"eight" => %{"nine" => "exact"}}}}}}
+            }
           }
         },
         "variant_asset_ids" => %{

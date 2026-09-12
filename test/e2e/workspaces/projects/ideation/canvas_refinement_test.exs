@@ -130,8 +130,8 @@ defmodule StoryarnWeb.E2E.BrainstormingCanvasRefinementTest do
       {"<p>The envoy knows<br>more than he admits.</p>", "plain", 935, 255, 205, "violet"},
       {"<p>City at dawn</p>", "ellipse", 20, 455, 225, "blue"},
       {"<p>Her friend guards the gate.<br><em>Duty or loyalty?</em></p>", "plain", 340, 455, 240, "mint"},
-      {"<p><strong>The cost of silence</strong></p><p>A city survives.<br>A friendship ends.</p>", "rectangle", 650, 450,
-       240, "yellow"},
+      {"<p><strong>The cost of silence</strong></p><p>A city survives.<br>A friendship ends.</p>", "rectangle", 650,
+       450, 240, "yellow"},
       {"<p>Two endings</p>", "plain", 955, 455, 205, "coral"},
       {"<p>Save the city.<br>Lose a friend.</p>", "plain", 355, 645, 235, "mint"},
       {"<p>Let the truth escape.<br>What remains worth protecting?</p>", "rectangle", 865, 645, 250, "paper"}

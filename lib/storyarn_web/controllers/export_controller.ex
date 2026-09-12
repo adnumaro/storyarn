@@ -175,7 +175,9 @@ defmodule StoryarnWeb.ExportController do
             :ok
 
           {:error, reason} ->
-            Logger.warning("Temporary export archive cleanup failed path=#{inspect(safe_path)} reason=#{inspect(reason)}")
+            Logger.warning(
+              "Temporary export archive cleanup failed path=#{inspect(safe_path)} reason=#{inspect(reason)}"
+            )
         end
 
       {:error, :invalid_temporary_zip_path} ->

@@ -2011,7 +2011,8 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
          count: length(blocks),
          block_id_map: block_id_map,
          soft_deleted_ids: soft_deleted_ids,
-         affected_inherited_instance_ids: Enum.uniq(restored_inherited_instance_ids ++ inheritance_plan.sync_instance_ids)
+         affected_inherited_instance_ids:
+           Enum.uniq(restored_inherited_instance_ids ++ inheritance_plan.sync_instance_ids)
        }}
     end
   end

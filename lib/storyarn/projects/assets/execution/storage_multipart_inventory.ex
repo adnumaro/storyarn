@@ -56,7 +56,10 @@ defmodule Storyarn.Projects.Assets.StorageMultipartInventory do
       {:failure, kind}
   end
 
-  defp normalize_summary({:ok, %{count: count, oldest_initiated_at: oldest, inventory_complete: inventory_complete}}, now)
+  defp normalize_summary(
+         {:ok, %{count: count, oldest_initiated_at: oldest, inventory_complete: inventory_complete}},
+         now
+       )
        when is_integer(count) and count >= 0 and is_boolean(inventory_complete) do
     case validate_oldest(count, oldest) do
       :ok ->

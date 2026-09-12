@@ -18,7 +18,8 @@ defmodule StoryarnWeb.Plugs.NoindexRobots do
 
   def call(conn, _opts), do: maybe_serve_noindex_robots(conn)
 
-  defp maybe_serve_noindex_robots(%{method: method, request_path: "/robots.txt"} = conn) when method in ["GET", "HEAD"] do
+  defp maybe_serve_noindex_robots(%{method: method, request_path: "/robots.txt"} = conn)
+       when method in ["GET", "HEAD"] do
     if noindex?() do
       conn
       |> put_resp_content_type("text/plain")

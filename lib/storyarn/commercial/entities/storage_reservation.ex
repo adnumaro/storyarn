@@ -233,7 +233,13 @@ defmodule Storyarn.Commercial.Billing.StorageReservation do
   end
 
   @doc "Marks that the operation may begin writing beneath its immutable namespace."
-  def storage_started_changeset(reservation, measured_at, inventory_digest, inventory_count, cleanup_storage_keys \\ nil) do
+  def storage_started_changeset(
+        reservation,
+        measured_at,
+        inventory_digest,
+        inventory_count,
+        cleanup_storage_keys \\ nil
+      ) do
     canonical_storage_keys = canonical_cleanup_storage_keys(cleanup_storage_keys)
 
     reservation

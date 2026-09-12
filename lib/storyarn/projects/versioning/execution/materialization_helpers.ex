@@ -38,7 +38,8 @@ defmodule Storyarn.Projects.Versioning.MaterializationHelpers do
   @doc false
   @spec with_project_storage_lock(pos_integer(), (-> term())) ::
           {:ok, term()} | {:error, term()}
-  def with_project_storage_lock(project_id, fun) when is_integer(project_id) and project_id > 0 and is_function(fun, 0) do
+  def with_project_storage_lock(project_id, fun)
+      when is_integer(project_id) and project_id > 0 and is_function(fun, 0) do
     case project_workspace_id(project_id) do
       {:ok, workspace_id} ->
         workspace_id

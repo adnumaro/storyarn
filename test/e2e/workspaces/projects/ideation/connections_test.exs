@@ -32,7 +32,9 @@ defmodule StoryarnWeb.E2E.IdeationConnectionsTest do
       |> authenticate(ctx.viewer.user)
       |> visit(path(ctx))
 
-    browser = browser |> press("#brainstorming-canvas", "1") |> select_note(first.id) |> select_note(second.id, ["Shift"])
+    browser =
+      browser |> press("#brainstorming-canvas", "1") |> select_note(first.id) |> select_note(second.id, ["Shift"])
+
     edge = "[data-connection-source='#{first.id}'][data-connection-target='#{second.id}']"
 
     browser = press(browser, "#brainstorming-canvas", "l")
@@ -124,7 +126,11 @@ defmodule StoryarnWeb.E2E.IdeationConnectionsTest do
   defp note(ctx, actor, body, x) do
     idea_fixture(
       ctx,
-      %{visibility: :shared, body: "<p>#{body}</p>", canvas: %{"x" => x, "y" => 0, "width" => 280, "color" => "yellow"}},
+      %{
+        visibility: :shared,
+        body: "<p>#{body}</p>",
+        canvas: %{"x" => x, "y" => 0, "width" => 280, "color" => "yellow"}
+      },
       actor
     )
   end

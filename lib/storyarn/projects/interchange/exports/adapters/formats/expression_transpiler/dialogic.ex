@@ -32,7 +32,8 @@ defmodule Storyarn.Projects.Exports.ExpressionTranspiler.Dialogic do
 
   defp emit_condition_op(ref, "not_contains", val), do: "#{Helpers.format_literal(val, @literal_opts)} not in #{ref}"
 
-  defp emit_condition_op(ref, "starts_with", val), do: "#{ref}.begins_with(#{Helpers.format_literal(val, @literal_opts)})"
+  defp emit_condition_op(ref, "starts_with", val),
+    do: "#{ref}.begins_with(#{Helpers.format_literal(val, @literal_opts)})"
 
   defp emit_condition_op(ref, "ends_with", val), do: "#{ref}.ends_with(#{Helpers.format_literal(val, @literal_opts)})"
 

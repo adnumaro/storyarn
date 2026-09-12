@@ -302,7 +302,14 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     before_upload = Repo.query!("SELECT row_to_json(upload) FROM storage_cleanup_multipart_uploads AS upload").rows
 
     Release.run_project_snapshot_migrations(Repo, fn ->
-      Runner.run(Repo, Repo.config(), @exact_multipart_cleanup_migration, FenceStorageCleanupWriters, :forward, :up, :up,
+      Runner.run(
+        Repo,
+        Repo.config(),
+        @exact_multipart_cleanup_migration,
+        FenceStorageCleanupWriters,
+        :forward,
+        :up,
+        :up,
         prefix: prefix,
         log: false
       )
@@ -368,7 +375,10 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     workflow = File.read!(Path.expand("../../.github/workflows/fly-deploy.yml", __DIR__))
 
     {stop, _} = :binary.match(workflow, "flyctl scale count 0 --app storyarn-prod --yes")
-    {proof, _} = :binary.match(workflow, "test \"$(flyctl machine list --app storyarn-prod --json | jq 'length')\" -eq 0")
+
+    {proof, _} =
+      :binary.match(workflow, "test \"$(flyctl machine list --app storyarn-prod --json | jq 'length')\" -eq 0")
+
     {authorization, _} = :binary.match(workflow, "EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903190000")
     {deployment, _} = :binary.match(workflow, "flyctl deploy --remote-only --ha=false")
 

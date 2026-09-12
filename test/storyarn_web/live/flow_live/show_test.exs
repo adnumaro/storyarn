@@ -1100,6 +1100,8 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
   defp perform_pending_version(flow) do
     request = Repo.get_by!(Flows.Versioning.VersionRequest, flow_id: flow.id, status: "pending")
-    assert :ok = Oban.Testing.perform_job(Storyarn.Workers.CreateFlowVersionWorker, %{request_id: request.id}, repo: Repo)
+
+    assert :ok =
+             Oban.Testing.perform_job(Storyarn.Workers.CreateFlowVersionWorker, %{request_id: request.id}, repo: Repo)
   end
 end

@@ -676,7 +676,12 @@ defmodule Storyarn.Sheets.Editor.Commands.Tables do
     else
       parent_shortcut =
         Repo.one(
-          from(s in Sheet, join: b in Block, on: b.sheet_id == s.id, where: b.id == ^parent_block.id, select: s.shortcut)
+          from(s in Sheet,
+            join: b in Block,
+            on: b.sheet_id == s.id,
+            where: b.id == ^parent_block.id,
+            select: s.shortcut
+          )
         )
 
       child_sheet_ids = instances |> Enum.map(& &1.sheet_id) |> Enum.uniq()

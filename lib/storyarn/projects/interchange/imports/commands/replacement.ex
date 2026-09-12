@@ -245,7 +245,8 @@ defmodule Storyarn.Projects.Imports.Replacement do
     prepare_terminal_snapshot_cleanup(snapshot, workspace_id, provider_namespace_fingerprint)
   end
 
-  defp cleanup_snapshot_by_state(%ProjectSnapshot{}, _workspace_id, _provider_namespace_fingerprint), do: {:ok, :deferred}
+  defp cleanup_snapshot_by_state(%ProjectSnapshot{}, _workspace_id, _provider_namespace_fingerprint),
+    do: {:ok, :deferred}
 
   defp prepare_terminal_snapshot_cleanup(snapshot, workspace_id, provider_namespace_fingerprint) do
     case Versioning.prepare_abandoned_import_snapshot_cleanup_in_transaction(
@@ -338,7 +339,9 @@ defmodule Storyarn.Projects.Imports.Replacement do
     end
   end
 
-  defp lock_terminal_cleanup_snapshot(%ProjectImportAttempt{pre_import_snapshot_id: snapshot_id}, %Project{id: project_id})
+  defp lock_terminal_cleanup_snapshot(%ProjectImportAttempt{pre_import_snapshot_id: snapshot_id}, %Project{
+         id: project_id
+       })
        when is_integer(snapshot_id) and snapshot_id > 0 do
     Repo.one(
       from snapshot in ProjectSnapshot,
@@ -525,7 +528,8 @@ defmodule Storyarn.Projects.Imports.Replacement do
          snapshot_id
        ), do: {:ok, attempt}
 
-  defp persist_snapshot_reference(%ProjectImportAttempt{}, _snapshot_id), do: {:error, :invalid_import_snapshot_identity}
+  defp persist_snapshot_reference(%ProjectImportAttempt{}, _snapshot_id),
+    do: {:error, :invalid_import_snapshot_identity}
 
   defp inspect_snapshot_state(attempt_hint, project_hint) do
     Repo.transact(fn ->

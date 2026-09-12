@@ -201,7 +201,11 @@ defmodule Storyarn.Projects.FlowImportPersistence do
     end
   end
 
-  defp maybe_initialize_composition_source(changeset, %FlowNodeRecord{type: type, composition_source_id: nil}, parent_id)
+  defp maybe_initialize_composition_source(
+         changeset,
+         %FlowNodeRecord{type: type, composition_source_id: nil},
+         parent_id
+       )
        when type in ["sequence", "dialogue"] do
     FlowNodeRecord.composition_source_changeset(changeset, %{composition_source_id: parent_id})
   end

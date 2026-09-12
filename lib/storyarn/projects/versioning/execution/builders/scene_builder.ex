@@ -1193,7 +1193,8 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilder do
     if valid? do
       :ok
     else
-      {:error, {:invalid_scene_zone_target_contract, zone["original_id"], normalized_action_type, target_type, target_id}}
+      {:error,
+       {:invalid_scene_zone_target_contract, zone["original_id"], normalized_action_type, target_type, target_id}}
     end
   end
 
@@ -2399,7 +2400,8 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilder do
         {:cont, {:ok, [remapped_item | remapped_items]}}
       else
         {:halt,
-         {:error, {:unresolved_scene_zone_collection_sheet, zone_data["original_id"], index, item["id"], source_sheet_id}}}
+         {:error,
+          {:unresolved_scene_zone_collection_sheet, zone_data["original_id"], index, item["id"], source_sheet_id}}}
       end
     end)
     |> case do

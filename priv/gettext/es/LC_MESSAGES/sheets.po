@@ -12,19 +12,19 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1790
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3155
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3156
 #, elixir-autogen, elixir-format
 msgid "Changed avatar"
 msgstr "Avatar cambiado"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1804
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3169
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3170
 #, elixir-autogen, elixir-format
 msgid "Changed banner"
 msgstr "Banner cambiado"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1769
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3134
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3135
 #, elixir-autogen, elixir-format
 msgid "Changed shortcut"
 msgstr "Atajo cambiado"
@@ -104,12 +104,12 @@ msgid "Reference target not found."
 msgstr "Destino de referencia no encontrado."
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1762
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3127
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3128
 #, elixir-autogen, elixir-format
 msgid "Renamed sheet"
 msgstr "Ficha renombrada"
 
-#: lib/storyarn_web/live/sheet_live/show.ex:500
+#: lib/storyarn_web/live/sheet_live/show.ex:503
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
@@ -124,7 +124,7 @@ msgstr "Atajo %{error}"
 msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
-#: lib/storyarn_web/live/hooks/palette.ex:583
+#: lib/storyarn_web/live/hooks/palette.ex:588
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "Untitled"
@@ -222,63 +222,63 @@ msgid "Sheet moved to trash."
 msgstr "Ficha movida a la papelera."
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1861
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3226
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3227
 #, elixir-autogen, elixir-format
 msgid "Added %{type} block"
 msgstr "Bloque %{type} añadido"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1864
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3229
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3230
 #, elixir-autogen, elixir-format
 msgid "Added %{type} block \"%{name}\""
 msgstr "Bloque %{type} \"%{name}\" añadido"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:32
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:37
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3270
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3275
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3271
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3276
 #, elixir-autogen, elixir-format
 msgid "Avatar image"
 msgstr "Imagen de avatar"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:14
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3252
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3253
 #, elixir-autogen, elixir-format
 msgid "Banner image"
 msgstr "Imagen de banner"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:23
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3261
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3262
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — inherited source"
 msgstr "Bloque #%{n} — fuente heredada"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1783
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3148
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3149
 #, elixir-autogen, elixir-format
 msgid "Changed color"
 msgstr "Color cambiado"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1873
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3238
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3239
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} block"
 msgstr "Bloque %{type} modificado"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1876
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3241
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3242
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} block \"%{name}\""
 msgstr "Bloque %{type} \"%{name}\" modificado"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1867
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3232
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3233
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} block"
 msgstr "Bloque %{type} eliminado"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1870
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3235
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3236
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} block \"%{name}\""
 msgstr "Bloque %{type} \"%{name}\" eliminado"
@@ -309,37 +309,37 @@ msgstr "Recurso no encontrado."
 msgid "Invalid layout."
 msgstr "Diseño no válido."
 
-#: lib/storyarn_web/live/sheet_live/show.ex:1039
+#: lib/storyarn_web/live/sheet_live/show.ex:1043
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr "Desconocido"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:53
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3291
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3292
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} gallery image"
 msgstr "Imagen de galería del bloque #%{n}"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1797
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3162
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3163
 #, elixir-autogen, elixir-format
 msgid "Changed avatars"
 msgstr "Avatares cambiados"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1776
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3141
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3142
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr "Descripción cambiada"
 
 #: lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1811
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3176
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3177
 #, elixir-autogen, elixir-format
 msgid "Changed hidden inherited blocks"
 msgstr "Bloques heredados ocultos cambiados"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:46
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3284
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3285
 #, elixir-autogen, elixir-format
 msgid "Hidden inherited block"
 msgstr "Bloque heredado oculto"
@@ -426,19 +426,19 @@ msgid "Text"
 msgstr "Texto"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:77
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3315
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3316
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — malformed embedded reference"
 msgstr "Bloque #%{n} — referencia incrustada no válida"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:92
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3330
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3331
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — reference target"
 msgstr "Bloque #%{n} — destino de referencia"
 
 #: lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex:96
-#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3334
+#: lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex:3335
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — rich-text mention"
 msgstr "Bloque #%{n} — mención de texto enriquecido"
@@ -458,17 +458,17 @@ msgstr "El audio seleccionado ya no está disponible."
 msgid "This dialogue line is no longer available. Refresh and try again."
 msgstr "Esta línea de diálogo ya no está disponible. Actualiza la página e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:440
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:469
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr "No se pudo guardar el comentario. Revisa el texto y las menciones seleccionadas."
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:435
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:463
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr "Esta conversación ha cambiado. Revisa el estado más reciente e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:438
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:466
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr "Esta conversación o su origen ya no están disponibles."

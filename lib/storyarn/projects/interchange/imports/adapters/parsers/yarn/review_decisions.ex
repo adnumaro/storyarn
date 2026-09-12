@@ -299,7 +299,8 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
     end
   end
 
-  defp validate_compatibility_warning_counts(counts, expected_count) when is_map(counts) and map_size(counts) <= 1_000 do
+  defp validate_compatibility_warning_counts(counts, expected_count)
+       when is_map(counts) and map_size(counts) <= 1_000 do
     valid? =
       Enum.all?(counts, fn {code, count} ->
         is_binary(code) and code != "" and String.length(code) <= 100 and

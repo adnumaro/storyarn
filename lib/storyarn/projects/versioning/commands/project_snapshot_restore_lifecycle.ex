@@ -1083,7 +1083,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   defp claim_locked(%ProjectSnapshotRestore{}, _generation, _job_id, _attempt),
     do: {:error, :stale_project_snapshot_restore_generation}
 
-  defp resume_running_claim(%ProjectSnapshotRestore{attempt: attempt} = restore, attempt), do: {:ok, {:claimed, restore}}
+  defp resume_running_claim(%ProjectSnapshotRestore{attempt: attempt} = restore, attempt),
+    do: {:ok, {:claimed, restore}}
 
   defp resume_running_claim(restore, attempt) do
     case restore

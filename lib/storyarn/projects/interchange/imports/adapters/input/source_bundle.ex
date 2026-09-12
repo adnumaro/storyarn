@@ -316,7 +316,11 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
       else: {:error, :invalid_archive}
   end
 
-  defp take_central_metadata(rest, %{name_length: name_length, extra_length: extra_length, comment_length: comment_length}) do
+  defp take_central_metadata(rest, %{
+         name_length: name_length,
+         extra_length: extra_length,
+         comment_length: comment_length
+       }) do
     <<_name::binary-size(^name_length), extra::binary-size(^extra_length), _comment::binary-size(^comment_length),
       remaining::binary>> = rest
 
