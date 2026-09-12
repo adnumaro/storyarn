@@ -1,5 +1,7 @@
 defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
-  use ExUnit.Case, async: false
+  # Pure source analysis can overlap database tests. Serialize the widest scans
+  # with each other to avoid contention on the BEAM file server.
+  use ExUnit.Case, async: true, group: :source_scans
 
   alias Storyarn.Architecture.DependencyPolicy
 
@@ -307,14 +309,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   test "variable Repo receivers have proven local provenance or a sealed transparent delegate" do
     policy = shared_mapping_policy()
 
-    assert_transparent_write_delegates!(policy)
-
-    unresolved =
-      policy.write_root
-      |> Path.join("**/*.ex")
-      |> Path.wildcard()
-      |> Enum.sort()
-      |> Enum.flat_map(&unresolved_variable_repo_writes(&1, policy.transparent_write_delegates))
+    sources = source_inventory(policy.write_root)
+    unresolved = assert_transparent_write_delegates!(policy, sources)
 
     assert unresolved == [], """
     A variable-receiver persistence write has no statically proven Storyarn.Repo
@@ -677,6 +673,98 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
     Opaque calls: #{inspect(calls, pretty: true, limit: :infinity)}
     """
+  end
+
+  test "indexed schema provenance preserves pipelines, overloads and escaped captures" do
+    source = """
+    defmodule IndexedBulkWriter do
+      alias Storyarn.Repo
+      def run(rows), do: "flow_nodes" |> bulk(rows)
+      def unrelated(schema, rows, options), do: bulk(schema, rows, options)
+      defp bulk(schema, rows), do: insert(schema, rows)
+      defp bulk(_schema, rows, _options), do: rows
+      defp insert(schema, rows), do: Repo.insert_all(schema, rows)
+    end
+    """
+
+    assert opaque_insert_all_calls_in_source(source, "indexed.ex") == []
+
+    captured = String.replace(source, "def run(rows)", "def escaped, do: &bulk/2\n  def run(rows)")
+
+    assert [%{function: "defp insert/2"}] = opaque_insert_all_calls_in_source(captured, "indexed.ex")
+  end
+
+  test "clause indexing retains every guarded clause and default arity" do
+    source = ~S"""
+    defmodule IndexedClauses do
+      def run(value), do: choose(value)
+      defp choose(value, options \\ []) when is_atom(value), do: {value, options}
+      defp choose(value, options), do: {options, value}
+      defp choose(value, options, extra), do: {value, options, extra}
+    end
+    """
+
+    clauses = source |> quoted!("indexed.ex") |> function_clauses()
+    index = clause_index(clauses)
+
+    for name <- [:run, :choose, :absent], arity <- 0..4 do
+      assert matching_clauses(index, name, arity) == matching_clauses(clauses, name, arity)
+    end
+
+    assert length(matching_clauses(index, :choose, 1)) == 1
+    assert length(matching_clauses(index, :choose, 2)) == 2
+
+    default_target = ~S"""
+    defmodule DefaultTarget do
+      alias Storyarn.Repo
+      def run(rows), do: bulk(rows)
+      defp bulk(rows, schema \\ "flow_nodes"), do: Repo.insert_all(schema, rows)
+    end
+    """
+
+    # An omitted argument is still opaque: indexing must not invent provenance
+    # for defaults that the dataflow analyzer does not evaluate.
+    assert [%{function: "defp bulk/2"}] = opaque_insert_all_calls_in_source(default_target, "default.ex")
+  end
+
+  test "reused source metadata keeps each table's parameter and return taint isolated" do
+    source = """
+    defmodule InventoryWriter do
+      alias Storyarn.Repo
+      alias Example.FirstRecord
+      alias Example.SecondRecord
+
+      def create_first(%FirstRecord{} = record), do: insert_first(record)
+      defp insert_first(record), do: Repo.insert(record)
+
+      def update_second(%SecondRecord{} = record), do: Repo.update(record)
+    end
+    """
+
+    parsed = parsed_source(source, "inventory_writer.ex")
+    prepared = prepare_table_source(parsed)
+
+    first_writes = table_mutations(prepared, prepared.path, ["Example.FirstRecord"], "first_records")
+    second_writes = table_mutations(prepared, prepared.path, ["Example.SecondRecord"], "second_records")
+
+    assert [%{function: "defp insert_first/1", operation: :insert}] = first_writes
+    assert [%{function: "def update_second/1", operation: :update}] = second_writes
+    assert table_mutations(prepared, prepared.path, ["Example.FirstRecord"], "first_records") == first_writes
+
+    writes =
+      table_write_inventory(
+        [parsed],
+        %{"first_records" => ["Example.FirstRecord"], "second_records" => ["Example.SecondRecord"]},
+        fn candidate, schemas, table -> table_mutations(candidate, candidate.path, schemas, table) end
+      )
+
+    assert writes == %{"first_records" => first_writes, "second_records" => second_writes}
+
+    # A later snapshot of the same path must analyze its actual contents.
+    changed = source |> String.replace("Repo.update(record)", "Repo.delete(record)") |> parsed_source(parsed.path)
+
+    assert [%{function: "def update_second/1", operation: :delete}] =
+             table_mutations(changed, changed.path, ["Example.SecondRecord"], "second_records")
   end
 
   test "runtime schema constructors cannot hide a persistence target" do
@@ -1657,12 +1745,14 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   test "entity and variable reference mutations match the reviewed ownership inventory" do
-    for {name, contract} <- reference_ownership_policy() do
-      schemas = schema_modules(@storyarn_root, contract.table)
+    contracts = reference_ownership_policy()
+    inventories = detected_reference_inventories(contracts)
+
+    for {name, contract} <- contracts do
+      %{schemas: schemas, writes: actual} = Map.fetch!(inventories, contract.table)
 
       assert schemas != [], "the guard must discover at least one schema for #{contract.table}"
 
-      actual = detected_reference_writes(contract.table, schemas)
       expected = declared_reference_writes(contract)
 
       for declared <- expected do
@@ -1685,11 +1775,12 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
   test "assets, localized texts and cleanup requests match their complete writer inventories" do
     contracts = owned_inventory_policy()
+    inventories = detected_reference_inventories(contracts)
 
     assert contracts |> Map.keys() |> Enum.sort() == @owned_inventory_tables
 
     for {name, contract} <- contracts do
-      schemas = schema_modules(@storyarn_root, contract.table)
+      %{schemas: schemas, writes: actual} = Map.fetch!(inventories, contract.table)
 
       assert schemas != [], "the guard must discover at least one schema for #{contract.table}"
       assert is_atom(contract.ownership_model)
@@ -1714,7 +1805,6 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
         end
       end
 
-      actual = detected_reference_writes(contract.table, schemas)
       expected = declared_reference_writes(contract)
 
       assert actual == expected, """
@@ -1759,11 +1849,12 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
   test "aggregate identity and membership tables match their complete ENG-108 writer inventories" do
     contracts = aggregate_identity_policy()
+    inventories = detected_reference_inventories(contracts)
 
     assert contracts |> Map.keys() |> Enum.sort() == @aggregate_identity_tables
 
     for {name, contract} <- contracts do
-      schemas = schema_modules(@storyarn_root, contract.table)
+      %{schemas: schemas, writes: actual} = Map.fetch!(inventories, contract.table)
 
       assert schemas != [], "the guard must discover at least one schema for #{contract.table}"
       assert contract.table == Atom.to_string(name)
@@ -1815,7 +1906,6 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
                "#{false_positive.path} #{false_positive.function} changed; re-audit the alleged scanner false positive"
       end
 
-      actual = detected_reference_writes(contract.table, schemas)
       expected = declared_eng108_scanner_writes(contract)
 
       assert actual == expected, """
@@ -1979,16 +2069,18 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   test "foreign mappings remain passive unless every write is an exact reviewed exception" do
     policy = shared_mapping_policy()
     persistence = full_persistence_policy()
+    sources = source_inventory(policy.write_root)
 
     shared =
-      policy.mapping_root
-      |> shared_mapping_inventory(policy.bounded_contexts, policy.passive_mapping_roots)
+      sources
+      |> Enum.filter(&String.starts_with?(&1.path, policy.mapping_root <> "/"))
+      |> Enum.flat_map(&shared_mappings_in_parsed_source(&1, policy.bounded_contexts, policy.passive_mapping_roots))
       |> shared_mappings()
 
     assert {:ok, classifications} =
              classify_shared_mappings(shared, policy, persistence)
 
-    actual_writes = shared_table_writes(shared, policy)
+    actual_writes = shared_table_writes(shared, policy, sources)
     allowed_writes = allowed_shared_exact_writes(policy)
     dedicated_allowances = dedicated_contract_allowances(persistence)
     false_positives = reviewed_shared_false_positives(policy)
@@ -2230,7 +2322,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     |> Map.fetch!(:shared_persistence_mappings)
   end
 
-  defp assert_transparent_write_delegates!(policy) do
+  defp assert_transparent_write_delegates!(policy, sources) do
     delegates = policy.transparent_write_delegates
 
     assert delegates != []
@@ -2252,15 +2344,11 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
       assert delegate.operation in @repo_write_functions
       assert is_binary(delegate.reason) and delegate.reason != ""
 
-      source = File.read!(delegate.path)
-      ast = quoted!(source, delegate.path)
+      source = sources |> Enum.find(&(&1.path == delegate.path)) |> parsed_source(delegate.path)
 
-      assert source =~ "defmodule #{delegate.module}"
+      assert source.source =~ "defmodule #{delegate.module}"
 
-      clauses =
-        ast
-        |> function_clauses()
-        |> matching_clauses(delegate.function, delegate.arity)
+      clauses = source.ast |> function_clauses() |> matching_clauses(delegate.function, delegate.arity)
 
       assert clauses != [], "transparent delegate is missing: #{delegate.module}.#{delegate.function}/#{delegate.arity}"
 
@@ -2284,33 +2372,17 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     end
 
     shared =
-      policy.mapping_root
-      |> shared_mapping_inventory(policy.bounded_contexts, policy.passive_mapping_roots)
+      sources
+      |> Enum.filter(&String.starts_with?(&1.path, policy.mapping_root <> "/"))
+      |> Enum.flat_map(&shared_mappings_in_parsed_source(&1, policy.bounded_contexts, policy.passive_mapping_roots))
       |> shared_mappings()
 
-    calls =
-      policy.write_root
-      |> Path.join("**/*.ex")
-      |> Path.wildcard()
-      |> Enum.sort()
-      |> Enum.flat_map(fn path ->
-        path
-        |> File.read!()
-        |> transparent_delegate_calls_in_source(path)
-      end)
+    audit = transparent_delegate_inventory(sources, shared, delegates)
+    calls = audit.calls
+    imported_delegates = audit.imports
+    alternate_dispatches = audit.alternate_dispatches
 
     assert calls != [], "transparent write delegate call-site discovery must never become vacuous"
-
-    imported_delegates =
-      policy.write_root
-      |> Path.join("**/*.ex")
-      |> Path.wildcard()
-      |> Enum.sort()
-      |> Enum.flat_map(fn path ->
-        path
-        |> File.read!()
-        |> transparent_delegate_imports_in_source(path)
-      end)
 
     assert imported_delegates == [], """
     Transparent write delegates must be called through their qualified module
@@ -2318,17 +2390,6 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
     Imports: #{inspect(imported_delegates, pretty: true, limit: :infinity)}
     """
-
-    alternate_dispatches =
-      policy.write_root
-      |> Path.join("**/*.ex")
-      |> Path.wildcard()
-      |> Enum.sort()
-      |> Enum.flat_map(fn path ->
-        path
-        |> File.read!()
-        |> transparent_delegate_alternate_dispatches_in_source(path)
-      end)
 
     assert alternate_dispatches == [], """
     Transparent write delegates must use direct, qualified calls. Dynamic
@@ -2345,32 +2406,45 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
              "transparent write delegate has no live call site: #{delegate.module}.#{delegate.function}/#{delegate.arity}"
     end
 
-    attributed_writes =
-      calls
-      |> Enum.map(& &1.path)
-      |> Enum.uniq()
-      |> Enum.flat_map(fn path ->
-        source = File.read!(path)
+    assert_transparent_delegate_calls_attributed!(calls, audit.attributed_writes)
+    audit.unresolved
+  end
 
-        Enum.flat_map(shared, fn {table, mappings} ->
-          table_mutations(source, path, Enum.map(mappings, & &1.module), table)
-        end)
-      end)
+  defp transparent_delegate_inventory(sources, shared, delegates) do
+    empty = %{calls: [], imports: [], alternate_dispatches: [], attributed_writes: [], unresolved: []}
 
-    assert_transparent_delegate_calls_attributed!(calls, attributed_writes)
+    Enum.reduce(sources, empty, fn source, inventory ->
+      prepared = source |> parsed_source(source.path) |> prepare_table_source()
+      calls = transparent_delegate_calls_in_source(prepared, source.path)
+
+      attributed_writes = attributed_delegate_writes(prepared, calls, shared)
+
+      %{
+        calls: calls ++ inventory.calls,
+        imports: transparent_delegate_imports_in_source(prepared, source.path) ++ inventory.imports,
+        alternate_dispatches:
+          transparent_delegate_alternate_dispatches_in_source(prepared, source.path) ++ inventory.alternate_dispatches,
+        attributed_writes: attributed_writes ++ inventory.attributed_writes,
+        unresolved: unresolved_variable_repo_writes_in_source(prepared, source.path, delegates) ++ inventory.unresolved
+      }
+    end)
+  end
+
+  defp attributed_delegate_writes(_source, [], _shared), do: []
+
+  defp attributed_delegate_writes(source, _calls, shared) do
+    Enum.flat_map(shared, fn {table, mappings} ->
+      table_mutations(source, source.path, Enum.map(mappings, & &1.module), table)
+    end)
   end
 
   defp transparent_delegate_calls_in_source(source, path) do
-    ast = quoted!(source, path)
-    aliases = alias_bindings(ast)
-    clauses = function_clauses(ast)
-    literal_attributes = literal_binary_module_attributes(ast)
+    prepared = source |> parsed_source(path) |> prepare_table_source()
+    aliases = prepared.aliases
+    clauses = prepared.clauses
+    repo_parameters = prepared.repo_parameters
+    literal_attributes = literal_binary_module_attributes(prepared.ast)
     proven_schema_parameters = proven_literal_schema_parameters(clauses, literal_attributes)
-
-    repo_parameters =
-      fixed_point(MapSet.new(), fn parameters ->
-        propagate_repo_parameters(clauses, aliases, parameters)
-      end)
 
     Enum.flat_map(clauses, fn clause ->
       repo_variables = clause_repo_variables(clause, aliases, repo_parameters)
@@ -2450,15 +2524,14 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
        ), do: calls
 
   defp transparent_delegate_imports_in_source(source, path) do
-    aliases = source |> quoted!(path) |> alias_bindings()
+    parsed = parsed_source(source, path)
+    aliases = Map.get_lazy(parsed, :aliases, fn -> alias_bindings(parsed.ast) end)
 
     delegate_modules =
       MapSet.new(@transparent_write_delegates, & &1.module)
 
     {_ast, imports} =
-      source
-      |> quoted!(path)
-      |> Macro.prewalk([], fn
+      Macro.prewalk(parsed.ast, [], fn
         {:import, _meta, [{:__aliases__, _, segments} | options]} = node, imports ->
           modules = expanded_modules(segments, aliases)
 
@@ -2484,8 +2557,9 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   defp transparent_delegate_alternate_dispatches_in_source(source, path) do
-    ast = quoted!(source, path)
-    aliases = alias_bindings(ast)
+    parsed = parsed_source(source, path)
+    ast = parsed.ast
+    aliases = Map.get_lazy(parsed, :aliases, fn -> alias_bindings(ast) end)
 
     {_ast, dispatches} =
       ast
@@ -3167,9 +3241,11 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   defp proven_literal_schema_parameters(clauses, literal_attributes) do
+    callsites = local_parameter_call_index(clauses)
+
     fixed_point(MapSet.new(), fn proven ->
       Enum.reduce(clauses, proven, fn clause, next ->
-        prove_literal_schema_parameters_for_clause(clause, clauses, literal_attributes, proven, next)
+        prove_literal_schema_parameters_for_clause(clause, callsites, literal_attributes, proven, next)
       end)
     end)
   end
@@ -3208,54 +3284,54 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     end)
   end
 
-  defp local_parameter_callsites(clauses, target_clause, parameter_index) do
-    calls = Enum.flat_map(clauses, &local_parameter_callsites_for_caller(&1, target_clause, parameter_index))
-    captures = Enum.flat_map(clauses, &local_parameter_capture_for_caller(&1, target_clause))
+  # Walk each caller once. The previous implementation walked the whole module
+  # again for every private parameter on every fixed-point iteration.
+  defp local_parameter_call_index(clauses) do
+    Enum.reduce(clauses, %{}, fn caller, index ->
+      provenance = Map.take(caller, [:id, :params])
 
-    (calls ++ captures)
-    |> Enum.reverse()
-    |> Enum.uniq()
+      {_body, index} =
+        caller.body
+        |> normalize_pipeline_calls()
+        |> Macro.prewalk(index, fn node, current ->
+          {node, index_local_parameter_call(node, provenance, current)}
+        end)
+
+      index
+    end)
   end
 
-  defp local_parameter_callsites_for_caller(caller, target_clause, parameter_index) do
-    {_body, found} =
-      caller.body
-      |> normalize_pipeline_calls()
-      |> Macro.prewalk([], fn node, current ->
-        {node, collect_local_parameter_call(node, current, caller, target_clause, parameter_index)}
-      end)
-
-    found
+  defp index_local_parameter_call({:&, _, [{:/, _, [{name, _, context}, arity]}]}, _caller, index)
+       when is_atom(name) and is_atom(context) do
+    Map.update(index, {name, arity}, [:opaque], &[:opaque | &1])
   end
 
-  defp collect_local_parameter_call(node, current, caller, target_clause, parameter_index) do
-    with {:ok, name, arguments} <- local_call(node),
-         true <- name == target_clause.name,
-         true <- MapSet.member?(target_clause.accepted_arities, length(arguments)) do
-      case Enum.fetch(arguments, parameter_index) do
-        {:ok, argument} -> [{:call, caller, argument} | current]
-        :error -> [:opaque | current]
-      end
-    else
-      _other -> current
+  defp index_local_parameter_call(node, caller, index) do
+    case local_call(node) do
+      {:ok, name, arguments} ->
+        call = {:call, caller, arguments}
+        Map.update(index, {name, length(arguments)}, [call], &[call | &1])
+
+      :not_a_local_call ->
+        index
     end
   end
 
-  defp local_parameter_capture_for_caller(caller, target_clause) do
-    {_body, found?} =
-      Macro.prewalk(caller.body, false, fn node, current ->
-        {node, current or local_function_capture?(node, target_clause)}
-      end)
+  defp local_parameter_callsites(index, target_clause, parameter_index) do
+    target_clause.accepted_arities
+    |> Enum.flat_map(&Map.get(index, {target_clause.name, &1}, []))
+    |> Enum.map(fn
+      {:call, caller, arguments} ->
+        case Enum.fetch(arguments, parameter_index) do
+          {:ok, argument} -> {:call, caller, argument}
+          :error -> :opaque
+        end
 
-    if found?, do: [:opaque], else: []
+      :opaque ->
+        :opaque
+    end)
+    |> Enum.uniq()
   end
-
-  defp local_function_capture?({:&, _, [{:/, _, [{name, _, context}, arity]}]}, target_clause)
-       when is_atom(name) and is_atom(context) do
-    name == target_clause.name and MapSet.member?(target_clause.accepted_arities, arity)
-  end
-
-  defp local_function_capture?(_node, _target_clause), do: false
 
   defp proven_schema_parameter?({name, _, context}, clause, proven_schema_parameters)
        when is_atom(name) and is_atom(context) do
@@ -3547,21 +3623,12 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     """
   end
 
-  defp unresolved_variable_repo_writes(path, delegates) do
-    source = File.read!(path)
-    unresolved_variable_repo_writes_in_source(source, path, delegates)
-  end
-
   defp unresolved_variable_repo_writes_in_source(source, path, delegates) do
-    ast = quoted!(source, path)
-    aliases = alias_bindings(ast)
-    clauses = function_clauses(ast)
-    attributes = binary_module_attributes(ast)
-
-    repo_parameters =
-      fixed_point(MapSet.new(), fn parameters ->
-        propagate_repo_parameters(clauses, aliases, parameters)
-      end)
+    prepared = source |> parsed_source(path) |> prepare_table_source()
+    aliases = prepared.aliases
+    clauses = prepared.clauses
+    attributes = prepared.attributes
+    repo_parameters = prepared.repo_parameters
 
     Enum.flat_map(clauses, fn clause ->
       repo_variables = clause_repo_variables(clause, aliases, repo_parameters)
@@ -3765,7 +3832,13 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   defp shared_mappings_in_source(source, path, bounded_contexts, passive_mapping_roots) do
-    ast = quoted!(source, path)
+    source
+    |> parsed_source(path)
+    |> shared_mappings_in_parsed_source(bounded_contexts, passive_mapping_roots)
+  end
+
+  defp shared_mappings_in_parsed_source(source, bounded_contexts, passive_mapping_roots) do
+    %{ast: ast, path: path} = parsed_source(source, source.path)
 
     {_ast, mappings} =
       Macro.prewalk(ast, [], fn
@@ -3996,59 +4069,39 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     end)
   end
 
-  defp shared_table_writes(shared, policy) do
-    sources =
-      policy.write_root
-      |> Path.join("**/*.ex")
-      |> Path.wildcard()
-      |> Enum.sort()
-      |> Map.new(fn path ->
-        source = File.read!(path)
-        attributes = source |> quoted!(path) |> binary_module_attributes() |> Map.values()
-        {path, {source, attributes}}
-      end)
+  defp shared_table_writes(shared, policy, sources) do
+    schemas = Map.new(shared, fn {table, mappings} -> {table, Enum.map(mappings, & &1.module)} end)
 
-    Map.new(shared, fn {table, mappings} ->
-      modules = Enum.map(mappings, & &1.module)
-      markers = [table | modules ++ Enum.map(modules, &(&1 |> String.split(".") |> List.last()))]
-
-      writes =
-        sources
-        |> Enum.flat_map(
-          &shared_source_writes(
-            &1,
-            markers,
-            modules,
-            table,
-            policy.reviewed_dynamic_writers,
-            policy.bounded_contexts
-          )
+    sources
+    |> table_write_inventory(
+      schemas,
+      fn source, modules, table ->
+        shared_detected_table_writes(
+          source,
+          source.path,
+          modules,
+          table,
+          policy.reviewed_dynamic_writers,
+          policy.bounded_contexts
         )
-        |> Enum.uniq_by(&{&1.path, &1.function, &1.operation})
-        |> Enum.sort_by(&{&1.path, &1.function, &1.operation})
-
-      {table, writes}
+      end,
+      true
+    )
+    |> Map.new(fn {table, writes} ->
+      {table,
+       writes
+       |> Enum.uniq_by(&{&1.path, &1.function, &1.operation})
+       |> Enum.sort_by(&{&1.path, &1.function, &1.operation})}
     end)
   end
 
+  # Association joins can reveal a target only through reflected Ecto metadata;
+  # keep them as candidates even without a table or schema marker in the text.
   defp shared_source_candidate?(source, markers),
     do: String.contains?(source, markers) or String.contains?(source, "assoc(")
 
   defp shared_source_candidate?(source, markers, attribute_values, table),
     do: shared_source_candidate?(source, markers) or table in attribute_values
-
-  defp shared_source_writes(
-         {path, {source, attribute_values}},
-         markers,
-         modules,
-         table,
-         dynamic_writers,
-         bounded_contexts
-       ) do
-    if shared_source_candidate?(source, markers, attribute_values, table),
-      do: shared_detected_table_writes(source, path, modules, table, dynamic_writers, bounded_contexts),
-      else: []
-  end
 
   defp shared_detected_table_writes(source, path, modules, table, dynamic_writers, bounded_contexts) do
     {static_writes, unresolved} = table_mutation_analysis(source, path, modules, table)
@@ -4066,7 +4119,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
           unresolved_functions = unresolved |> Enum.map(& &1.function) |> Enum.uniq() |> Enum.sort()
 
           assert unresolved_functions == [dynamic.function]
-          assert dynamic.function in source_function_identities(source, path)
+          assert dynamic.function in source_function_identities(source.source, path)
 
           [
             %{
@@ -4667,31 +4720,146 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     end
   end
 
-  defp detected_reference_writes(table, schemas) do
-    # Association joins may expose the target only through reflected Ecto
-    # metadata, so `assoc(` must be a candidate even when the table or target
-    # schema name is absent from the source.
-    markers =
-      [table | schemas] ++
-        Enum.map(schemas, fn schema -> schema |> String.split(".") |> List.last() end)
+  defp detected_reference_inventories(contracts) do
+    sources = source_inventory(@storyarn_root)
+    schema_index = schema_module_inventory(sources)
 
-    @storyarn_root
+    schemas =
+      Map.new(contracts, fn {_name, contract} -> {contract.table, Map.get(schema_index, contract.table, [])} end)
+
+    writes =
+      table_write_inventory(sources, schemas, fn source, modules, table ->
+        table_mutations(source, source.path, modules, table)
+      end)
+
+    Map.new(schemas, fn {table, modules} ->
+      inventory =
+        writes
+        |> Map.fetch!(table)
+        |> Enum.map(&Map.delete(&1, :line))
+        |> Enum.uniq()
+        |> sort_write_inventory()
+
+      {table, %{schemas: modules, writes: inventory}}
+    end)
+  end
+
+  # Keep only source binaries in the snapshot. Each traversal parses and drops
+  # one file's AST instead of retaining the entire corpus on the process heap.
+  # Snapshots never survive an inventory call, a test, or a Mix invocation.
+  defp source_inventory(root) do
+    root
     |> Path.join("**/*.ex")
     |> Path.wildcard()
     |> Enum.sort()
-    |> Enum.flat_map(fn path ->
-      source = File.read!(path)
-
-      if String.contains?(source, markers) or String.contains?(source, "assoc(") do
-        table_mutations(source, path, schemas, table)
-      else
-        []
-      end
-    end)
-    |> Enum.map(&Map.delete(&1, :line))
-    |> Enum.uniq()
-    |> sort_write_inventory()
+    |> Enum.map(fn path -> %{source: File.read!(path), path: path} end)
   end
+
+  defp parsed_source(%{ast: _ast} = source, _path), do: source
+  defp parsed_source(%{source: source, path: path}, _path), do: parsed_source(source, path)
+
+  defp parsed_source(source, path) do
+    %{source: source, path: path, ast: quoted!(source, path)}
+  end
+
+  defp table_write_inventory(sources, schemas, analyze, attribute_candidates? \\ false) do
+    targets =
+      Enum.map(schemas, fn {table, modules} ->
+        markers = [table | modules] ++ Enum.map(modules, &(&1 |> String.split(".") |> List.last()))
+        {table, modules, markers}
+      end)
+
+    empty = Map.new(schemas, fn {table, _modules} -> {table, []} end)
+
+    Enum.reduce(sources, empty, fn source, inventories ->
+      {source, candidates} = inventory_source_candidates(source, targets, attribute_candidates?)
+      add_table_writes(source, candidates, inventories, analyze)
+    end)
+  end
+
+  defp add_table_writes(_source, [], inventories, _analyze), do: inventories
+
+  defp add_table_writes(source, candidates, inventories, analyze) do
+    prepared = source |> parsed_source(source.path) |> prepare_table_source()
+
+    Enum.reduce(candidates, inventories, fn {table, modules, _markers}, current ->
+      Map.update!(current, table, &(analyze.(prepared, modules, table) ++ &1))
+    end)
+  end
+
+  defp inventory_source_candidates(source, targets, true) do
+    parsed = parsed_source(source, source.path)
+    attributes = binary_module_attributes(parsed.ast)
+    values = Map.values(attributes)
+
+    candidates =
+      Enum.filter(targets, fn {table, _modules, markers} ->
+        shared_source_candidate?(source.source, markers, values, table)
+      end)
+
+    {Map.put(parsed, :attributes, attributes), candidates}
+  end
+
+  defp inventory_source_candidates(source, targets, false) do
+    candidates =
+      Enum.filter(targets, fn {_table, _modules, markers} ->
+        shared_source_candidate?(source.source, markers)
+      end)
+
+    {source, candidates}
+  end
+
+  defp prepare_table_source(%{repo_parameters: _parameters} = source), do: source
+
+  defp prepare_table_source(%{ast: ast} = source) do
+    aliases = alias_bindings(ast)
+    clauses = function_clauses(ast)
+
+    repo_parameters =
+      fixed_point(MapSet.new(), fn parameters ->
+        propagate_repo_parameters(clauses, aliases, parameters)
+      end)
+
+    Map.merge(source, %{
+      aliases: aliases,
+      imports: imported_modules(ast, aliases),
+      clauses: clauses,
+      clause_index: clause_index(clauses),
+      attributes: Map.get_lazy(source, :attributes, fn -> binary_module_attributes(ast) end),
+      repo_parameters: repo_parameters
+    })
+  end
+
+  defp schema_module_inventory(sources) do
+    modules =
+      Enum.reduce(sources, %{}, fn source, inventory ->
+        %{ast: ast} = parsed_source(source, source.path)
+        {_ast, inventory} = Macro.prewalk(ast, inventory, &collect_schema_modules/2)
+        inventory
+      end)
+
+    Map.new(modules, fn {table, names} -> {table, names |> Enum.uniq() |> Enum.sort()} end)
+  end
+
+  defp collect_schema_modules({:defmodule, _meta, [{:__aliases__, _, segments}, [do: body]]} = node, inventory) do
+    {_body, tables} =
+      Macro.prewalk(body, [], fn
+        {:schema, _meta, [table | _rest]} = schema, tables when is_binary(table) ->
+          {schema, [table | tables]}
+
+        node, tables ->
+          {node, tables}
+      end)
+
+    inventory =
+      Enum.reduce(tables, inventory, fn table, current ->
+        Map.update(current, table, [module_name(segments)], &[module_name(segments) | &1])
+      end)
+
+    {node, inventory}
+  end
+
+  defp collect_schema_modules(node, inventory), do: {node, inventory}
 
   defp declared_reference_writes(contract) do
     (contract.ordinary_writers ++ contract.privileged_writers)
@@ -4725,43 +4893,9 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   @doc false
   def schema_modules(root, table) do
     root
-    |> Path.join("**/*.ex")
-    |> Path.wildcard()
-    |> Enum.flat_map(fn path ->
-      path
-      |> File.read!()
-      |> quoted!(path)
-      |> schema_modules_for(table)
-    end)
-    |> Enum.uniq()
-    |> Enum.sort()
-  end
-
-  defp schema_modules_for(ast, table) do
-    {_ast, modules} =
-      Macro.prewalk(ast, [], fn
-        {:defmodule, _meta, [{:__aliases__, _, segments}, [do: body]]} = node, modules ->
-          if defines_schema?(body, table) do
-            {node, [module_name(segments) | modules]}
-          else
-            {node, modules}
-          end
-
-        node, modules ->
-          {node, modules}
-      end)
-
-    modules
-  end
-
-  defp defines_schema?(ast, table) do
-    {_ast, found?} =
-      Macro.prewalk(ast, false, fn
-        {:schema, _meta, [^table | _rest]} = node, _found? -> {node, true}
-        node, found? -> {node, found?}
-      end)
-
-    found?
+    |> source_inventory()
+    |> schema_module_inventory()
+    |> Map.get(table, [])
   end
 
   @doc false
@@ -4779,17 +4913,16 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   defp table_mutation_analysis(source, path, schemas, table) do
-    ast = quoted!(source, path)
-    aliases = alias_bindings(ast)
-    imports = imported_modules(ast, aliases)
-    clauses = function_clauses(ast)
-    attributes = binary_module_attributes(ast)
+    prepared = source |> parsed_source(path) |> prepare_table_source()
+    aliases = prepared.aliases
+    imports = prepared.imports
+    clauses = prepared.clauses
+    attributes = prepared.attributes
+    index = prepared.clause_index
+    repo_parameters = prepared.repo_parameters
 
-    repo_parameters =
-      fixed_point(MapSet.new(), fn parameters ->
-        propagate_repo_parameters(clauses, aliases, parameters)
-      end)
-
+    # Target taint must start fresh for each table, even when all immutable
+    # source metadata and table-independent Repo provenance are reused.
     analysis =
       fixed_point(%{parameters: MapSet.new(), returns: MapSet.new()}, fn analysis ->
         propagate_module_taint(clauses, schemas, aliases, analysis, table)
@@ -4799,7 +4932,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
       aliases: aliases,
       analysis: analysis,
       attributes: attributes,
-      clauses: clauses,
+      clauses: index,
       imports: imports,
       repo_parameters: repo_parameters,
       schemas: schemas,
@@ -4808,7 +4941,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
     {violations, unresolved} =
       Enum.reduce(clauses, {[], []}, fn clause, {violations, unresolved} ->
-        tainted = clause_tainted_variables(clause, schemas, aliases, analysis, clauses, table)
+        tainted = clause_tainted_variables(clause, schemas, aliases, analysis, index, table)
         repo_variables = clause_repo_variables(clause, aliases, repo_parameters)
         sql_bindings = resolved_sql_variables(clause.body, attributes, variable_names(clause.params))
 
@@ -5444,13 +5577,15 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   defp strip_default_argument(argument), do: argument
 
   defp propagate_module_taint(clauses, schemas, aliases, analysis, table) do
+    index = clause_index(clauses)
+
     Enum.reduce(clauses, analysis, fn clause, next_analysis ->
-      tainted = clause_tainted_variables(clause, schemas, aliases, analysis, clauses, table)
+      tainted = clause_tainted_variables(clause, schemas, aliases, analysis, index, table)
 
       next_analysis =
         propagate_local_call_parameters(
           clause.body,
-          clauses,
+          index,
           schemas,
           aliases,
           tainted,
@@ -5459,7 +5594,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
           next_analysis
         )
 
-      if clause_returns_target?(clause.body, schemas, aliases, tainted, table, analysis, clauses) do
+      if clause_returns_target?(clause.body, schemas, aliases, tainted, table, analysis, index) do
         %{next_analysis | returns: MapSet.put(next_analysis.returns, clause.id)}
       else
         next_analysis
@@ -5721,8 +5856,20 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
   defp branch_return_expressions(expression), do: return_expressions(expression)
 
+  defp matching_clauses(index, name, arity) when is_map(index), do: Map.get(index, {name, arity}, [])
+
   defp matching_clauses(clauses, name, arity) do
     Enum.filter(clauses, &(&1.name == name and MapSet.member?(&1.accepted_arities, arity)))
+  end
+
+  defp clause_index(clauses) do
+    clauses
+    |> Enum.reverse()
+    |> Enum.reduce(%{}, fn clause, index ->
+      Enum.reduce(clause.accepted_arities, index, fn arity, current ->
+        Map.update(current, {clause.name, arity}, [clause], &[clause | &1])
+      end)
+    end)
   end
 
   defp local_call({:|>, _, [left, {name, _, arguments}]}) when is_atom(name) and is_list(arguments),
@@ -5800,6 +5947,8 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   end
 
   defp propagate_repo_parameters(clauses, aliases, repo_parameters) do
+    index = clause_index(clauses)
+
     votes =
       Enum.reduce(clauses, %{}, fn clause, votes ->
         repo_variables = clause_repo_variables(clause, aliases, repo_parameters)
@@ -5809,13 +5958,13 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
         {_body, votes} =
           Macro.prewalk(body_without_multi_callbacks, votes, fn node, current_votes ->
-            current_votes = record_local_repo_call_votes(node, clauses, aliases, repo_variables, current_votes)
+            current_votes = record_local_repo_call_votes(node, index, aliases, repo_variables, current_votes)
             {node, current_votes}
           end)
 
         record_multi_run_callback_votes(
           body,
-          clauses,
+          index,
           aliases,
           repo_variables,
           votes

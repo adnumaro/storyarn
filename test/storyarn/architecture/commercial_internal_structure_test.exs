@@ -1,5 +1,5 @@
 defmodule Storyarn.Architecture.CommercialInternalStructureTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: true, group: :source_scans
 
   alias Storyarn.Architecture.DependencyPolicy
 

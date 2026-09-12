@@ -21,7 +21,8 @@ Ecto.Adapters.SQL.Sandbox.mode(Storyarn.Repo, :manual)
 test_port = System.get_env("MIX_TEST_PORT", "4002")
 Application.put_env(:phoenix_test, :base_url, "http://127.0.0.1:#{test_port}")
 
-# Start Playwright supervisor only when Playwright is installed (not in CI unit test job)
-if File.dir?(Path.join(["node_modules", "playwright"])) do
+# The Mix alias selects browser mode before runtime config loads. Location
+# filters are only installed by Mix after this helper, so use the same decision.
+if System.get_env("STORYARN_E2E_TESTS") == "true" do
   {:ok, _} = PhoenixTest.Playwright.Supervisor.start_link()
 end

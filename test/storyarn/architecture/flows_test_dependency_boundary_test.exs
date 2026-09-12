@@ -122,10 +122,17 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects.Assets",
       "Storyarn.Sheets"
     ],
+    # The DDL rollback case retains the same asset/storage contracts in its own
+    # synchronous module so the other restore tests can use isolated sandboxes.
+    "test/storyarn/flows/versioning/execution/flow_snapshot_restore_rollback_test.exs" => [
+      "Storyarn.Platform.ObjectStorage",
+      "Storyarn.Projects.Assets",
+      "Storyarn.Projects.Assets.Asset",
+      "Storyarn.Projects.Assets.BlobStore"
+    ],
     "test/storyarn/flows/versioning/execution/flow_snapshot_restore_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Localization.LocalizedText",
-      "Storyarn.Platform.ObjectStorage",
       "Storyarn.Projects.Assets",
       "Storyarn.Projects.Assets.Asset",
       "Storyarn.Projects.Assets.BlobStore",

@@ -9,7 +9,10 @@ defmodule Storyarn.Platform.GlobalSearch.AdvancedSearchTest do
 
   alias Storyarn.Platform.GlobalSearch
   alias Storyarn.Platform.GlobalSearch.AdvancedSearch
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.References
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
 
   setup do
     user = user_fixture()
@@ -318,20 +321,15 @@ defmodule Storyarn.Platform.GlobalSearch.AdvancedSearchTest do
       scope: scope,
       project: project
     } do
+      insert_nonmatching_faction_definitions(project)
+      matching_sheet = sheet_fixture(project, %{name: "Actor 251", shortcut: "actor-251"})
+
       matching_block =
-        Enum.reduce(1..251, nil, fn index, match ->
-          suffix = index |> Integer.to_string() |> String.pad_leading(3, "0")
-          sheet = sheet_fixture(project, %{name: "Actor #{suffix}", shortcut: "actor-#{suffix}"})
-
-          block =
-            block_fixture(sheet, %{
-              type: "select",
-              config: %{"label" => "Faction"},
-              value: %{"content" => if(index == 251, do: "conclave", else: "independent")}
-            })
-
-          if index == 251, do: block, else: match
-        end)
+        block_fixture(matching_sheet, %{
+          type: "select",
+          config: %{"label" => "Faction"},
+          value: %{"content" => "conclave"}
+        })
 
       assert {:ok, page} =
                GlobalSearch.advanced_project_search(
@@ -1355,6 +1353,47 @@ defmodule Storyarn.Platform.GlobalSearch.AdvancedSearchTest do
         node.id
       )
     end
+  end
+
+  # These rows exercise query pagination, so seed the nonmatching definitions in
+  # two inserts without repeating creation-side localization and broadcasts.
+  # Padded shortcuts keep every one of them before actor-251 in catalog order.
+  defp insert_nonmatching_faction_definitions(project) do
+    now = TimeHelpers.now()
+
+    sheets =
+      for index <- 1..250 do
+        suffix = index |> Integer.to_string() |> String.pad_leading(3, "0")
+
+        %{
+          project_id: project.id,
+          name: "Actor #{suffix}",
+          shortcut: "actor-#{suffix}",
+          position: index - 1,
+          inserted_at: now,
+          updated_at: now
+        }
+      end
+
+    {250, sheets} = Repo.insert_all(Sheet, sheets, returning: [:id])
+
+    blocks =
+      Enum.map(sheets, fn sheet ->
+        %{
+          sheet_id: sheet.id,
+          type: "select",
+          position: 0,
+          config: %{"label" => "Faction"},
+          value: %{"content" => "independent"},
+          variable_name: "faction",
+          is_constant: false,
+          scope: "self",
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    {250, nil} = Repo.insert_all(Block, blocks)
   end
 
   defp hierarchy_fixture(:sheet, project, attrs), do: sheet_fixture(project, attrs)

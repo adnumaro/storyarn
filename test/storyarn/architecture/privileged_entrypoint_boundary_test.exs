@@ -1,5 +1,5 @@
 defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true, group: :source_scans
 
   alias Storyarn.Architecture.DependencyPolicy
 

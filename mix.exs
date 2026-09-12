@@ -138,8 +138,8 @@ defmodule Storyarn.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "assets.build", "test"],
-      "test.e2e": ["assets.build", "test test/e2e --include e2e"],
+      test: &run_tests/1,
+      "test.e2e": ["test test/e2e --include e2e"],
       "assets.setup": ["tailwind.install --if-missing"],
       "assets.build": ["compile", "tailwind storyarn", "phoenix_vite.npm vite build"],
       "assets.deploy": [
@@ -170,5 +170,59 @@ defmodule Storyarn.MixProject do
       ],
       dialyzer: ["dialyzer --format short"]
     ]
+  end
+
+  # Mix forwards CLI arguments only to the final alias entry. Keep preparation
+  # and execution together so --include/--only reach the browser-mode selector.
+  defp run_tests(args) do
+    prepare_tests(args)
+    Mix.Task.run("ecto.create", ["--quiet"])
+    Mix.Task.run("ecto.migrate", ["--quiet"])
+    Mix.Task.run("test", args)
+  end
+
+  defp prepare_tests(args) do
+    e2e? = e2e_tests_requested?(args)
+    System.put_env("STORYARN_E2E_TESTS", to_string(e2e?))
+
+    if e2e?, do: Mix.Task.run("assets.build")
+  end
+
+  @doc false
+  def e2e_tests_requested?(args) do
+    {options, paths, _invalid} = OptionParser.parse(args, switches: [include: :keep, only: :keep])
+    {paths, path_options} = ExUnit.Filters.parse_paths(paths)
+
+    filters =
+      options
+      |> Enum.filter(fn {tag, _value} -> tag in [:include, :only] end)
+      |> Enum.map(&elem(&1, 1))
+      |> ExUnit.Filters.parse()
+      |> Kernel.++(Keyword.get(path_options, :include, []))
+
+    Enum.any?(filters, fn
+      :e2e -> true
+      {:e2e, value} -> value in [true, "true"]
+      {:location, {path, _lines}} -> e2e_path?(path)
+      {:location, path} -> e2e_path?(path)
+      {:line, _line} -> paths == [] or Enum.any?(paths, &e2e_search_path?/1)
+      _filter -> false
+    end)
+  end
+
+  # A bare path keeps ExUnit's default exclusions. A location filter explicitly
+  # includes its tests, even when their :e2e tag would otherwise exclude them.
+  defp e2e_path?(path) do
+    e2e_root = Path.join(__DIR__, "test/e2e")
+    path = Path.expand(path)
+    path == e2e_root or String.starts_with?(path, e2e_root <> "/")
+  end
+
+  # Line filters also apply to files discovered below a directory such as test/.
+  defp e2e_search_path?(path) do
+    e2e_root = Path.join(__DIR__, "test/e2e")
+    path = Path.expand(path)
+
+    e2e_path?(path) or (File.dir?(path) and String.starts_with?(e2e_root, path <> "/"))
   end
 end

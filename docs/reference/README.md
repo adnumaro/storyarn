@@ -48,3 +48,4 @@ in this directory.
 - [ENG-52 operational recovery validation](eng-52-operational-recovery-validation.md)
 - [Entity-version restore integrity](entity-version-restore-integrity.md)
 - [Ownership integrity preflight](ownership-integrity-preflight.md)
+- [Elixir test performance](testing-performance.md)

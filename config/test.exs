@@ -170,11 +170,11 @@ config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy, scene_version_restor
 # Entity restore contract tests exercise the guarded implementation directly.
 config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy, sheet_version_restore: true
 
-# Server is enabled for E2E tests (Playwright requires a running server)
+# The test alias enables the HTTP server only when E2E tags are selected.
 config :storyarn, StoryarnWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("MIX_TEST_PORT", "4002"))],
   secret_key_base: "FeJDhWpJbfABMyHLm9bPO4lWdhmwJVzNdRuhnukQFhXRYMedUbeO/fZg+/TfwqMK",
-  server: true,
+  server: false,
   check_origin: false
 
 # Timer tests start their own supervised runtime with an isolated schedule.

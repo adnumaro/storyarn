@@ -43,17 +43,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-${{ hashFiles('mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-
             ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
+      # Cache entries are immutable; save each commit and restore the latest compatible build.
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
@@ -133,33 +135,23 @@ jobs:
           elixir-version: ${{ env.ELIXIR_VERSION }}
           otp-version: ${{ env.OTP_VERSION }}
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
-
       - name: Cache deps
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-${{ hashFiles('mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ github.job }}-
             ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
+      # Cache entries are immutable; save each commit and restore the latest compatible build.
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
@@ -167,8 +159,9 @@ jobs:
       - name: Install Elixir dependencies
         run: mix deps.get
 
-      - name: Install JS dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+      # Keep compilation separate so cache misses do not inflate ExUnit timings.
+      - name: Compile Elixir test code
+        run: mix compile --warnings-as-errors
 
       - name: Run Elixir tests
         run: mix test
@@ -230,16 +223,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ hashFiles('mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
+      # Cache entries are immutable; save each commit and restore the latest compatible build.
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
@@ -305,18 +300,6 @@ jobs:
           elixir-version: ${{ env.ELIXIR_VERSION }}
           otp-version: ${{ env.OTP_VERSION }}
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
-
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -374,24 +357,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ hashFiles('mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
+      # Cache entries are immutable; save each commit and restore the latest compatible build.
       - name: Cache _build
         uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-${{ github.job }}-${{ hashFiles('mix.lock') }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-${{ env.MIX_ENV }}-
             ${{ runner.os }}-build-${{ env.ELIXIR_VERSION }}-otp-${{ env.OTP_VERSION }}-
 
       - name: Install dependencies
         run: mix deps.get
-
-      - name: Install JS dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Compile
         run: mix compile
