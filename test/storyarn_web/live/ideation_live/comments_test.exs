@@ -15,7 +15,7 @@ defmodule StoryarnWeb.IdeationLive.CommentsTest do
 
   test "session threads survive reconnect and deep links; viewer cannot write", ctx do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
-    assert has_element?(view, "#brainstorming-comments[data-inject-slot=panels]")
+    assert has_element?(view, "#brainstorming-panels[data-inject-slot=panels]")
     render_hook(view, "comments_open", payload(view, ctx, %{}))
     assert state(view)["open"]
     request = payload(view, ctx, %{body: "Discuss the ending", client_request_id: Ecto.UUID.generate()})
@@ -202,7 +202,7 @@ defmodule StoryarnWeb.IdeationLive.CommentsTest do
     assert {:ok, %{threads: []}} = Projects.list_ideation_comment_threads(ctx.author, ctx.project.id, ctx.session.id)
   end
 
-  defp state(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/CommentsPanel").props["state"]
+  defp state(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["comments"]
 
   defp payload(view, ctx, attrs) do
     board = LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["board"]

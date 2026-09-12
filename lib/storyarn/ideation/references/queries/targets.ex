@@ -33,6 +33,7 @@ defmodule Storyarn.Ideation.References.Queries.Targets do
           offset: ^offset(opts[:offset]),
           select: map(target, ^fields)
         )
+        |> select_merge([target], %{inserted_at: type(target.inserted_at, :utc_datetime)})
         |> Repo.all()
         |> Enum.map(&describe(type, &1))
 
@@ -89,6 +90,7 @@ defmodule Storyarn.Ideation.References.Queries.Targets do
       limit: ^@max_limit,
       select: map(target, ^fields)
     )
+    |> select_merge([target], %{inserted_at: type(target.inserted_at, :utc_datetime)})
     |> Repo.all()
     |> Map.new(fn row -> {{type, row.id}, describe(type, row)} end)
   end

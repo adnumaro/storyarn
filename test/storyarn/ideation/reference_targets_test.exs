@@ -52,25 +52,29 @@ defmodule Storyarn.Ideation.ReferenceTargetsTest do
     asset = asset_fixture(ctx.project, ctx.owner)
     localized = localized_text_fixture(ctx.project.id, %{source_text: "Welcome", translated_text: "Bienvenido"})
 
-    keys = [
-      {"sheet", sheet.id},
-      {"flow", flow.id},
-      {"scene", scene.id},
-      {"asset", asset.id},
-      {"localization", localized.id}
+    entities = [
+      {"sheet", sheet},
+      {"flow", flow},
+      {"scene", scene},
+      {"asset", asset},
+      {"localization", localized}
     ]
+
+    keys = Enum.map(entities, fn {type, entity} -> {type, entity.id} end)
 
     assert {:ok, targets} = Targets.get_many(ctx.viewer, ctx.project.id, keys)
     assert map_size(targets) == 5
 
-    for {type, id} = key <- keys do
-      target = targets[key]
+    for {type, entity} <- entities do
+      target = targets[{type, entity.id}]
       assert target.type == type
-      assert target.id == id
+      assert target.id == entity.id
       assert target.context["comparison_scope"] == "overview_v1"
-      assert target.identity =~ "created:"
+      assert target.identity == "created:" <> DateTime.to_iso8601(entity.inserted_at)
       assert byte_size(target.fingerprint) == 64
-      assert {:ok, ^target} = Targets.get(ctx.viewer, ctx.project.id, type, id)
+      assert {:ok, ^target} = Targets.get(ctx.viewer, ctx.project.id, type, entity.id)
+      assert {:ok, results} = Targets.search(ctx.viewer, ctx.project.id, type, "")
+      assert Enum.find(results, &(&1.id == entity.id)) == target
     end
 
     assert targets[{"sheet", sheet.id}].context["description"] == "Initial premise"
@@ -90,11 +94,15 @@ defmodule Storyarn.Ideation.ReferenceTargetsTest do
     asset = asset_fixture(ctx.project, ctx.owner)
     localized = localized_text_fixture(ctx.project.id)
 
-    for {type, entity} <- [{"sheet", sheet}, {"flow", flow}, {"scene", scene}, {"asset", asset}] do
+    for {type, entity} <- [{"sheet", sheet}, {"flow", flow}, {"scene", scene}] do
       entity |> change(deleted_at: TimeHelpers.now()) |> Repo.update!()
       assert {:error, :not_found} = Targets.get(ctx.scope, ctx.project.id, type, entity.id)
       assert {:ok, []} = Targets.search(ctx.scope, ctx.project.id, type, "")
     end
+
+    assert {:ok, _trashed} = Projects.move_asset_to_trash(ctx.project.id, asset.id, ctx.owner.id)
+    assert {:error, :not_found} = Targets.get(ctx.scope, ctx.project.id, "asset", asset.id)
+    assert {:ok, []} = Targets.search(ctx.scope, ctx.project.id, "asset", "")
 
     localized |> change(archived_at: TimeHelpers.now(), archive_reason: "source_deleted") |> Repo.update!()
     assert {:error, :not_found} = Targets.get(ctx.scope, ctx.project.id, "localization", localized.id)

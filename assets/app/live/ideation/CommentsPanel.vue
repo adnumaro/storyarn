@@ -5,16 +5,12 @@ import { Button } from "@components/ui/button";
 import { useI18n } from "vue-i18n";
 import CommentsPanel from "@components/comments/CommentsPanel.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
-import type { CommentsPanelState, CommentUiConfig } from "@components/comments/types";
+import type { CommentUiConfig } from "@components/comments/types";
 import { useLive, type LiveInterface } from "@shared/composables/useLive";
+import type { BrainstormingCommentsState } from "./commentTypes";
 
-interface State extends CommentsPanelState {
-  ideaId: number | null;
-  groupId?: number | null;
-  context: string;
-}
 const { state, epoch, sessionId, baseUrl } = defineProps<{
-  state: State;
+  state: BrainstormingCommentsState;
   epoch: string;
   sessionId: number;
   baseUrl: string;

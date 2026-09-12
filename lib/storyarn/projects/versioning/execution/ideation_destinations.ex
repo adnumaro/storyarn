@@ -39,7 +39,7 @@ defmodule Storyarn.Projects.Versioning.IdeationDestinations do
           # Deleted rows retain their identity for exact undo; only missing or
           # replaced generations must be detached from the captured reference.
           type
-          |> schema()
+          |> target_schema()
           |> where([row], row.project_id == ^project_id and row.id in ^chunk)
           |> select([row], {row.id, row.inserted_at})
           |> Repo.all()
@@ -52,11 +52,11 @@ defmodule Storyarn.Projects.Versioning.IdeationDestinations do
 
   defp valid_target?({type, id}), do: type in @types and is_integer(id) and id > 0 and id <= @max_id
   defp valid_target?(_), do: false
-  defp schema("sheet"), do: SheetRecord
-  defp schema("flow"), do: FlowRecord
-  defp schema("scene"), do: SceneRecord
-  defp schema("asset"), do: Asset
-  defp schema("localization"), do: LocalizedTextRecord
+  defp target_schema("sheet"), do: SheetRecord
+  defp target_schema("flow"), do: FlowRecord
+  defp target_schema("scene"), do: SceneRecord
+  defp target_schema("asset"), do: Asset
+  defp target_schema("localization"), do: LocalizedTextRecord
 
   # Only the exact materialization receipts establish correspondence. A matching
   # title, shortcut or localization source tuple does not establish identity.
