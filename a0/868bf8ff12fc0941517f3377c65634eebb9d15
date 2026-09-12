@@ -1,0 +1,73 @@
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_11667293ceac35::t_e4af4efdc1d638 289-296,311
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_11667293ceac35::t_e4af4efdc1d638 952,954,957
+  s_11667293ceac35::t_5bd1ecaeedf1ff 934,939,944,949
+assets/app/test/live/sheet/show/SheetCanvasComments.test.ts
+  s_11667293ceac35::t_0d6840c4a38da9 776-805
+priv/repo/migrations/20260912120000_capture_scene_comment_context_positions.exs
+  s_11667293ceac35::t_e4af4efdc1d638 19
+lib/storyarn/scenes/README.md
+  s_11667293ceac35::t_68e2c97c54e6d4 123-142
+test/storyarn_web/live/scene_live/comments_test.exs
+  s_11667293ceac35::t_e2095da2d2a5a0 194-256,545-567
+  s_11667293ceac35::t_36b0e0a78e5cc8 568
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_46aba1eacaab4f 136-138,150,157,159-160,162-166,223,317,323-326
+  s_11667293ceac35::t_cb42080b3e2d76 327
+assets/app/components/comments/commentKeyboard.ts
+  s_11667293ceac35::t_56a2388a0dbeb3 1-7
+docs/reference/context-map.md
+  s_11667293ceac35::t_68e2c97c54e6d4 95-108
+assets/app/test/live/scene/show/SceneCanvasComments.test.ts
+  s_11667293ceac35::t_86016bdf271d47 561,569,572-577,581-583,589-597,600-602,604
+  s_11667293ceac35::t_4e89f4d486b570 500-504
+  s_11667293ceac35::t_0d6840c4a38da9 523-559,579-580,584-588
+  s_11667293ceac35::t_78aac294ac1a4f 560
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_11667293ceac35::t_0d6840c4a38da9 515-550
+assets/app/locales/en/flows.json
+  s_11667293ceac35::t_80810022506d23 562,566
+assets/app/locales/en/scenes.json
+  s_11667293ceac35::t_f6388b6f2da504 522,526
+assets/app/locales/en/sheets.json
+  s_11667293ceac35::t_ee3bc4a7f553c8 121,164
+assets/app/locales/es/flows.json
+  s_11667293ceac35::t_00cbc6d9c26d14 562,566
+assets/app/locales/es/scenes.json
+  s_11667293ceac35::t_5081f59c18f64e 522,526
+assets/app/locales/es/sheets.json
+  s_11667293ceac35::t_d584a64edb99a1 121,164
+assets/app/modules/flows/editor/components/chrome/FlowCanvasComments.vue
+  s_11667293ceac35::t_9822a77c956946 43,166
+assets/app/modules/flows/editor/composables/useCanvasComments.ts
+  s_11667293ceac35::t_dbb699cea44802 3,216,297-299,700
+assets/app/modules/scenes/editor/components/chrome/SceneCanvasComments.vue
+  s_11667293ceac35::t_e0e492cb80f3fd 57,261
+assets/app/modules/scenes/editor/composables/useSceneCanvasComments.ts
+  s_11667293ceac35::t_77394d9f3784bf 17,219,435-437,876
+assets/app/modules/sheets/components/chrome/SheetCanvasComments.vue
+  s_11667293ceac35::t_2ac179b4563512 53,325
+assets/app/modules/sheets/composables/useSheetCanvasComments.ts
+  s_11667293ceac35::t_e99878770aead0 13,294,522-524,1065
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_11667293ceac35::t_7b5885a0827b74 934,939,944,949,954
+priv/gettext/scenes.pot
+  s_11667293ceac35::t_8f50cd6e0731a6 934,939,944,949,954
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a0868bf8ff12fc0941517f3377c65634eebb9d15",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
