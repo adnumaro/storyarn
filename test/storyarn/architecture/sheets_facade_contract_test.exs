@@ -162,6 +162,7 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
     record_version_compared: 2,
     record_version_panel_opened: 2,
     referenced_block_ids_for_project: 1,
+    reference_targets_query: 2,
     remove_avatar: 2,
     remove_gallery_image: 2,
     reorder_avatars: 2,
@@ -236,9 +237,9 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
   # description and semantic argument name for get_reference_target/3 are
   # intentional. validate_reference_target/3 now names the stable References
   # contract instead of leaking the deleted Persistence.FlowRecord projection.
-  @docs_digest "937fa3a6874138e2d037dfce75f43b31fadd97d56b35231f4ae8e48c22916677"
+  @docs_digest "57e33a0278e7d53e17a25330dd733a681e2792bb1bb89aabdfe37215b1f0e5f5"
   @types_digest "2c676b07271b72ecc2543ffd1c3193849a9b4a9a2e6905bf48a3456518a0d345"
-  @specs_digest "0fc5c8b7047eab55752c5db414c353ce6e55c341ecc0e0e0f9df19dcada704a5"
+  @specs_digest "146032e05875d4802b1b2666f83ae572d3eefc49269b211b97bfa68167e78c8e"
 
   test "the root facade preserves the reviewed public contract and retired writers stay absent" do
     public_functions =
@@ -255,7 +256,7 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
     source = File.read!("lib/storyarn/sheets.ex")
 
     refute Regex.match?(~r/^\s*def(?:p|macro|macrop)?\s/m, source)
-    assert length(Regex.scan(~r/^\s*defdelegate\s/m, source)) == 197
+    assert length(Regex.scan(~r/^\s*defdelegate\s/m, source)) == 198
   end
 
   test "the compiled facade preserves docs and semantic default signatures for every arity" do
@@ -286,8 +287,8 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 197
-    assert status_counts == %{documented: 142, hidden: 10, none: 45}
+    assert length(function_docs) == 198
+    assert status_counts == %{documented: 143, hidden: 10, none: 45}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end
@@ -325,7 +326,7 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 54
+    assert length(normalized_specs) == 55
     assert digest(normalized_specs) == @specs_digest
     refute Enum.any?(normalized_specs, fn {_name, _arity, spec} -> spec =~ ".Data." end)
   end

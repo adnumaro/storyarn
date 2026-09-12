@@ -170,6 +170,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     register_uploaded_asset: 4,
     reload_project: 2,
     remove_member: 3,
+    reference_targets_query: 2,
     repair_stale_project_variable_references: 2,
     request_full_project_snapshot: 3,
     request_project_snapshot_restore: 4,
@@ -241,6 +242,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     fail_project_snapshot_reconciliation: 3,
     fail_project_snapshot_reconciliation_repair: 2,
     heartbeat_project_snapshot_build: 2,
+    ideation_recovery_target_identities: 2,
     inspect_storage_multipart_inventory: 0,
     list_abandoned_project_snapshot_restore_deliveries: 1,
     list_expired_project_snapshot_build_candidates: 2,
@@ -330,9 +332,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     subscribe_sheet_comments: 3,
     unsubscribe_sheet_comments: 2
   ]
-  @docs_digest "341b1f309e3fbb4ed214c809c9d3763f30c5e88032d151a81149392be9cf5526"
+  @docs_digest "7a2cfa2790863f94bf4904a480c434bcdf56de01cdc18bc560a71175878405e5"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
-  @specs_digest "aecb4ac45ddafc1b9aad3dd83d1ae739a158f9baceef1c2e89adcdf5c61e081f"
+  @specs_digest "fbcbbec12a882dc16a624ccd206c6f5cf0e97b557d41d574ca486303dce448d9"
 
   test "the root facade preserves every established function and arity" do
     expected = MapSet.new(@public_contract ++ @worker_contract ++ @comment_contract)
@@ -364,12 +366,12 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 190
+    assert length(established_docs) == 191
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 80, hidden: 16, none: 94}
+             %{documented: 81, hidden: 16, none: 94}
 
-    assert length(worker_docs) == 47
+    assert length(worker_docs) == 48
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
 
     assert digest(Enum.sort(established_docs)) == @docs_digest
@@ -407,7 +409,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 45
+    assert length(normalized_specs) == 46
     assert digest(normalized_specs) == @specs_digest
   end
 

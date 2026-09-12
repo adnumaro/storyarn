@@ -155,6 +155,10 @@ defmodule Storyarn.Localization do
   @spec get_text(id(), id()) :: localized_text() | nil
   defdelegate get_text(project_id, id), to: Texts
 
+  @doc "Returns an authorized active localized-text overview query for bounded reference selection."
+  @spec reference_targets_query(map(), integer()) :: {:ok, Ecto.Query.t()} | {:error, :not_found}
+  defdelegate reference_targets_query(scope, project_id), to: Texts
+
   @doc "Gets a single localized text by ID, scoped to project, with the `:preload` associations loaded."
   @spec get_text(id(), id(), keyword()) :: localized_text() | nil
   defdelegate get_text(project_id, id, opts), to: Texts

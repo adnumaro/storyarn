@@ -13,7 +13,29 @@ defmodule Storyarn.Ideation do
   alias Storyarn.Ideation.Groups
   alias Storyarn.Ideation.Ideas
   alias Storyarn.Ideation.Recovery
+  alias Storyarn.Ideation.References
   alias Storyarn.Ideation.Sessions
+
+  @doc "Lists contextual references for a shared session or published idea, reauthorizing both endpoints."
+  defdelegate list_references(scope, project_id, session_id, idea_id, opts \\ []), to: References, as: :list
+
+  @doc "Searches readable, same-project reference targets without copying an author's private draft."
+  defdelegate search_reference_targets(scope, project_id, session_id, idea_id, opts \\ []), to: References, as: :search
+
+  @doc "Explicitly links a shared source to existing content and records its bounded overview."
+  defdelegate add_reference(scope, project_id, session_id, idea_id, attrs), to: References, as: :add
+
+  @doc "Explicitly refreshes the consulted context while retaining every previous context revision."
+  defdelegate refresh_reference(scope, project_id, session_id, idea_id, id, version, key), to: References, as: :refresh
+
+  @doc "Removes a link, retaining its provenance without editing or deleting the destination."
+  defdelegate remove_reference(scope, project_id, session_id, idea_id, id, version, key), to: References, as: :remove
+
+  @doc "Reads retained context revisions only while both endpoints remain available to the caller."
+  defdelegate reference_history(scope, project_id, session_id, idea_id, id), to: References, as: :history
+
+  @doc "Lists currently readable backlinks without exposing private ideas or historical target previews."
+  defdelegate list_reference_backlinks(scope, project_id, type, id, opts \\ []), to: References, as: :backlinks
 
   @doc "Shared identity and label projections for authorized comment queries; excludes idea/group creative content."
   def comment_sources_query("ideation_session"), do: Sessions.comment_sources_query()
@@ -194,8 +216,8 @@ defmodule Storyarn.Ideation do
   transaction and exclusive Project lock. Never grants access or publishes ideas.
   Existing sessions move to recovery trash; caller must roll back on any error.
   """
-  @spec restore_recovery(integer(), map() | nil) :: {:ok, map()} | {:error, atom()}
-  defdelegate restore_recovery(project_id, capsule), to: Recovery, as: :restore
+  @spec restore_recovery(integer(), map() | nil, map() | nil) :: {:ok, map()} | {:error, atom()}
+  defdelegate restore_recovery(project_id, capsule, destination_maps \\ nil), to: Recovery, as: :restore
 
   @doc false
   @spec verify_recovery(integer(), map() | nil, map()) :: :ok | {:error, atom()}

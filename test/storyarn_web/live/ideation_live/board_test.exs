@@ -227,6 +227,8 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   test "double invalidations coalesce and an invalidation during a read queues another read", ctx do
+    references = %{open: true, items: [%{id: 1}], results: [%{name: "Current search"}], history: [%{number: 1}]}
+
     socket = %Socket{
       assigns: %{
         __changed__: %{},
@@ -234,18 +236,25 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
         refresh_timer: nil,
         refresh_dirty: false,
         session_id: ctx.session.id,
+        references: references,
         board: BoardData.empty()
       }
     }
 
     {:noreply, first} = Board.handle_info({:ideation_changed, ctx.session.id}, socket)
     {:noreply, second} = Board.handle_info({:ideation_changed, ctx.session.id}, first)
+    {:noreply, third} = Board.handle_info({:ideation_sessions_changed, ctx.project.id}, second)
     assert first.assigns.refresh_timer == second.assigns.refresh_timer
+    assert second.assigns.refresh_timer == third.assigns.refresh_timer
+    assert first.assigns.references == references
+    assert second.assigns.references == references
+    assert third.assigns.references == references
     Process.cancel_timer(first.assigns.refresh_timer)
     token = make_ref()
     running = Phoenix.Component.assign(socket, refresh_running: token)
     {:noreply, dirty} = Board.handle_info({:ideation_changed, ctx.session.id}, running)
     assert dirty.assigns.refresh_dirty
+    assert dirty.assigns.references == references
     {:noreply, next} = Board.handle_async({:board, token}, {:ok, {:ok, %{secret: "stale"}}}, dirty)
     assert next.assigns.board == BoardData.empty()
     assert is_reference(next.assigns.refresh_timer)

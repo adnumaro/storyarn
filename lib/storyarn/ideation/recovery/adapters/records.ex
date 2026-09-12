@@ -4,6 +4,7 @@ defmodule Storyarn.Ideation.Recovery.Records do
 
   alias Storyarn.Accounts
   alias Storyarn.Ideation.Recovery.Inventory
+  alias Storyarn.Projects
   alias Storyarn.Repo
 
   def capture(project_id, session_ids \\ nil) do
@@ -21,11 +22,12 @@ defmodule Storyarn.Ideation.Recovery.Records do
         {Map.put(rows, collection, entries), bytes, count}
       end)
 
-    with {:ok, actors} <- Accounts.capture_recovery_identities(actor_ids(rows)) do
+    with {:ok, rows} <- normalize_reference_targets(rows, project_id),
+         {:ok, actors} <- Accounts.capture_recovery_identities(actor_ids(rows)) do
       {:ok,
        %{
          "format" => "storyarn.ideation",
-         "version" => 4,
+         "version" => 5,
          "actors" => actors,
          "rows" =>
            Map.new(rows, fn {collection, entries} ->
@@ -42,6 +44,37 @@ defmodule Storyarn.Ideation.Recovery.Records do
       {:error, :recovery_identities_busy} -> {:error, :ideation_recovery_actors_busy}
       result -> result
     end
+  end
+
+  def direct_reference_destinations(project_id, rows) do
+    targets = for row <- rows["references"], not is_nil(row["target_id"]), do: {row["target_type"], row["target_id"]}
+
+    with {:ok, identities} <- Projects.ideation_recovery_target_identities(project_id, targets) do
+      destinations =
+        Map.new(identities, fn {type, entries} ->
+          {type,
+           Map.new(entries, fn {id, identity} ->
+             {id, %{id: id, identity: identity, source_identity: identity}}
+           end)}
+        end)
+
+      {:ok, destinations}
+    end
+  end
+
+  defp normalize_reference_targets(rows, project_id) do
+    targets = for row <- rows["references"], not is_nil(row.target_id), do: {row.target_type, row.target_id}
+
+    with {:ok, identities} <- Projects.ideation_recovery_target_identities(project_id, targets) do
+      references = Enum.map(rows["references"], &normalize_reference_target(&1, identities))
+      {:ok, Map.put(rows, "references", references)}
+    end
+  end
+
+  defp normalize_reference_target(row, identities) do
+    if get_in(identities, [row.target_type, row.target_id]) == row.target_identity,
+      do: row,
+      else: %{row | target_id: nil}
   end
 
   defp read_pages(query, collection, cursor, pages, bytes, count) do
@@ -64,6 +97,7 @@ defmodule Storyarn.Ideation.Recovery.Records do
   defp parent_ids(:session_id, _, rows), do: Enum.map(rows["sessions"], & &1.id)
   defp parent_ids(:idea_id, _, rows), do: Enum.map(rows["ideas"], & &1.id)
   defp parent_ids(:group_id, _, rows), do: Enum.map(rows["groups"], & &1.id)
+  defp parent_ids(:reference_id, _, rows), do: Enum.map(rows["references"], & &1.id)
 
   defp actor_ids(rows) do
     direct =

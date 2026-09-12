@@ -12,6 +12,7 @@ defmodule Storyarn.Scenes.Editor do
   defdelegate waypoint_pause_ms(waypoint), to: Storyarn.Scenes.RoutePoints
 
   defdelegate list_scenes(project_id), to: Queries.Scenes
+  defdelegate reference_targets_query(scope, project_id), to: Queries.ReferenceTargets, as: :query
   defdelegate list_scenes_tree(project_id), to: Queries.Scenes
   defdelegate list_scenes_tree_with_elements(project_id), to: Queries.Scenes
   defdelegate search_scenes(project_id, query, opts \\ []), to: Queries.Scenes

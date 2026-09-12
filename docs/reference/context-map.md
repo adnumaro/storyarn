@@ -21,6 +21,32 @@ mutation authorization. Its empty architecture baseline is sealed. See the
 [brainstorming contract](brainstorming-contract.md) for the authority matrix,
 staged delivery and explicit recovery gate before a user-facing release.
 
+Ideation also owns typed links and immutable consulted-context revisions for
+sessions and shared ideas. Its References capability consumes authorized,
+bounded target projections through Sheets, Flows, Scenes, Projects (assets)
+and Localization root facades. Those owners retain their source models and
+ordinary writes; linking or refreshing context never edits the target.
+These exact read dependencies are reviewed public contracts, not new schema
+imports or a general-purpose cross-context writer. Target owners authorize
+their projections through Projects, and Web composes Projects authorization
+with Ideation for the panel's current edit capability.
+
+The first context contract is explicitly overview-only (`overview_v1`), not a
+version of the complete document or an automatic structural diff. Historical
+previews require current access to both the source and the same target
+generation. Project recovery supplies exact destination mappings to Ideation;
+unmapped targets become unavailable instead of attaching by title or reused ID.
+This includes localization rows whose identities are not in the canonical
+project snapshot. Neither references nor recovery make decisions or create
+Drafts; those remain separate workflows.
+
+Before sealing recovery data, Ideation's Records adapter verifies target
+generations through a caller-restricted Projects recovery port. It returns
+identities only, in bounded batches under the authorized Project transaction,
+including matching tombstones. Missing or replaced generations are detached
+without rewriting their historical context. This privileged read is not an
+ordinary discovery endpoint and cannot broaden access to target content.
+
 | Upstream / owner                 | Downstream / consumer                                         | Contract today                                                                                                          | Status                                                           |
 | -------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Accounts                         | Workspaces                                                    | Registration provisions the initial workspace through `Storyarn.Workspaces`                                             | Application workflow; atomic in the monolith                     |

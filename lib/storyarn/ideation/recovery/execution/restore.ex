@@ -11,18 +11,21 @@ defmodule Storyarn.Ideation.Recovery.Restore do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 
-  def run(project_id, capsule) do
-    if Repo.in_transaction?(), do: restore(project_id, capsule), else: {:error, :ideation_recovery_transaction_required}
+  def run(project_id, capsule, destination_maps \\ nil) do
+    if Repo.in_transaction?(),
+      do: restore(project_id, capsule, destination_maps),
+      else: {:error, :ideation_recovery_transaction_required}
   end
 
-  defp restore(project_id, nil) do
+  defp restore(project_id, nil, _) do
     if Repo.exists?(from s in "ideation_sessions", where: s.project_id == ^project_id and is_nil(s.deleted_at)),
       do: {:error, :legacy_snapshot_excludes_ideation},
       else: {:ok, %{}}
   end
 
-  defp restore(project_id, capsule) do
+  defp restore(project_id, capsule, destination_maps) do
     with {:ok, data} <- Capsule.open(capsule),
+         {:ok, destination_maps} <- resolve_destinations(project_id, data, destination_maps),
          {:ok, actors} <- Records.resolve_actors(data["actors"]),
          {:ok, current} <- Records.capture(project_id) do
       now = DateTime.to_naive(TimeHelpers.now())
@@ -31,7 +34,7 @@ defmodule Storyarn.Ideation.Recovery.Restore do
         set: [deleted_at: now]
       )
 
-      maps = restore_generations(data, current, project_id, actors)
+      maps = restore_generations(data, current, project_id, actors, destination_maps)
 
       with :ok <- verify(project_id, capsule, maps),
            {:ok, _capsule} <- Capture.run(project_id) do
@@ -40,9 +43,18 @@ defmodule Storyarn.Ideation.Recovery.Restore do
     end
   end
 
-  defp restore_generations(data, current, project_id, actors) do
+  defp resolve_destinations(project_id, data, nil) do
+    if policy(data, project_id)["review_assisted_consent"],
+      do: {:ok, %{}},
+      else: Records.direct_reference_destinations(project_id, data["rows"])
+  end
+
+  defp resolve_destinations(_project_id, _data, maps) when is_map(maps), do: {:ok, maps}
+  defp resolve_destinations(_, _, _), do: {:error, :invalid_ideation_recovery}
+
+  defp restore_generations(data, current, project_id, actors, destination_maps) do
     current_actors = Map.new(current["actors"], fn {id, _} -> {String.to_integer(id), String.to_integer(id)} end)
-    policy = policy(data, project_id)
+    policy = Map.put(policy(data, project_id), "content_destinations", destination_maps)
 
     existing =
       current["rows"]
@@ -73,6 +85,15 @@ defmodule Storyarn.Ideation.Recovery.Restore do
     row = Inventory.decode_row("sessions", session)
     id = maps["sessions"][session["id"]]
     Repo.update_all(from(s in "ideation_sessions", where: s.id == ^id), set: [deleted_at: row.deleted_at])
+
+    # Capture normalizes stale target generations to unavailable. Persist that
+    # normalization even when the remaining session generation can be reused.
+    detached_reference_ids =
+      for reference <- target["references"], is_nil(reference["target_id"]), do: reference["id"]
+
+    Repo.update_all(from(r in "ideation_references", where: r.id in ^detached_reference_ids),
+      set: [target_id: nil]
+    )
 
     # Identical generations reuse their note IDs, but browser command receipts
     # still belong to the previous editing session. Strip them on this path too.
@@ -169,6 +190,8 @@ defmodule Storyarn.Ideation.Recovery.Restore do
   defp insert_row("groups", row), do: insert_one("ideation_groups", row)
   defp insert_row("group_memberships", row), do: insert_one("ideation_group_memberships", row)
   defp insert_row("group_revisions", row), do: insert_one("ideation_group_revisions", row)
+  defp insert_row("references", row), do: insert_one("ideation_references", row)
+  defp insert_row("reference_revisions", row), do: insert_one("ideation_reference_revisions", row)
 
   defp insert_one(table, row), do: Repo.insert_all(table, [row], returning: [:id], log: false)
 end

@@ -18,6 +18,7 @@ defmodule Storyarn.Projects.Assets do
   alias Storyarn.Projects.Assets.ImageProcessor
   alias Storyarn.Projects.Assets.Queries.AssetQueries
   alias Storyarn.Projects.Assets.Queries.AssetUsageQueries
+  alias Storyarn.Projects.Assets.Queries.ReferenceTargets
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageKey
@@ -26,6 +27,7 @@ defmodule Storyarn.Projects.Assets do
   alias Storyarn.Projects.Versioning
 
   defdelegate list_assets(project_id, opts \\ []), to: AssetQueries
+  defdelegate reference_targets_query(scope, project_id), to: ReferenceTargets, as: :query
   defdelegate list_asset_ids(project_id, opts \\ []), to: AssetQueries
   defdelegate get_asset(asset_id), to: AssetQueries
   defdelegate authorize_download(scope, asset_id), to: AssetQueries

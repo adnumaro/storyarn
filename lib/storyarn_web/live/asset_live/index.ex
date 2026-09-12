@@ -112,7 +112,18 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   @impl true
-  def handle_params(_params, _url, socket), do: {:noreply, socket}
+  def handle_params(%{"asset" => value}, _url, socket) when is_binary(value) and byte_size(value) <= 16 do
+    socket = clear_selected_asset(socket)
+
+    with {id, ""} when id > 0 <- Integer.parse(value),
+         {:ok, _, _} <- Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view) do
+      handle_select_asset(socket, socket.assigns.project.id, id)
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_params(_params, _url, socket), do: {:noreply, clear_selected_asset(socket)}
 
   @impl true
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}

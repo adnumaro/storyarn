@@ -1964,7 +1964,7 @@ web_to_context_internal_denials =
 
 # Ideation capabilities collaborate through their facades. Root calls remain declarative, reads
 # cannot enter effectful roles, and entities cannot orchestrate persistence.
-ideation_capabilities = ~w(sessions ideas groups recovery)
+ideation_capabilities = ~w(sessions ideas groups references recovery)
 ideation_private_roles = ~w(adapters commands entities execution queries rules events contracts)
 
 ideation_root_facade_path_denials =
@@ -3095,6 +3095,27 @@ privileged_entrypoints = [
     reason: "Recovery identity data and locks are restricted to the authorized Ideation recovery adapter"
   },
   %{
+    module: "Storyarn.Projects",
+    path: "lib/storyarn/projects.ex",
+    functions: [ideation_recovery_target_identities: 2],
+    allowed_callers: ["lib/storyarn/ideation/recovery/adapters/records.ex"],
+    reason: "Only sealed Ideation capture may verify target generations under the authorized Project recovery lock"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning",
+    path: "lib/storyarn/projects/versioning/versioning.ex",
+    functions: [ideation_recovery_target_identities: 2],
+    allowed_callers: ["lib/storyarn/projects.ex"],
+    reason: "Project-owned target recovery identities remain behind the root facade"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.IdeationDestinations",
+    path: "lib/storyarn/projects/versioning/execution/ideation_destinations.ex",
+    functions: [identities: 2],
+    allowed_callers: ["lib/storyarn/projects/versioning/versioning.ex"],
+    reason: "The technical target identity lookup is not an ordinary content-discovery API"
+  },
+  %{
     module: "Storyarn.Accounts.Identity",
     path: "lib/storyarn/accounts/identity/identity.ex",
     functions: [capture_recovery_identities: 1, resolve_recovery_identities_locked: 1],
@@ -3118,7 +3139,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Ideation",
     path: "lib/storyarn/ideation.ex",
-    functions: [restore_recovery: 2],
+    functions: [restore_recovery: 2, restore_recovery: 3],
     allowed_callers: ["lib/storyarn/projects/versioning/execution/project_recovery.ex"],
     reason: "Sealed Ideation recovery is restricted to the authorized Project snapshot and reconstitution boundary"
   },
@@ -4145,6 +4166,66 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/storyarn/flows/editor/queries/reference_targets.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Flow reference projections authorize current project access through Projects"
+    },
+    %{
+      source: "lib/storyarn/ideation/references/queries/targets.ex",
+      target: "lib/storyarn/flows.ex",
+      kinds: ["runtime"],
+      reason: "Ideation reads bounded Flow reference projections through the owner facade"
+    },
+    %{
+      source: "lib/storyarn/ideation/references/queries/targets.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason: "Ideation reads bounded localization reference projections through the owner facade"
+    },
+    %{
+      source: "lib/storyarn/ideation/references/queries/targets.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Ideation reads asset reference projections and current access through Projects"
+    },
+    %{
+      source: "lib/storyarn/ideation/references/queries/targets.ex",
+      target: "lib/storyarn/scenes.ex",
+      kinds: ["runtime"],
+      reason: "Ideation reads bounded Scene reference projections through the owner facade"
+    },
+    %{
+      source: "lib/storyarn/ideation/references/queries/targets.ex",
+      target: "lib/storyarn/sheets.ex",
+      kinds: ["runtime"],
+      reason: "Ideation reads bounded Sheet reference projections through the owner facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/handlers/reference_handlers.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Brainstorming reference UI checks edit capability through Projects authorization"
+    },
+    %{
+      source: "lib/storyarn/localization/texts/queries/reference_targets.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Localization reference projections authorize current project access through Projects"
+    },
+    %{
+      source: "lib/storyarn/scenes/editor/queries/reference_targets.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Scene reference projections authorize current project access through Projects"
+    },
+    %{
+      source: "lib/storyarn/sheets/editor/queries/reference_targets.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Sheet reference projections authorize current project access through Projects"
+    },
+    %{
       source: "lib/storyarn/ideation/ideas/events/invalidation.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
@@ -4248,6 +4329,13 @@ policy = %{
       target: "lib/storyarn/accounts.ex",
       kinds: ["runtime"],
       reason: "Ideation resolves stable author identities and recovery locks through their owning Accounts facade"
+    },
+    %{
+      source: "lib/storyarn/ideation/recovery/adapters/records.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "Sealed Ideation capture verifies exact target generations through the closed Project recovery identity port"
     },
     %{
       source: "lib/storyarn/ideation/recovery/adapters/capsule.ex",

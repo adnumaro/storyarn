@@ -2,9 +2,9 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-08
+> Last reviewed: 2026-09-12
 >
-> Scope: ENG-129, ENG-136, ENG-137, ENG-138 and the sessions/ideas/groups slice of ENG-147
+> Scope: ENG-129, ENG-136, ENG-137, ENG-138, ENG-143 and the sessions/ideas/groups/references slice of ENG-147
 
 ## Ownership and permissions
 
@@ -55,7 +55,8 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **4**. Version **3** inventories normalize to no
+The inner inventory is version **5**. Version **4** inventories normalize to no
+content references or reference revisions. Version **3** inventories also normalize to no
 groups, memberships or group revisions. Version **2** inventories also normalize to no
 timer and open contributions. Version **1** additionally normalizes to no rounds
 and unassigned, non-late contributions.
@@ -85,6 +86,10 @@ The inventory covers:
   complete membership history and the published source revision pinned by each
   membership. Immutable group revisions retain their source map, actor, state and
   durable request receipt.
+- Session and idea references to existing content, their exact destination
+  identity, relationship, removal marker and frozen overview context. Immutable
+  create/refresh/remove revisions preserve actor and idempotent request receipts.
+  Reference context is shared overview metadata, not a graph snapshot or a draft.
 
 Ciphertext for title/body/conflicting input and group title/synthesis is copied from persistence; it is
 not loaded through the ordinary decrypted-content schema. The whole inventory,
@@ -138,6 +143,39 @@ lists and source-map keys are remapped while source revision numbers remain
 unchanged. A group's entire membership history and all revision receipts
 participate in generation matching, so repeated recovery reuses the same
 complete generation.
+
+References are inserted after their session and optional idea, followed by their
+immutable context revisions. All internal IDs and actors are remapped. Current
+context must match the latest contiguous revision; malformed contexts, receipt
+collisions, cross-session idea links and impossible removal states are rejected
+before replacement. Removed references and formerly shared idea references remain
+in recovery history; ordinary reads still check current source and target access.
+
+Exact Project materialization supplies proven Sheet, Flow, Scene and Asset ID
+receipts and the destination creation identity. Only those mappings can rebind a
+content reference. An absent mapping leaves `target_id` empty and retains historical
+context without a live destination; it never searches by name, shortcut or content.
+Direct recovery within the same project, without replacing its content, preserves
+the original destination identity. Direct cross-project recovery without mappings
+detaches every target. Historic overview fields are never rewritten or refreshed.
+
+Before sealing, capture also verifies the original destination generation through
+a transaction-only Project identity port, in bounded batches. A missing row or
+creation-identity mismatch normalizes only `target_id` to empty; the original
+identity and every context revision remain intact. This prevents an already
+unavailable reference from being rebound merely because a materialization map
+contains its old numeric ID. Matching soft-deleted rows retain their identity for
+undo. Reusing a session generation persists any normalized detached destinations.
+
+Canonical localization snapshots currently omit translation row IDs, so exact
+materialization cannot prove an old-to-new translation-row mapping. Localization
+references therefore restore as unavailable, with their context history retained.
+Matching a localization source tuple would risk attaching to a different row
+generation and is intentionally not used as an identity substitute.
+
+No comments, notifications or personal follow/read state are copied into the
+reference inventory. Reconstitution neither publishes a conversation nor grants
+new access to retained context.
 
 Validation requires every group source to belong to the same session and point
 to an existing published revision. Historical revision sources must also have

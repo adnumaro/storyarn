@@ -23,6 +23,7 @@ defmodule Storyarn.Flows.Editor do
   alias Storyarn.Flows.Editor.Commands.SequenceWrap
   alias Storyarn.Flows.Editor.Commands.Tracked
   alias Storyarn.Flows.Editor.Queries.CanvasSerializer
+  alias Storyarn.Flows.Editor.Queries.ReferenceTargets
   alias Storyarn.Flows.Editor.Queries.Sequences
   alias Storyarn.Flows.EditorCatalog
   alias Storyarn.Flows.ExitTargetScenes
@@ -146,6 +147,7 @@ defmodule Storyarn.Flows.Editor do
     as: :upsert_sequence_track
 
   defdelegate list_flows(project_id), to: FlowCrud
+  defdelegate reference_targets_query(scope, project_id), to: ReferenceTargets, as: :query
   defdelegate list_flows_tree(project_id), to: FlowCrud
   defdelegate list_flows_by_parent(project_id, parent_id), to: TreeOperations
   defdelegate default_search_limit(), to: FlowCrud

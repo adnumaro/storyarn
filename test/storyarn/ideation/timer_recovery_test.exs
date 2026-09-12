@@ -131,7 +131,7 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     assert {:ok, first} = Repo.transact(fn -> Records.capture(ctx.project.id) end)
     assert {:ok, second} = Repo.transact(fn -> Records.capture(ctx.project.id) end)
     assert first == second
-    assert first["version"] == 4
+    assert first["version"] == 5
     assert capture(ctx) == capture(ctx)
   end
 
@@ -197,7 +197,10 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     legacy =
       data
       |> Map.put("version", 2)
-      |> update_in(["rows"], &Map.drop(&1, ~w(timers groups group_memberships group_revisions)))
+      |> update_in(
+        ["rows"],
+        &Map.drop(&1, ~w(timers groups group_memberships group_revisions references reference_revisions))
+      )
       |> update_in(["rows", "sessions"], &Enum.map(&1, fn row -> Map.delete(row, "contributions_open") end))
 
     assert {:ok, capsule} = Capsule.seal(legacy)

@@ -354,6 +354,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
         ])
         |> Keyword.put(:asset_materialization_cache, cache)
         |> Keyword.put(:pre_materialized_assets, true)
+        |> Keyword.put(@snapshot_import_asset_id_map_key, source_id_map)
         |> maybe_put_portable_variable_plan(variable_plan)
 
       materialize_project_graph_with_receipt(
@@ -1185,7 +1186,8 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
                opts,
                now
              ),
-           {:ok, ideation_maps} <- Storyarn.Ideation.restore_recovery(project.id, snapshot_data["ideation"]) do
+           {:ok, ideation_maps} <-
+             restore_ideation(project.id, snapshot_data["ideation"], id_maps, opts) do
         {:ok,
          %{
            project: project,
@@ -1194,6 +1196,19 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
          }}
       end
     end
+  end
+
+  defp restore_ideation(project_id, nil, _id_maps, _opts), do: Storyarn.Ideation.restore_recovery(project_id, nil)
+
+  defp restore_ideation(project_id, capsule, id_maps, opts) do
+    destinations =
+      Storyarn.Projects.Versioning.IdeationDestinations.build(
+        project_id,
+        id_maps,
+        Keyword.get(opts, @snapshot_import_asset_id_map_key, %{})
+      )
+
+    Storyarn.Ideation.restore_recovery(project_id, capsule, destinations)
   end
 
   defp prepare_recovery_localization_actors(_snapshot_data, opts) do
