@@ -1,0 +1,150 @@
+lib/storyarn/platform/notifications/notifications.ex
+  s_2849957cac15c2::t_30d625138b8b89 143-145,151-152,155-156,159-160
+lib/storyarn_web/live/ideation_live/board.ex
+  s_2849957cac15c2::t_9bc9d573ca14e4 112,362-364
+  s_2849957cac15c2::t_2dd6c69bf8a067 365
+  s_2849957cac15c2::t_813cad25e3b1a0 366
+lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex
+  s_2849957cac15c2::t_abe5ca32c164be 120-126
+  s_11667293ceac35::t_933420ac479b3c 127
+lib/storyarn/projects/comments/README.md
+  s_2849957cac15c2::t_354d43cfb36a63 90-115
+  s_2849957cac15c2::t_21b9a2eafc3a8f 67-74,86-89
+lib/storyarn/projects.ex
+  s_2849957cac15c2::t_a3ae1619c2fae1 1060-1061,1063,1080,1084
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_2849957cac15c2::t_5b0b8bfbe8ad83 289-290,292
+lib/storyarn/projects/comments/queries/queries.ex
+  s_2849957cac15c2::t_26fa9f3d9b8f95 144-145
+  s_2849957cac15c2::t_f03aa7d509d923 120-121,123-124,133
+test/storyarn/projects/comments/ideation_comments_test.exs
+  s_2849957cac15c2::t_bf2b397e99431e 64
+docs/reference/context-map.md
+  s_2849957cac15c2::t_b57216f33e8f0c 5
+  s_2849957cac15c2::t_a3ae1619c2fae1 131-141
+lib/storyarn/ideation/groups/queries/comment_sources.ex
+  s_2849957cac15c2::t_26fa9f3d9b8f95 20-21
+test/storyarn_web/live/ideation_live/comments_test.exs
+  s_2849957cac15c2::t_a6d0cebeac5743 142-172
+test/e2e/workspaces/projects/ideation/comments_test.exs
+  s_2849957cac15c2::t_bf2b397e99431e 39
+lib/storyarn/platform.ex
+  s_2849957cac15c2::t_30d625138b8b89 127,132-133,136-137,140-141
+test/storyarn/projects/comments/sheet_comments_test.exs
+  s_2849957cac15c2::t_bf2b397e99431e 9,90
+config/architecture_boundaries.exs
+  s_2849957cac15c2::t_a3ae1619c2fae1 1883,4168
+  s_2849957cac15c2::t_3e22e9110ce5ef 4171
+  s_2849957cac15c2::t_9c3b0bbc7715d3 4165
+  s_2849957cac15c2::t_6fda7b38104d1b 4543,4546
+lib/storyarn/notification_inbox.ex
+  s_2849957cac15c2::t_1b4faac3254dbd 36-37,49
+  s_2849957cac15c2::t_984aec2f1249d5 43-44,47-48
+  s_2849957cac15c2::t_30d625138b8b89 1-35,38-42,45-46,50-53
+lib/storyarn_web/live/hooks/notifications.ex
+  s_2849957cac15c2::t_abe5ca32c164be 13,75,90
+  s_2849957cac15c2::t_9bc9d573ca14e4 35,111
+lib/storyarn/ideation/sessions/commands/expire_timer.ex
+  s_2849957cac15c2::t_96dac84c220187 62,77,126,128-129,131
+test/storyarn_web/live/hooks/notifications_test.exs
+  s_2849957cac15c2::t_a6d0cebeac5743 220-313
+lib/storyarn/ideation/sessions/queries/comment_sources.ex
+  s_2849957cac15c2::t_26fa9f3d9b8f95 7,16-17
+lib/storyarn/ideation/ideas/commands/set_private_mode.ex
+  s_2849957cac15c2::t_96dac84c220187 17-19
+lib/storyarn/ideation/sessions/execution/mutation.ex
+  s_2849957cac15c2::t_bb5dc98144e7bf 27-29
+  s_2849957cac15c2::t_96dac84c220187 36,41-43
+  s_2849957cac15c2::t_3974347438857d 44
+test/storyarn/projects/comments/comments_test.exs
+  s_2849957cac15c2::t_bf2b397e99431e 10,263,268,277,282,287
+test/storyarn/projects/comments/scene_comments_test.exs
+  s_2849957cac15c2::t_bf2b397e99431e 9,84
+lib/storyarn/ideation.ex
+  s_2849957cac15c2::t_a2ea8d4ae37a43 18
+lib/storyarn/ideation/ideas/queries/comment_sources.ex
+  s_2849957cac15c2::t_26fa9f3d9b8f95 20-21
+lib/storyarn/projects/comments/comments.ex
+  s_2849957cac15c2::t_9bc9d573ca14e4 15,17-19,24-27,29-30,39,43-50,56,81-86,429,437-439
+  s_2849957cac15c2::t_f03aa7d509d923 91,93-95
+  s_2849957cac15c2::t_a9c0bdacb235b1 102,104
+  s_2849957cac15c2::t_8680089e510a00 16,23,28,31-38
+  s_2849957cac15c2::t_26fa9f3d9b8f95 381,385-387
+lib/storyarn/projects/comments/queries/ideation_conversations.ex
+  s_2849957cac15c2::t_26fa9f3d9b8f95 42,75,94-106,227-234
+  s_2849957cac15c2::t_db7ec0b4c0fe13 53-54,59,63-74
+  s_2849957cac15c2::t_38d6319c5140f7 76
+lib/storyarn/ideation/sessions/events/invalidation.ex
+  s_2849957cac15c2::t_96dac84c220187 10-12,15,21-43
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_2849957cac15c2::t_30d625138b8b89 6,12,20,30
+test/storyarn/notification_inbox_test.exs
+  s_2849957cac15c2::t_8cce7bb6cdf50c 1-70,72-108,110-122,124-177
+  s_2849957cac15c2::t_1b4faac3254dbd 109
+  s_2849957cac15c2::t_e79318f7126fec 123
+  s_2849957cac15c2::t_37ef56d9a882ba 71
+lib/storyarn/ideation/sessions/commands/purge_replaced.ex
+  s_2849957cac15c2::t_96dac84c220187 32
+test/storyarn/projects/comments/ideation_conversation_events_test.exs
+  s_2849957cac15c2::t_8680089e510a00 38-48
+  s_2849957cac15c2::t_12771b90cdaf77 85-212,322-323,325,328-329,332-333,337-339,341-343,387-403
+  s_2849957cac15c2::t_0b405d7f6b0072 404
+test/storyarn/platform/notifications/integration/comment_notifications_test.exs
+  s_2849957cac15c2::t_bf2b397e99431e 8,68,75-76
+lib/storyarn/ideation/sessions/commands/recover.ex
+  s_2849957cac15c2::t_96dac84c220187 41
+test/storyarn/projects/comments/ideation_collaboration_test.exs
+  s_2849957cac15c2::t_2f37448bd7ef73 393-414,458-459
+  s_2849957cac15c2::t_38a95547c913a9 285-306,314-320,342-344,346-349,351-365,432-433,435-439,441-450,461-462
+  s_2849957cac15c2::t_2dd6c69bf8a067 13,237,345,350,460
+  s_2849957cac15c2::t_f79b70efcb3b3b 9,48,61,66,74-75,85-86,88,93,98-101,140-143,147-148,154,168-169,172,184,243,307-313,428-431,434,440
+  s_2849957cac15c2::t_db7ec0b4c0fe13 321-341
+  s_2849957cac15c2::t_71733dc1a598cc 451
+  s_2849957cac15c2::t_38efe9a2b9daab 463
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_2849957cac15c2::t_a9c0bdacb235b1 19,21-22,25,27,54-55
+  s_2849957cac15c2::t_2dd6c69bf8a067 41-42
+test/storyarn/projects/comments/spatial_comments_test.exs
+  s_2849957cac15c2::t_bf2b397e99431e 9,50
+test/storyarn/architecture/platform_facade_contract_test.exs
+  s_2849957cac15c2::t_c176ba2c3b9813 44-47,49
+  s_2849957cac15c2::t_a3ae1619c2fae1 19,21,36-37
+lib/storyarn/platform/notifications/execution/delivery.ex
+  s_2849957cac15c2::t_784a06ad8616e3 303,316,373,408
+  s_2849957cac15c2::t_30d625138b8b89 295,306-309,311,319-322,330,344,376-379,386,612,615,628,632-637,639
+priv/gettext/default.pot
+  s_2849957cac15c2::t_72b724f3cd2d16 139,149
+priv/gettext/en/LC_MESSAGES/default.po
+  s_2849957cac15c2::t_f29a8d6b1dbc3f 139,149
+priv/gettext/es/LC_MESSAGES/default.po
+  s_2849957cac15c2::t_602570d66837a8 139,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c44b142e71faf5e3afe923c0b379305003bac321",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_2849957cac15c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08cee-7937-74e3-a18f-3dd4680183a0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
