@@ -117,11 +117,11 @@ defmodule Storyarn.Projects.Comments.Queries do
   def ideation_source(scope, project_id, session_id, {:group, id}, opts),
     do: Storyarn.Ideation.group_comment_source(scope, project_id, session_id, id, opts)
 
-  def ideation_source(scope, project_id, session_id, idea_id, opts),
-    do: Storyarn.Ideation.comment_source(scope, project_id, session_id, idea_id, opts)
+  def ideation_source(scope, project_id, session_id, anchor, opts),
+    do: Storyarn.Ideation.comment_source(scope, project_id, session_id, anchor, opts)
 
-  def list_ideation_threads(project_id, session_id, idea_id, opts) do
-    {type, source_id} = Payload.ideation_anchor(session_id, idea_id)
+  def list_ideation_threads(project_id, session_id, anchor, opts) do
+    {type, source_id} = Payload.ideation_anchor(session_id, anchor)
 
     from(t in Thread,
       as: :thread,
@@ -130,7 +130,7 @@ defmodule Storyarn.Projects.Comments.Queries do
       where: t.ideation_session_id == ^session_id
     )
     |> then(fn query ->
-      case idea_id do
+      case anchor do
         {:group, id} -> where(query, [t], t.ideation_group_id == ^id)
         nil -> query
         id -> where(query, [t], t.ideation_idea_id == ^id)
@@ -140,6 +140,8 @@ defmodule Storyarn.Projects.Comments.Queries do
     |> maybe_filter_cursor(opts)
     |> page(opts)
   end
+
+  def available_sources([]), do: %{}
 
   def available_sources(threads) do
     ids = Enum.map(threads, & &1.id)

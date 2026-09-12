@@ -10,6 +10,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.NotificationInbox
   alias Storyarn.Platform
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
@@ -31,7 +32,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
     if Phoenix.LiveView.connected?(socket) do
       :ok = Platform.subscribe_notifications(scope)
-      :ok = Projects.subscribe_ideation_conversations(scope)
+      :ok = Projects.subscribe_ideation_comment_source_changes(scope)
     end
 
     socket =
@@ -71,7 +72,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
        when valid_notification_id(notification_id) do
     with :ok <- Authorize.authorize(socket, :manage_notifications),
          {:ok, _notification} <-
-           Platform.mark_notification_read(socket.assigns.current_scope, notification_id) do
+           NotificationInbox.mark_notification_read(socket.assigns.current_scope, notification_id) do
       {state, socket} = refresh(socket)
       {:halt, state, socket}
     else
@@ -86,7 +87,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   defp handle_notification_event("mark_all_notifications_read", %{}, socket) do
     with :ok <- Authorize.authorize(socket, :manage_notifications),
-         {:ok, _count} <- Platform.mark_all_notifications_read(socket.assigns.current_scope) do
+         {:ok, _count} <- NotificationInbox.mark_all_notifications_read(socket.assigns.current_scope) do
       {state, socket} = refresh(socket)
       {:halt, state, socket}
     else
@@ -107,7 +108,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   defp handle_notification_info({:ideation_comment_sources_changed, _project_id}, socket) do
     # This user-scoped subscription receives only relevant project changes,
-    # never ordinary canvas motion. Coalesce source and conversation changes;
+    # never conversation activity or personal participation. Coalesce audience changes;
     # the inbox/count still comes from a fresh audience-filtered read.
     if not socket.assigns.comment_notification_refresh_pending do
       Process.send_after(self(), :refresh_comment_notification_sources, 150)

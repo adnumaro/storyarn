@@ -35,6 +35,17 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     assert_changed_once(ctx.project.id)
   end
 
+  test "composing shell and Hub subscriptions does not duplicate source invalidations", ctx do
+    assert :ok = Projects.subscribe_ideation_comment_source_changes(ctx.peer)
+    assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
+    assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
+
+    assert {:ok, _} =
+             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+
+    assert_changed_once(ctx.project.id)
+  end
+
   test "inherited workspace viewers receive source invalidations without direct membership", ctx do
     inherited = user_scope_fixture()
     project = Repo.preload(ctx.project, :workspace)
@@ -69,6 +80,134 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
              Repo.transaction(fn -> Projects.invalidate_ideation_comment_sources(ctx.project.id) end)
 
     refute_changed(ctx.project.id)
+  end
+
+  test "session renames refresh Hub labels but neither renames nor no-op edits invalidate inbox visibility", ctx do
+    assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
+    project_id = ctx.project.id
+
+    assert {:ok, renamed} =
+             Ideation.update_session(ctx.facilitator, project_id, ctx.session.id, ctx.session.revision, %{
+               title: "Renamed discussion"
+             })
+
+    assert_receive {:ideation_conversations_changed, ^project_id}
+    refute_changed(project_id)
+
+    assert {:ok, ^renamed} =
+             Ideation.update_session(ctx.facilitator, project_id, ctx.session.id, renamed.revision, %{})
+
+    assert {:ok, _} =
+             Ideation.set_private_mode(ctx.facilitator, project_id, ctx.session.id, renamed.revision, false)
+
+    refute_receive {:ideation_conversations_changed, ^project_id}
+    refute_changed(project_id)
+  end
+
+  test "session creation, configuration and round controls leave inbox visibility unchanged", ctx do
+    assert :ok = Projects.subscribe_ideation_comment_source_changes(ctx.peer)
+
+    assert {:ok, _} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Another session"})
+
+    assert {:ok, configured} =
+             Ideation.update_session(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{
+               objective: "A clearer goal"
+             })
+
+    assert {:ok, round_session} =
+             Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, configured.revision, %{
+               prompt: "Alternatives"
+             })
+
+    assert {:ok, _} =
+             Ideation.set_contributions_open(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               round_session.revision,
+               false
+             )
+
+    refute_changed(ctx.project.id)
+  end
+
+  test "archiving only invalidates sources when it removes the private visibility mask", ctx do
+    assert :ok = Projects.subscribe_ideation_comment_source_changes(ctx.peer)
+
+    assert {:ok, archived} =
+             Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision)
+
+    refute_changed(ctx.project.id)
+    assert {:ok, reopened} = Ideation.reopen_session(ctx.facilitator, ctx.project.id, ctx.session.id, archived.revision)
+    refute_changed(ctx.project.id)
+
+    assert {:ok, _} =
+             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, reopened.revision, true)
+
+    assert_changed_once(ctx.project.id)
+
+    assert {:ok, masked} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    assert {:ok, _} = Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, masked.revision)
+    assert_changed_once(ctx.project.id)
+  end
+
+  test "timer expiry only invalidates sources when it actually reveals the private session", ctx do
+    assert :ok = Projects.subscribe_ideation_comment_source_changes(ctx.peer)
+    timer = start_timer(ctx, false)
+    refute_changed(ctx.project.id)
+    expire_timer(timer)
+    refute_changed(ctx.project.id)
+
+    assert {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, current.revision, true)
+    assert_changed_once(ctx.project.id)
+    revealing = start_timer(ctx, true)
+    refute_changed(ctx.project.id)
+    expire_timer(revealing)
+    assert_changed_once(ctx.project.id)
+    assert {:ok, %{outcome: :stale}} = Ideation.expire_timer(revealing.id, revealing.version)
+    refute_changed(ctx.project.id)
+  end
+
+  test "comment writes invalidate shared discussions and Hub activity without invalidating inbox sources", ctx do
+    assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
+    assert :ok = Projects.subscribe_ideation_comments(ctx.peer, ctx.project.id, ctx.session.id)
+    project_id = ctx.project.id
+    session_id = ctx.session.id
+
+    assert {:ok, detail} =
+             Projects.create_ideation_comment(ctx.author, project_id, session_id, nil, %{
+               body: "Shared discussion",
+               client_request_id: Ecto.UUID.generate()
+             })
+
+    assert_receive {:ideation_conversations_changed, ^project_id}
+    assert_receive {:ideation_comments_changed, ^session_id}
+    refute_changed(project_id)
+
+    assert {:ok, reply} =
+             Projects.reply_to_comment_thread(ctx.peer, project_id, detail.thread.id, %{
+               body: "Another perspective",
+               parent_id: hd(detail.messages).id,
+               client_request_id: Ecto.UUID.generate()
+             })
+
+    assert_receive {:ideation_conversations_changed, ^project_id}
+    assert_receive {:ideation_comments_changed, ^session_id}
+    refute_changed(project_id)
+
+    assert {:ok, _} =
+             Projects.set_comment_thread_status(
+               ctx.author,
+               project_id,
+               detail.thread.id,
+               "resolved",
+               reply.thread.revision
+             )
+
+    assert_receive {:ideation_conversations_changed, ^project_id}
+    assert_receive {:ideation_comments_changed, ^session_id}
+    refute_changed(project_id)
   end
 
   test "shared canvas movements and connections do not invalidate conversation sources", ctx do
@@ -180,17 +319,28 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
 
     thread_id = detail.thread.id
     message_id = hd(detail.messages).id
+    project_id = ctx.project.id
+    session_id = ctx.session.id
     assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
+    assert :ok = Projects.subscribe_ideation_comments(ctx.peer, project_id, session_id)
     assert {:ok, _} = Projects.set_ideation_comment_following(ctx.viewer, ctx.project.id, thread_id, true)
     refute_changed(ctx.project.id)
+    refute_receive {:ideation_comments_changed, ^session_id}
+    refute_receive {:ideation_comment_participation_changed, ^project_id, ^session_id, ^thread_id}
     assert {:ok, _} = Projects.mark_ideation_comment_read(ctx.viewer, ctx.project.id, thread_id, message_id)
     refute_changed(ctx.project.id)
+    refute_receive {:ideation_comments_changed, ^session_id}
+    refute_receive {:ideation_comment_participation_changed, ^project_id, ^session_id, ^thread_id}
 
     assert :ok = Projects.subscribe_ideation_conversations(ctx.viewer)
     assert {:ok, _} = Projects.set_ideation_comment_following(ctx.viewer, ctx.project.id, thread_id, false)
-    assert_changed_once(ctx.project.id)
+    assert_receive {:ideation_comment_participation_changed, ^project_id, ^session_id, ^thread_id}
+    refute_changed(ctx.project.id)
+    refute_receive {:ideation_comments_changed, ^session_id}
     assert {:ok, _} = Projects.mark_ideation_comment_read(ctx.viewer, ctx.project.id, thread_id, message_id)
-    assert_changed_once(ctx.project.id)
+    assert_receive {:ideation_comment_participation_changed, ^project_id, ^session_id, ^thread_id}
+    refute_changed(ctx.project.id)
+    refute_receive {:ideation_comments_changed, ^session_id}
   end
 
   test "group deletion and restoration invalidate sources but retries do not", ctx do
@@ -232,6 +382,24 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
 
   defp refute_changed(project_id) do
     refute_receive {:ideation_comment_sources_changed, ^project_id}
+  end
+
+  defp start_timer(ctx, reveal) do
+    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+
+    {:ok, _} =
+      Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, %{
+        seconds: 120,
+        reveal_on_expiry: reveal
+      })
+
+    {:ok, timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    timer
+  end
+
+  defp expire_timer(timer) do
+    timer |> Ecto.Changeset.change(deadline_at: timer.started_at) |> Repo.update!()
+    assert {:ok, %{outcome: :completed}} = Ideation.expire_timer(timer.id, timer.version)
   end
 
   defp group_fixture(ctx) do

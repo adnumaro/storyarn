@@ -64,6 +64,14 @@ mark-read operations and destination resolution revalidate source audience and
 recovery identity. Private/deleted/replaced sources disappear entirely, including
 from counts, while canonical editor notification behavior stays unchanged.
 
+User-facing inbox operations enter through `Storyarn.NotificationInbox`, which
+composes Projects' visibility queries with Platform-owned recipient access and
+read-state writes. The low-level Platform APIs hide comments without the
+server-built visibility predicate. Both source checks use scalar, correlated
+message lookups; this avoids PostgreSQL rewriting an `EXISTS` into a global
+hashed readable-message set. The same predicate applies before list pagination,
+unread aggregation and read-state mutation.
+
 ### Future Collaboration Hub contract
 
 `Projects.list_ideation_conversations(scope, opts)` returns authorized thread DTOs
@@ -75,19 +83,36 @@ bytes maximum). Personal flags select matching threads when true; false adds no
 restriction. Limits default to 30 and cap at 100. Malformed options are rejected.
 The query is a brainstorming adapter, not the cross-editor Hub UI (ENG-188/189).
 
-Ideation owns content-free audience/identity query ports; Projects composes them
-with membership and conversation state. Single/batched comment destinations
-return audience-checked brainstorming session/thread links. Source and comment
-mutations emit post-commit invalidations. The Hub subscription emits only a
-project ID, never content; consumers must refetch through the scoped API. Each
-user has a separate subscription, with direct and inherited project membership
-resolved and deduplicated at publication time. New memberships therefore work
-without reconnecting, and unrelated projects never wake the notification shell.
-Ordinary note/group positions, connections and private edits emit only board
-signals, not conversation/inbox invalidations. Source audience changes (including
-private mode, deletion and restoration) still invalidate discussions. Following
-and read acknowledgements invalidate only that user's personal Hub state. The
-notification shell coalesces relevant signals and refreshes its authorized list/count.
+Ideation owns audience, identity and safe display-label query ports; Projects
+composes them with membership and conversation state. Page previews load in
+batches, followed by one final batched authorization check before serialization;
+the query count stays constant as the page grows. Single/batched comment destinations
+return audience-checked brainstorming session/thread links. Three independent
+post-commit signals keep conversation activity, participation and inbox visibility
+separate; all carry only identity, never content, and require scoped refetches:
+
+- Shared comment creation, replies and resolution publish session discussion
+  updates and `{:ideation_conversations_changed, project_id}` for the future Hub.
+  Session renames also refresh Hub labels. These do not invalidate the bell;
+  persisted notification deliveries already wake their individual recipients.
+- Following and read acknowledgements publish
+  `{:ideation_comment_participation_changed, project_id, session_id, thread_id}`
+  only to the actor's personal topic. Other tabs belonging to that user refresh
+  the affected open panel; other users and notification bells do not reload.
+- Source audience changes publish `{:ideation_comment_sources_changed, project_id}`
+  for visibility-aware consumers. This includes private-mode transitions, source
+  deletion/restoration/replacement and a timer or archive that actually removes
+  the private visibility mask. No-op changes, titles, timer controls, ordinary
+  expiry, rounds, note/group positions, connections and private edits do not
+  invalidate inbox visibility.
+
+`subscribe_ideation_conversations` aggregates all three personal topics for the
+future Hub. Board panels subscribe to participation plus their session's shared
+discussion topic. The notification shell subscribes only to source visibility
+and ordinary notification deliveries, coalescing audience changes before an
+authorized list/count read. Direct and inherited project membership is resolved
+and deduplicated at publication time for shared Hub/source signals. New memberships
+therefore work without reconnecting, and unrelated projects never wake the shell.
 
 ## Model and permissions
 

@@ -16,15 +16,15 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   defguardp valid_thread_id?(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807
 
-  def create_ideation(scope, project_id, session_id, idea_id, attrs) do
+  def create_ideation(scope, project_id, session_id, anchor, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
-         true <- Payload.valid_id?(session_id) and Payload.valid_ideation_anchor?(idea_id) do
-      target = {:create_ideation, session_id, idea_id}
+         true <- Payload.valid_id?(session_id) and Payload.valid_ideation_anchor?(anchor) do
+      target = {:create_ideation, session_id, anchor}
 
       transact_request(scope, project_id, payload, target, fn project, actor_id, hash ->
-        source = lock_ideation_source!(scope, project.id, session_id, idea_id)
+        source = lock_ideation_source!(scope, project.id, session_id, anchor)
         validate_mentions!(project, payload.mention_user_ids)
-        {type, _id} = Payload.ideation_anchor(session_id, idea_id)
+        {type, _id} = Payload.ideation_anchor(session_id, anchor)
 
         thread =
           Repo.insert!(%Thread{
@@ -38,7 +38,8 @@ defmodule Storyarn.Projects.Comments.Mutations do
             ideation_group_id: if(type == "ideation_group", do: source.id),
             source_inserted_at: source.inserted_at,
             source_recovery_identity: source.recovery_identity,
-            source_label: type,
+            source_label:
+              %{"ideation_session" => "Session", "ideation_idea" => "Idea", "ideation_group" => "Group"}[type],
             last_activity_at: TimeHelpers.now()
           })
 
@@ -50,8 +51,8 @@ defmodule Storyarn.Projects.Comments.Mutations do
     end
   end
 
-  defp lock_ideation_source!(scope, project_id, session_id, idea_id) do
-    case Queries.ideation_source(scope, project_id, session_id, idea_id, lock: :share) do
+  defp lock_ideation_source!(scope, project_id, session_id, anchor) do
+    case Queries.ideation_source(scope, project_id, session_id, anchor, lock: :share) do
       {:ok, source} -> source
       _ -> Repo.rollback(:not_found)
     end

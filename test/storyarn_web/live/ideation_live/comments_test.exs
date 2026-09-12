@@ -139,6 +139,37 @@ defmodule StoryarnWeb.IdeationLive.CommentsTest do
     assert_push_event(view, "notifications_updated", %{unreadCount: 0, items: []})
   end
 
+  test "personal participation synchronizes the actor's other tabs without changing another viewer", ctx do
+    {:ok, detail} =
+      Projects.create_ideation_comment(ctx.author, ctx.project.id, ctx.session.id, nil, %{
+        body: "A discussion in multiple tabs",
+        client_request_id: Ecto.UUID.generate()
+      })
+
+    url = path(ctx) <> "?thread=#{detail.thread.id}"
+    {:ok, first, _} = live(log_in_user(ctx.conn, ctx.viewer.user), url)
+    {:ok, second, _} = live(log_in_user(ctx.conn, ctx.viewer.user), url)
+    {:ok, other, _} = live(log_in_user(ctx.conn, ctx.peer.user), url)
+    refute state(first)["thread"]["following"]
+    refute state(second)["thread"]["following"]
+    assert state(other)["thread"]["unread"]
+
+    assert {:ok, _} = Projects.set_ideation_comment_following(ctx.viewer, ctx.project.id, detail.thread.id, true)
+    assert state(first)["thread"]["following"]
+    assert state(second)["thread"]["following"]
+    refute state(other)["thread"]["following"]
+
+    assert {:ok, _} =
+             Projects.mark_ideation_comment_read(ctx.viewer, ctx.project.id, detail.thread.id, hd(detail.messages).id)
+
+    refute state(first)["thread"]["unread"]
+    refute state(second)["thread"]["unread"]
+    assert state(other)["thread"]["unread"]
+    refute_push_event(first, "notifications_updated", %{}, 250)
+    refute_push_event(second, "notifications_updated", %{}, 250)
+    refute_push_event(other, "notifications_updated", %{}, 250)
+  end
+
   test "stale board and context requests cannot retarget a new discussion", ctx do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
     render_hook(view, "comments_open", payload(view, ctx, %{}))

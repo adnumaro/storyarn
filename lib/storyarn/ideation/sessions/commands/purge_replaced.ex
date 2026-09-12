@@ -29,7 +29,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.PurgeReplaced do
       end
     end
     |> Repo.transact()
-    |> Invalidation.notify(project_id)
+    |> Invalidation.notify(project_id, :sources)
   end
 
   def run(_, _, _, _), do: {:error, :invalid_revision}

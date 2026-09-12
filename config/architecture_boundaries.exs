@@ -1880,6 +1880,7 @@ boundaries = %{
     "lib/mix/tasks/storyarn.templates.import.ex",
     "lib/storyarn.ex",
     "lib/storyarn/application.ex",
+    "lib/storyarn/notification_inbox.ex",
     "lib/storyarn/architecture/",
     "lib/storyarn/public/blog.ex",
     "lib/storyarn/public/blog/post.ex",
@@ -4161,14 +4162,13 @@ policy = %{
       source: "lib/storyarn/projects/comments/queries/ideation_conversations.ex",
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],
-      reason: "Comment Hub and inbox queries consume audience-only Ideation source projections before pagination"
+      reason: "Comment Hub and inbox queries consume audience-safe Ideation source projections before pagination"
     },
     %{
-      source: "lib/storyarn/platform/notifications/execution/delivery.ex",
+      source: "lib/storyarn/notification_inbox.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
-      reason:
-        "Inbox listing, counts and read commands apply the comment owner's current restricted-source visibility contract"
+      reason: "The application inbox composes producer-owned visibility queries without a Platform-to-Projects dependency"
     },
     %{
       source: "lib/storyarn_web/live/hooks/notifications.ex",
@@ -4540,10 +4540,10 @@ policy = %{
       reason: "Tutorial settings restart Platform-owned onboarding through the public facade"
     },
     %{
-      source: "lib/storyarn_web/live/shared/notification_helpers.ex",
+      source: "lib/storyarn/notification_inbox.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "The shared notification helpers list and count through the public Platform facade"
+      reason: "The application inbox supplies source visibility to Platform-owned listing, counts and read-state writes"
     },
     %{
       source: "lib/storyarn/application.ex",

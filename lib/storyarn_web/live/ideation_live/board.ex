@@ -109,6 +109,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       )
 
       Ideation.subscribe_sessions(socket.assigns.current_scope, project_id)
+      Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
       Projects.subscribe_project_ownership_changes(project_id)
       Projects.subscribe_project_membership_changes(project_id)
       Workspaces.subscribe_workspace_ownership_changes(socket.assigns.workspace.id)
@@ -357,6 +358,11 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   def handle_info({:ideation_comments_changed, id}, %{assigns: %{session_id: id}} = socket),
     do: {:noreply, CommentHandlers.refresh(socket)}
+
+  def handle_info(
+        {:ideation_comment_participation_changed, project_id, session_id, thread_id},
+        %{assigns: %{project: %{id: project_id}, session_id: session_id}} = socket
+      ), do: {:noreply, CommentHandlers.refresh_participation(socket, thread_id)}
 
   def handle_info({event, %{project_id: id}}, %{assigns: %{project: %{id: id}}} = socket)
       when event in [:project_membership_changed, :project_ownership_transferred], do: {:noreply, reload_access(socket)}

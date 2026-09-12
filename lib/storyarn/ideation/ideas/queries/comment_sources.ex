@@ -17,7 +17,8 @@ defmodule Storyarn.Ideation.Ideas.Queries.CommentSources do
         project_id: s.project_id,
         session_id: s.id,
         source_type: "ideation_idea",
-        recovery_identity: i.recovery_identity
+        recovery_identity: i.recovery_identity,
+        name: fragment("concat('Idea #', ?)", i.id)
       }
     )
   end

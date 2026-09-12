@@ -39,6 +39,7 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
     from(t in Thread,
       as: :thread,
       join: s in subquery(sources),
+      as: :comment_source,
       on:
         s.project_id == t.project_id and s.session_id == t.ideation_session_id and
           s.session_id == t.container_id and s.source_type == t.source_type and s.id == t.source_id and
@@ -49,16 +50,28 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
   end
 
   defp with_project_access(query, user_id) do
+    project_ids = authorized_project_ids(user_id)
+
     from([thread: t] in query,
       join: p in Project,
       as: :project,
       on: p.id == t.project_id,
-      left_join: pm in ProjectMembershipRecord,
-      on: pm.project_id == p.id and pm.user_id == ^user_id,
-      left_join: wm in WorkspaceMembershipRecord,
-      on: wm.workspace_id == p.workspace_id and wm.user_id == ^user_id,
-      where: is_nil(p.deleted_at) and (not is_nil(pm.id) or not is_nil(wm.id))
+      where: is_nil(p.deleted_at) and p.id in subquery(project_ids)
     )
+  end
+
+  defp authorized_project_ids(user_id) do
+    direct = from(m in ProjectMembershipRecord, where: m.user_id == ^user_id, select: m.project_id)
+
+    inherited =
+      from(m in WorkspaceMembershipRecord,
+        join: p in Project,
+        on: p.workspace_id == m.workspace_id,
+        where: m.user_id == ^user_id,
+        select: p.id
+      )
+
+    union(direct, ^inherited)
   end
 
   defp with_anchor_pointer(query) do
@@ -77,6 +90,19 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
   def readable_message_ids(scope) do
     from([thread: t] in readable_query(scope), join: m in Message, on: m.thread_id == t.id, select: m.id)
   end
+
+  def available_sources(_scope, []), do: %{}
+
+  def available_sources(%{user: %{id: _}} = scope, thread_ids) do
+    from([thread: t, comment_source: s] in readable_query(scope),
+      where: t.id in ^thread_ids,
+      select: {t.id, %{id: s.id, name: s.name, recovery_identity: s.recovery_identity}}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  def available_sources(_scope, _thread_ids), do: %{}
 
   def destinations(_scope, []), do: %{}
 
@@ -198,8 +224,14 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
   end
 
   defp search(q, text) when is_binary(text) and byte_size(text) in 1..200 do
-    matching = from(m in Message, where: fragment("strpos(lower(?), lower(?)) > 0", m.body, ^text), select: m.thread_id)
-    where(q, [thread: t], t.id in subquery(matching))
+    matching =
+      from(m in Message,
+        where: m.thread_id == parent_as(:thread).id,
+        where: fragment("strpos(lower(?), lower(?)) > 0", m.body, ^text),
+        select: 1
+      )
+
+    where(q, exists(subquery(matching)))
   end
 
   defp search(q, _), do: q

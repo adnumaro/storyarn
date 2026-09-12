@@ -17,7 +17,8 @@ defmodule Storyarn.Ideation.Groups.Queries.CommentSources do
         project_id: s.project_id,
         session_id: s.id,
         source_type: "ideation_group",
-        recovery_identity: g.recovery_identity
+        recovery_identity: g.recovery_identity,
+        name: fragment("concat('Group #', ?)", g.id)
       }
     )
   end

@@ -36,7 +36,7 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> assert_has("#brainstorming-comment-status", text: "Reopen")
 
     {:ok, %{threads: [thread]}} = Projects.list_ideation_comment_threads(ctx.author, project.id, ctx.session.id)
-    assert [%{kind: "comment_mention"}] = Storyarn.Platform.list_notifications(ctx.peer)
+    assert [%{kind: "comment_mention"}] = Storyarn.NotificationInbox.list_notifications(ctx.peer)
 
     session
     |> visit(path <> "?thread=#{thread.id}")

@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.SheetCommentsTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Platform
+  alias Storyarn.NotificationInbox
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Comments.Message
@@ -87,7 +87,7 @@ defmodule Storyarn.Projects.SheetCommentsTest do
     refute Map.has_key?(destinations[key], :block_id)
     assert project_slug == ctx.project.slug
     assert workspace_slug == ctx.workspace.slug
-    assert Enum.any?(Platform.list_notifications(recipient_scope), &(&1.entity_id == message.id))
+    assert Enum.any?(NotificationInbox.list_notifications(recipient_scope), &(&1.entity_id == message.id))
 
     assert {:ok, %{threads: [listed], next_cursor: nil}} =
              Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, sheet_id)

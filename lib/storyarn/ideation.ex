@@ -15,7 +15,7 @@ defmodule Storyarn.Ideation do
   alias Storyarn.Ideation.Recovery
   alias Storyarn.Ideation.Sessions
 
-  @doc "Audience-only source projections for authorized comment queries; never includes creative content."
+  @doc "Shared identity and label projections for authorized comment queries; excludes idea/group creative content."
   def comment_sources_query("ideation_session"), do: Sessions.comment_sources_query()
   def comment_sources_query("ideation_idea"), do: Ideas.comment_sources_query()
   def comment_sources_query("ideation_group"), do: Groups.comment_sources_query()

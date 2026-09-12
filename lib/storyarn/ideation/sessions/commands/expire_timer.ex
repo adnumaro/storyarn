@@ -59,6 +59,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
 
   defp finish(session, timer, authorization, original_actor_id) do
     outcome = outcome(session, timer, authorization, original_actor_id)
+    original_session = session
 
     with {:ok, session} <- effects(session, timer, outcome, authorization),
          {:ok, elapsed} <-
@@ -73,7 +74,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
            )
            |> Repo.update(),
          {:ok, session} <- TimerMutation.record(session, elapsed.actor_id, elapsed, :timer_elapsed) do
-      {:ok, receipt(session, elapsed, outcome)}
+      {:ok, {receipt(session, elapsed, outcome), Invalidation.comment_change(original_session, session)}}
     end
   end
 
@@ -122,10 +123,12 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
       session_id: if(session, do: session.id)
     }
 
-  defp notify({:ok, %{outcome: outcome} = result} = response)
+  defp notify({:ok, {%{outcome: outcome} = result, change}})
        when outcome in [:completed, :skipped_authorization, :skipped_configuration, :skipped_session] do
+    response = {:ok, result}
+
     if !Repo.in_transaction?() do
-      Invalidation.notify(response, result.project_id)
+      Invalidation.notify(response, result.project_id, change)
       TimerInvalidation.notify(response)
 
       if outcome == :completed and result.timer.reveal_on_expiry,

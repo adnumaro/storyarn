@@ -7,7 +7,7 @@ defmodule Storyarn.Projects.CommentsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Platform
+  alias Storyarn.NotificationInbox
   alias Storyarn.Projects
   alias Storyarn.Projects.Comments.Mention
   alias Storyarn.Projects.Comments.Message
@@ -260,12 +260,12 @@ defmodule Storyarn.Projects.CommentsTest do
     bob_message = List.last(bob_reply.messages)
 
     refute Enum.any?(
-             Platform.list_notifications(alice_scope),
+             NotificationInbox.list_notifications(alice_scope),
              &(&1.entity_type == "comment" and &1.entity_id == bob_message.id)
            )
 
     assert Enum.any?(
-             Platform.list_notifications(ctx.scope),
+             NotificationInbox.list_notifications(ctx.scope),
              &(&1.entity_type == "comment" and &1.entity_id == bob_message.id and &1.kind == "comment_reply")
            )
 
@@ -274,17 +274,17 @@ defmodule Storyarn.Projects.CommentsTest do
     explicit_message = List.last(explicit_reply.messages)
 
     assert Enum.any?(
-             Platform.list_notifications(alice_scope),
+             NotificationInbox.list_notifications(alice_scope),
              &(&1.entity_type == "comment" and &1.entity_id == explicit_message.id and &1.kind == "comment_reply")
            )
 
     assert Enum.any?(
-             Platform.list_notifications(ctx.scope),
+             NotificationInbox.list_notifications(ctx.scope),
              &(&1.entity_type == "comment" and &1.entity_id == explicit_message.id and &1.kind == "comment_mention")
            )
 
     refute Enum.any?(
-             Platform.list_notifications(bob_scope),
+             NotificationInbox.list_notifications(bob_scope),
              &(&1.entity_type == "comment" and &1.entity_id == explicit_message.id)
            )
   end

@@ -1057,7 +1057,10 @@ defmodule Storyarn.Projects do
 
   @doc "Subscribes to content-free invalidations; consumers must refetch with their scope."
   defdelegate subscribe_ideation_conversations(scope), to: Comments, as: :subscribe_conversations
+  defdelegate subscribe_ideation_comment_source_changes(scope), to: Comments, as: :subscribe_source_changes
+  defdelegate subscribe_ideation_comment_participation(scope), to: Comments, as: :subscribe_participation
   defdelegate invalidate_ideation_comment_sources(project_id), to: Comments, as: :invalidate_ideation_sources
+  defdelegate invalidate_ideation_comment_activity(project_id), to: Comments, as: :invalidate_ideation_activity
 
   @doc false
   defdelegate restricted_comment_message_ids_query(), to: Comments
@@ -1074,11 +1077,11 @@ defmodule Storyarn.Projects do
   @doc "Acknowledges an observed message of an accessible brainstorming thread without regressing read state."
   defdelegate mark_ideation_comment_read(scope, project_id, thread_id, message_id), to: Comments, as: :mark_thread_read
 
-  defdelegate list_ideation_comment_threads(scope, project_id, session_id, idea_id \\ nil, opts \\ []),
+  defdelegate list_ideation_comment_threads(scope, project_id, session_id, anchor \\ nil, opts \\ []),
     to: Comments,
     as: :list_ideation_threads
 
-  defdelegate create_ideation_comment(scope, project_id, session_id, idea_id, attrs), to: Comments, as: :create_ideation
+  defdelegate create_ideation_comment(scope, project_id, session_id, anchor, attrs), to: Comments, as: :create_ideation
   defdelegate subscribe_ideation_comments(scope, project_id, session_id), to: Comments, as: :subscribe_ideation
   defdelegate unsubscribe_ideation_comments(project_id, session_id), to: Comments, as: :unsubscribe_ideation
 end

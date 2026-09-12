@@ -61,7 +61,7 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
              Projects.set_comment_thread_status(ctx.author, ctx.project.id, first.thread.id, "open", resolved.revision)
 
     assert {:ok, %{threads: [_]}} = Projects.list_ideation_comment_threads(ctx.viewer, ctx.project.id, ctx.session.id)
-    assert [%{kind: "comment_reply"}] = Storyarn.Platform.list_notifications(ctx.author)
+    assert [%{kind: "comment_reply"}] = Storyarn.NotificationInbox.list_notifications(ctx.author)
   end
 
   test "private ideas cannot be discussed even by their author or owner", ctx do

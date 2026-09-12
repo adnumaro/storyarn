@@ -292,7 +292,7 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
 
   def list_notifications(%{user: %{id: _}} = scope, opts) when is_list(opts) do
     scope
-    |> visible_query()
+    |> visible_query(opts)
     |> maybe_only_unread(Keyword.get(opts, :unread_only, false))
     |> order_by([notification], desc: notification.inserted_at, desc: notification.id)
     |> limit(^normalize_limit(Keyword.get(opts, :limit, @default_limit)))
@@ -300,22 +300,26 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
     |> Repo.preload([:actor, :project])
   end
 
-  def list_notifications(%{user: _}, _opts), do: []
+  def list_notifications(_scope, _opts), do: []
 
   @doc "Returns the scoped user's count of currently visible unread notifications."
-  @spec unread_count(Scope.t()) :: non_neg_integer()
-  def unread_count(%{user: %{id: _}} = scope) do
+  @spec unread_count(Scope.t(), keyword()) :: non_neg_integer()
+  def unread_count(scope, opts \\ [])
+
+  def unread_count(%{user: %{id: _}} = scope, opts) do
     scope
-    |> visible_query()
+    |> visible_query(opts)
     |> where([notification], is_nil(notification.read_at))
     |> Repo.aggregate(:count, :id)
   end
 
-  def unread_count(%{user: _}), do: 0
+  def unread_count(_scope, _opts), do: 0
 
   @doc "Marks one currently visible notification as read."
-  @spec mark_read(Scope.t(), integer()) :: {:ok, Notification.t()} | {:error, :not_found}
-  def mark_read(%{user: %{id: user_id}} = scope, notification_id)
+  @spec mark_read(Scope.t(), integer(), keyword()) :: {:ok, Notification.t()} | {:error, :not_found}
+  def mark_read(scope, notification_id, opts \\ [])
+
+  def mark_read(%{user: %{id: user_id}} = scope, notification_id, opts)
       when is_integer(notification_id) and notification_id > 0 do
     ensure_outside_transaction!("mark_read/2")
 
@@ -323,7 +327,7 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
       Repo.transact(fn ->
         visible_notification_ids =
           scope
-          |> visible_query()
+          |> visible_query(opts)
           |> where([item], item.id == ^notification_id)
           |> select([item], item.id)
 
@@ -337,7 +341,7 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
 
         notification =
           scope
-          |> visible_query()
+          |> visible_query(opts)
           |> where([item], item.id == ^notification_id)
           |> Repo.one()
 
@@ -366,18 +370,20 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
     end
   end
 
-  def mark_read(%{user: _}, _notification_id), do: {:error, :not_found}
+  def mark_read(_scope, _notification_id, _opts), do: {:error, :not_found}
 
   @doc "Marks all currently visible unread notifications for the scoped user as read."
-  @spec mark_all_read(Scope.t()) :: {:ok, non_neg_integer()}
-  def mark_all_read(%{user: %{id: user_id}} = scope) do
+  @spec mark_all_read(Scope.t(), keyword()) :: {:ok, non_neg_integer()}
+  def mark_all_read(scope, opts \\ [])
+
+  def mark_all_read(%{user: %{id: user_id}} = scope, opts) do
     ensure_outside_transaction!("mark_all_read/1")
 
     result =
       Repo.transact(fn ->
         visible_unread_ids =
           scope
-          |> visible_query()
+          |> visible_query(opts)
           |> where([notification], is_nil(notification.read_at))
           |> select([notification], notification.id)
 
@@ -399,7 +405,7 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
     end
   end
 
-  def mark_all_read(%{user: _}), do: {:ok, 0}
+  def mark_all_read(_scope, _opts), do: {:ok, 0}
 
   @doc "Subscribes the current process to notification invalidations for the scoped user."
   @spec subscribe(Scope.t()) :: :ok | {:error, :not_found}
@@ -603,9 +609,10 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
     |> where([recipient], recipient.user_id != ^actor_id)
   end
 
-  defp visible_query(%{user: %{id: user_id}} = scope) do
+  defp visible_query(%{user: %{id: user_id}}, opts) do
     visible_comment_sources(
       from(notification in Notification,
+        as: :notification,
         left_join: project in Project,
         on: project.id == notification.project_id,
         left_join: project_membership in ProjectMembership,
@@ -618,20 +625,18 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
                (not is_nil(project.id) and is_nil(project.deleted_at) and
                   (not is_nil(project_membership.id) or not is_nil(workspace_membership.id))))
       ),
-      scope
+      Keyword.get(opts, :comment_visibility, dynamic(false))
     )
   end
 
-  defp visible_comment_sources(query, scope) do
-    restricted = Storyarn.Projects.restricted_comment_message_ids_query()
-    readable = Storyarn.Projects.readable_comment_message_ids_query(scope)
+  defp visible_comment_sources(query, %Ecto.Query.DynamicExpr{} = visibility) do
+    predicate =
+      dynamic(
+        [notification: notification],
+        is_nil(notification.entity_type) or notification.entity_type != "comment" or ^visibility
+      )
 
-    from(notification in query,
-      where:
-        is_nil(notification.entity_type) or is_nil(notification.entity_id) or
-          notification.entity_type != "comment" or notification.entity_id not in subquery(restricted) or
-          notification.entity_id in subquery(readable)
-    )
+    where(query, ^predicate)
   end
 
   defp maybe_only_unread(query, true), do: where(query, [notification], is_nil(notification.read_at))

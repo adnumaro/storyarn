@@ -117,6 +117,14 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
       else: socket
   end
 
+  def refresh_participation(%{assigns: %{comments: %{open: true} = state}} = socket, thread_id) do
+    if Enum.any?(state.threads, &(&1.id == thread_id)) or match?(%{id: ^thread_id}, state.thread),
+      do: refresh(socket),
+      else: socket
+  end
+
+  def refresh_participation(socket, _thread_id), do: socket
+
   def linked(socket, %{"thread" => id}), do: select(socket, positive(id))
   def linked(socket, _), do: socket
 

@@ -6,10 +6,11 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
 
   alias Storyarn.Ideation
   alias Storyarn.Ideation.Groups.Group
-  alias Storyarn.Platform
+  alias Storyarn.NotificationInbox
   alias Storyarn.Projects
   alias Storyarn.Projects.Comments.Participation
   alias Storyarn.Projects.Comments.Thread
+  alias Storyarn.Projects.ProjectMembership
 
   setup do
     ideation_fixture()
@@ -44,7 +45,7 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
 
     assert {:error, :not_found} = Projects.get_comment_thread(ctx.peer, ctx.project.id, thread.id)
     assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(ctx.peer)
-    assert Platform.unread_notification_count(ctx.peer) == 0
+    assert NotificationInbox.unread_notification_count(ctx.peer) == 0
 
     assert {:ok, _} =
              Ideation.restore_group(
@@ -57,12 +58,12 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
              )
 
     assert {:ok, _} = Projects.get_comment_thread(ctx.peer, ctx.project.id, thread.id)
-    assert Platform.unread_notification_count(ctx.peer) == 1
+    assert NotificationInbox.unread_notification_count(ctx.peer) == 1
 
     Group |> Repo.get!(group.id) |> Ecto.Changeset.change(recovery_identity: Ecto.UUID.generate()) |> Repo.update!()
     assert {:error, :not_found} = Projects.get_comment_thread(ctx.peer, ctx.project.id, thread.id)
     assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(ctx.peer)
-    assert Platform.list_notifications(ctx.peer) == []
+    assert NotificationInbox.list_notifications(ctx.peer) == []
     Repo.delete!(Repo.get!(Group, group.id))
     assert is_nil(Repo.get!(Thread, thread.id).ideation_group_id)
     assert Projects.comment_destinations(ctx.peer, [hd(detail.messages).id]) == %{}
@@ -70,8 +71,8 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
 
   test "mentions, direct replies and explicit followers deliver once with strongest reason", ctx do
     assert {:ok, detail} = discuss(ctx, nil, [ctx.peer.user.id, ctx.author.user.id])
-    assert [%{kind: "comment_mention"}] = Platform.list_notifications(ctx.peer)
-    assert Platform.list_notifications(ctx.author) == []
+    assert [%{kind: "comment_mention"}] = NotificationInbox.list_notifications(ctx.peer)
+    assert NotificationInbox.list_notifications(ctx.author) == []
     assert Repo.aggregate(Participation, :count) == 0
 
     assert {:ok, %{thread: %{following: true}}} =
@@ -81,21 +82,23 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
     request = reply_attrs(detail, [ctx.author.user.id])
     assert {:ok, _} = Projects.reply_to_comment_thread(ctx.peer, ctx.project.id, detail.thread.id, request)
     assert {:ok, _} = Projects.reply_to_comment_thread(ctx.peer, ctx.project.id, detail.thread.id, request)
-    assert [%{kind: "comment_mention"}] = Platform.list_notifications(ctx.author)
-    assert [%{kind: "comment_followed"}] = Platform.list_notifications(ctx.viewer)
+    assert [%{kind: "comment_mention"}] = NotificationInbox.list_notifications(ctx.author)
+    assert [%{kind: "comment_followed"}] = NotificationInbox.list_notifications(ctx.viewer)
     # Participation never auto-follows, and an unfollow does not mute mentions/direct replies.
-    assert length(Platform.list_notifications(ctx.peer)) == 1
+    assert length(NotificationInbox.list_notifications(ctx.peer)) == 1
     assert {:ok, _} = Projects.set_ideation_comment_following(ctx.viewer, ctx.project.id, detail.thread.id, false)
     assert {:ok, _} = Projects.set_ideation_comment_following(ctx.author, ctx.project.id, detail.thread.id, false)
     assert {:ok, _} = Projects.reply_to_comment_thread(ctx.peer, ctx.project.id, detail.thread.id, reply_attrs(detail))
 
-    assert ctx.author |> Platform.list_notifications() |> Enum.map(& &1.kind) |> Enum.sort() == [
+    assert ctx.author |> NotificationInbox.list_notifications() |> Enum.map(& &1.kind) |> Enum.sort() == [
              "comment_mention",
              "comment_reply"
            ]
 
-    assert length(Platform.list_notifications(ctx.viewer)) == 1
-    assert {:ok, %{thread: %{following: false}}} = Projects.get_comment_thread(ctx.peer, ctx.project.id, detail.thread.id)
+    assert length(NotificationInbox.list_notifications(ctx.viewer)) == 1
+
+    assert {:ok, %{thread: %{following: false}}} =
+             Projects.get_comment_thread(ctx.peer, ctx.project.id, detail.thread.id)
   end
 
   test "read watermarks are explicit, monotonic, scoped and do not acknowledge later replies", ctx do
@@ -134,17 +137,21 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
 
     assert {:error, :invalid_message} = Projects.mark_ideation_comment_read(ctx.viewer, ctx.project.id, id, "bad")
     assert {:error, :invalid_request} = Projects.set_ideation_comment_following(ctx.viewer, ctx.project.id, id, "true")
-    assert {:error, :not_found} = Projects.set_ideation_comment_following(user_scope_fixture(), ctx.project.id, id, true)
+
+    assert {:error, :not_found} =
+             Projects.set_ideation_comment_following(user_scope_fixture(), ctx.project.id, id, true)
+
     assert {:error, :not_found} = Projects.mark_ideation_comment_read(ctx.viewer, ctx.project.id + 1000, id, root_id)
   end
 
-  test "private mode hides notifications, counters, Hub previews and personal mutations, not session discussions", ctx do
+  test "private mode hides notifications, counters, Hub previews and personal mutations, not session discussions",
+       ctx do
     group = group_fixture(ctx)
     idea = idea_fixture(ctx, %{visibility: :shared})
     {:ok, session_thread} = discuss(ctx, nil, [ctx.peer.user.id])
     {:ok, idea_thread} = discuss(ctx, idea.id, [ctx.peer.user.id])
     {:ok, group_thread} = discuss(ctx, {:group, group.id}, [ctx.peer.user.id])
-    before_notifications = Platform.list_notifications(ctx.peer)
+    before_notifications = NotificationInbox.list_notifications(ctx.peer)
     assert length(before_notifications) == 3
     assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
 
@@ -158,11 +165,11 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
              Projects.list_ideation_conversations(ctx.peer, mentioned: true, search: "Discuss")
 
     assert visible.id == session_thread.thread.id
-    assert Platform.unread_notification_count(ctx.peer) == 1
-    assert [%{entity_id: message_id}] = Platform.list_notifications(ctx.peer)
+    assert NotificationInbox.unread_notification_count(ctx.peer) == 1
+    assert [%{entity_id: message_id}] = NotificationInbox.list_notifications(ctx.peer)
     assert message_id == hd(session_thread.messages).id
     hidden = Enum.find(before_notifications, &(&1.entity_id == hd(idea_thread.messages).id))
-    assert {:error, :not_found} = Platform.mark_notification_read(ctx.peer, hidden.id)
+    assert {:error, :not_found} = NotificationInbox.mark_notification_read(ctx.peer, hidden.id)
 
     for detail <- [idea_thread, group_thread] do
       assert {:error, :not_found} =
@@ -174,7 +181,7 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
       assert Projects.comment_destinations(ctx.peer, [hd(detail.messages).id]) == %{}
     end
 
-    assert {:ok, _} = Platform.mark_all_notifications_read(ctx.peer)
+    assert {:ok, _} = NotificationInbox.mark_all_notifications_read(ctx.peer)
     assert is_nil(Repo.get!(Storyarn.Platform.Notifications.Notification, hidden.id).read_at)
   end
 
@@ -227,13 +234,13 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
     assert {:error, :invalid_cursor} = Projects.list_ideation_conversations(ctx.peer, cursor: %{at: "bad", id: 1})
 
     Repo.delete_all(
-      from(m in Storyarn.Projects.ProjectMembership,
+      from(m in ProjectMembership,
         where: m.project_id == ^ctx.project.id and m.user_id == ^ctx.peer.user.id
       )
     )
 
     assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(ctx.peer, following: true)
-    assert Platform.list_notifications(ctx.peer) == []
+    assert NotificationInbox.list_notifications(ctx.peer) == []
   end
 
   test "message-page read markers never advance through a message outside the returned page", ctx do
@@ -275,6 +282,87 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
     assert {:error, _} = Projects.create_ideation_comment(inherited, project.id, ctx.session.id, nil, attrs([]))
   end
 
+  test "Hub pages batch source authorization regardless of size or membership type", ctx do
+    idea = idea_fixture(ctx, %{visibility: :shared, title: "Never expose the working title"})
+    group = group_fixture(ctx)
+    anchors = [nil, idea.id, {:group, group.id}]
+
+    for index <- 0..29 do
+      assert {:ok, _} = discuss(ctx, Enum.at(anchors, rem(index, 3)))
+    end
+
+    inherited = user_scope_fixture()
+    project = Repo.preload(ctx.project, :workspace)
+    Storyarn.WorkspacesFixtures.workspace_membership_fixture(project.workspace, inherited.user, "viewer")
+
+    for scope <- [ctx.peer, inherited] do
+      {one, single_count} = counted_hub_page(scope, limit: 1)
+      {page, page_count} = counted_hub_page(scope, limit: 30)
+
+      assert length(one.threads) == 1
+      assert length(page.threads) == 30
+      assert page_count == single_count
+      assert page_count <= 8
+
+      {panel_one, panel_single_count} = counted_source_page(ctx, scope, idea.id, limit: 1)
+      {panel_page, panel_page_count} = counted_source_page(ctx, scope, idea.id, limit: 30)
+      assert length(panel_one.threads) == 1
+      assert length(panel_page.threads) == 10
+      assert panel_page_count == panel_single_count
+      assert panel_page_count <= 16
+
+      labels = page.threads |> Enum.map(& &1.source.label) |> Enum.uniq() |> Enum.sort()
+      assert labels == Enum.sort([ctx.session.title, "Idea ##{idea.id}", "Group ##{group.id}"])
+      refute inspect(page) =~ "Never expose the working title"
+      refute inspect(page) =~ "Unmaterialized synthesis"
+    end
+  end
+
+  test "direct and inherited access do not duplicate Hub rows or cursor pages", ctx do
+    project = Repo.preload(ctx.project, :workspace)
+    Storyarn.WorkspacesFixtures.workspace_membership_fixture(project.workspace, ctx.peer.user, "viewer")
+    {:ok, first} = discuss(ctx)
+    {:ok, second} = discuss(ctx)
+
+    assert {:ok, %{threads: threads, next_cursor: nil}} = Projects.list_ideation_conversations(ctx.peer)
+    assert Enum.map(threads, & &1.id) == [second.thread.id, first.thread.id]
+
+    assert {:ok, %{threads: [page_one], next_cursor: cursor}} =
+             Projects.list_ideation_conversations(ctx.peer, limit: 1)
+
+    assert page_one.id == second.thread.id
+    assert cursor
+
+    assert {:ok, %{threads: [page_two], next_cursor: nil}} =
+             Projects.list_ideation_conversations(ctx.peer, limit: 1, cursor: cursor)
+
+    assert page_two.id == first.thread.id
+  end
+
+  test "Hub search matches replies only within readable candidate threads", ctx do
+    {:ok, matching} = discuss(ctx)
+    {:ok, _other} = discuss(ctx)
+    reply = matching |> reply_attrs() |> Map.put(:body, "Distinctive Hub search phrase")
+    assert {:ok, _} = Projects.reply_to_comment_thread(ctx.peer, ctx.project.id, matching.thread.id, reply)
+
+    outsider = ideation_fixture()
+    {:ok, outside_thread} = discuss(outsider)
+    outside_reply = outside_thread |> reply_attrs() |> Map.put(:body, "Distinctive Hub search phrase")
+
+    assert {:ok, _} =
+             Projects.reply_to_comment_thread(
+               outsider.peer,
+               outsider.project.id,
+               outside_thread.thread.id,
+               outside_reply
+             )
+
+    assert {:ok, %{threads: [thread], next_cursor: nil}} =
+             Projects.list_ideation_conversations(ctx.peer, search: "DISTINCTIVE hub", limit: 1)
+
+    assert thread.id == matching.thread.id
+  end
+
   test "a source hidden between authorization and serialization never falls back to a historical preview", ctx do
     idea = idea_fixture(ctx, %{visibility: :shared})
     {:ok, detail} = discuss(ctx, idea.id)
@@ -302,6 +390,28 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
     end
   end
 
+  test "the Hub final batch rechecks membership after previews are loaded", ctx do
+    {:ok, _detail} = discuss(ctx)
+    marker = make_ref()
+    Process.put(marker, true)
+
+    :ok =
+      :telemetry.attach(
+        marker,
+        [:storyarn, :repo, :query],
+        &revoke_access_during_read/4,
+        {self(), marker, ctx.project.id, ctx.peer.user.id}
+      )
+
+    try do
+      assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(ctx.peer)
+      refute Process.get(marker), "membership must be revoked inside the read"
+    after
+      :telemetry.detach(marker)
+      Process.delete(marker)
+    end
+  end
+
   defp assert_hidden_projection(:detail, ctx, _idea_id, thread_id) do
     assert {:error, :not_found} = Projects.get_comment_thread(ctx.peer, ctx.project.id, thread_id)
   end
@@ -315,9 +425,39 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
     assert {:ok, %{threads: []}} = Projects.list_ideation_conversations(ctx.peer)
   end
 
+  defp counted_hub_page(scope, opts), do: counted_page(fn -> Projects.list_ideation_conversations(scope, opts) end)
+
+  defp counted_source_page(ctx, scope, anchor, opts) do
+    counted_page(fn -> Projects.list_ideation_comment_threads(scope, ctx.project.id, ctx.session.id, anchor, opts) end)
+  end
+
+  defp counted_page(read) do
+    marker = make_ref()
+    Process.put(marker, 0)
+    :ok = :telemetry.attach(marker, [:storyarn, :repo, :query], &count_query/4, {self(), marker})
+
+    try do
+      assert {:ok, page} = read.()
+      {page, Process.get(marker)}
+    after
+      :telemetry.detach(marker)
+      Process.delete(marker)
+    end
+  end
+
+  defp count_query(_event, _measurements, _metadata, {pid, marker}) do
+    if self() == pid, do: Process.put(marker, Process.get(marker) + 1)
+  end
+
   defp hide_source_during_read(_event, _measurements, %{query: query}, {pid, marker, session_id}) do
     if self() == pid and String.contains?(query, ~s(FROM "comment_messages")) and Process.delete(marker) do
       set_source_private(session_id, true)
+    end
+  end
+
+  defp revoke_access_during_read(_event, _measurements, %{query: query}, {pid, marker, project_id, user_id}) do
+    if self() == pid and String.contains?(query, ~s(FROM "comment_messages")) and Process.delete(marker) do
+      Repo.delete_all(from(m in ProjectMembership, where: m.project_id == ^project_id and m.user_id == ^user_id))
     end
   end
 
