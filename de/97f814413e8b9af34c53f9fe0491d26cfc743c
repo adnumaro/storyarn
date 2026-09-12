@@ -1,0 +1,19 @@
+test/fixtures/vite_manifest.json
+  s_194a5688996098::t_15b91258e3b3d1 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "de97f814413e8b9af34c53f9fe0491d26cfc743c",
+  "prompts": {},
+  "sessions": {
+    "s_194a5688996098": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a095dc-b2df-76f2-a3ae-9990c699347a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
