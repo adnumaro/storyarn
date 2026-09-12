@@ -1,0 +1,25 @@
+.codex/bin/storyarn-test
+  s_93251447e419b7::t_01c5dc3a33e623 1-192
+.codex/config.toml
+  s_93251447e419b7::t_ba09d59c00cbb9 1
+.codex/rules/storyarn-tests.rules
+  s_93251447e419b7::t_cd311c4192f4f6 1-18
+AGENTS.md
+  s_93251447e419b7::t_676f28b6b23ee3 486-502
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7da6d10fbe7403a645493c5fc0aaec26e6021050",
+  "prompts": {},
+  "sessions": {
+    "s_93251447e419b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09690-e161-7403-be42-d1df684f0dc6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
