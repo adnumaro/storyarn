@@ -497,6 +497,11 @@ describe("Scene canvas comments", () => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Alt", bubbles: true }));
     await nextTick();
     expect(wrapper.get("#scene-comment-snap-preview").text()).toContain("Free position");
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "PageDown", altKey: true, bubbles: true }),
+    );
+    await nextTick();
+    expect(wrapper.get("#scene-comment-snap-preview").text()).toContain("Free position");
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     pointer(window, "pointerup", 510, 390);
     await nextTick();
@@ -515,7 +520,45 @@ describe("Scene canvas comments", () => {
     );
   });
 
-  it("cycles overlapping contexts by keyboard and persists the chosen one on Enter", async () => {
+  it.each(["]", "PageDown"])(
+    "cycles overlapping contexts by keyboard and persists the chosen one on Enter using %s",
+    async (cycleKey) => {
+      const overlap: SceneCommentTargets = {
+        ...targets,
+        annotations: [
+          { id: 80, x: 180, y: 150, width: 40, height: 30, text: "Lighting note", layerId: null },
+        ],
+      };
+      const nearby = { ...thread, position: { x: 20, y: 20 } };
+      const { wrapper } = setup({}, [nearby], null, true, overlap);
+      await nextTick();
+      const pin = wrapper.get("#scene-comment-pin-12");
+      await pin.trigger("keydown", { key: "ArrowRight" });
+      const first = wrapper.get("#scene-comment-snap-preview").text();
+      const cycleButton = wrapper.get("#scene-comment-snap-preview button");
+      await cycleButton.trigger("click");
+      expect(wrapper.get("#scene-comment-snap-preview").text()).not.toBe(first);
+      await pin.trigger("keydown", { key: "PageUp" });
+      expect(wrapper.get("#scene-comment-snap-preview").text()).toBe(first);
+      await pin.trigger("keydown", { key: cycleKey });
+      const second = wrapper.get("#scene-comment-snap-preview").text();
+      expect(second).not.toBe(first);
+      expect([first, second].some((text) => text.includes("Northern gate"))).toBe(true);
+      expect([first, second].some((text) => text.includes("Lighting note"))).toBe(true);
+      expect(live.pushEvent).not.toHaveBeenCalled();
+      await pin.trigger("keydown", { key: "Enter" });
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "comments_move",
+        expect.objectContaining({
+          context: expect.objectContaining({ id: second.includes("Lighting note") ? "80" : "42" }),
+        }),
+        expect.any(Function),
+        expect.any(Function),
+      );
+    },
+  );
+
+  it("cycles both ways during pointer capture without intercepting focus or text editing", async () => {
     const overlap: SceneCommentTargets = {
       ...targets,
       annotations: [
@@ -523,18 +566,42 @@ describe("Scene canvas comments", () => {
       ],
     };
     const nearby = { ...thread, position: { x: 20, y: 20 } };
-    const { wrapper } = setup({}, [nearby], null, true, overlap);
+    const { wrapper, container } = setup({}, [nearby], null, true, overlap);
     await nextTick();
     const pin = wrapper.get("#scene-comment-pin-12");
-    await pin.trigger("keydown", { key: "ArrowRight" });
+    const capture = vi.fn();
+    Object.defineProperty(pin.element, "setPointerCapture", { value: capture, configurable: true });
+    pointer(pin.element, "pointerdown", 510, 390);
+    pointer(window, "pointermove", 520, 390);
+    await nextTick();
+    expect(capture).toHaveBeenCalled();
     const first = wrapper.get("#scene-comment-snap-preview").text();
-    await pin.trigger("keydown", { key: "]" });
+    expect(wrapper.find("#scene-comment-snap-preview button").exists()).toBe(false);
+    expect(first).toContain("Page Up/Page Down");
+
+    const input = document.createElement("textarea");
+    container.append(input);
+    const editing = new KeyboardEvent("keydown", {
+      key: "PageDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(editing);
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    pin.element.dispatchEvent(tab);
+    await nextTick();
+    expect(editing.defaultPrevented).toBe(false);
+    expect(tab.defaultPrevented).toBe(false);
+    expect(wrapper.get("#scene-comment-snap-preview").text()).toBe(first);
+
+    await pin.trigger("keydown", { key: "PageDown" });
     const second = wrapper.get("#scene-comment-snap-preview").text();
     expect(second).not.toBe(first);
-    expect([first, second].some((text) => text.includes("Northern gate"))).toBe(true);
-    expect([first, second].some((text) => text.includes("Lighting note"))).toBe(true);
+    await pin.trigger("keydown", { key: "PageUp" });
+    expect(wrapper.get("#scene-comment-snap-preview").text()).toBe(first);
+    await pin.trigger("keydown", { key: "PageDown" });
     expect(live.pushEvent).not.toHaveBeenCalled();
-    await pin.trigger("keydown", { key: "Enter" });
+    pointer(window, "pointerup", 520, 390);
     expect(live.pushEvent).toHaveBeenCalledWith(
       "comments_move",
       expect.objectContaining({

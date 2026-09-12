@@ -54,6 +54,7 @@ const {
   panelState,
   magnetism,
   moving,
+  keyboardDragging,
   dragPreview,
   snapOutline,
   isPending,
@@ -257,7 +258,7 @@ onUnmounted(() => popupObserver?.disconnect());
           : $t("scenes.comments.free_position")
       }}</span>
       <button
-        v-if="(dragPreview?.candidates.length ?? 0) > 1"
+        v-if="keyboardDragging && (dragPreview?.candidates.length ?? 0) > 1"
         type="button"
         class="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
         @pointerdown.stop.prevent

@@ -16,6 +16,7 @@ defmodule Storyarn.Repo.Migrations.CaptureSceneCommentContextPositions do
       SET position_x = GREATEST(0, LEAST(100, origin_x + context_offset_x)),
           position_y = GREATEST(0, LEAST(100, origin_y + context_offset_y))
       WHERE source_type = 'scene_canvas' AND context_type = target_type
+        AND scene_canvas_id = target_scene_id
         AND context_id = target_id::text AND container_id = target_scene_id
         AND context_inserted_at = target_inserted_at
         AND context_offset_x IS NOT NULL AND context_offset_y IS NOT NULL

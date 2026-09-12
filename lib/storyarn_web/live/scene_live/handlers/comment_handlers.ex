@@ -133,7 +133,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   def refresh(%{assigns: %{compact: true}} = socket), do: socket
   def refresh(%{assigns: %{scene: nil}} = socket), do: socket
 
-  def refresh(socket) do
+  def refresh(socket), do: refresh(socket, :revalidate_draft)
+
+  defp refresh(socket, draft_validation) do
     %{current_scope: scope, project: project, scene: scene, comments: state} = socket.assigns
 
     case Projects.list_scene_comment_pins(scope, project.id, scene.id) do
@@ -145,19 +147,23 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
           |> assign(:comment_pins, pins)
           |> put_state(%{canComment: can_comment, placing: can_comment && state.placing})
 
-        refresh_open(socket, state)
+        refresh_open(socket, state, draft_validation)
 
       _error ->
         clear(socket)
     end
   end
 
-  defp refresh_open(socket, %{open: false}), do: socket
+  defp refresh_open(socket, %{open: false}, _draft_validation), do: socket
 
-  defp refresh_open(socket, state) do
-    socket = socket |> load_threads() |> load_members()
+  defp refresh_open(socket, state, draft_validation) do
+    socket = socket |> load_visible_threads() |> load_members()
 
-    if state.thread, do: load_detail(socket, state.thread.id), else: refresh_draft_context(socket)
+    cond do
+      state.thread -> load_detail(socket, state.thread.id)
+      draft_validation == :validated_draft -> socket
+      true -> refresh_draft_context(socket)
+    end
   end
 
   defp refresh_draft_context(%{assigns: %{comments: %{draftContext: nil}}} = socket), do: socket
@@ -214,7 +220,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
           messages: [],
           messageNextCursor: nil
         })
-        |> refresh()
+        |> refresh(:validated_draft)
 
       state = socket.assigns.comments
       draft = %{id: state.draftId, position: state.draftPosition, context: state.draftContext}
@@ -308,11 +314,16 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
     socket
     |> assign(:right_panel, nil)
     |> put_state(%{open: true, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
-    |> load_threads()
+    |> load_visible_threads()
     |> load_members()
     |> load_detail(thread_id)
     |> focus_selected_thread()
   end
+
+  # Canvas popovers render one conversation or draft. Opening the panel reloads
+  # its list, while permission, mention and selected-context checks stay fresh.
+  defp load_visible_threads(%{assigns: %{comments: %{presentation: "canvas"}}} = socket), do: socket
+  defp load_visible_threads(socket), do: load_threads(socket)
 
   defp load_threads(socket, cursor \\ nil) do
     %{current_scope: scope, project: project, scene: scene, comments: state} = socket.assigns

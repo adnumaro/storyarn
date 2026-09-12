@@ -191,6 +191,69 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
     assert panel(reloaded)["thread"]["context"] == thread["context"]
   end
 
+  test "canvas draft placement validates its context once without loading the hidden thread list", context do
+    pin = pin_fixture(context.scene)
+    view = open_scene(context)
+
+    queries =
+      capture_queries(view, fn ->
+        render_hook(view, "comments_place", %{x: 25, y: 35, context: %{type: "scene_pin", id: pin.id}})
+      end)
+
+    assert Enum.count(queries, &(&1.source == "scene_pins")) == 1
+    assert Enum.count(queries, &(&1.source == "comment_threads")) == 1
+    assert panel(view)["draftContext"]["id"] == to_string(pin.id)
+
+    refresh_queries = capture_queries(view, fn -> render_hook(view, "comments_refresh", %{}) end)
+    assert Enum.count(refresh_queries, &(&1.source == "scene_pins")) == 1
+    assert Enum.count(refresh_queries, &(&1.source == "comment_threads")) == 1
+  end
+
+  test "canvas refresh keeps mention membership fresh and opening the panel loads its threads", context do
+    detail = create_comment(context)
+    view = open_scene(context)
+    render_hook(view, "comments_place", %{x: 25, y: 35})
+    assert panel(view)["threads"] == []
+
+    collaborator = user_fixture()
+    membership = membership_fixture(context.project, collaborator)
+    render_hook(view, "comments_refresh", %{})
+    assert Enum.any?(panel(view)["members"], &(&1["id"] == collaborator.id))
+    assert panel(view)["threads"] == []
+
+    Repo.delete!(membership)
+    render_hook(view, "comments_refresh", %{})
+    refute Enum.any?(panel(view)["members"], &(&1["id"] == collaborator.id))
+
+    render_hook(view, "comments_open", %{})
+    assert [%{"id" => thread_id}] = panel(view)["threads"]
+    assert thread_id == detail.thread.id
+  end
+
+  test "refresh removes a canvas draft and its data when the editor loses project access", context do
+    editor = user_fixture()
+    membership = membership_fixture(context.project, editor)
+    pin = pin_fixture(context.scene)
+    editor_context = %{context | conn: log_in_user(build_conn(), editor)}
+    view = open_scene(editor_context)
+    render_hook(view, "comments_place", %{x: 25, y: 35, context: %{type: "scene_pin", id: pin.id}})
+    assert panel(view)["draftContext"]
+
+    Repo.delete!(membership)
+    render_hook(view, "comments_refresh", %{})
+
+    assert %{
+             "draftPosition" => nil,
+             "draftContext" => nil,
+             "draftId" => nil,
+             "threads" => [],
+             "members" => [],
+             "canComment" => false
+           } = panel(view)
+
+    assert canvas(view)["commentPins"] == []
+  end
+
   test "live element deletion detaches a draft without replacing its composer or position", context do
     from_pin = pin_fixture(context.scene)
     to_pin = pin_fixture(context.scene)
@@ -477,6 +540,30 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
       })
 
     detail
+  end
+
+  defp capture_queries(view, fun) do
+    marker = make_ref()
+    :ok = :telemetry.attach(marker, [:storyarn, :repo, :query], &record_query/4, {self(), view.pid, marker})
+
+    try do
+      fun.()
+      drain_queries(marker, [])
+    after
+      :telemetry.detach(marker)
+    end
+  end
+
+  defp record_query(_event, _measurements, metadata, {recipient, live_view, marker}) do
+    if self() == live_view, do: send(recipient, {marker, metadata})
+  end
+
+  defp drain_queries(marker, queries) do
+    receive do
+      {^marker, metadata} -> drain_queries(marker, [metadata | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
   end
 
   defp colliding_sources(project) do

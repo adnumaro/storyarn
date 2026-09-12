@@ -931,27 +931,27 @@ msgstr ""
 msgid "The End"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:474
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:485
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:483
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:494
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:487
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:498
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:477
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:488
 #, elixir-autogen, elixir-format
 msgid "The comment context is no longer available. Review the pin's position and try again."
-msgstr "The comment context is no longer available. Review the pin's position and try again."
+msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:480
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:491
 #, elixir-autogen, elixir-format
 msgid "The selected comment context is invalid. Move the pin and try again."
-msgstr "The selected comment context is invalid. Move the pin and try again."
+msgstr ""

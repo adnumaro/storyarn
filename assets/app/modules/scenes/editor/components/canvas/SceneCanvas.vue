@@ -286,6 +286,14 @@ const {
 
 const selectionRefs = { selectedType, selectedId, isSelectMode };
 
+function hasPinConnections(pinId: number | string): boolean {
+  return connectionItems.value.some(
+    (connection) =>
+      String(connection.fromPinId) === String(pinId) ||
+      String(connection.toPinId) === String(pinId),
+  );
+}
+
 const {
   isDragging,
   dragOverrides,
@@ -300,7 +308,7 @@ const {
     });
   },
   pixelToPercent,
-  shouldTrackDrag: (type) => type === "pin",
+  shouldTrackDrag: (type, id) => type === "pin" && hasPinConnections(id),
 });
 
 function onDragStart(type: string, id: number | string, event: KonvaEventObject<DragEvent>) {

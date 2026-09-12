@@ -931,27 +931,27 @@ msgstr "Sesión de depuración iniciada"
 msgid "The End"
 msgstr "Fin"
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:474
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:485
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr "Esta conversación ha cambiado. Revisa el estado más reciente e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:483
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:494
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr "Esta conversación o su origen ya no está disponible."
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:487
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:498
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr "No se pudo guardar el comentario. Revisa el texto y las menciones seleccionadas."
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:477
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:488
 #, elixir-autogen, elixir-format
 msgid "The comment context is no longer available. Review the pin's position and try again."
 msgstr "El contexto del comentario ya no está disponible. Revisa la posición del pin e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:480
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:491
 #, elixir-autogen, elixir-format
 msgid "The selected comment context is invalid. Move the pin and try again."
 msgstr "El contexto seleccionado para el comentario no es válido. Mueve el pin e inténtalo de nuevo."

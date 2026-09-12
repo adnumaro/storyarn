@@ -14,6 +14,7 @@ import {
   type CommentMagneticPreview,
 } from "@components/comments/commentMagnetism";
 import type { CommentContextReference } from "@components/comments/types";
+import { commentContextCycleDirection } from "@components/comments/commentKeyboard";
 import {
   sceneCommentSnapAdapter,
   resolveSceneCommentPosition,
@@ -215,6 +216,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     drag.value ? null : pins.value.find((pin) => pin.thread.id === hoverId.value),
   );
   const moving = computed(() => Boolean(drag.value?.moved));
+  const keyboardDragging = computed(() => drag.value?.pointerId === null);
   const isPending = (id: number) => pendingMoves.value.has(id);
   const snapOutline = computed(() => {
     const geometry = dragPreview.value?.candidate?.geometry;
@@ -430,8 +432,9 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
       altHeld = true;
       updatePreview();
     }
-    if (event.key === "[" || event.key === "]") {
-      cycleContext(event.key === "]" ? 1 : -1);
+    const cycleDirection = commentContextCycleDirection(event);
+    if (cycleDirection != null) {
+      cycleContext(cycleDirection);
       return true;
     }
     if (event.key === "Enter" && drag.value.pointerId == null) {
@@ -870,6 +873,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     panelState,
     magnetism,
     moving,
+    keyboardDragging,
     dragPreview,
     snapOutline,
     isPending,
