@@ -1,0 +1,90 @@
+assets/app/modules/flows/editor/components/chrome/FlowCanvasComments.vue
+  s_11667293ceac35::t_22f8ce932a6dfc 3,25,29-30,59,73,96-101,106-111
+  s_11667293ceac35::t_737302b078e83e 12-19,102-105
+  s_11667293ceac35::t_94b45af842836b 112-114,265,276
+assets/app/modules/flows/editor/composables/useFlowCommentDraftRecovery.ts
+  s_11667293ceac35::t_59d71eda0f0127 19-31,97,110-115
+  s_11667293ceac35::t_737302b078e83e 2-6,40-47,59-61,67-78,94-95,106-109,116-126
+  s_11667293ceac35::t_8cd211310a3564 1,7-18,32-39,48-58,62-66,79-93,96,98-105,127-129
+  s_11667293ceac35::t_a0589cbb0c5cd7 130-136
+lib/storyarn/projects.ex
+  s_11667293ceac35::t_44afc0515b1f7c 1020
+  s_11667293ceac35::t_371ca7efc32467 1021-1024
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_11667293ceac35::t_5b1bdec28e29ff 331-375
+  s_11667293ceac35::t_2a5539f6223559 309-312,376-411,413-428,431-469,471-507,509-523,525-532,560
+  s_11667293ceac35::t_3177f6974c7808 429-430
+  s_11667293ceac35::t_5a153136d05b22 470,508,524,534-548,550-559
+  s_11667293ceac35::t_9edee9abe11fa3 412,533,549
+  s_11667293ceac35::t_fcdb15192e2bd3 561
+lib/storyarn/projects/comments/comments.ex
+  s_11667293ceac35::t_371ca7efc32467 116-129
+assets/app/test/modules/flows/editor/lib/comment-snap-adapter.test.ts
+  s_11667293ceac35::t_733a25c65fe2ce 1-257
+  s_11667293ceac35::t_b720ddbe983db6 258-269
+test/storyarn/projects/comments/contextual_comments_test.exs
+  s_11667293ceac35::t_44afc0515b1f7c 244-250,252-276
+  s_11667293ceac35::t_47f82dcbed7d15 251
+assets/app/components/comments/commentDraftStorage.ts
+  s_11667293ceac35::t_59d71eda0f0127 25,37-47,85
+  s_11667293ceac35::t_b7d0a0792b78c5 4,16
+  s_11667293ceac35::t_3594afb1a1d18e 88-89
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_11667293ceac35::t_371ca7efc32467 290
+assets/app/test/components/comments/commentDraftStorage.test.ts
+  s_11667293ceac35::t_f2bfe474ece9c5 9-27,37
+  s_11667293ceac35::t_d03a2bcd7a7b5f 28-36,38-40
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_e12c7f22b350d5 447
+  s_11667293ceac35::t_371ca7efc32467 438-444,511-512
+  s_11667293ceac35::t_415e5ec1d1b749 510
+assets/app/modules/flows/editor/lib/comment-geometry.ts
+  s_11667293ceac35::t_56f30019a57b84 58
+  s_11667293ceac35::t_66ba78e99aa4ea 2,18-21,39,47-50,53-57,59-63
+assets/app/modules/flows/editor/lib/context_menu_items.ts
+  s_11667293ceac35::t_b7d0a0792b78c5 60-61,72-74,83
+  s_11667293ceac35::t_47a6c73980efd9 63,75-82
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_11667293ceac35::t_44afc0515b1f7c 250-280,394-490
+  s_11667293ceac35::t_663e5283f3e459 491
+assets/app/modules/flows/editor/lib/comment-snap-adapter.ts
+  s_11667293ceac35::t_c4813f9ae7ee6f 5-20,24,31,80-98,100-120
+  s_11667293ceac35::t_56f30019a57b84 99
+assets/app/modules/flows/editor/components/panels/FlowCommentsPanel.vue
+  s_11667293ceac35::t_b7d0a0792b78c5 7-10
+  s_11667293ceac35::t_a43bb1657ae6f3 11,14,21-26
+assets/app/modules/flows/editor/composables/useCanvasComments.ts
+  s_11667293ceac35::t_59d71eda0f0127 492,559-570,634-638
+  s_11667293ceac35::t_8cd211310a3564 21,143,161-162,164-167,170-171
+  s_11667293ceac35::t_737302b078e83e 113,129,168-169,554-555,557-558,639
+  s_11667293ceac35::t_cceda268d558d5 19,30,136-140,184,344,431,489,493,514,553,556
+  s_11667293ceac35::t_6237795dd17d44 640-647,664,671
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_11667293ceac35::t_47a6c73980efd9 892-1050,1073
+  s_11667293ceac35::t_de190689a0e75b 1077-1079,1085-1090
+  s_11667293ceac35::t_f2bfe474ece9c5 5,103,160,170,594-621,1076,1080-1081
+assets/app/live/flow/show/FlowCanvas.vue
+  s_11667293ceac35::t_b7d0a0792b78c5 142
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_cd33e78a7f95d7 467,472,477
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_3b87bdcffde974 467,472,477
+priv/gettext/flows.pot
+  s_11667293ceac35::t_08bfbdefaae875 467,472,477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "79762bb5288320779e9685b18a0c19ffa1809c93",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
