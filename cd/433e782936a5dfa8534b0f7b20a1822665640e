@@ -1,0 +1,63 @@
+lib/storyarn/projects/comments/queries/queries.ex
+  s_ad18daab72f501::t_a3a2fa3d27b294 144-145
+lib/storyarn/projects/comments/rules/context.ex
+  s_ad18daab72f501::t_a3a2fa3d27b294 108-110,117,132-135,179-180,195-196
+lib/storyarn/platform/collaboration/collaboration.ex
+  s_ad18daab72f501::t_1ab6c5781b1010 280-282
+lib/storyarn/projects/comments/README.md
+  s_ad18daab72f501::t_2500986e49d584 25-27,45-51
+lib/storyarn_web/live/comment_live/index.ex
+  s_ad18daab72f501::t_a7a47deef27bc6 12-13,30-33,62,111,118,134,139,142,144-145,148,151-156,160,165-205,215,226,232,239,244,443
+  s_ad18daab72f501::t_a4eb3000aa1888 214,227,231,283-297,314-315,323,353-355,440,442
+  s_ad18daab72f501::t_1386f80533f5a3 206-213,216-225,228-230,233-238,240-243,245-246
+lib/storyarn/projects/access/access.ex
+  s_ad18daab72f501::t_1ab6c5781b1010 62-73
+lib/storyarn/projects.ex
+  s_ad18daab72f501::t_1ab6c5781b1010 826-833
+lib/storyarn/workspaces.ex
+  s_ad18daab72f501::t_1ab6c5781b1010 281-288
+  s_ad18daab72f501::t_9059badc5bbfba 289-290
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_ad18daab72f501::t_1ab6c5781b1010 203-204
+  s_ad18daab72f501::t_6a88ef1c1244c5 342,344,376,379,419
+lib/storyarn/workspaces/memberships/memberships.ex
+  s_ad18daab72f501::t_1ab6c5781b1010 66-77
+test/storyarn/projects/comments/conversations_test.exs
+  s_ad18daab72f501::t_37e32bc5ea5561 12-13,207,210-212,214-217,219-253,255-265,363-364,386-401,407,415-458
+  s_ad18daab72f501::t_448cf4db56a4c5 208-209,213,218,254
+  s_ad18daab72f501::t_61bda28f6b0af5 459
+lib/storyarn/projects/comments/queries/conversations.ex
+  s_ad18daab72f501::t_a3a2fa3d27b294 133-135,192-198,208,213-214,216-221
+  s_ad18daab72f501::t_7a65411cbb79cd 222-228
+lib/storyarn/platform/discovery/dashboard_cache.ex
+  s_ad18daab72f501::t_1ab6c5781b1010 90-94
+test/storyarn/platform/collaboration/collaboration_test.exs
+  s_ad18daab72f501::t_1ab6c5781b1010 90-93
+lib/storyarn/projects/comments/comments.ex
+  s_ad18daab72f501::t_a3a2fa3d27b294 89
+test/storyarn_web/live/comment_live/index_test.exs
+  s_ad18daab72f501::t_afce99fc888c08 95,107,151-154,163-179,198,242-243,321,358,366-483,514-543,554
+  s_ad18daab72f501::t_10206b4e9e4845 544-553,555-559
+priv/gettext/default.pot
+  s_ad18daab72f501::t_f32a9da03a93ad 154,159,164,169,174
+priv/gettext/en/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_af9f11158d2e55 154,157,159,162,164,167,169,172,174,177
+priv/gettext/es/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_33059757703eb2 154,159,164,169,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cd433e782936a5dfa8534b0f7b20a1822665640e",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
