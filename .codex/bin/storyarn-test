@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""Run a fixed Storyarn validation command from a verified project checkout."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from typing import Optional
+
+
+EXPECTED_COMMON_DIR = Path("/Users/adnumaro/Work/Personal/Code/storyarn/.git")
+COMMANDS = {
+    "elixir": ("mix", "test"),
+    "e2e": ("mix", "test.e2e"),
+    "precommit": ("mix", "precommit"),
+    "js": ("pnpm", "--config.verify-deps-before-run=false", "exec", "vitest", "run"),
+    "typecheck": ("pnpm", "--config.verify-deps-before-run=false", "run", "typecheck"),
+    "arch": ("pnpm", "--config.verify-deps-before-run=false", "run", "arch"),
+}
+MIX_MODES = frozenset(("elixir", "e2e", "precommit"))
+
+
+class ValidationError(Exception):
+    """A command or working directory does not meet the launcher's scope."""
+
+
+@dataclass(frozen=True)
+class RunPlan:
+    command: tuple[str, ...]
+    cwd: Path
+    checkout: Path
+    environment: dict[str, str]
+    log: Optional[Path]
+    dry_run: bool
+
+
+def partition_value(value: str) -> str:
+    if re.fullmatch(r"[A-Za-z0-9_]{1,48}", value) is None:
+        raise argparse.ArgumentTypeError("partition must contain 1–48 ASCII letters, digits or underscores")
+    return value
+
+
+def port_value(value: str) -> int:
+    try:
+        port = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("port must be an integer from 1024 to 65535") from error
+    if not 1024 <= port <= 65535:
+        raise argparse.ArgumentTypeError("port must be an integer from 1024 to 65535")
+    return port
+
+
+def parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        allow_abbrev=False,
+        epilog="Place launcher options before the mode. Everything after the mode "
+        "is passed unchanged to the selected command.",
+    )
+    parser.add_argument("mode", choices=tuple(COMMANDS))
+    parser.add_argument("--partition", type=partition_value)
+    parser.add_argument("--port", type=port_value)
+    parser.add_argument("--log", type=Path, help="append combined output to a file inside this checkout")
+    parser.add_argument("--dry-run", action="store_true", help="print the command and scoped environment without running it")
+    parser.add_argument("arguments", nargs=argparse.REMAINDER)
+    options = parser.parse_args(argv)
+    return options, options.arguments
+
+
+def within(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
+
+
+def verify_checkout(cwd: Path) -> Path:
+    cwd = cwd.resolve()
+    if any(within(cwd, root) for root in (Path("/tmp"), Path("/private/tmp"))):
+        raise ValidationError("temporary checkouts under /tmp or /private/tmp are not allowed")
+
+    # Ignore Git environment overrides when identifying the checkout. In
+    # particular, GIT_DIR and GIT_WORK_TREE must not authorize an unrelated cwd.
+    git_environment = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    result = subprocess.run(
+        ["git", "-C", str(cwd), "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"],
+        env=git_environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    lines = result.stdout.splitlines()
+    if result.returncode != 0 or len(lines) != 2:
+        raise ValidationError("the current directory must belong to a Storyarn Git checkout")
+    common_dir, checkout = (Path(line).resolve() for line in lines)
+    if common_dir != EXPECTED_COMMON_DIR.resolve():
+        raise ValidationError("the Git common directory is not the authorized Storyarn repository")
+    if not within(cwd, checkout):
+        raise ValidationError("the current directory is outside the reported checkout")
+    return checkout
+
+
+def build_plan(argv: list[str], cwd: Optional[Path] = None) -> RunPlan:
+    options, remaining = parse_args(argv)
+    cwd = (cwd or Path.cwd()).resolve()
+    checkout = verify_checkout(cwd)
+    fingerprint = hashlib.sha256(os.fsencode(cwd)).hexdigest()
+    partition = options.partition or ("codex_" + fingerprint[:16])
+    port = options.port or (20000 + int(fingerprint[:8], 16) % 30000)
+
+    environment = {
+        "MIX_TEST_PARTITION": partition,
+        "MIX_TEST_PORT": str(port),
+    }
+    if options.mode in MIX_MODES:
+        environment["MIX_ENV"] = "test"
+
+    log = None
+    if options.log is not None:
+        log = (cwd / options.log).resolve()
+        if not within(log, checkout) or log == checkout:
+            raise ValidationError("the log file must be inside the current checkout")
+        if log.exists() and not log.is_file():
+            raise ValidationError("the log destination must be a regular file")
+
+    return RunPlan(
+        command=COMMANDS[options.mode] + tuple(remaining),
+        cwd=cwd,
+        checkout=checkout,
+        environment=environment,
+        log=log,
+        dry_run=options.dry_run,
+    )
+
+
+def execute(plan: RunPlan) -> int:
+    if plan.dry_run:
+        print(json.dumps({
+            "command": list(plan.command),
+            "cwd": str(plan.cwd),
+            "checkout": str(plan.checkout),
+            "environment": plan.environment,
+            "log": str(plan.log) if plan.log else None,
+        }, indent=2))
+        return 0
+
+    environment = dict(os.environ)
+    environment.update(plan.environment)
+    if plan.log is None:
+        return subprocess.run(plan.command, cwd=plan.cwd, env=environment, check=False).returncode
+
+    # Revalidate before creating directories or opening the file, including
+    # existing symlinks in its parent path.
+    log = plan.log.resolve()
+    if not within(log, plan.checkout):
+        raise ValidationError("the log destination now resolves outside the checkout")
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("ab") as output:
+        with subprocess.Popen(
+            plan.command, cwd=plan.cwd, env=environment,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        ) as process:
+            assert process.stdout is not None
+            while True:
+                chunk = process.stdout.read1(65536)
+                if not chunk:
+                    break
+                sys.stdout.buffer.write(chunk)
+                sys.stdout.buffer.flush()
+                output.write(chunk)
+                output.flush()
+            return process.wait()
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    try:
+        code = execute(build_plan(sys.argv[1:] if argv is None else argv))
+        return code if code >= 0 else 128 - code
+    except (ValidationError, OSError) as error:
+        print("storyarn-test: " + str(error), file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        return 130
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

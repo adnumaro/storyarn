@@ -1,0 +1,18 @@
+# Storyarn test execution explicitly authorized by the user on 2026-09-12.
+# The fixed launcher accepts only verification tasks and checks the repository.
+prefix_rule(
+    pattern = ["/Users/adnumaro/Work/Personal/Code/storyarn/.codex/bin/storyarn-test"],
+    decision = "allow",
+    justification = "Permanent user authorization for Storyarn tests and their local verification steps, including isolated databases and browser ports.",
+    match = [
+        "/Users/adnumaro/Work/Personal/Code/storyarn/.codex/bin/storyarn-test elixir test/storyarn/ideation/contextual_sessions_test.exs",
+        "/Users/adnumaro/Work/Personal/Code/storyarn/.codex/bin/storyarn-test --partition eng191_full --port 4131 --log test/tmp/check.log precommit",
+        "/Users/adnumaro/Work/Personal/Code/storyarn/.codex/bin/storyarn-test e2e",
+        "/Users/adnumaro/Work/Personal/Code/storyarn/.codex/bin/storyarn-test js assets/app/test/live/ideation/ExplorationLauncher.test.ts",
+    ],
+    not_match = [
+        "python3 arbitrary-script.py",
+        "env MIX_TEST_PARTITION=anything mix run arbitrary-script.exs",
+        "sh -c arbitrary-command",
+    ],
+)

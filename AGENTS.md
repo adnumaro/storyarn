@@ -483,3 +483,20 @@ Before changing the flow editor:
 5. Run `mix compile --warnings-as-errors`, then `mix test`
 6. Run `pnpm run typecheck` and `pnpm arch` for any frontend change
 7. Run `mix convention.check` before you claim you are done
+
+## Storyarn test permissions
+
+The user has permanently authorized running Storyarn tests and verification. Do not ask for confirmation again for these operations.
+
+Use the installed `/Users/adnumaro/Work/Personal/Code/storyarn/.codex/bin/storyarn-test` launcher from the Storyarn checkout or a worktree of that repository. Its exact executable is allowlisted in `/Users/adnumaro/Work/Personal/Code/storyarn/.codex/rules/storyarn-tests.rules`.
+
+- `elixir [mix test arguments]`, `e2e [test arguments]`, `precommit`
+- `js [Vitest arguments]`, `typecheck`, `arch`
+- Place launcher options before the mode: `--partition NAME`, `--port NUMBER`, `--log test/tmp/FILE.log`, `--dry-run`.
+- The launcher supplies `MIX_ENV=test`, a checkout-specific test database partition and a local test port. Select an existing task partition with `--partition` when appropriate.
+- Use a fresh `--partition` for each independent full-suite validation: some concurrency fixtures write outside the SQL sandbox and can leave jobs behind. Do not reset the user's default test database.
+- Invoke the launcher directly. Do not prefix it with environment assignments, `env`, Python, or a shell wrapper, and do not use shell redirection. Those forms prevent the persistent command rule from matching. Use `--log` for log files.
+- When the execution tool needs `require_escalated`, use the exact launcher path as the approved prefix. This is already authorized; do not ask the user to approve tests again.
+- Never use `/private/tmp` or `/tmp` for Storyarn worktrees, scripts, logs, or artifacts. Keep task files within the authorized Storyarn directory.
+
+This authorization concerns Storyarn verification; preserve the existing permission policy for other actions.
