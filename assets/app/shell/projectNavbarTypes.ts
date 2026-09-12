@@ -1,4 +1,5 @@
 export interface ProjectNavbarContextUrls {
+  comments?: string;
   workspace?: string;
   projectSettings: string;
   trash: string;

@@ -150,3 +150,28 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""
+
+#: lib/storyarn_web/live/comment_live/index.ex:24
+#, elixir-autogen, elixir-format
+msgid "Comments"
+msgstr ""
+
+#: lib/storyarn_web/live/comment_live/index.ex:244
+#, elixir-autogen, elixir-format
+msgid "Comments could not be loaded. Please try again."
+msgstr ""
+
+#: lib/storyarn_web/live/comment_live/index.ex:234
+#, elixir-autogen, elixir-format
+msgid "Narrow your search or filters to see more conversations."
+msgstr ""
+
+#: lib/storyarn_web/live/comment_live/index.ex:433
+#, elixir-autogen, elixir-format
+msgid "This conversation changed. Please try again."
+msgstr ""
+
+#: lib/storyarn_web/live/comment_live/index.ex:434
+#, elixir-autogen, elixir-format
+msgid "This conversation is no longer available or you do not have permission to change it."
+msgstr ""

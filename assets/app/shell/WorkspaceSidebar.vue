@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Briefcase, CircleHelp, LayoutDashboard, LogOut, User } from "@lucide/vue";
+import { Briefcase, CircleHelp, LayoutDashboard, LogOut, MessagesSquare, User } from "@lucide/vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import { computed } from "vue";
 import {
   DropdownMenu,
@@ -19,11 +20,13 @@ const {
   workspaces = [],
   currentWorkspaceSlug = null,
   hasTutorial = false,
+  commentsActive = false,
 } = defineProps<{
   currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
   currentWorkspaceSlug?: string | null;
   hasTutorial?: boolean;
+  commentsActive?: boolean;
 }>();
 
 const emit = defineEmits<{ showTutorial: [] }>();
@@ -75,6 +78,20 @@ const handleLogout = () => {
 
     <!-- Workspaces List -->
     <div class="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+      <LiveLink
+        id="workspace-comments-link"
+        to="/comments"
+        :aria-current="commentsActive ? 'page' : undefined"
+        :class="[
+          'mb-5 flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
+          commentsActive
+            ? 'bg-accent text-accent-foreground font-medium'
+            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+        ]"
+      >
+        <MessagesSquare class="size-4 shrink-0" />
+        {{ t("comments_hub.title") }}
+      </LiveLink>
       <div class="px-2 pb-2 text-xs font-medium text-muted-foreground">
         {{ t("workspace.sidebar.my_workspaces") }}
       </div>

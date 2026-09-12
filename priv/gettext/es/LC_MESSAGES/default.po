@@ -136,7 +136,7 @@ msgstr "No se detectaron cambios"
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
-#: lib/storyarn_web/live/ideation_live/board.ex:132
+#: lib/storyarn_web/live/ideation_live/board.ex:129
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr "Brainstorming"
@@ -146,7 +146,32 @@ msgstr "Brainstorming"
 msgid "Untitled session"
 msgstr "Sesión sin título"
 
-#: lib/storyarn_web/live/ideation_live/board.ex:320
+#: lib/storyarn_web/live/ideation_live/board.ex:317
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr "Miembro"
+
+#: lib/storyarn_web/live/comment_live/index.ex:24
+#, elixir-autogen, elixir-format
+msgid "Comments"
+msgstr "Comentarios"
+
+#: lib/storyarn_web/live/comment_live/index.ex:244
+#, elixir-autogen, elixir-format
+msgid "Comments could not be loaded. Please try again."
+msgstr "No se han podido cargar los comentarios. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/comment_live/index.ex:234
+#, elixir-autogen, elixir-format
+msgid "Narrow your search or filters to see more conversations."
+msgstr "Acota la búsqueda o los filtros para ver más conversaciones."
+
+#: lib/storyarn_web/live/comment_live/index.ex:433
+#, elixir-autogen, elixir-format
+msgid "This conversation changed. Please try again."
+msgstr "Esta conversación ha cambiado. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/comment_live/index.ex:434
+#, elixir-autogen, elixir-format
+msgid "This conversation is no longer available or you do not have permission to change it."
+msgstr "Esta conversación ya no está disponible o no tienes permiso para modificarla."

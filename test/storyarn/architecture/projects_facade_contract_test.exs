@@ -283,6 +283,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
   @comment_contract [
+    list_comment_conversations: 1,
+    list_comment_conversations: 2,
+    subscribe_comment_conversations: 1,
+    invalidate_comment_conversations: 1,
     restricted_comment_message_ids_query: 0,
     readable_comment_message_ids_query: 1,
     list_ideation_conversations: 1,

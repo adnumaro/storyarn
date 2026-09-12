@@ -18,8 +18,16 @@ import type {
   CommentStatus,
   CommentStatusFilter,
   CommentsPanelState,
+  CommentThread,
   CommentUiConfig,
 } from "./types";
+
+interface StoredReplyTarget {
+  parentId: number;
+  threadId: number;
+  sourceId: number;
+  sourceType: string;
+}
 
 const {
   state,
@@ -34,7 +42,7 @@ const {
 }>();
 const live = useLive();
 const { t, locale } = useI18n();
-const replyToId = ref<number | null>(null);
+const replyToId = ref<number | null>(readReplyTarget());
 const statusPending = ref(false);
 const localError = ref<string | null>(null);
 let statusRequestToken: symbol | null = null;
@@ -59,15 +67,74 @@ const replyParentId = computed(
 const replyTo = computed(() => state.messages.find((message) => message.id === replyToId.value));
 
 watch(
-  () => state.thread?.id,
+  [
+    () => state.thread?.id,
+    () => state.thread?.source.id,
+    () => state.thread?.source.type,
+    () => draftStorageKey,
+  ],
   () => {
     statusRequestToken = null;
-    replyToId.value = null;
+    replyToId.value = readReplyTarget();
     localError.value = null;
     statusPending.value = false;
   },
   { flush: "sync" },
 );
+
+function replyTargetKey() {
+  return ui.persistReplyDraft && draftStorageKey && state.thread
+    ? `${draftStorageKey}:reply-target`
+    : null;
+}
+
+function readReplyTarget(): number | null {
+  const key = replyTargetKey();
+  const thread = state.thread;
+  if (!key || !thread || typeof window === "undefined") return null;
+  try {
+    const stored: unknown = JSON.parse(window.sessionStorage.getItem(key) ?? "null");
+    return validReplyTarget(stored, thread) ? stored.parentId : null;
+  } catch {
+    // A malformed or unavailable session draft must not change the reply target.
+  }
+  return null;
+}
+
+function validReplyTarget(value: unknown, thread: CommentThread): value is StoredReplyTarget {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as StoredReplyTarget;
+  return (
+    typeof candidate.parentId === "number" &&
+    Number.isSafeInteger(candidate.parentId) &&
+    candidate.parentId > 0 &&
+    candidate.threadId === thread.id &&
+    candidate.sourceId === thread.source.id &&
+    candidate.sourceType === thread.source.type
+  );
+}
+
+function selectReply(parentId: number | null) {
+  replyToId.value = parentId;
+  const key = replyTargetKey();
+  const thread = state.thread;
+  if (!key || !thread || typeof window === "undefined") return;
+  try {
+    if (parentId == null) window.sessionStorage.removeItem(key);
+    else
+      window.sessionStorage.setItem(
+        key,
+        JSON.stringify({
+          parentId,
+          threadId: thread.id,
+          sourceId: thread.source.id,
+          sourceType: thread.source.type,
+        }),
+      );
+  } catch {
+    // Replying remains available when browser storage is disabled.
+  }
+}
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -241,7 +308,7 @@ function changeStatus(status: CommentStatus) {
             size="sm"
             class="-mb-1 -ml-2 mt-1 gap-1.5 text-xs text-muted-foreground"
             :aria-label="$t(translationKey('reply_to'), { name: message.author.display_name })"
-            @click="replyToId = message.id"
+            @click="selectReply(message.id)"
             ><CornerUpLeft class="size-3" />{{ $t(translationKey("reply")) }}</Button
           >
         </li>
@@ -365,16 +432,18 @@ function changeStatus(status: CommentStatus) {
       :class="{ 'border-t border-border pt-3': !embedded || state.thread }"
     >
       <div
-        v-if="replyTo"
+        v-if="replyTo || (ui.persistReplyDraft && replyToId != null)"
         class="mb-2 flex items-center justify-between gap-2 rounded-md bg-muted p-2 text-xs"
       >
         <span class="truncate">{{
-          $t(translationKey("reply_to"), { name: replyTo.author.display_name })
+          replyTo
+            ? $t(translationKey("reply_to"), { name: replyTo.author.display_name })
+            : $t(translationKey("reply_to_previous"))
         }}</span
         ><button
           type="button"
           :aria-label="$t(translationKey('cancel_reply'))"
-          @click="replyToId = null"
+          @click="selectReply(null)"
         >
           <X class="size-3.5" />
         </button>
@@ -390,7 +459,7 @@ function changeStatus(status: CommentStatus) {
         :members="state.members"
         :disabled="!composerEnabled || Boolean(state.draftPending)"
         :ui="ui"
-        @sent="replyToId = null"
+        @sent="selectReply(null)"
       />
     </div>
     <p v-if="!state.canComment" class="text-xs text-muted-foreground">

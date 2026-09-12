@@ -7,6 +7,44 @@ adds an explicit source contract and resolver; it does not create another messag
 callers enter through `Storyarn.Projects`. The realtime collaboration module in
 Platform remains technical coordination; it does not own these conversations.
 
+## Comments hub (ENG-188/189)
+
+The hub is a cross-project collaboration view at `/comments`, reached from the
+authenticated shell beside the notification bell and from workspace navigation.
+Project chrome opens the same route with `project_id` preselected. Comments are
+not a project tool: the tool switcher and editor sidebars keep their existing
+responsibilities. The route shares `:authenticated_app` and uses the workspace
+layout with a full-height list/detail region, without a project route parameter.
+
+`Projects.list_comment_conversations(scope, opts)` queries all currently readable
+Flow, Sheet, Scene and brainstorming threads, including conversations in which
+the user has never participated. Project access and restricted-source audience
+checks run before search, aggregation and activity-cursor pagination. This view
+reads the same persisted threads as the editors; notification delivery and
+notification read state do not determine which conversations appear here.
+
+The list supports workspace, project, source tool, status, participation, mentions
+and search filters. Selecting a conversation reauthorizes its project and source.
+Replies, explicit parent replies, mentions and revision-checked resolve/reopen
+use the existing Projects comment APIs. The hub has no thread-creation event or
+composer without an accessible existing thread. A resolved thread must be
+reopened before replying. Existing `?thread=` editor destinations provide the
+"View in context" action; unavailable surfaces retain their conversation with
+an explicit unavailable state, while inaccessible private brainstorming sources
+disappear entirely.
+
+Filters and selection live in the URL. List scroll and reply drafts are scoped
+to the signed-in user in tab session storage; drafts additionally include the
+project, thread and reply parent. Unconfirmed replies retain their request ID
+so retrying cannot append a second message. These drafts are best-effort local
+state, not authored project content or a guarantee of offline delivery.
+
+User-scoped, identity-only conversation invalidations trigger fresh authorized
+reads. Project/workspace access signals also refresh the hub, with periodic
+reauthorization as a fallback. These subscriptions do not grow with the number
+of documents. Reconnection reconstructs the view from its URL and persisted
+data rather than treating previous props as current authorization.
+
 ## Brainstorming adapter (ENG-139)
 
 `ideation_session`, `ideation_idea` and `ideation_group` are non-spatial discussion sources. The
@@ -72,7 +110,7 @@ message lookups; this avoids PostgreSQL rewriting an `EXISTS` into a global
 hashed readable-message set. The same predicate applies before list pagination,
 unread aggregation and read-state mutation.
 
-### Future Collaboration Hub contract
+### Brainstorming conversation query contract
 
 `Projects.list_ideation_conversations(scope, opts)` returns authorized thread DTOs
 and a stable `{at, id}` activity cursor. Membership, active source and recovery
@@ -81,7 +119,8 @@ filters are `project_id`, `workspace_id`, `session_id`, `source_type`, `status`,
 `following`, `participated`, `mentioned`, `unread` and literal body `search` (200
 bytes maximum). Personal flags select matching threads when true; false adds no
 restriction. Limits default to 30 and cap at 100. Malformed options are rejected.
-The query is a brainstorming adapter, not the cross-editor Hub UI (ENG-188/189).
+This query remains the brainstorming-specific adapter; the cross-editor hub
+uses `Projects.list_comment_conversations/2` described above.
 
 Ideation owns audience, identity and safe display-label query ports; Projects
 composes them with membership and conversation state. Page previews load in
@@ -92,7 +131,7 @@ post-commit signals keep conversation activity, participation and inbox visibili
 separate; all carry only identity, never content, and require scoped refetches:
 
 - Shared comment creation, replies and resolution publish session discussion
-  updates and `{:ideation_conversations_changed, project_id}` for the future Hub.
+  updates and `{:ideation_conversations_changed, project_id}` for Ideation consumers.
   Session renames also refresh Hub labels. These do not invalidate the bell;
   persisted notification deliveries already wake their individual recipients.
 - Following and read acknowledgements publish
@@ -106,8 +145,10 @@ separate; all carry only identity, never content, and require scoped refetches:
   expiry, rounds, note/group positions, connections and private edits do not
   invalidate inbox visibility.
 
-`subscribe_ideation_conversations` aggregates all three personal topics for the
-future Hub. Board panels subscribe to participation plus their session's shared
+`subscribe_ideation_conversations` aggregates all three personal topics for
+Ideation-only consumers. The cross-editor hub uses `subscribe_comment_conversations`,
+whose identity-only invalidations also cover activity, source and participation changes.
+Board panels subscribe to participation plus their session's shared
 discussion topic. The notification shell subscribes only to source visibility
 and ordinary notification deliveries, coalescing audience changes before an
 authorized list/count read. Direct and inherited project membership is resolved

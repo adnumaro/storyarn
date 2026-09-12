@@ -136,7 +136,7 @@ msgstr ""
 msgid "You don't have permission to perform this action."
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:132
+#: lib/storyarn_web/live/ideation_live/board.ex:129
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr ""
@@ -146,7 +146,32 @@ msgstr ""
 msgid "Untitled session"
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:320
+#: lib/storyarn_web/live/ideation_live/board.ex:317
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""
+
+#: lib/storyarn_web/live/comment_live/index.ex:24
+#, elixir-autogen, elixir-format
+msgid "Comments"
+msgstr "Comments"
+
+#: lib/storyarn_web/live/comment_live/index.ex:244
+#, elixir-autogen, elixir-format
+msgid "Comments could not be loaded. Please try again."
+msgstr "Comments could not be loaded. Please try again."
+
+#: lib/storyarn_web/live/comment_live/index.ex:234
+#, elixir-autogen, elixir-format
+msgid "Narrow your search or filters to see more conversations."
+msgstr "Narrow your search or filters to see more conversations."
+
+#: lib/storyarn_web/live/comment_live/index.ex:433
+#, elixir-autogen, elixir-format
+msgid "This conversation changed. Please try again."
+msgstr "This conversation changed. Please try again."
+
+#: lib/storyarn_web/live/comment_live/index.ex:434
+#, elixir-autogen, elixir-format
+msgid "This conversation is no longer available or you do not have permission to change it."
+msgstr "This conversation is no longer available or you do not have permission to change it."

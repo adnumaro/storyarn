@@ -52,13 +52,19 @@ const { t } = useI18n();
 const drafts = reactive(new Map<string, Draft>());
 const memberSearch = ref("");
 const mentionOpen = ref(false);
-const submittedDraftKey = ref<string | null>(null);
+const clearingDrafts = new WeakSet<Draft>();
 const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
 const domId = (name: string) => `${ui.domScope}-comment-${name}`;
+const storageKey = computed(() => {
+  if (threadId == null) return draftStorageKey;
+  return ui.persistReplyDraft && draftStorageKey
+    ? `${draftStorageKey}:thread:${threadId}:parent:${parentId}`
+    : null;
+});
 
 const draftKey = computed(() => {
+  if (storageKey.value) return `stored:${storageKey.value}`;
   if (threadId != null) return `thread:${threadId}:parent:${parentId}`;
-  if (draftStorageKey) return `stored:${draftStorageKey}`;
   if (draftId) return `draft:${draftId}`;
   if (sourceId != null) return `source:${sourceId}`;
   if (position) return `canvas:${position.x}:${position.y}`;
@@ -66,7 +72,7 @@ const draftKey = computed(() => {
 });
 
 function initialDraft(): Draft {
-  const stored = threadId == null ? readCommentDraft(draftStorageKey) : null;
+  const stored = readCommentDraft(storageKey.value);
   return {
     body: stored?.body ?? "",
     mentionIds: stored?.mentionIds ?? [],
@@ -87,13 +93,17 @@ const draft = computed(() => {
   return value;
 });
 
-watch(draftKey, (key) => {
-  if (submittedDraftKey.value && submittedDraftKey.value !== key) submittedDraftKey.value = null;
-});
-watch([() => draft.value.body, () => [...draft.value.mentionIds]], ([body, mentionIds]) => {
-  if (threadId != null || submittedDraftKey.value === draftKey.value) return;
-  updateCommentDraft(draftStorageKey, { body: body as string, mentionIds: mentionIds as number[] });
-});
+watch(
+  [() => draft.value.body, () => [...draft.value.mentionIds]],
+  ([body, mentionIds]) => {
+    if (clearingDrafts.has(draft.value)) return;
+    updateCommentDraft(storageKey.value, {
+      body: body as string,
+      mentionIds: mentionIds as number[],
+    });
+  },
+  { flush: "sync" },
+);
 const availableMembers = computed(() =>
   members.filter((member): member is CommentMember & { id: number } => member.id != null),
 );
@@ -127,11 +137,10 @@ function ensureRequestIdentity(current: Draft, fingerprint: string, storageKey: 
   if (current.fingerprint === fingerprint && current.requestId) return;
   current.requestId = crypto.randomUUID();
   current.fingerprint = fingerprint;
-  if (threadId == null)
-    updateCommentDraft(storageKey, {
-      requestId: current.requestId,
-      fingerprint: current.fingerprint,
-    });
+  updateCommentDraft(storageKey, {
+    requestId: current.requestId,
+    fingerprint: current.fingerprint,
+  });
 }
 
 function createContextReference(): CommentContextReference | null | undefined {
@@ -146,12 +155,29 @@ function createContextReference(): CommentContextReference | null | undefined {
   };
 }
 
+function clearSubmittedDraft(
+  key: string | null,
+  requestId: string | null,
+  fingerprint: string,
+  body: string,
+  mentionIds: string,
+) {
+  const stored = readCommentDraft(key);
+  if (!stored) return;
+  if (
+    stored.requestId === requestId &&
+    stored.fingerprint === fingerprint &&
+    stored.body?.trim() === body &&
+    JSON.stringify(stored.mentionIds ?? []) === mentionIds
+  )
+    clearCommentDraft(key);
+}
+
 function submit() {
   if (!canSend.value) return;
   const current = draft.value;
-  const submittedComposerKey = draftKey.value;
-  const submittedStorageKey = draftStorageKey;
-  const submittedTopLevelThread = threadId == null;
+  const submittedStorageKey = storageKey.value;
+  const storedMentionIds = JSON.stringify(current.mentionIds);
   const body = current.body.trim();
   const mentionIds = [
     ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
@@ -190,15 +216,19 @@ function submit() {
     (reply) => {
       current.pending = false;
       if (reply.ok === true) {
-        if (submittedTopLevelThread) {
-          if (draftKey.value === submittedComposerKey)
-            submittedDraftKey.value = submittedComposerKey;
-          clearCommentDraft(submittedStorageKey);
-        }
+        clearingDrafts.add(current);
         current.body = "";
         current.mentionIds = [];
         current.requestId = null;
         current.fingerprint = null;
+        clearSubmittedDraft(
+          submittedStorageKey,
+          payload.client_request_id,
+          fingerprint,
+          body,
+          storedMentionIds,
+        );
+        clearingDrafts.delete(current);
         if (draft.value === current) emit("sent");
       } else {
         current.error =

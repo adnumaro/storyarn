@@ -87,6 +87,8 @@ export interface CommentsPanelState<TSource extends CommentSource = CommentSourc
 }
 
 export interface CommentUiConfig {
+  /** Persist replies only on surfaces that provide a user/project/thread-scoped storage key. */
+  persistReplyDraft?: boolean;
   /** Some source adapters deliberately defer mentions and notification delivery. */
   mentionsEnabled?: boolean;
   /** Prefix used by stable DOM ids, for example `flow` or `scene`. */
