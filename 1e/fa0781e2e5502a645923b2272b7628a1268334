@@ -1,0 +1,38 @@
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_6bfc8452c55579 175-192,331-333,537-538,542
+  s_11667293ceac35::t_bd2338204f9ce5 539-541
+assets/app/modules/flows/editor/composables/useCanvasComments.ts
+  s_11667293ceac35::t_97bf297f8d7fd9 431,457
+assets/app/modules/flows/editor/lib/comment-snap-adapter.ts
+  s_11667293ceac35::t_f614c398109092 115-116
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_8f7ec5e75ba55a 467,472,477,491-500
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_11667293ceac35::t_97bf297f8d7fd9 449,543-557,982-1007
+  s_11667293ceac35::t_beddf1a3ec77ff 1008
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_11667293ceac35::t_527d29fd6a66e5 250-254,256-292,294-327
+  s_11667293ceac35::t_7cc385843dc250 255,293
+assets/app/test/modules/flows/editor/lib/comment-snap-adapter.test.ts
+  s_11667293ceac35::t_f614c398109092 204-220
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_4ae625d1fbc1c5 467,472,477,491-500
+priv/gettext/flows.pot
+  s_11667293ceac35::t_ac205c7ce80f37 467,472,477,491-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1efa0781e2e5502a645923b2272b7628a1268334",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
