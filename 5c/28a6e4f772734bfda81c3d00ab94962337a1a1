@@ -1,0 +1,19 @@
+docs/reference/brainstorming-recovery-contract.md
+  s_93251447e419b7::t_61ca522f31134e 40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5c28a6e4f772734bfda81c3d00ab94962337a1a1",
+  "prompts": {},
+  "sessions": {
+    "s_93251447e419b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09690-e161-7403-be42-d1df684f0dc6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
