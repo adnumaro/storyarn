@@ -1,10 +1,10 @@
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { createMockLive } from "@app/test/setup";
 import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
 const live = createMockLive();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => live }));
 const { default: Comments } =
-  await import("@modules/flows/editor/components/sequence/FlowSequenceComments.vue");
+  await import("@modules/flows/editor/components/sequence/FlowSequenceCommentDialog.vue");
 const author = { id: 4, display_name: "Ada", avatar_url: null };
 const thread: FlowCommentThread = {
   id: 12,
@@ -43,26 +43,25 @@ function state(overrides: Partial<FlowCommentsPanelState> = {}): FlowCommentsPan
   };
 }
 beforeEach(() => vi.mocked(live.pushEvent).mockClear());
-it("opens the current intervention, reuses the thread and keeps Back scoped to Sequence", async () => {
-  const wrapper = mount(Comments, { props: { nodeId: 42, state: state({ open: false }) } });
-  await wrapper.get("[data-sequence-comments-toggle]").trigger("click");
-  expect(live.pushEvent).toHaveBeenCalledWith("comments_open", {
-    node_id: 42,
-    presentation: "workspace",
+it("shows a contextual composer without a toolbar toggle or thread list", async () => {
+  const wrapper = mount(Comments, {
+    attachTo: document.body,
+    global: { stubs: { DialogPortal: { template: "<div><slot /></div>" } } },
+    props: { nodeId: 42, state: state() },
   });
-  await wrapper.setProps({ state: state() });
-  await wrapper.get("#sequence-comment-thread-12").trigger("click");
-  expect(live.pushEvent).toHaveBeenCalledWith("comments_select_thread", { thread_id: 12 });
-  await wrapper.setProps({ state: state({ thread }) });
-  await wrapper.get("#sequence-comment-back").trigger("click");
-  expect(live.pushEvent).toHaveBeenLastCalledWith("comments_open", {
-    node_id: 42,
-    presentation: "workspace",
-  });
+  await flushPromises();
+  expect(wrapper.find("[data-sequence-comments-toggle]").exists()).toBe(false);
+  expect(wrapper.find("#sequence-comment-thread-12").exists()).toBe(false);
+  expect(wrapper.find("#sequence-comment-body").exists()).toBe(true);
+  expect(wrapper.find("aside").exists()).toBe(false);
   wrapper.unmount();
 });
 it("follows intervention changes and closes the workspace discussion on unmount", async () => {
-  const wrapper = mount(Comments, { props: { nodeId: 42, state: state() } });
+  const wrapper = mount(Comments, {
+    attachTo: document.body,
+    global: { stubs: { DialogPortal: { template: "<div><slot /></div>" } } },
+    props: { nodeId: 42, state: state() },
+  });
   await wrapper.setProps({ nodeId: 43 });
   expect(live.pushEvent).toHaveBeenCalledWith("comments_open", {
     node_id: 43,
@@ -74,6 +73,8 @@ it("follows intervention changes and closes the workspace discussion on unmount"
 });
 it("does not show another surface's conversation and respects read-only access", async () => {
   const wrapper = mount(Comments, {
+    attachTo: document.body,
+    global: { stubs: { DialogPortal: { template: "<div><slot /></div>" } } },
     props: { nodeId: 42, state: state({ presentation: "canvas" }) },
   });
   expect(wrapper.find("#sequence-comments").exists()).toBe(false);

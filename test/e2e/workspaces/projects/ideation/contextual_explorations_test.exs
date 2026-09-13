@@ -30,7 +30,7 @@ defmodule StoryarnWeb.E2E.ContextualExplorationsTest do
         |> authenticate(ctx.author.user)
         |> visit(path)
         |> assert_has("#explore-changes", timeout: 20_000)
-        |> assert_has("##{@source_type}-comments-toggle", timeout: 20_000)
+        |> refute_has("##{@source_type}-comments-toggle")
         |> click("#explore-changes")
         |> assert_has("#exploration-dialog", text: source.name)
         |> assert_has("#exploration-dialog", text: source.description)

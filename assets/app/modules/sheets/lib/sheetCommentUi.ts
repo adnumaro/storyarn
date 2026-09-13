@@ -5,7 +5,6 @@ export const sheetCommentUi: CommentUiConfig = {
   domScope: "sheet",
   i18nPrefix: "sheets.comments",
   canvasSourceType: "sheet_canvas",
-  scopeThreadsKey: "sheet_threads",
   selectedSourceFallbackKey: "sheet_label",
 };
 

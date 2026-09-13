@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
-import Panel from "@app/live/ideation/CommentsPanel.vue";
+import { mount, flushPromises } from "@vue/test-utils";
+import Panel from "@app/live/ideation/CommentDialog.vue";
 import type { CommentsPanelState, CommentThread } from "@components/comments/types";
 
 const state: CommentsPanelState & { ideaId: number | null; context: string } = {
@@ -34,9 +34,10 @@ const thread: CommentThread = {
   unread: true,
   last_message_id: 45,
 };
-function panel(overrides: Partial<typeof state> & { groupId?: number | null } = {}) {
+async function panel(overrides: Partial<typeof state> & { groupId?: number | null } = {}) {
   const pushEvent = vi.fn();
   const wrapper = mount(Panel, {
+    attachTo: document.body,
     props: {
       state: { ...state, ...overrides },
       epoch: "epoch-1",
@@ -48,16 +49,17 @@ function panel(overrides: Partial<typeof state> & { groupId?: number | null } = 
         _live_vue: { pushEvent, handleEvent: vi.fn(), removeHandleEvent: vi.fn(), upload: vi.fn() },
       },
       stubs: {
-        Sidebar: { template: "<aside><slot name='header'/><slot/><slot name='footer'/></aside>" },
+        DialogPortal: { template: "<div><slot /></div>" },
       },
     },
   });
+  await flushPromises();
   return { wrapper, pushEvent };
 }
 
 describe("Brainstorming comments boundary", () => {
   it("scopes the reused composer to the board and retries without duplicating request identity", async () => {
-    const { wrapper, pushEvent } = panel();
+    const { wrapper, pushEvent } = await panel();
     await wrapper.get("#brainstorming-comment-body").setValue("Why this ending?");
     await wrapper.get("form").trigger("submit");
     const [event, request, callback] = pushEvent.mock.calls[0];
@@ -79,7 +81,7 @@ describe("Brainstorming comments boundary", () => {
   });
 
   it("drops the private composer when the server invalidates the discussion", async () => {
-    const { wrapper } = panel();
+    const { wrapper } = await panel();
     await wrapper.get("textarea").setValue("Private buffer");
     await wrapper.setProps({ state: { ...state, open: false, context: "revoked" } });
     expect(wrapper.find("textarea").exists()).toBe(false);
@@ -89,7 +91,7 @@ describe("Brainstorming comments boundary", () => {
   });
 
   it("allows viewers to follow and explicitly acknowledge only the received message watermark", async () => {
-    const { wrapper, pushEvent } = panel({ thread, groupId: 22, canComment: false });
+    const { wrapper, pushEvent } = await panel({ thread, groupId: 22, canComment: false });
     expect(pushEvent).not.toHaveBeenCalled();
     expect(wrapper.find("textarea").exists()).toBe(false);
     await wrapper.get("#brainstorming-comment-follow").trigger("click");
@@ -114,7 +116,7 @@ describe("Brainstorming comments boundary", () => {
   });
 
   it("ignores a late personal-state reply after changing the discussion context", async () => {
-    const { wrapper, pushEvent } = panel({ thread });
+    const { wrapper, pushEvent } = await panel({ thread });
     await wrapper.get("#brainstorming-comment-follow").trigger("click");
     const late = pushEvent.mock.calls[0][2];
     await wrapper.setProps({

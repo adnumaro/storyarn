@@ -91,14 +91,6 @@ defmodule StoryarnWeb.FlowLive.Show do
         flow-shortcut={@flow.shortcut}
         is-main={@flow.is_main}
         can-edit={@can_edit}
-        comments={
-          %{
-            count: length(@comment_pins),
-            open: @comments.open && @comments.presentation == "panel",
-            placing: @comments.placing,
-            canComment: @comments.canComment
-          }
-        }
         save-status={to_string(@save_status)}
         nav-history={
           %{
@@ -1811,7 +1803,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       dialogue: flow_panels_dialogue(assigns),
       dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
       sequence: flow_panels_sequence(assigns),
-      comments: assigns.comments,
       preview: PreviewHandlers.serialize_preview_state(assigns)
     }
   end

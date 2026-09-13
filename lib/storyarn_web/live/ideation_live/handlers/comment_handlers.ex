@@ -2,6 +2,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.Ideation
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.IdeationLive.Helpers.Params
@@ -69,13 +70,6 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   defp dispatch("close", _, socket), do: {:noreply, init(socket)}
   defp dispatch("select_thread", params, socket), do: {:noreply, select(socket, positive(params["thread_id"]))}
 
-  defp dispatch("filter", params, socket) do
-    status = if params["status"] in ~w(open resolved all), do: params["status"], else: "open"
-    {:noreply, socket |> put(%{statusFilter: status}) |> refresh()}
-  end
-
-  defp dispatch("load_more", _, socket), do: {:noreply, load_threads(socket, socket.assigns.comments.nextCursor)}
-
   defp dispatch("load_messages", _, socket) do
     case socket.assigns.comments do
       %{thread: %{id: id}, messageNextCursor: cursor} when not is_nil(cursor) ->
@@ -110,7 +104,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   def refresh(%{assigns: %{comments: %{open: false}}} = socket), do: socket
 
   def refresh(socket) do
-    socket = load_threads(socket)
+    socket = load_context(socket)
 
     if socket.assigns.comments.open && socket.assigns.comments.thread,
       do: detail(socket, socket.assigns.comments.thread.id),
@@ -118,7 +112,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   end
 
   def refresh_participation(%{assigns: %{comments: %{open: true} = state}} = socket, thread_id) do
-    if Enum.any?(state.threads, &(&1.id == thread_id)) or match?(%{id: ^thread_id}, state.thread),
+    if match?(%{id: ^thread_id}, state.thread),
       do: refresh(socket),
       else: socket
   end
@@ -201,7 +195,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
           messages: [],
           error: nil
         })
-        |> load_threads()
+        |> load_context()
         |> detail(id)
 
       _ ->
@@ -209,19 +203,17 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     end
   end
 
-  defp load_threads(socket, cursor \\ nil) do
+  defp load_context(socket) do
     %{current_scope: scope, project: project, session_id: id, comments: state} = socket.assigns
 
-    case Projects.list_ideation_comment_threads(scope, project.id, id, anchor(state),
-           status: state.statusFilter,
-           cursor: cursor
-         ) do
-      {:ok, %{threads: threads, next_cursor: next}} ->
-        threads = if cursor, do: Enum.uniq_by(state.threads ++ threads, & &1.id), else: threads
+    source =
+      if state.groupId,
+        do: Ideation.group_comment_source(scope, project.id, id, state.groupId),
+        else: Ideation.comment_source(scope, project.id, id, state.ideaId)
 
+    case source do
+      {:ok, _source} ->
         put(socket, %{
-          threads: threads,
-          nextCursor: next,
           canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content)),
           members: members(scope, project.id),
           selectedSourceId: state.groupId || state.ideaId || id,

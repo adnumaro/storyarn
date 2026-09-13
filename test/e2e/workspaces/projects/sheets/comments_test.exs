@@ -13,7 +13,7 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
 
   @moduletag :e2e
 
-  test "a Sheet discussion moves from its header across the canvas and keeps its deep link", %{
+  test "a Sheet discussion starts in the context menu and moves across the canvas and keeps its deep link", %{
     conn: conn
   } do
     user = user_fixture()

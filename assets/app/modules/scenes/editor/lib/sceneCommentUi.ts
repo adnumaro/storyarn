@@ -5,7 +5,6 @@ export const sceneCommentUi: CommentUiConfig = {
   domScope: "scene",
   i18nPrefix: "scenes.comments",
   canvasSourceType: "scene_canvas",
-  scopeThreadsKey: "scene_threads",
   selectedSourceFallbackKey: "scene_label",
 };
 

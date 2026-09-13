@@ -20,7 +20,6 @@ const ui: CommentUiConfig = {
   domScope: "flow",
   i18nPrefix: "flows.comments",
   canvasSourceType: "flow_canvas",
-  scopeThreadsKey: "flow_threads",
   selectedSourceFallbackKey: "node_label",
   createSourceKey: "node_id",
 };
@@ -128,7 +127,7 @@ describe("Comment composer contextual drafts", () => {
       error: null,
     };
     const wrapper = mount(CommentConversation, {
-      props: { state, embedded: true, ui },
+      props: { state, ui },
       global: { stubs },
     });
     await wrapper.get("textarea").setValue("The draft survives dragging.");

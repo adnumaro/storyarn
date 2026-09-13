@@ -5,7 +5,7 @@ import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import { useLive } from "@shared/composables/useLive";
 import { useSheetCanvasComments } from "../../composables/useSheetCanvasComments";
 import type { SheetCommentsPanelState, SheetCommentThread } from "../../types/comments";
-import SheetCommentsPanel from "../panels/SheetCommentsPanel.vue";
+import SheetCommentPopover from "../panels/SheetCommentPopover.vue";
 
 const {
   container,
@@ -73,7 +73,10 @@ const {
 });
 
 const popupOpen = computed(
-  () => state.open && state.presentation === "canvas" && Boolean(activePoint.value),
+  () =>
+    state.open &&
+    state.presentation === "canvas" &&
+    Boolean(activePoint.value || state.thread || state.error),
 );
 const popupSize = computed(() => ({
   width: Math.max(0, Math.min(360, visibleBounds.value.width - 24)),
@@ -183,8 +186,7 @@ function onFocusOut(event: FocusEvent): void {
 function restoreFocusAfterPopup(previousId: number | null | undefined): void {
   const previousPin =
     previousId == null ? null : document.getElementById(`sheet-comment-pin-${previousId}`);
-  const target =
-    previousPin ?? document.getElementById("sheet-comments-toggle") ?? resolveContainer();
+  const target = previousPin ?? resolveContainer();
   target?.focus({ preventScroll: true });
 }
 
@@ -465,7 +467,7 @@ onUnmounted(() => {
       @wheel.stop
       @contextmenu.stop
     >
-      <SheetCommentsPanel :state="panelState" :draft-storage-key="draftStorageKey" embedded />
+      <SheetCommentPopover :state="panelState" :draft-storage-key="draftStorageKey" />
     </div>
   </div>
 </template>

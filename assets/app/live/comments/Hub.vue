@@ -52,7 +52,6 @@ const ui: CommentUiConfig = {
   domScope: "hub",
   i18nPrefix: "comments_hub",
   canvasSourceType: "__hub_source_label__",
-  scopeThreadsKey: "threads",
   selectedSourceFallbackKey: "source_label",
 };
 
@@ -635,7 +634,6 @@ onBeforeUnmount(() => {
                 :state="state.conversation"
                 :ui="ui"
                 :draft-storage-key="draftStorageKey"
-                embedded
               />
             </div>
           </div>

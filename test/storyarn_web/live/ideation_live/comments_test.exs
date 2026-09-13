@@ -88,7 +88,7 @@ defmodule StoryarnWeb.IdeationLive.CommentsTest do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.viewer.user), path(ctx))
     render_hook(view, "comments_open", payload(view, ctx, %{group_id: group.id}))
     assert state(view)["groupId"] == group.id
-    assert length(state(view)["threads"]) == 1
+    assert state(view)["threads"] == []
     render_hook(view, "comments_select_thread", payload(view, ctx, %{thread_id: detail.thread.id}))
     assert state(view)["thread"]["unread"]
     refute state(view)["canComment"]

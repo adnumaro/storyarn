@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useElementSize } from "@vueuse/core";
 import {
+  MessageSquarePlus,
   MousePointer2,
   Hand,
   StickyNote,
@@ -16,6 +17,12 @@ import {
   ArrowLeft,
   ArrowLeftRight,
 } from "@lucide/vue";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+} from "@components/ui/context-menu";
 import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Input } from "@components/ui/input";
@@ -75,7 +82,7 @@ const {
   noteKey: (id: number) => string;
   historyState: HistoryState;
   editingId: number | null;
-  permissions: { edit: boolean; create: boolean };
+  permissions: { edit: boolean; create: boolean; comment?: boolean; privateMode?: boolean };
   collaboration: { context: BoardContext; cursors: boolean };
   members: Member[];
   statuses: { [id: number]: string };
@@ -88,6 +95,7 @@ const moveGroup = (id: number, point: Point, expected?: GroupVersions) =>
   groupState?.move(id, point, expected) ?? Promise.resolve();
 const canCreate = computed(() => permissions.edit && permissions.create);
 const emit = defineEmits<{
+  comment: [target: { ideaId: number | null; groupId: number | null }];
   add: [point: Point];
   select: [ids: number[]];
   selectGroup: [id: number | null];
@@ -112,6 +120,39 @@ const emit = defineEmits<{
   paste: [event: ClipboardEvent, point: Point];
   list: [];
 }>();
+const commentTarget = ref<{ ideaId: number | null; groupId: number | null } | null>(null);
+function prepareComment(event: MouseEvent) {
+  commentTarget.value = null;
+  const target = event.target instanceof Element ? event.target : null;
+  if (
+    !target ||
+    !permissions.comment ||
+    target.closest('input, textarea, select, [contenteditable="true"], [data-canvas-chrome]')
+  ) {
+    event.stopPropagation();
+    return;
+  }
+  commentTarget.value = resolveCommentTarget(target);
+  if (!commentTarget.value) event.stopPropagation();
+}
+function resolveCommentTarget(target: Element) {
+  const noteId = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
+  const groupId = Number(target.closest<HTMLElement>("[data-group-id]")?.dataset.groupId);
+  if (noteId) return ideaCommentTarget(noteId);
+  if (groupId) {
+    return !permissions.privateMode && groups.value.some((group) => group.id === groupId)
+      ? { ideaId: null, groupId }
+      : null;
+  }
+  return { ideaId: null, groupId: null };
+}
+function ideaCommentTarget(noteId: number) {
+  const note = notes.find((note) => note.id === noteId);
+  return !permissions.privateMode && note?.visibility === "shared" && note.published_revision
+    ? { ideaId: noteId, groupId: null }
+    : null;
+}
+
 const root = ref<HTMLElement | null>(null);
 const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(root);
 const { t, member } = useBoardText();
@@ -1071,6 +1112,7 @@ onUnmounted(() => {
 </script>
 <template>
   <div
+    @contextmenu.capture="prepareComment"
     ref="root"
     id="brainstorming-canvas"
     tabindex="0"
@@ -1107,357 +1149,392 @@ onUnmounted(() => {
       connectionTarget = null;
     "
   >
-    <div class="absolute left-0 top-0 origin-top-left" :style="{ transform }">
-      <CanvasGroup
-        v-for="layout in layouts"
-        :key="layout.group.id"
-        :group="layout.group"
-        :bounds="layout.bounds"
-        :visible-count="layout.visibility.visible"
-        :zoom="view.zoom"
-        :selected="selectedGroupId === layout.group.id"
-        :can-edit="permissions.edit"
-        :busy="historyState.busy"
-        :save="saveGroup"
-        @pointer="groupPointer"
-        @edit="ensureGroupReadability"
-        @finish="focus"
-        @resize="(id, height) => groupHeights.set(id, height)"
-        @synthesis-visibility="
-          (id, visible) => (visible ? openSyntheses.add(id) : openSyntheses.delete(id))
-        "
-        @select="selectGroup"
-        @separate="emit('separateGroup', $event)"
-        @remove="emit('deleteGroup', $event)"
-        @reveal="emit('revealGroup', $event)"
-      />
-      <svg class="pointer-events-none absolute overflow-visible" width="1" height="1">
-        <defs>
-          <marker
-            id="brainstorming-connection-arrow"
-            markerWidth="6"
-            markerHeight="6"
-            refX="6"
-            refY="3"
-            orient="auto-start-reverse"
-          >
-            <path d="M0,0 L6,3 L0,6" fill="none" stroke="context-stroke" stroke-linejoin="round" />
-          </marker>
-        </defs>
-        <g
-          v-for="link in links"
-          :key="link.key"
-          class="transition-colors hover:text-primary focus-within:text-primary"
-          :class="selectedConnectionKey === link.key ? 'text-primary' : 'text-muted-foreground/65'"
-        >
-          <line
-            :data-connection-source="link.source"
-            :data-connection-target="link.target"
-            v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
-            stroke="currentColor"
-            :stroke-width="(selectedConnectionKey === link.key ? 1.75 : 1.25) / view.zoom"
-            :marker-start="
-              ['backward', 'both'].includes(link.direction)
-                ? 'url(#brainstorming-connection-arrow)'
-                : undefined
-            "
-            :marker-end="
-              ['forward', 'both'].includes(link.direction)
-                ? 'url(#brainstorming-connection-arrow)'
-                : undefined
-            "
-          />
-          <line
-            :id="`canvas-connection-${link.key}`"
+    <ContextMenu>
+      <ContextMenuTrigger as-child :disabled="!permissions.comment">
+        <div class="absolute inset-0">
+          <div class="absolute left-0 top-0 origin-top-left" :style="{ transform }">
+            <CanvasGroup
+              v-for="layout in layouts"
+              :key="layout.group.id"
+              :group="layout.group"
+              :bounds="layout.bounds"
+              :visible-count="layout.visibility.visible"
+              :zoom="view.zoom"
+              :selected="selectedGroupId === layout.group.id"
+              :can-edit="permissions.edit"
+              :busy="historyState.busy"
+              :save="saveGroup"
+              @pointer="groupPointer"
+              @edit="ensureGroupReadability"
+              @finish="focus"
+              @resize="(id, height) => groupHeights.set(id, height)"
+              @synthesis-visibility="
+                (id, visible) => (visible ? openSyntheses.add(id) : openSyntheses.delete(id))
+              "
+              @select="selectGroup"
+              @separate="emit('separateGroup', $event)"
+              @remove="emit('deleteGroup', $event)"
+              @reveal="emit('revealGroup', $event)"
+            />
+            <svg class="pointer-events-none absolute overflow-visible" width="1" height="1">
+              <defs>
+                <marker
+                  id="brainstorming-connection-arrow"
+                  markerWidth="6"
+                  markerHeight="6"
+                  refX="6"
+                  refY="3"
+                  orient="auto-start-reverse"
+                >
+                  <path
+                    d="M0,0 L6,3 L0,6"
+                    fill="none"
+                    stroke="context-stroke"
+                    stroke-linejoin="round"
+                  />
+                </marker>
+              </defs>
+              <g
+                v-for="link in links"
+                :key="link.key"
+                class="transition-colors hover:text-primary focus-within:text-primary"
+                :class="
+                  selectedConnectionKey === link.key ? 'text-primary' : 'text-muted-foreground/65'
+                "
+              >
+                <line
+                  :data-connection-source="link.source"
+                  :data-connection-target="link.target"
+                  v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
+                  stroke="currentColor"
+                  :stroke-width="(selectedConnectionKey === link.key ? 1.75 : 1.25) / view.zoom"
+                  :marker-start="
+                    ['backward', 'both'].includes(link.direction)
+                      ? 'url(#brainstorming-connection-arrow)'
+                      : undefined
+                  "
+                  :marker-end="
+                    ['forward', 'both'].includes(link.direction)
+                      ? 'url(#brainstorming-connection-arrow)'
+                      : undefined
+                  "
+                />
+                <line
+                  :id="`canvas-connection-${link.key}`"
+                  data-canvas-chrome
+                  role="button"
+                  tabindex="0"
+                  :aria-label="
+                    t('ideation.canvas.connectionLabel', {
+                      source: noteLabel(link.source),
+                      target: noteLabel(link.target),
+                    })
+                  "
+                  :aria-pressed="selectedConnectionKey === link.key"
+                  class="pointer-events-auto cursor-pointer outline-none"
+                  v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
+                  stroke="transparent"
+                  :stroke-width="12 / view.zoom"
+                  @pointerdown.stop="selectConnection(link.key)"
+                  @click.stop="selectConnection(link.key)"
+                  @dblclick.stop
+                  @keydown.enter.prevent.stop="selectConnection(link.key)"
+                  @keydown.space.prevent.stop="selectConnection(link.key)"
+                />
+              </g>
+              <line
+                v-if="previewConnection"
+                id="brainstorming-connection-preview"
+                v-bind="previewConnection"
+                stroke="currentColor"
+                class="text-primary"
+                :stroke-width="1.5 / view.zoom"
+                :stroke-dasharray="`${4 / view.zoom} ${4 / view.zoom}`"
+              />
+            </svg>
+            <div
+              v-for="note in notes"
+              :key="noteKey(note.id)"
+              :data-note-id="note.id"
+              class="pointer-events-none absolute left-0 top-0"
+              :class="selectedIds.includes(note.id) ? 'z-10' : ''"
+              :style="{
+                transform: `translate(${position(note).x}px, ${position(note).y}px)`,
+                width: `${note.canvas?.width ?? 280}px`,
+              }"
+            >
+              <div
+                v-if="connectionTarget === note.id"
+                :id="`connection-target-${note.id}`"
+                class="pointer-events-none absolute -inset-1 rounded-md border border-primary bg-primary/5"
+                :style="{
+                  width: `${noteBounds(note).width + 8}px`,
+                  height: `${noteBounds(note).height + 8}px`,
+                }"
+              />
+              <CanvasNote
+                class="pointer-events-auto"
+                :note="note"
+                :can-create="canCreate"
+                :round-number="note.round_number"
+                :body="note.body"
+                :editing="editingId === note.id"
+                :selected="selectedIds.includes(note.id)"
+                :author="member(note.author_id, members)"
+                :status="statuses[note.id]"
+                @change="emit('change', note.id, $event)"
+                @finish="emit('finish')"
+                @quick-create="
+                  emit('finish');
+                  emit('add', {
+                    x: position(note).x + noteBounds(note).width + 40,
+                    y: position(note).y,
+                  });
+                "
+              />
+            </div>
+            <div
+              v-if="tool === 'note' && ghost"
+              class="pointer-events-none absolute h-12 w-40 rounded-md border border-dashed border-primary/70 bg-primary/5"
+              :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
+            />
+          </div>
+          <div
+            v-if="selectedId !== null && !selectionArea"
+            id="brainstorming-note-toolbar"
+            ref="selectionToolbar"
             data-canvas-chrome
-            role="button"
-            tabindex="0"
-            :aria-label="
-              t('ideation.canvas.connectionLabel', {
-                source: noteLabel(link.source),
-                target: noteLabel(link.target),
-              })
-            "
-            :aria-pressed="selectedConnectionKey === link.key"
-            class="pointer-events-auto cursor-pointer outline-none"
-            v-bind="{ x1: link.x1, y1: link.y1, x2: link.x2, y2: link.y2 }"
-            stroke="transparent"
-            :stroke-width="12 / view.zoom"
-            @pointerdown.stop="selectConnection(link.key)"
-            @click.stop="selectConnection(link.key)"
-            @dblclick.stop
-            @keydown.enter.prevent.stop="selectConnection(link.key)"
-            @keydown.space.prevent.stop="selectConnection(link.key)"
-          />
-        </g>
-        <line
-          v-if="previewConnection"
-          id="brainstorming-connection-preview"
-          v-bind="previewConnection"
-          stroke="currentColor"
-          class="text-primary"
-          :stroke-width="1.5 / view.zoom"
-          :stroke-dasharray="`${4 / view.zoom} ${4 / view.zoom}`"
-        />
-      </svg>
-      <div
-        v-for="note in notes"
-        :key="noteKey(note.id)"
-        :data-note-id="note.id"
-        class="pointer-events-none absolute left-0 top-0"
-        :class="selectedIds.includes(note.id) ? 'z-10' : ''"
-        :style="{
-          transform: `translate(${position(note).x}px, ${position(note).y}px)`,
-          width: `${note.canvas?.width ?? 280}px`,
-        }"
-      >
-        <div
-          v-if="connectionTarget === note.id"
-          :id="`connection-target-${note.id}`"
-          class="pointer-events-none absolute -inset-1 rounded-md border border-primary bg-primary/5"
-          :style="{
-            width: `${noteBounds(note).width + 8}px`,
-            height: `${noteBounds(note).height + 8}px`,
-          }"
-        />
-        <CanvasNote
-          class="pointer-events-auto"
-          :note="note"
-          :can-create="canCreate"
-          :round-number="note.round_number"
-          :body="note.body"
-          :editing="editingId === note.id"
-          :selected="selectedIds.includes(note.id)"
-          :author="member(note.author_id, members)"
-          :status="statuses[note.id]"
-          @change="emit('change', note.id, $event)"
-          @finish="emit('finish')"
-          @quick-create="
-            emit('finish');
-            emit('add', {
-              x: position(note).x + noteBounds(note).width + 40,
-              y: position(note).y,
-            });
-          "
-        />
-      </div>
-      <div
-        v-if="tool === 'note' && ghost"
-        class="pointer-events-none absolute h-12 w-40 rounded-md border border-dashed border-primary/70 bg-primary/5"
-        :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
-      />
-    </div>
-    <div
-      v-if="selectedId !== null && !selectionArea"
-      id="brainstorming-note-toolbar"
-      ref="selectionToolbar"
-      data-canvas-chrome
-      class="absolute z-30 max-w-[calc(100%-16px)]"
-      :style="selectionToolbarPosition"
-    >
-      <slot name="selection" :connection-tools="connectionTools" />
-    </div>
-    <div
-      v-if="selectedConnection && permissions.edit"
-      id="brainstorming-connection-toolbar"
-      data-canvas-chrome
-      class="surface-panel absolute z-30 flex -translate-x-1/2 -translate-y-full items-center gap-0.5 p-1"
-      :style="{
-        left: `${Math.min(view.width - 100, Math.max(100, view.x + ((selectedConnection.x1 + selectedConnection.x2) / 2) * view.zoom))}px`,
-        top: `${Math.max(48, Math.min(view.height - 80, view.y + ((selectedConnection.y1 + selectedConnection.y2) / 2) * view.zoom - 12))}px`,
-      }"
-      role="toolbar"
-      :aria-label="t('ideation.canvas.connectionDirection')"
-    >
-      <ToolbarTooltip
-        v-for="direction in connectionDirections"
-        :key="direction.value"
-        :label="t(`ideation.canvas.connectionDirections.${direction.value}`)"
-      >
-        <button
-          :id="`connection-direction-${direction.value}`"
-          type="button"
-          class="toolbar-btn"
-          :class="
-            selectedConnection.direction === direction.value ? 'bg-primary/10 text-primary' : ''
-          "
-          :aria-label="t(`ideation.canvas.connectionDirections.${direction.value}`)"
-          :aria-pressed="selectedConnection.direction === direction.value"
-          :disabled="historyState.busy"
-          @click="changeConnectionDirection(direction.value)"
-        >
-          <component :is="direction.icon" class="size-4" />
-        </button>
-      </ToolbarTooltip>
-    </div>
-    <div
-      v-if="selectionArea"
-      id="brainstorming-selection-area"
-      aria-hidden="true"
-      class="pointer-events-none absolute z-20 border border-primary bg-primary/10"
-      :style="{
-        left: `${selectionArea.x}px`,
-        top: `${selectionArea.y}px`,
-        width: `${selectionArea.width}px`,
-        height: `${selectionArea.height}px`,
-      }"
-    />
-    <p id="brainstorming-selection-help" class="sr-only">{{ t("ideation.canvas.selectHelp") }}</p>
-    <p id="brainstorming-history-help" class="sr-only">{{ t("ideation.canvas.historyHelp") }}</p>
-    <p id="brainstorming-connection-help" class="sr-only">
-      {{ t("ideation.canvas.connectionHelp") }}
-    </p>
-    <CanvasCursors
-      v-if="collaboration.cursors"
-      :container="root"
-      :view="view"
-      :context="collaboration.context"
-    />
-    <div
-      v-if="!notes.length && !groups.length"
-      class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 pb-20 text-center"
-    >
-      <StickyNote class="size-9 text-muted-foreground/35" />
-      <p class="text-lg font-medium">{{ t("ideation.canvas.empty") }}</p>
-      <p class="max-w-sm text-sm text-muted-foreground">
-        {{
-          t(
-            !permissions.edit
-              ? "ideation.readOnly"
-              : canCreate
-                ? "ideation.canvas.emptyHelp"
-                : "ideation.timer.closedHelp",
-          )
-        }}
-      </p>
-    </div>
-    <div data-canvas-chrome class="absolute left-3 top-3 z-20">
-      <div class="surface-panel flex items-center p-1">
-        <button
-          type="button"
-          class="toolbar-btn"
-          :aria-label="t('ideation.search')"
-          @click="searchOpen = !searchOpen"
-        >
-          <Search class="size-4" /></button
-        ><slot name="session" />
-      </div>
-      <div v-if="searchOpen" class="surface-panel mt-2 w-72 p-3">
-        <Input
-          v-model="query"
-          :placeholder="t('ideation.search')"
-          :aria-label="t('ideation.search')"
-        />
-        <div class="mt-2 max-h-64 overflow-auto">
-          <button
-            v-for="note in matches"
-            :key="note.id"
-            type="button"
-            class="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
-            @click="
-              center(note);
-              emit('selectGroup', null);
-              emit('select', [note.id]);
-              searchOpen = false;
-            "
+            class="absolute z-30 max-w-[calc(100%-16px)]"
+            :style="selectionToolbarPosition"
           >
-            {{ note.title || note.body.replace(/<[^>]*>/g, " ") }}
-          </button>
+            <slot name="selection" :connection-tools="connectionTools" />
+          </div>
+          <div
+            v-if="selectedConnection && permissions.edit"
+            id="brainstorming-connection-toolbar"
+            data-canvas-chrome
+            class="surface-panel absolute z-30 flex -translate-x-1/2 -translate-y-full items-center gap-0.5 p-1"
+            :style="{
+              left: `${Math.min(view.width - 100, Math.max(100, view.x + ((selectedConnection.x1 + selectedConnection.x2) / 2) * view.zoom))}px`,
+              top: `${Math.max(48, Math.min(view.height - 80, view.y + ((selectedConnection.y1 + selectedConnection.y2) / 2) * view.zoom - 12))}px`,
+            }"
+            role="toolbar"
+            :aria-label="t('ideation.canvas.connectionDirection')"
+          >
+            <ToolbarTooltip
+              v-for="direction in connectionDirections"
+              :key="direction.value"
+              :label="t(`ideation.canvas.connectionDirections.${direction.value}`)"
+            >
+              <button
+                :id="`connection-direction-${direction.value}`"
+                type="button"
+                class="toolbar-btn"
+                :class="
+                  selectedConnection.direction === direction.value
+                    ? 'bg-primary/10 text-primary'
+                    : ''
+                "
+                :aria-label="t(`ideation.canvas.connectionDirections.${direction.value}`)"
+                :aria-pressed="selectedConnection.direction === direction.value"
+                :disabled="historyState.busy"
+                @click="changeConnectionDirection(direction.value)"
+              >
+                <component :is="direction.icon" class="size-4" />
+              </button>
+            </ToolbarTooltip>
+          </div>
+          <div
+            v-if="selectionArea"
+            id="brainstorming-selection-area"
+            aria-hidden="true"
+            class="pointer-events-none absolute z-20 border border-primary bg-primary/10"
+            :style="{
+              left: `${selectionArea.x}px`,
+              top: `${selectionArea.y}px`,
+              width: `${selectionArea.width}px`,
+              height: `${selectionArea.height}px`,
+            }"
+          />
+          <p id="brainstorming-selection-help" class="sr-only">
+            {{ t("ideation.canvas.selectHelp") }}
+          </p>
+          <p id="brainstorming-history-help" class="sr-only">
+            {{ t("ideation.canvas.historyHelp") }}
+          </p>
+          <p id="brainstorming-connection-help" class="sr-only">
+            {{ t("ideation.canvas.connectionHelp") }}
+          </p>
+          <CanvasCursors
+            v-if="collaboration.cursors"
+            :container="root"
+            :view="view"
+            :context="collaboration.context"
+          />
+          <div
+            v-if="!notes.length && !groups.length"
+            class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 pb-20 text-center"
+          >
+            <StickyNote class="size-9 text-muted-foreground/35" />
+            <p class="text-lg font-medium">{{ t("ideation.canvas.empty") }}</p>
+            <p class="max-w-sm text-sm text-muted-foreground">
+              {{
+                t(
+                  !permissions.edit
+                    ? "ideation.readOnly"
+                    : canCreate
+                      ? "ideation.canvas.emptyHelp"
+                      : "ideation.timer.closedHelp",
+                )
+              }}
+            </p>
+          </div>
+          <div data-canvas-chrome class="absolute left-3 top-3 z-20">
+            <div class="surface-panel flex items-center p-1">
+              <button
+                type="button"
+                class="toolbar-btn"
+                :aria-label="t('ideation.search')"
+                @click="searchOpen = !searchOpen"
+              >
+                <Search class="size-4" /></button
+              ><slot name="session" />
+            </div>
+            <div v-if="searchOpen" class="surface-panel mt-2 w-72 p-3">
+              <Input
+                v-model="query"
+                :placeholder="t('ideation.search')"
+                :aria-label="t('ideation.search')"
+              />
+              <div class="mt-2 max-h-64 overflow-auto">
+                <button
+                  v-for="note in matches"
+                  :key="note.id"
+                  type="button"
+                  class="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
+                  @click="
+                    center(note);
+                    emit('selectGroup', null);
+                    emit('select', [note.id]);
+                    searchOpen = false;
+                  "
+                >
+                  {{ note.title || note.body.replace(/<[^>]*>/g, " ") }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <p
+            v-if="tool === 'connect'"
+            data-canvas-chrome
+            class="surface-panel absolute left-1/2 top-3 z-20 -translate-x-1/2 px-4 py-2 text-xs"
+          >
+            {{
+              t(
+                linkSource === null
+                  ? "ideation.canvas.connectSource"
+                  : "ideation.canvas.connectTarget",
+              )
+            }}<button
+              type="button"
+              class="ml-3"
+              :aria-label="t('ideation.cancel')"
+              @click="chooseTool('select')"
+            >
+              <X class="size-3" />
+            </button>
+          </p>
+          <div
+            data-canvas-chrome
+            class="surface-panel absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 px-2 py-2"
+          >
+            <DockToolButton
+              :icon="MousePointer2"
+              :active="tool === 'select'"
+              :tooltip-title="t('ideation.canvas.select')"
+              :tooltip-description="`${t('ideation.canvas.selectHelp')} ${t('ideation.canvas.historyHelp')}`"
+              @click="chooseTool('select')"
+            />
+            <DockToolButton
+              :icon="Hand"
+              :active="tool === 'pan'"
+              :tooltip-title="t('ideation.canvas.pan')"
+              @click="chooseTool('pan')"
+            />
+            <template v-if="permissions.edit"
+              ><div class="mx-0.5 h-6 w-px bg-border" />
+              <DockToolButton
+                v-if="canCreate"
+                id="new-brainstorming-idea"
+                :icon="StickyNote"
+                :active="tool === 'note'"
+                :tooltip-title="t('ideation.canvas.note')"
+                :tooltip-description="t('ideation.canvas.noteHelp')"
+                @click="chooseTool('note')" /><DockToolButton
+                :icon="Cable"
+                :active="tool === 'connect'"
+                :tooltip-title="t('ideation.canvas.connect')"
+                :tooltip-description="t('ideation.canvas.connectionHelp')"
+                @click="chooseTool('connect')"
+            /></template>
+            <div class="mx-0.5 h-6 w-px bg-border" />
+            <DockToolButton
+              :icon="List"
+              :tooltip-title="t('ideation.list')"
+              @click="
+                emit('finish');
+                emit('list');
+              "
+            />
+          </div>
+          <div
+            data-canvas-chrome
+            class="surface-panel absolute bottom-20 right-3 z-20 flex items-center gap-1 p-1 sm:bottom-3"
+          >
+            <button
+              type="button"
+              class="toolbar-btn"
+              :aria-label="t('ideation.canvas.zoomOut')"
+              @click="zoomTo(view.zoom / 1.2)"
+            >
+              <Minus class="size-3.5" /></button
+            ><button
+              type="button"
+              class="toolbar-btn min-w-12 tabular-nums"
+              :aria-label="t('ideation.canvas.resetZoom')"
+              @click="zoomTo(1)"
+            >
+              {{ Math.round(view.zoom * 100) }}%</button
+            ><button
+              type="button"
+              class="toolbar-btn"
+              :aria-label="t('ideation.canvas.zoomIn')"
+              @click="zoomTo(view.zoom * 1.2)"
+            >
+              <Plus class="size-3.5" /></button
+            ><ToolbarTooltip :label="t('ideation.canvas.fit')"
+              ><button
+                type="button"
+                class="toolbar-btn"
+                :aria-label="t('ideation.canvas.fit')"
+                @click="fitAll"
+              >
+                <Maximize class="size-3.5" /></button
+            ></ToolbarTooltip>
+          </div>
         </div>
-      </div>
-    </div>
-    <p
-      v-if="tool === 'connect'"
-      data-canvas-chrome
-      class="surface-panel absolute left-1/2 top-3 z-20 -translate-x-1/2 px-4 py-2 text-xs"
-    >
-      {{ t(linkSource === null ? "ideation.canvas.connectSource" : "ideation.canvas.connectTarget")
-      }}<button
-        type="button"
-        class="ml-3"
-        :aria-label="t('ideation.cancel')"
-        @click="chooseTool('select')"
+      </ContextMenuTrigger>
+      <ContextMenuContent
+        v-if="commentTarget"
+        @close-auto-focus.prevent="root?.focus({ preventScroll: true })"
       >
-        <X class="size-3" />
-      </button>
-    </p>
-    <div
-      data-canvas-chrome
-      class="surface-panel absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 px-2 py-2"
-    >
-      <DockToolButton
-        :icon="MousePointer2"
-        :active="tool === 'select'"
-        :tooltip-title="t('ideation.canvas.select')"
-        :tooltip-description="`${t('ideation.canvas.selectHelp')} ${t('ideation.canvas.historyHelp')}`"
-        @click="chooseTool('select')"
-      />
-      <DockToolButton
-        :icon="Hand"
-        :active="tool === 'pan'"
-        :tooltip-title="t('ideation.canvas.pan')"
-        @click="chooseTool('pan')"
-      />
-      <template v-if="permissions.edit"
-        ><div class="mx-0.5 h-6 w-px bg-border" />
-        <DockToolButton
-          v-if="canCreate"
-          id="new-brainstorming-idea"
-          :icon="StickyNote"
-          :active="tool === 'note'"
-          :tooltip-title="t('ideation.canvas.note')"
-          :tooltip-description="t('ideation.canvas.noteHelp')"
-          @click="chooseTool('note')" /><DockToolButton
-          :icon="Cable"
-          :active="tool === 'connect'"
-          :tooltip-title="t('ideation.canvas.connect')"
-          :tooltip-description="t('ideation.canvas.connectionHelp')"
-          @click="chooseTool('connect')"
-      /></template>
-      <div class="mx-0.5 h-6 w-px bg-border" />
-      <DockToolButton
-        :icon="List"
-        :tooltip-title="t('ideation.list')"
-        @click="
-          emit('finish');
-          emit('list');
-        "
-      />
-    </div>
-    <div
-      data-canvas-chrome
-      class="surface-panel absolute bottom-20 right-3 z-20 flex items-center gap-1 p-1 sm:bottom-3"
-    >
-      <button
-        type="button"
-        class="toolbar-btn"
-        :aria-label="t('ideation.canvas.zoomOut')"
-        @click="zoomTo(view.zoom / 1.2)"
-      >
-        <Minus class="size-3.5" /></button
-      ><button
-        type="button"
-        class="toolbar-btn min-w-12 tabular-nums"
-        :aria-label="t('ideation.canvas.resetZoom')"
-        @click="zoomTo(1)"
-      >
-        {{ Math.round(view.zoom * 100) }}%</button
-      ><button
-        type="button"
-        class="toolbar-btn"
-        :aria-label="t('ideation.canvas.zoomIn')"
-        @click="zoomTo(view.zoom * 1.2)"
-      >
-        <Plus class="size-3.5" /></button
-      ><ToolbarTooltip :label="t('ideation.canvas.fit')"
-        ><button
-          type="button"
-          class="toolbar-btn"
-          :aria-label="t('ideation.canvas.fit')"
-          @click="fitAll"
+        <ContextMenuItem
+          id="brainstorming-comment-context-add"
+          @select="emit('comment', commentTarget)"
         >
-          <Maximize class="size-3.5" /></button
-      ></ToolbarTooltip>
-    </div>
+          <MessageSquarePlus class="size-4" />{{ t("brainstormingComments.add_comment") }}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   </div>
 </template>

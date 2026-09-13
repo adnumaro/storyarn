@@ -551,7 +551,6 @@
       }
     },
     "comments": {
-      "new_comment_tool": "New comment",
       "add_comment": "Add comment",
       "canvas_label": "Flow canvas",
       "canvas_unavailable": "This flow is no longer available. Its discussion is preserved for reference.",

@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import ElementPropertiesPanel from "@modules/scenes/editor/components/panels/ElementPropertiesPanel.vue";
-import SceneCommentsPanel from "@modules/scenes/editor/components/panels/SceneCommentsPanel.vue";
 import SettingsPanel from "@modules/scenes/editor/components/panels/SettingsPanel.vue";
 import VersionHistoryPanel from "@modules/scenes/editor/components/panels/VersionHistoryPanel.vue";
-import type { SceneCommentsPanelState } from "@modules/scenes/types/comments";
 
 type ServerPayload = any;
 
@@ -41,7 +38,6 @@ interface SceneSettingsPanel {
 }
 
 interface ScenePanels {
-  comments?: SceneCommentsPanelState;
   versions: SceneVersionsPanel;
   element: SceneElementPanel;
   settings: SceneSettingsPanel;
@@ -50,21 +46,13 @@ interface ScenePanels {
 const { panels } = defineProps<{
   panels: ScenePanels;
 }>();
-
-const commentsPanelOpen = computed(
-  () => panels.comments?.open && panels.comments.presentation !== "canvas",
-);
 </script>
 
 <template>
   <div class="contents">
-    <div v-if="panels.comments" id="scene-comments-panel" class="contents">
-      <SceneCommentsPanel :state="panels.comments" />
-    </div>
-
     <div id="scene-versions-panel" class="contents">
       <VersionHistoryPanel
-        :open="panels.versions.open && !commentsPanelOpen"
+        :open="panels.versions.open"
         :versions="panels.versions.versions"
         :named-versions="panels.versions.namedVersions"
         :auto-versions="panels.versions.autoVersions"
@@ -82,7 +70,7 @@ const commentsPanelOpen = computed(
         :selected-type="panels.element.selectedType"
         :selected-element="panels.element.selectedElement"
         :can-edit="panels.element.canEdit"
-        :element-panel-open="panels.element.elementPanelOpen && !commentsPanelOpen"
+        :element-panel-open="panels.element.elementPanelOpen"
         :project-sheets="panels.element.projectSheets"
         :project-flows="panels.element.projectFlows"
         :project-scenes="panels.element.projectScenes"
@@ -96,7 +84,7 @@ const commentsPanelOpen = computed(
         :can-edit="panels.settings.canEdit"
         :ambient-flows="panels.settings.ambientFlows"
         :project-flows="panels.settings.projectFlows"
-        :scene-settings-open="panels.settings.sceneSettingsOpen && !commentsPanelOpen"
+        :scene-settings-open="panels.settings.sceneSettingsOpen"
       />
     </div>
   </div>

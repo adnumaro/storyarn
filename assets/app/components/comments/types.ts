@@ -67,7 +67,7 @@ export interface CommentMessage {
 
 export interface CommentsPanelState<TSource extends CommentSource = CommentSource> {
   open: boolean;
-  presentation?: "panel" | "canvas" | "workspace";
+  presentation?: "canvas" | "workspace";
   placing?: boolean;
   draftPosition?: CommentPosition | null;
   draftContext?: CommentContextReference | null;
@@ -97,8 +97,6 @@ export interface CommentUiConfig {
   i18nPrefix: string;
   /** Source type whose label and unavailable copy describe the whole canvas. */
   canvasSourceType: string;
-  /** Translation key, relative to i18nPrefix, for an unfiltered thread list. */
-  scopeThreadsKey: string;
   /** Translation key, relative to i18nPrefix, for a selected source fallback. */
   selectedSourceFallbackKey: string;
   /** Optional create-event field used by editors with entity anchors. */

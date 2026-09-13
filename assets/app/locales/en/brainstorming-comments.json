@@ -2,7 +2,6 @@
   "brainstormingComments": {
     "title": "Comments",
     "group_label": "Shared group",
-    "group_comments": "Discuss selected group",
     "follow": "Follow",
     "unfollow": "Unfollow",
     "follow_help": "Following notifies you of new messages. Direct replies and mentions can notify you even when you are not following.",
@@ -12,7 +11,6 @@
     "search_people": "Search people",
     "no_people": "No matching people",
     "remove_mention": "Remove mention of {name}",
-    "idea_comments": "Discuss shared idea",
     "canvas_label": "Session discussion",
     "idea_label": "Shared idea",
     "session_threads": "Session threads",
@@ -44,6 +42,7 @@
     "empty_hint": "Start a discussion below. Comments are visible to people who can read this source.",
     "readonly_hint": "You can read discussions. Editing access is required to comment.",
     "threads": "Comment threads",
-    "load_threads": "Load more threads"
+    "load_threads": "Load more threads",
+    "add_comment": "Add comment"
   }
 }

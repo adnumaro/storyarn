@@ -54,6 +54,15 @@ of documents. The closed overlay holds no subscriptions or active refresh timers
 and rejects conversation events. Every opening reloads authorized data before
 displaying conversations. A new host mount starts with its own scope.
 
+## Creating and opening contextual comments
+
+Editor toolbars have no comment creation or conversation-list actions. Create
+threads from the context menu in Sheets, Flows, Scenes, Sequence and Brainstorming.
+Sheet, Flow and Scene conversations open beside their canvas pin. Sequence and
+Brainstorming open a focused dialog for the selected context; they do not mount a
+thread list or sidebar. The global hub is the shared conversation index. Editor
+permalinks still open an existing thread in its context.
+
 ## Brainstorming adapter (ENG-139)
 
 `ideation_session`, `ideation_idea` and `ideation_group` are non-spatial discussion sources. The
@@ -75,8 +84,9 @@ The nullable source pointers and immutable recovery UUID prevent rebinding to
 replacement rows. Archived sessions still support discussion; round/contribution
 gates do not close conversations.
 
-The panel lists the chosen session, shared idea or group's threads, supports explicit
-parent replies, revision-checked resolution/reopening and `?thread=` links.
+The contextual dialog creates threads on the chosen session, shared idea or group
+and opens existing conversations from `?thread=` links. It supports explicit
+parent replies and revision-checked resolution/reopening.
 Requests bind to board epoch, session and discussion context. Invalidation
 rechecks access before emitting props and clears the composer when access is
 lost. Unconfirmed sends retain text/request identity in the mounted tab only;
@@ -97,7 +107,7 @@ Following is explicit and opt-in. Creating, replying, opening a permalink and
 listing a thread do not subscribe or acknowledge it. Viewers may follow/unfollow
 and mark accessible threads read, but cannot write messages. Read watermarks
 advance monotonically through an explicitly supplied message of that thread;
-the panel sends the highest message ID actually returned to it. A delayed
+the dialog sends the highest message ID actually returned to it. A delayed
 acknowledgement cannot swallow a later reply. Unread means a message from another
 author exists beyond the watermark, independently of notification read state.
 
@@ -146,7 +156,7 @@ separate; all carry only identity, never content, and require scoped refetches:
 - Following and read acknowledgements publish
   `{:ideation_comment_participation_changed, project_id, session_id, thread_id}`
   only to the actor's personal topic. Other tabs belonging to that user refresh
-  the affected open panel; other users and notification bells do not reload.
+  the affected open dialog; other users and notification bells do not reload.
 - Source audience changes publish `{:ideation_comment_sources_changed, project_id}`
   for visibility-aware consumers. This includes private-mode transitions, source
   deletion/restoration/replacement and a timer or archive that actually removes

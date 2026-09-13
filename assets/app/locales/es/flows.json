@@ -551,7 +551,6 @@
       }
     },
     "comments": {
-      "new_comment_tool": "Nuevo comentario",
       "add_comment": "Añadir comentario",
       "canvas_label": "Lienzo del flow",
       "canvas_unavailable": "Este flow ya no está disponible. La conversación se conserva como referencia.",

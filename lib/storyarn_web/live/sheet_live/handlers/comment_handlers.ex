@@ -78,52 +78,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
     )
   end
 
-  def handle("open", _params, socket) do
-    case authorize_read(socket) do
-      {:ok, _project, _membership} ->
-        socket =
-          socket
-          |> assign(:current_tab, "content")
-          |> put_state(%{
-            open: true,
-            presentation: "panel",
-            placing: false,
-            draftPosition: nil,
-            draftContext: nil,
-            draftId: nil,
-            thread: nil,
-            messages: [],
-            messageNextCursor: nil,
-            error: nil
-          })
-          |> assign(:comment_focus_thread_id, nil)
-          |> refresh()
-
-        {:reply, %{ok: true}, socket}
-
-      _error ->
-        failure(clear(socket), :not_found)
-    end
-  end
-
   def handle("close", _params, socket), do: {:noreply, close(socket)}
 
   def handle("select_thread", params, socket) do
-    presentation = if params["presentation"] == "canvas", do: "canvas", else: "panel"
-    socket = put_state(socket, %{presentation: presentation})
+    socket = put_state(socket, %{presentation: "canvas"})
     {:noreply, select_thread(socket, positive_id(params["thread_id"]))}
-  end
-
-  def handle("filter", params, socket) do
-    status = if params["status"] in ~w(open resolved all), do: params["status"], else: "open"
-    {:noreply, socket |> put_state(%{statusFilter: status, error: nil}) |> refresh()}
-  end
-
-  def handle("load_more", _params, socket) do
-    case socket.assigns.comments.nextCursor do
-      nil -> {:noreply, socket}
-      cursor -> {:noreply, load_threads(socket, cursor)}
-    end
   end
 
   def handle("load_messages", _params, socket) do
@@ -164,7 +123,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   defp refresh_open(socket, %{open: false}), do: socket
 
   defp refresh_open(socket, state) do
-    socket = socket |> load_threads() |> load_members()
+    socket = load_members(socket)
 
     if state.thread, do: load_detail(socket, state.thread.id), else: socket
   end
@@ -303,24 +262,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   defp select_thread(socket, thread_id) do
     socket
     |> put_state(%{open: true, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
-    |> load_threads()
     |> load_members()
     |> load_detail(thread_id)
     |> focus_selected_thread()
-  end
-
-  defp load_threads(socket, cursor \\ nil) do
-    %{current_scope: scope, project: project, sheet: sheet, comments: state} = socket.assigns
-    opts = [status: state.statusFilter, cursor: cursor]
-
-    case Projects.list_sheet_comment_threads(scope, project.id, sheet.id, opts) do
-      {:ok, %{threads: threads, next_cursor: next_cursor}} ->
-        threads = if cursor, do: Enum.uniq_by(state.threads ++ threads, & &1.id), else: threads
-        put_state(socket, %{threads: threads, nextCursor: next_cursor})
-
-      _error ->
-        clear(socket)
-    end
   end
 
   defp load_detail(socket, thread_id, cursor \\ nil) do
@@ -336,7 +280,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
           end
 
         available? = thread.source.status == "available"
-        presentation = if available?, do: socket.assigns.comments.presentation, else: "panel"
+        presentation = if available?, do: socket.assigns.comments.presentation, else: "canvas"
 
         socket
         |> put_state(%{
@@ -361,7 +305,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
             draftPosition: nil,
             draftContext: nil,
             draftId: nil,
-            presentation: "panel",
+            presentation: "canvas",
             error: error_message(:not_found)
           })
         else
@@ -471,7 +415,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   defp empty_state do
     %{
       open: false,
-      presentation: "panel",
+      presentation: "canvas",
       placing: false,
       draftPosition: nil,
       draftContext: nil,

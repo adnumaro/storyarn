@@ -7,7 +7,7 @@ import type { FlowCommentsPanelState, FlowCommentThread } from "../../../types/c
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "../../lib/comment-geometry";
 import { useCanvasComments } from "../../composables/useCanvasComments";
-import FlowCommentsPanel from "../panels/FlowCommentsPanel.vue";
+import FlowCommentPopover from "../panels/FlowCommentPopover.vue";
 
 const {
   area,
@@ -61,7 +61,10 @@ const {
   live,
 });
 const popupOpen = computed(
-  () => state.open && state.presentation === "canvas" && Boolean(activePoint.value),
+  () =>
+    state.open &&
+    state.presentation === "canvas" &&
+    Boolean(activePoint.value || state.thread || state.error),
 );
 const popupSize = computed(() => ({
   width: Math.max(0, Math.min(360, bounds.value.width - 24)),
@@ -274,7 +277,7 @@ onUnmounted(() => popupObserver?.disconnect());
       @wheel.stop
       @contextmenu.stop
     >
-      <FlowCommentsPanel :state="panelState" :draft-storage-key="draftStorageKey" embedded />
+      <FlowCommentPopover :state="panelState" :draft-storage-key="draftStorageKey" />
     </div>
   </div>
 </template>

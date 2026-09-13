@@ -10,7 +10,7 @@ import type {
 } from "../../lib/comment-geometry";
 import type { SceneCommentTargets } from "../../lib/comment-snap-adapter";
 import { useSceneCanvasComments } from "../../composables/useSceneCanvasComments";
-import SceneCommentsPanel from "../panels/SceneCommentsPanel.vue";
+import SceneCommentPopover from "../panels/SceneCommentPopover.vue";
 
 const {
   container,
@@ -83,7 +83,10 @@ const {
 });
 
 const popupOpen = computed(
-  () => state.open && state.presentation === "canvas" && Boolean(activePoint.value),
+  () =>
+    state.open &&
+    state.presentation === "canvas" &&
+    Boolean(activePoint.value || state.thread || state.error),
 );
 const popupSize = computed(() => ({
   width: Math.max(0, Math.min(360, bounds.value.width - 24)),
@@ -395,10 +398,9 @@ onUnmounted(() => popupObserver?.disconnect());
       @wheel.stop
       @contextmenu.stop
     >
-      <SceneCommentsPanel
+      <SceneCommentPopover
         :state="panelState"
         :draft-storage-key="draftStorageKey"
-        embedded
         @close="discardStoredDraft"
       />
     </div>

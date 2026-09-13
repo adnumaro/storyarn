@@ -45,7 +45,7 @@ msgstr ""
 msgid "Could not delete flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1414
+#: lib/storyarn_web/live/flow_live/show.ex:1406
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr ""
@@ -103,7 +103,7 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:435
 #: lib/storyarn_web/live/flow_live/index.ex:460
 #: lib/storyarn_web/live/flow_live/index.ex:481
-#: lib/storyarn_web/live/flow_live/show.ex:388
+#: lib/storyarn_web/live/flow_live/show.ex:380
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
@@ -188,7 +188,7 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1987
+#: lib/storyarn_web/live/flow_live/show.ex:1978
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -198,7 +198,7 @@ msgstr ""
 msgid "Could not update node positions."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1148
+#: lib/storyarn_web/live/flow_live/show.ex:1140
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr ""
@@ -344,7 +344,7 @@ msgstr ""
 msgid "Renamed flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1087
+#: lib/storyarn_web/live/flow_live/show.ex:1079
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr ""
@@ -376,22 +376,22 @@ msgid "Debug session started"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:154
-#: lib/storyarn_web/live/flow_live/show.ex:1354
+#: lib/storyarn_web/live/flow_live/show.ex:1346
 #, elixir-autogen, elixir-format
 msgid "Could not create sequence"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1350
+#: lib/storyarn_web/live/flow_live/show.ex:1342
 #, elixir-autogen, elixir-format
 msgid "Nodes must belong to the same container"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1343
+#: lib/storyarn_web/live/flow_live/show.ex:1335
 #, elixir-autogen, elixir-format
 msgid "Select at least one node first"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1340
+#: lib/storyarn_web/live/flow_live/show.ex:1332
 #, elixir-autogen, elixir-format
 msgid "Sequence created"
 msgstr ""
@@ -464,17 +464,17 @@ msgstr ""
 msgid "Node #%{n} (%{type}) — terminal target"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:548
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:520
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:535
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:507
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:544
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:516
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""
@@ -489,12 +489,12 @@ msgstr ""
 msgid "This composition or one of its descendants still depends on that source, layer, or audio track. Reassign or revert those local changes first."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:538
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:510
 #, elixir-autogen, elixir-format
 msgid "The comment context is no longer available. Review the pin's position and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:541
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:513
 #, elixir-autogen, elixir-format
 msgid "The selected comment context is invalid. Move the pin and try again."
 msgstr ""

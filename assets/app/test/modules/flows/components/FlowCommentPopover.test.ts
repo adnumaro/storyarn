@@ -10,8 +10,8 @@ import type {
 
 const mockLive = createMockLive();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => mockLive }));
-const { default: FlowCommentsPanel } =
-  await import("@modules/flows/editor/components/panels/FlowCommentsPanel.vue");
+const { default: FlowCommentPopover } =
+  await import("@modules/flows/editor/components/panels/FlowCommentPopover.vue");
 const { default: FlowCommentComposer } =
   await import("@modules/flows/editor/components/panels/comments/FlowCommentComposer.vue");
 
@@ -60,9 +60,9 @@ const stubs = {
   PopoverTrigger: passthrough,
 };
 
-function panel(overrides: Partial<FlowCommentsPanelState> = {}, embedded = false) {
-  return mount(FlowCommentsPanel, {
-    props: { state: { ...base, ...overrides }, embedded },
+function panel(overrides: Partial<FlowCommentsPanelState> = {}) {
+  return mount(FlowCommentPopover, {
+    props: { state: { ...base, ...overrides } },
     global: { stubs },
   });
 }
@@ -87,19 +87,19 @@ function lastReply() {
   return vi.mocked(mockLive.pushEvent).mock.calls.at(-1)![2]!;
 }
 
-describe("Flow comments panel", () => {
+describe("Flow comment popover", () => {
   beforeEach(() => vi.mocked(mockLive.pushEvent).mockClear());
 
-  it("lists thread previews and selects the thread with its stable id", async () => {
+  it("does not offer a duplicate thread index", () => {
     const wrapper = panel();
-    expect(wrapper.get("#flow-comment-thread-12").text()).toContain(thread.preview);
-    await wrapper.get("#flow-comment-thread-12").trigger("click");
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("comments_select_thread", { thread_id: 12 });
+    expect(wrapper.find("#flow-comment-thread-12").exists()).toBe(false);
+    expect(wrapper.find("#flow-comments-filter").exists()).toBe(false);
+    expect(wrapper.find("aside").exists()).toBe(false);
   });
 
   it("renders a compact canvas draft without the sidebar or thread index", async () => {
     const position = { x: -240.5, y: 180 };
-    const wrapper = panel({ presentation: "canvas", draftPosition: position }, true);
+    const wrapper = panel({ presentation: "canvas", draftPosition: position });
     expect(wrapper.find("aside").exists()).toBe(false);
     expect(wrapper.find("#flow-comments-filter").exists()).toBe(false);
     expect(wrapper.find("#flow-comment-thread-12").exists()).toBe(false);
@@ -116,14 +116,11 @@ describe("Flow comments panel", () => {
   });
 
   it("keeps canvas threads readable and resolvable in the floating conversation", async () => {
-    const wrapper = panel(
-      {
-        presentation: "canvas",
-        thread: { ...thread, source: { ...thread.source, type: "flow_canvas", id: 7 } },
-        messages: [message],
-      },
-      true,
-    );
+    const wrapper = panel({
+      presentation: "canvas",
+      thread: { ...thread, source: { ...thread.source, type: "flow_canvas", id: 7 } },
+      messages: [message],
+    });
     expect(wrapper.text()).toContain("Flow canvas");
     expect(wrapper.text()).toContain(message.body);
     expect(wrapper.text()).toContain(member.display_name);
@@ -135,24 +132,6 @@ describe("Flow comments panel", () => {
       expect.any(Function),
       expect.any(Function),
     );
-  });
-
-  it("does not duplicate the conversation in the sidebar while it is on the canvas", () => {
-    const wrapper = panel({ presentation: "canvas", thread, messages: [message] });
-    expect(wrapper.find("#flow-comments-content").exists()).toBe(false);
-    expect(wrapper.find("textarea").exists()).toBe(false);
-    expect(wrapper.get("aside").attributes("open")).toBe("false");
-  });
-
-  it("filters resolved discussions and loads subsequent thread pages", async () => {
-    const wrapper = panel({ nextCursor: 11 });
-    await wrapper.get("#flow-comments-filter").setValue("resolved");
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("comments_filter", { status: "resolved" });
-    await wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Load more threads")!
-      .trigger("click");
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("comments_load_more", {});
   });
 
   it("allows viewers to read messages without reply or resolution controls", () => {

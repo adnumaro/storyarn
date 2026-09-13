@@ -7,12 +7,12 @@ const live = createMockLive();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => live }));
 const { default: SceneHeader } = await import("@app/live/scene/show/SceneHeader.vue");
 const { default: ScenePanels } = await import("@app/live/scene/show/ScenePanels.vue");
-const { default: SceneCommentsPanel } =
-  await import("@modules/scenes/editor/components/panels/SceneCommentsPanel.vue");
+const { default: SceneCommentPopover } =
+  await import("@modules/scenes/editor/components/panels/SceneCommentPopover.vue");
 
 const comments: SceneCommentsPanelState = {
   open: true,
-  presentation: "panel",
+  presentation: "canvas",
   placing: false,
   draftPosition: null,
   draftId: null,
@@ -31,51 +31,25 @@ const passthrough = { template: "<div><slot /></div>" };
 beforeEach(() => vi.mocked(live.pushEvent).mockClear());
 
 describe("Scene comments chrome wiring", () => {
-  it("exposes the scene header count, placement mode, and viewer-safe panel toggle", async () => {
+  it("keeps the Scene header free of comment controls", () => {
     const wrapper = mount(SceneHeader, {
       props: {
         header: {
           toolbar: { canEdit: true, sceneName: "Courtyard", sceneShortcut: "C" },
           search: { searchQuery: "", searchFilter: "all", searchResults: [] },
           health: { errorItems: [], warningItems: [], infoItems: [] },
-          comments: { count: 2, open: false, placing: false, canComment: true },
         },
       },
-      global: {
-        stubs: {
-          SceneToolbar: true,
-          SearchPanel: true,
-          SceneHealthStatus: true,
-          ToolbarTooltip: passthrough,
-        },
-      },
+      global: { stubs: { SceneToolbar: true, SearchPanel: true, SceneHealthStatus: true } },
     });
-
-    expect(wrapper.get("#scene-comments-toggle").text()).toContain("2");
-    await wrapper.get("#scene-comments-create-mode").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_mode", { active: true });
-    await wrapper.get("#scene-comments-toggle").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_open", {});
-
-    await wrapper.setProps({
-      header: {
-        toolbar: { canEdit: false, sceneName: "Courtyard", sceneShortcut: "C" },
-        search: { searchQuery: "", searchFilter: "all", searchResults: [] },
-        health: { errorItems: [], warningItems: [], infoItems: [] },
-        comments: { count: 2, open: true, placing: false, canComment: false },
-      },
-    });
+    expect(wrapper.find("#scene-comments-toggle").exists()).toBe(false);
     expect(wrapper.find("#scene-comments-create-mode").exists()).toBe(false);
-    expect(wrapper.get("#scene-comments-toggle").attributes("aria-expanded")).toBe("true");
-    await wrapper.get("#scene-comments-toggle").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_close", {});
   });
 
-  it("gives a docked comment panel priority without hiding canvas conversations", async () => {
+  it("keeps editor panels available without a comments sidebar", async () => {
     const wrapper = mount(ScenePanels, {
       props: {
         panels: {
-          comments,
           versions: {
             open: true,
             versions: [],
@@ -109,7 +83,7 @@ describe("Scene comments chrome wiring", () => {
       },
       global: {
         stubs: {
-          SceneCommentsPanel: {
+          SceneCommentPopover: {
             props: ["state"],
             template: '<section data-testid="comments-panel" />',
           },
@@ -131,17 +105,7 @@ describe("Scene comments chrome wiring", () => {
       },
     });
 
-    expect(wrapper.find('[data-testid="comments-panel"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="versions-panel"]').attributes("data-open")).toBe("false");
-    expect(wrapper.get('[data-testid="element-panel"]').attributes("data-open")).toBe("false");
-    expect(wrapper.get('[data-testid="settings-panel"]').attributes("data-open")).toBe("false");
-
-    await wrapper.setProps({
-      panels: {
-        ...wrapper.props("panels"),
-        comments: { ...comments, presentation: "canvas" },
-      },
-    });
+    expect(wrapper.find('[data-testid="comments-panel"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="versions-panel"]').attributes("data-open")).toBe("true");
     expect(wrapper.get('[data-testid="element-panel"]').attributes("data-open")).toBe("true");
     expect(wrapper.get('[data-testid="settings-panel"]').attributes("data-open")).toBe("true");
@@ -149,9 +113,8 @@ describe("Scene comments chrome wiring", () => {
 
   it("creates a scene-canvas thread with percentage coordinates and no entity anchor", async () => {
     const position = { x: 20, y: 30 };
-    const wrapper = mount(SceneCommentsPanel, {
+    const wrapper = mount(SceneCommentPopover, {
       props: {
-        embedded: true,
         state: {
           ...comments,
           presentation: "canvas",
@@ -185,8 +148,8 @@ describe("Scene comments chrome wiring", () => {
   });
 
   it("renders a replacement comments state received after mount", async () => {
-    const wrapper = mount(SceneCommentsPanel, {
-      props: { embedded: true, state: comments },
+    const wrapper = mount(SceneCommentPopover, {
+      props: { state: comments },
       global: {
         stubs: {
           Sidebar: {

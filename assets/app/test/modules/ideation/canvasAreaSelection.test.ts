@@ -134,9 +134,7 @@ async function canvas(options: Options = {}) {
 type CanvasElement = Pick<VueWrapper, "element">;
 
 function viewport(wrapper: CanvasElement) {
-  const layer = (wrapper.element as HTMLElement).querySelector<HTMLElement>(
-    ":scope > .origin-top-left",
-  );
+  const layer = (wrapper.element as HTMLElement).querySelector<HTMLElement>(".origin-top-left");
   const values = layer?.style.transform.match(
     /translate\(([-\d.]+)px,\s*([-\d.]+)px\) scale\(([-\d.]+)\)/,
   );

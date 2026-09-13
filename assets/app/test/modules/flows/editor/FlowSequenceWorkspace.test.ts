@@ -1,4 +1,4 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, DOMWrapper } from "@vue/test-utils";
 import { defineComponent, nextTick, ref } from "vue";
 import { Select } from "@components/ui/select";
 import type { FlowCommentThread } from "@modules/flows/types/comments";
@@ -121,7 +121,7 @@ describe("FlowSequenceWorkspace", () => {
     vi.unstubAllGlobals();
   });
 
-  it("counts surface comments through their available intervention context", () => {
+  it("creates a comment for the current intervention from the context menu", async () => {
     const pin: FlowCommentThread = {
       id: 12,
       status: "open",
@@ -163,7 +163,19 @@ describe("FlowSequenceWorkspace", () => {
         ],
       },
     });
-    expect(wrapper.get("[data-sequence-comments-toggle]").text()).toBe("Comments1");
+    expect(wrapper.find("[data-sequence-comments-toggle]").exists()).toBe(false);
+    await wrapper
+      .get("[data-stage]")
+      .trigger("contextmenu", { button: 2, clientX: 100, clientY: 100 });
+    await flushPromises();
+    const item = new DOMWrapper(
+      document.querySelector<HTMLElement>("#sequence-comment-context-add")!,
+    );
+    await item.trigger("click");
+    expect(pushEvent).toHaveBeenCalledWith("comments_open", {
+      node_id: 20,
+      presentation: "workspace",
+    });
     wrapper.unmount();
   });
 

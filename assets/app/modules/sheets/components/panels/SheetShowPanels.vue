@@ -2,8 +2,6 @@
 import AudioTab from "@modules/sheets/components/panels/tabs/AudioTab.vue";
 import HistoryTab from "@modules/sheets/components/panels/tabs/HistoryTab.vue";
 import ReferencesTab from "@modules/sheets/components/panels/tabs/ReferencesTab.vue";
-import SheetCommentsPanel from "@modules/sheets/components/panels/SheetCommentsPanel.vue";
-import type { SheetCommentsPanelState } from "@modules/sheets/types/comments";
 
 type ServerPayload = any;
 
@@ -38,7 +36,6 @@ interface SheetHistoryPanel {
 }
 
 interface SheetPanels {
-  comments?: SheetCommentsPanelState;
   currentTab: string;
   compact: boolean;
   references: SheetReferencesPanel | null;
@@ -53,10 +50,6 @@ const { panels } = defineProps<{
 
 <template>
   <div class="contents">
-    <div v-if="panels.comments" id="sheet-comments-panel" class="contents">
-      <SheetCommentsPanel :state="panels.comments" />
-    </div>
-
     <div
       v-if="panels.currentTab === 'references' && panels.references"
       id="references-tab"

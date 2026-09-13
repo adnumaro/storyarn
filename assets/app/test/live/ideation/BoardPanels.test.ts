@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import BoardPanels from "@app/live/ideation/BoardPanels.vue";
 import type { BrainstormingCommentsState } from "@app/live/ideation/commentTypes";
 import type { ReferencesPanelState } from "@app/live/ideation/referenceTypes";
@@ -40,6 +40,7 @@ describe("Brainstorming panel composition", () => {
   it("keeps comments visible with references closed and scopes each sibling's events independently", async () => {
     const pushEvent = vi.fn();
     const wrapper = mount(BoardPanels, {
+      attachTo: document.body,
       props: { comments, references, epoch: "epoch-1", sessionId: 12, baseUrl: "/brainstorming" },
       global: {
         provide: {
@@ -53,10 +54,12 @@ describe("Brainstorming panel composition", () => {
         stubs: {
           Sidebar: { template: "<aside><slot name='header'/><slot/><slot name='footer'/></aside>" },
           ConfirmDialog: true,
+          DialogPortal: { template: "<div><slot /></div>" },
         },
       },
     });
 
+    await flushPromises();
     expect(wrapper.find("#brainstorming-comment-body").exists()).toBe(true);
     expect(wrapper.find("#brainstorming-reference-search-form").exists()).toBe(false);
     await wrapper.get("#brainstorming-comment-body").setValue("Discuss this design");
@@ -74,6 +77,7 @@ describe("Brainstorming panel composition", () => {
       comments: { ...comments, open: false, context: "comments-closed" },
       references: { ...references, open: true, context: "references-2" },
     });
+    await flushPromises();
     expect(wrapper.find("#brainstorming-comment-body").exists()).toBe(false);
     expect(wrapper.find("#brainstorming-reference-search-form").exists()).toBe(true);
     await wrapper.get("#brainstorming-reference-query").setValue("Hero");
