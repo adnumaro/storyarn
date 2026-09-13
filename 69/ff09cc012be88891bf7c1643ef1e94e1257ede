@@ -1,0 +1,85 @@
+test/e2e/command_palette_test.exs
+  s_ad18daab72f501::t_5e301ea74972b4 31
+assets/app/components/comments/CommentsHubButton.vue
+  s_ad18daab72f501::t_f2926e7dc47280 1-47
+assets/app/test/live/comments/Overlay.test.ts
+  s_ad18daab72f501::t_07dce316ce1791 1-13,30,42-44,47-52,55-89,93-110,114-130,134-139,149-150
+  s_ad18daab72f501::t_cb945245e3a8e6 14-29,31-41,45-46,53-54,90-92,111-113,131-133,140-148
+lib/storyarn_web/components/settings_layout.ex
+  s_ad18daab72f501::t_89122722057470 80
+  s_ad18daab72f501::t_53aa3c82f10084 63-68,76-79,81
+lib/storyarn_web/components/comments_overlay.ex
+  s_ad18daab72f501::t_f2926e7dc47280 1-23
+assets/app/components/comments/commentsHubEvents.ts
+  s_ad18daab72f501::t_f2926e7dc47280 1-10
+assets/app/live/comments/Overlay.vue
+  s_ad18daab72f501::t_cb945245e3a8e6 7-10,31-33,43-45,51-53,67-80,90-97,99,104,115-121,123-126,129-131,133-137
+  s_ad18daab72f501::t_9489b44414af10 3,57-66,108
+  s_ad18daab72f501::t_07dce316ce1791 54
+  s_ad18daab72f501::t_f2926e7dc47280 1-2,4-6,11-30,34-42,46-50,55-56,81-89,98,100-101,103,105-107,109-114,122,127-128,132,138-143
+  s_ad18daab72f501::t_53aa3c82f10084 102
+config/architecture_boundaries.exs
+  s_ad18daab72f501::t_daf8b920038741 1870-1872,4283
+test/storyarn_web/layouts_test.exs
+  s_ad18daab72f501::t_ff491e148ee1a4 40-42,44-47
+assets/app/live/comments/Hub.vue
+  s_ad18daab72f501::t_bf411777bccafa 6,17,26,31,59-68,70-79,195-196,285-343,346-347,363-369,371-438
+test/e2e/comments_hub_test.exs
+  s_ad18daab72f501::t_89122722057470 15,20,33-39,41-46,56-62,75,85-87,89
+  s_ad18daab72f501::t_8312cd5d0e0cee 90-95,103-105
+test/storyarn_web/live/comment_live/overlay_test.exs
+  s_ad18daab72f501::t_9489b44414af10 1-288,292-604
+  s_ad18daab72f501::t_89122722057470 289-291
+  s_ad18daab72f501::t_4f21167d66195e 605-606,608
+assets/app/test/live/comments/Hub.test.ts
+  s_ad18daab72f501::t_94bd47cb2be29f 146,157,187-195
+  s_ad18daab72f501::t_1efe2e283a0c58 196-206
+assets/app/live/layouts/project/Layout.vue
+  s_ad18daab72f501::t_c3e58d494343e1 16,174
+assets/app/live/layouts/settings/Layout.vue
+  s_ad18daab72f501::t_7f7b7803da6d3f 33,554
+assets/app/live/layouts/workspace/Layout.vue
+  s_ad18daab72f501::t_c4d642e66c997a 6,113,118
+assets/app/locales/en/comments-hub.json
+  s_ad18daab72f501::t_38da736d093365 72-78
+assets/app/locales/es/comments-hub.json
+  s_ad18daab72f501::t_0a6f7f1b623276 72-78
+assets/app/shell/WorkspaceSidebar.vue
+  s_ad18daab72f501::t_835063fb9b8cb7 2
+lib/storyarn/projects.ex
+  s_ad18daab72f501::t_23721f8327327b 1087
+lib/storyarn/projects/comments/README.md
+  s_ad18daab72f501::t_1ad7e84adb6e8c 12-17,39-40,53-55
+lib/storyarn/projects/comments/comments.ex
+  s_ad18daab72f501::t_247eb296722f6c 21-25
+lib/storyarn_web/components/project_layout.ex
+  s_ad18daab72f501::t_3f52eb93540eaf 81-86
+lib/storyarn_web/components/workspace_layout.ex
+  s_ad18daab72f501::t_3b495a90194121 53-57
+lib/storyarn_web/live/comment_live/overlay.ex
+  s_ad18daab72f501::t_5689624674bffa 1-2,17-24,28-30,46,54,60,62,64-65,69,74-96,103,113,116-118,124,150-151,169,544-548
+priv/gettext/default.pot
+  s_ad18daab72f501::t_73dcecff65f6fc 154,159,164,169
+priv/gettext/en/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_6308171c10689f 154,159,164,169
+priv/gettext/es/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_51d31b89d76350 154,159,164,169
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_ad18daab72f501::t_4cd3e02eb8d9f7 292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "69ff09cc012be88891bf7c1643ef1e94e1257ede",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
