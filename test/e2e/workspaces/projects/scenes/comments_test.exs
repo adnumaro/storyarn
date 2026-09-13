@@ -76,7 +76,7 @@ defmodule StoryarnWeb.E2E.SceneCommentsTest do
       |> authenticate(user)
       |> visit(path)
       |> assert_has("#{pin}[aria-busy=false]", timeout: 20_000)
-      |> assert_has("#scene-comment-magnetism-toggle[aria-pressed=true]")
+      |> refute_has("#scene-comment-magnetism-toggle")
       |> drag_over_scene_pin(pin, target.label)
       |> assert_has("#scene-comment-snap-preview", text: target.label)
 
@@ -109,16 +109,14 @@ defmodule StoryarnWeb.E2E.SceneCommentsTest do
       |> click(pin)
       |> assert_has("#scene-comment-context", text: target.label)
       |> click("#scene-comment-popover-close")
-      |> click("#scene-comment-magnetism-toggle")
-      |> assert_has("#scene-comment-magnetism-toggle[aria-pressed=false]")
-      |> press(pin, "ArrowRight")
+      |> press(pin, "Alt+ArrowRight")
 
     assert {:ok, previewing_detach} = Projects.get_comment_thread(scope, project.id, thread_id)
     assert previewing_detach.thread.revision == attached.thread.revision
     assert previewing_detach.thread.context == attached.thread.context
 
     session
-    |> press(pin, "Enter")
+    |> press(pin, "Alt+Enter")
     |> assert_has("#{pin}[aria-busy=false]")
     |> visit(path <> "?thread=#{thread_id}")
     |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)

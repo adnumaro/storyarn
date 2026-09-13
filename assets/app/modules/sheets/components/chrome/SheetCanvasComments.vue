@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Magnet, MessageCircle, Plus, Repeat2, Unlink } from "@lucide/vue";
+import { MessageCircle, Plus, Repeat2 } from "@lucide/vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import { useLive } from "@shared/composables/useLive";
@@ -48,13 +48,11 @@ const {
   contextMenuPoint,
   dragging,
   panelState,
-  magnetism,
   moving,
   keyboardDragging,
   dragPreview,
   snapOutline,
   isPending,
-  toggleMagnetism,
   cycleContext,
   onPinBlur,
   onLostCapture,
@@ -282,24 +280,6 @@ onUnmounted(() => {
     @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
-    <div
-      v-if="state.canComment && (pins.length || placing || draftPoint)"
-      class="pointer-events-auto absolute right-4 z-10 flex items-center gap-2"
-      :style="{ top: `${visibleBounds.top + 16}px` }"
-      @pointerdown.stop
-    >
-      <button
-        id="sheet-comment-magnetism-toggle"
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        :aria-pressed="magnetism"
-        :title="$t('sheets.comments.magnetism_hint')"
-        @click.stop="toggleMagnetism"
-      >
-        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
-        {{ $t(magnetism ? "sheets.comments.magnetism_on" : "sheets.comments.magnetism_off") }}
-      </button>
-    </div>
     <div
       v-if="moving && snapOutline"
       class="absolute rounded-lg border-2 border-primary bg-primary/5"

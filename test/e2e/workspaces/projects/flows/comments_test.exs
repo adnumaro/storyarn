@@ -203,7 +203,7 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
       |> visit(path)
       |> assert_has("#{pin}[aria-busy=false]", timeout: 20_000)
       |> assert_has("[data-flow-comment-node='#{node.id}'][data-flow-comment-label='Guard motivation']")
-      |> assert_has("#flow-comment-magnetism-toggle[aria-pressed=true]")
+      |> refute_has("#flow-comment-magnetism-toggle")
       |> drag_pin_over_node(pin, node.id)
       |> assert_has("#flow-comment-snap-preview", text: "Guard motivation")
 
@@ -237,9 +237,7 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
       |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)
       |> assert_has("#flow-comment-context", text: "Guard motivation")
       |> click("#flow-comment-popover-close")
-      |> click("#flow-comment-magnetism-toggle")
-      |> assert_has("#flow-comment-magnetism-toggle[aria-pressed=false]")
-      |> press(pin, "ArrowRight")
+      |> press(pin, "Alt+ArrowRight")
 
     assert {:ok, nudging} = Projects.get_comment_thread(scope, project.id, thread_id)
     assert nudging.thread.revision == attached.thread.revision
@@ -247,7 +245,7 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
 
     session =
       session
-      |> press(pin, "Enter")
+      |> press(pin, "Alt+Enter")
       |> assert_has("#{pin}[aria-busy=false]")
       |> click(pin)
       |> assert_has("#flow-comment-popover", text: feedback)

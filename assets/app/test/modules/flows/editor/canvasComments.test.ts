@@ -491,7 +491,7 @@ describe("spatial comment geometry and interactions", () => {
     );
   });
 
-  it("supports keyboard cancellation and explicit free positioning with magnetism disabled", async () => {
+  it("supports keyboard cancellation and explicit free positioning with Alt", async () => {
     const { wrapper } = setup();
     await nextTick();
     const pin = wrapper.get("#flow-comment-pin-12");
@@ -500,10 +500,8 @@ describe("spatial comment geometry and interactions", () => {
     await nextTick();
     expect(pin.attributes("style")).toContain("left: 420px");
     expect(live.pushEvent).not.toHaveBeenCalled();
-    await wrapper.get("#flow-comment-magnetism-toggle").trigger("click");
-    expect(wrapper.get("#flow-comment-magnetism-toggle").attributes("aria-pressed")).toBe("false");
-    key(pin.element, "ArrowRight");
-    key(pin.element, "Enter");
+    key(pin.element, "ArrowRight", { altKey: true });
+    key(pin.element, "Enter", { altKey: true });
     expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
       "comments_move",
       { thread_id: 12, x: 165, y: 110, context: null, expected_revision: 3 },

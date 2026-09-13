@@ -124,7 +124,6 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
   const dragPreview = shallowRef<CommentMagneticPreview | null>(null);
   const pendingMoves = ref(new Map<number, PendingMove>());
   const pendingDraft = shallowRef<PendingDraft | null>(null);
-  const magnetism = ref(true);
   const contextPosition = ref<SceneCommentPosition | null>(null);
   const contextMenuPoint = ref<SceneCommentPosition | null>(null);
   const moveError = ref(false);
@@ -418,7 +417,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
 
   function placeAt(position: SceneCommentPosition, pointer: SceneCommentPosition, free = false) {
     const session = new CommentMagneticDrag(adapter, { position, context: null }, pointer);
-    const preview = session.update(pointer, !magnetism.value || free);
+    const preview = session.update(pointer, free);
     live.pushEvent("comments_place", { ...preview.position, context: preview.context });
   }
   function handleDragKey(event: KeyboardEvent): boolean {
@@ -504,7 +503,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
   function updatePreview() {
     const current = drag.value;
     if (!current) return;
-    dragPreview.value = current.session.update(current.pointer, !magnetism.value || altHeld);
+    dragPreview.value = current.session.update(current.pointer, altHeld);
     hoverId.value = null;
   }
   function onDragMove(event: PointerEvent) {
@@ -642,12 +641,8 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
       () => finish(true),
     );
   }
-  function toggleMagnetism() {
-    magnetism.value = !magnetism.value;
-    if (drag.value?.moved) updatePreview();
-  }
   function cycleContext(direction: 1 | -1 = 1) {
-    if (!drag.value?.moved || !magnetism.value || altHeld) return;
+    if (!drag.value?.moved || altHeld) return;
     dragPreview.value = drag.value.session.cycle(direction);
   }
 
@@ -871,7 +866,6 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     draftPoint,
     moveError,
     panelState,
-    magnetism,
     moving,
     keyboardDragging,
     dragPreview,
@@ -880,7 +874,6 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
     onPinKeyDown,
     onPinBlur,
     onLostCapture,
-    toggleMagnetism,
     cycleContext,
     discardStoredDraft,
     contextMenuPoint,

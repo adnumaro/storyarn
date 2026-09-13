@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Magnet, MessageCircle, Plus, Unlink, Repeat2, Eye, EyeOff } from "@lucide/vue";
+import { MessageCircle, Plus, Repeat2, Eye, EyeOff } from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
@@ -52,7 +52,6 @@ const {
   draftPoint,
   moveError,
   panelState,
-  magnetism,
   moving,
   keyboardDragging,
   dragPreview,
@@ -61,7 +60,6 @@ const {
   onPinKeyDown,
   onPinBlur,
   onLostCapture,
-  toggleMagnetism,
   cycleContext,
   discardStoredDraft,
   contextMenuPoint,
@@ -160,23 +158,6 @@ onUnmounted(() => popupObserver?.disconnect());
     data-testid="scene-canvas-comments"
     data-scene-comment-ui="true"
   >
-    <div
-      v-if="state.canComment && (pins.length || placing || draftPoint)"
-      class="pointer-events-auto absolute right-4 top-4 z-10 flex items-center gap-2"
-      @pointerdown.stop
-    >
-      <button
-        id="scene-comment-magnetism-toggle"
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        :aria-pressed="magnetism"
-        :title="$t('scenes.comments.magnetism_hint')"
-        @click.stop="toggleMagnetism"
-      >
-        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
-        {{ $t(magnetism ? "scenes.comments.magnetism_on" : "scenes.comments.magnetism_off") }}
-      </button>
-    </div>
     <div
       v-if="contextVisibility.local || (state.open && contextVisibility.hidden)"
       class="pointer-events-auto absolute left-4 top-4 z-20 max-w-xs rounded-lg border border-border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-md"

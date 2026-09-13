@@ -101,7 +101,6 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   const dragPreview = shallowRef<CommentMagneticPreview | null>(null);
   const pendingMoves = ref(new Map<number, PendingMove>());
   const pendingDraft = shallowRef<PendingDraft | null>(null);
-  const magnetism = ref(true);
   const moveError = ref(false);
   let request = 0;
   let altHeld = false;
@@ -269,7 +268,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
       area.area.transform,
     );
     const session = new CommentMagneticDrag(adapter, { position, context: null }, pointer);
-    const preview = session.update(pointer, !magnetism.value || event.altKey);
+    const preview = session.update(pointer, event.altKey);
     live.pushEvent("comments_place", {
       node_id: null,
       ...preview.position,
@@ -386,7 +385,7 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
   function updatePreview() {
     const current = drag.value;
     if (!current) return;
-    dragPreview.value = current.session.update(current.pointer, !magnetism.value || altHeld);
+    dragPreview.value = current.session.update(current.pointer, altHeld);
     hoverId.value = null;
   }
   function onDragMove(event: PointerEvent) {
@@ -519,12 +518,8 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
       () => finish(true),
     );
   }
-  function toggleMagnetism() {
-    magnetism.value = !magnetism.value;
-    if (drag.value?.moved) updatePreview();
-  }
   function cycleContext(direction: 1 | -1 = 1) {
-    if (!drag.value?.moved || !magnetism.value || altHeld) return;
+    if (!drag.value?.moved || altHeld) return;
     dragPreview.value = drag.value.session.cycle(direction);
   }
 
@@ -695,7 +690,6 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     draftPoint,
     moveError,
     panelState,
-    magnetism,
     moving,
     keyboardDragging,
     dragPreview,
@@ -706,7 +700,6 @@ export function useCanvasComments(options: CanvasCommentsOptions) {
     onPinKeyDown,
     onPinBlur,
     onLostCapture,
-    toggleMagnetism,
     cycleContext,
   };
 }

@@ -802,7 +802,7 @@ describe("Sheet canvas comments", () => {
     },
   );
 
-  it("uses Alt on release to detach context and the toggle to place freely", async () => {
+  it("uses Alt to detach context on release and place freely", async () => {
     const { wrapper, header } = setup({ placing: true });
     snapTarget(header, "sheet_header", "7", rect(170, 100, 500, 100), "Header");
     await nextTick();
@@ -811,9 +811,7 @@ describe("Sheet canvas comments", () => {
     pointer(window, "pointermove", 210, 150);
     pointer(window, "pointerup", 210, 150, 0, true);
     expect(lastRequest("comments_move")[1]).toMatchObject({ x: 25, y: 130, context: null });
-    await wrapper.get("#sheet-comment-magnetism-toggle").trigger("click");
-    expect(wrapper.get("#sheet-comment-magnetism-toggle").attributes("aria-pressed")).toBe("false");
-    pointer(header, "pointerdown", 210, 150);
+    pointer(header, "pointerdown", 210, 150, 0, true);
     expect(lastRequest("comments_place")[1]).toEqual({ x: 25, y: 130, context: null });
   });
 

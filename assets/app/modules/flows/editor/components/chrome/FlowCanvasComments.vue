@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Magnet, MessageCircle, Plus, Unlink, Repeat2 } from "@lucide/vue";
+import { MessageCircle, Plus, Repeat2 } from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { FlowAreaExtra, FlowSchemes } from "../../lib/rete-schemes";
@@ -38,7 +38,6 @@ const {
   draftPoint,
   moveError,
   panelState,
-  magnetism,
   moving,
   keyboardDragging,
   dragPreview,
@@ -47,7 +46,6 @@ const {
   onPinKeyDown,
   onPinBlur,
   onLostCapture,
-  toggleMagnetism,
   cycleContext,
   selectThread,
   startDrag,
@@ -123,23 +121,6 @@ onUnmounted(() => popupObserver?.disconnect());
     class="pointer-events-none absolute inset-0 z-20 overflow-hidden"
     data-testid="flow-canvas-comments"
   >
-    <div
-      v-if="state.canComment && (pins.length || placing || draftPoint)"
-      class="pointer-events-auto absolute right-4 top-4 z-10 flex items-center gap-2"
-      @pointerdown.stop
-    >
-      <button
-        id="flow-comment-magnetism-toggle"
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        :aria-pressed="magnetism"
-        :title="$t('flows.comments.magnetism_hint')"
-        @click.stop="toggleMagnetism"
-      >
-        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
-        {{ $t(magnetism ? "flows.comments.magnetism_on" : "flows.comments.magnetism_off") }}
-      </button>
-    </div>
     <p id="flow-comment-move-instructions" class="sr-only">
       {{ $t("flows.comments.keyboard_move_hint") }}
     </p>
