@@ -1,0 +1,167 @@
+assets/app/components/comments/CommentConversation.vue
+  s_ad18daab72f501::t_ad8848678a66db 2,8,296
+assets/app/components/comments/CommentDialog.vue
+  s_ad18daab72f501::t_e5eb7a37eb1985 1-43
+assets/app/components/comments/CommentPopover.vue
+  s_ad18daab72f501::t_0c82251ef4d330 54
+assets/app/components/comments/types.ts
+  s_ad18daab72f501::t_41c6f9367a14ec 70
+assets/app/live/flow/show/FlowHeader.vue
+  s_ad18daab72f501::t_5030f88cf10202 2
+assets/app/live/flow/show/FlowPanels.vue
+  s_ad18daab72f501::t_c7b34b8ea5d0de 70,88,101,109,117,125
+assets/app/live/ideation/BoardPanels.vue
+  s_ad18daab72f501::t_b0c94faa4bccc4 2,17,20
+assets/app/live/ideation/CommentDialog.vue
+  s_ad18daab72f501::t_21f5d570f4e2d0 6,104,151
+assets/app/live/scene/show/ScenePanels.vue
+  s_ad18daab72f501::t_2a64b27991d6fe 55,73,87
+assets/app/locales/en/brainstorming-comments.json
+  s_ad18daab72f501::t_a610da2690e0a2 45-46
+assets/app/locales/es/brainstorming-comments.json
+  s_ad18daab72f501::t_bdb985c4979190 45-46
+assets/app/modules/flows/editor/components/chrome/FlowCanvasComments.vue
+  s_ad18daab72f501::t_4a8392630af6cf 10,64-67,280
+assets/app/modules/flows/editor/components/panels/FlowCommentPopover.vue
+  s_ad18daab72f501::t_0c9091e1a17e18 3,7,16
+assets/app/modules/flows/editor/components/sequence/FlowSequenceCommentDialog.vue
+  s_ad18daab72f501::t_c8bc47b146101e 3,8,47-51
+assets/app/modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue
+  s_ad18daab72f501::t_220db1409539af 4,17-22,45,408-411,413-417,419-480,482-544,546-551,553-555,557-673,675-691,693-706,708-793
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_ad18daab72f501::t_c4486e30c20f75 75-80,941-946,950,1016
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_ad18daab72f501::t_5b6af6663c364a 5,20-25,85,98,123-155,1115,1152-1308,1310-1314,1316-1357,1359-1376,1378-1524,1526-1529,1531-1533,1535-1538
+assets/app/modules/scenes/editor/components/chrome/SceneCanvasComments.vue
+  s_ad18daab72f501::t_f61b2bd521da41 13,86-89,401
+assets/app/modules/scenes/editor/components/panels/SceneCommentPopover.vue
+  s_ad18daab72f501::t_47abb9c0984169 3,7,17
+assets/app/modules/sheets/components/chrome/SheetCanvasComments.vue
+  s_ad18daab72f501::t_1400d0815ec19d 8,76-79,189,470
+assets/app/modules/sheets/components/panels/SheetCommentPopover.vue
+  s_ad18daab72f501::t_a5bece1c76813a 3,7,16
+assets/app/test/components/comments/CommentComposer.test.ts
+  s_ad18daab72f501::t_a92cdb6ebda9bc 130
+assets/app/test/live/flow/show/FlowCanvasComments.test.ts
+  s_ad18daab72f501::t_85ee853f6b3c10 43,128
+assets/app/test/live/flow/show/FlowHeader.test.ts
+  s_ad18daab72f501::t_c1ee146f8dcf39 53-55
+assets/app/test/live/flow/show/FlowPanels.test.ts
+  s_ad18daab72f501::t_35272d2c9583ad 56
+assets/app/test/live/ideation/BoardPanels.test.ts
+  s_ad18daab72f501::t_651212e53b7bbb 2,43,57,62,80
+assets/app/test/live/ideation/CommentDialog.test.ts
+  s_ad18daab72f501::t_773be7e1ec5b8c 2-3,37,40,52,56,62,84,94,119
+assets/app/test/live/scene/show/SceneCanvasComments.test.ts
+  s_ad18daab72f501::t_6dce8b80f2969c 37,125,720,850
+assets/app/test/live/scene/show/SceneCommentsChrome.test.ts
+  s_ad18daab72f501::t_f36039cf0ed171 10-11,15,34,43,45,49,86,108,116,151-152
+assets/app/test/live/shared/ContextualSourceHeader.test.ts
+  s_ad18daab72f501::t_428de10bf56255 23,75-76,84-85,89
+assets/app/test/live/sheet/show/SheetCanvasComments.test.ts
+  s_ad18daab72f501::t_b7d33da544319c 35,148,153,155,171,591,610,615,618-619,630,633,673
+assets/app/test/live/sheet/show/SheetCommentsChrome.test.ts
+  s_ad18daab72f501::t_f5c55c7e0693e0 15-16,20,42-44,48,61,69-70,75,117,225,261,343,357
+assets/app/test/live/sheet/show/SheetSurface.test.ts
+  s_ad18daab72f501::t_52afa7c4ea7aa1 39
+assets/app/test/modules/flows/components/FlowCommentPopover.test.ts
+  s_ad18daab72f501::t_7b3db98fb65c43 13-14,63-65,90,93,95-97,102,119-123
+assets/app/test/modules/flows/editor/FlowSequenceCommentDialog.test.ts
+  s_ad18daab72f501::t_cdf1fe6ba13e38 1,7,46-50,52-56,60-64,76-77
+assets/app/test/modules/flows/editor/FlowSequenceWorkspace.test.ts
+  s_ad18daab72f501::t_a262eb22c115f1 1,124,166-178
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_ad18daab72f501::t_2b4f09dd3810ba 47,162,731,750,788
+assets/app/test/modules/ideation/canvasAreaSelection.test.ts
+  s_ad18daab72f501::t_6709d01407aff5 137
+assets/app/test/modules/ideation/canvasInteractions.test.ts
+  s_ad18daab72f501::t_b4698610eb950a 3,471-473,500-550
+lib/storyarn/projects/comments/README.md
+  s_ad18daab72f501::t_97a18e2e5ab357 57-65,87-89,110,159
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_ad18daab72f501::t_c96fd6f9a15e37 78-79,84,113,159,200,353,382,525
+lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex
+  s_ad18daab72f501::t_ff9deb3ed2eb18 5,107,115,198,206,209-212,214-215
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_ad18daab72f501::t_0819957635174b 75,119,294,319,442
+lib/storyarn_web/live/scene_live/show.ex
+  s_ad18daab72f501::t_ffadd9dfb3f73e 181,216
+lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex
+  s_ad18daab72f501::t_c2ab44ee5257ff 84,126,283,308,418
+lib/storyarn_web/live/sheet_live/show.ex
+  s_ad18daab72f501::t_a6b7ec62aa028c 263
+priv/gettext/assets.pot
+  s_ad18daab72f501::t_cfeceeea1d65c5 57
+priv/gettext/default.pot
+  s_ad18daab72f501::t_c113efcb87056e 53
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_ad18daab72f501::t_24aadd37552134 57
+priv/gettext/en/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_c6aa3f4d62c1f9 53
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_ad18daab72f501::t_8387833d514625 48,106,191,201,347,379,384,389,394,467,472,477,492,497
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_ad18daab72f501::t_a38f2019324384 35,234,251-252,273,289,368,385,658-659,664,669,674,684,743,748,753,764,769,774,832,848,858,934,939,944,949,954
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_ad18daab72f501::t_c3407d63306ce1 112,312,461,466,471
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_ad18daab72f501::t_e6832855419e8a 34-35,102
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_ad18daab72f501::t_2b5021438e1a74 57
+priv/gettext/es/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_86f8422d11b57f 53
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_ad18daab72f501::t_cb51183c44ef2b 48,106,191,201,347,379,384,389,394,467,472,477,492,497
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_ad18daab72f501::t_3fd40f2da31ecd 35,234,251-252,273,289,368,385,658-659,664,669,674,684,743,748,753,764,769,774,832,848,858,934,939,944,949,954
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_ad18daab72f501::t_bdd7380b3a147a 112,312,461,466,471
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_ad18daab72f501::t_72dcdad8732450 34-35,102
+priv/gettext/flows.pot
+  s_ad18daab72f501::t_603d999544b839 48,106,191,201,347,379,384,389,394,467,472,477,492,497
+priv/gettext/scenes.pot
+  s_ad18daab72f501::t_95793645b0f0bd 35,234,251-252,273,289,368,385,658-659,664,669,674,684,743,748,753,764,769,774,832,848,858,934,939,944,949,954
+priv/gettext/sheets.pot
+  s_ad18daab72f501::t_68c1ccb3e05270 112,312,461,466,471
+priv/gettext/versioning.pot
+  s_ad18daab72f501::t_8fba05f3180506 34-35,102
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_ad18daab72f501::t_da735a43853ed0 49-52,138-139,299-300,470-476,488
+test/e2e/workspaces/projects/flows/sequence_editor_test.exs
+  s_ad18daab72f501::t_f428f96cc71fc8 83-85,89
+test/e2e/workspaces/projects/ideation/comments_test.exs
+  s_ad18daab72f501::t_21ed8b501b381e 24-26,60-61,76-108,137
+test/e2e/workspaces/projects/ideation/contextual_explorations_test.exs
+  s_ad18daab72f501::t_c6047de141054f 33
+test/e2e/workspaces/projects/scenes/comments_test.exs
+  s_ad18daab72f501::t_aedd12110e0dc0 29-30,150-151,190-191
+test/e2e/workspaces/projects/sheets/comments_test.exs
+  s_ad18daab72f501::t_c0211d39aaeab0 16
+test/storyarn_web/live/contextual_source_header_diff_test.exs
+  s_ad18daab72f501::t_a8001a96be2677 41,52-53
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_ad18daab72f501::t_84f227c211031d 52,475,480-481,495-496,510-511,664,774
+test/storyarn_web/live/ideation_live/comments_test.exs
+  s_ad18daab72f501::t_119da02183fcbe 91
+test/storyarn_web/live/scene_live/comments_test.exs
+  s_ad18daab72f501::t_842c3bcb0d3172 228-230,364,447,606
+test/storyarn_web/live/sheet_live/comments_test.exs
+  s_ad18daab72f501::t_57d5fed1b1c56a 50,82,131,396,408,410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "28cfd882fe28f10efb0b626c51b6c3d13bd4384c",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
