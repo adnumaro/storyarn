@@ -1,0 +1,30 @@
+assets/app/modules/flows/editor/components/chrome/FlowCanvasComments.vue
+  s_ad18daab72f501::t_6586cb60cf04a5 2-3,178,182-183,201,203,206-207,216
+assets/app/modules/sheets/components/chrome/SheetCanvasComments.vue
+  s_ad18daab72f501::t_6586cb60cf04a5 2-3,341,345-346,364,366,369-370,379
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_ad18daab72f501::t_8fa194741c304b 310
+assets/app/modules/ideation/BrainstormingCanvasComments.vue
+  s_ad18daab72f501::t_6586cb60cf04a5 2,291,295-296,311-314,317-319,322-323,335
+assets/app/modules/scenes/editor/components/chrome/SceneCanvasComments.vue
+  s_ad18daab72f501::t_6586cb60cf04a5 2-3,273,277-278,296,298,301-302,311
+assets/app/components/comments/CommentPin.vue
+  s_ad18daab72f501::t_6586cb60cf04a5 4-8
+  s_ad18daab72f501::t_cacf22aa90a22d 1-3,9-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "126568a6ae127fd311043ccb6d0d6bda175e968b",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
