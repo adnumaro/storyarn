@@ -1,0 +1,46 @@
+lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex
+  s_ad18daab72f501::t_e7b62b429736dc 47,151-158
+  s_ad18daab72f501::t_6d5b8a55bfb9de 63,230,312
+  s_ad18daab72f501::t_47e612dc84cbb2 168-170,251
+  s_ad18daab72f501::t_5d0b0234d17f4e 159
+test/storyarn/projects/comments/ideation_comments_test.exs
+  s_ad18daab72f501::t_6d5b8a55bfb9de 215-218,220
+assets/app/modules/ideation/BrainstormingCanvasComments.vue
+  s_ad18daab72f501::t_37b00f5f0d6282 59
+  s_ad18daab72f501::t_301d1a99f70364 256-259
+  s_ad18daab72f501::t_dfb151a649b0ec 27,55-57,66,197
+  s_ad18daab72f501::t_45599b88215976 2,252-255,260-262,267-268,274,276,355-356
+  s_ad18daab72f501::t_58e34fef95e3b1 60-63
+  s_ad18daab72f501::t_2e68ac9a53cfa2 47-49,51-52
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_ad18daab72f501::t_668eea9de9633c 992-997
+lib/storyarn/projects/comments/queries/ideation_conversations.ex
+  s_ad18daab72f501::t_6d5b8a55bfb9de 19-24
+test/e2e/workspaces/projects/sheets/comments_test.exs
+  s_ad18daab72f501::t_c9b12ff0eeaea0 330,334,389-394
+  s_ad18daab72f501::t_398fcaac2cf29a 395-397
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_ad18daab72f501::t_668eea9de9633c 88-93,1553-1554,1558
+priv/gettext/default.pot
+  s_ad18daab72f501::t_4e6c2479738398 139,149
+priv/gettext/en/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_5b5790974075e1 139,149
+priv/gettext/es/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_77b603c43bdef3 139,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c1fee43ff4bbc90d2644b30dbc9c56235a28eed8",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
