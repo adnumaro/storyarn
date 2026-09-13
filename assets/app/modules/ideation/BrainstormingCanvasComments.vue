@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import CommentPin from "@components/comments/CommentPin.vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
-import { MessageCircle, Plus } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import type { CommentPosition, CommentThread } from "@components/comments/types";
@@ -288,12 +288,12 @@ onUnmounted(() => {
     @wheel.stop
     @dblclick.stop
   >
-    <button
+    <CommentPin
       v-for="pin in pins"
       :id="`brainstorming-comment-pin-${pin.thread.id}`"
       :key="pin.thread.id"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      :movable="state.canComment"
+      :selected="state.open && state.thread?.id === pin.thread.id"
       :style="{ left: `${pin.point.x}px`, top: `${pin.point.y}px` }"
       :aria-label="
         $t('brainstormingComments.pin_label', { author: pin.thread.author.display_name })
@@ -308,17 +308,19 @@ onUnmounted(() => {
       @pointercancel.stop="cancel"
       @lostpointercapture.stop="cancel"
       @keydown="key($event, pin.thread)"
-      @blur="drag?.pointerId === null && cancel()"
+      @blur="
+        hoverId = null;
+        drag?.pointerId === null && cancel();
+      "
       @pointerenter="hoverId = pin.thread.id"
       @pointerleave="hoverId = null"
-    >
-      <MessageCircle class="size-4" />
-    </button>
-    <button
+      @focus="hoverId = pin.thread.id"
+    />
+    <CommentPin
       v-if="state.open && !state.thread"
       id="brainstorming-comment-draft-pin"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-primary bg-background text-primary shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      draft
+      :movable="state.canComment"
       :style="{ left: `${activePoint.x}px`, top: `${activePoint.y}px` }"
       :aria-label="$t('brainstormingComments.new_thread')"
       :aria-busy="pending"
@@ -330,9 +332,7 @@ onUnmounted(() => {
       @lostpointercapture.stop="cancel"
       @keydown="key($event, null)"
       @blur="drag?.pointerId === null && cancel()"
-    >
-      <Plus class="size-4" />
-    </button>
+    />
     <p id="brainstorming-comment-move-help" class="sr-only">
       {{ $t("brainstormingComments.keyboard_move_hint") }}
     </p>

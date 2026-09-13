@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { MessageCircle, Plus, Repeat2 } from "@lucide/vue";
+import CommentPin from "@components/comments/CommentPin.vue";
+import { Repeat2 } from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { FlowAreaExtra, FlowSchemes } from "../../lib/rete-schemes";
@@ -174,16 +175,12 @@ onUnmounted(() => popupObserver?.disconnect());
     >
       {{ $t("flows.comments.update_failed") }}
     </p>
-    <button
+    <CommentPin
       v-for="pin in pins"
       :id="`flow-comment-pin-${pin.thread.id}`"
       :key="pin.thread.id"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      :class="{
-        'ring-2 ring-ring ring-offset-2': state.thread?.id === pin.thread.id && popupOpen,
-        'cursor-grab active:cursor-grabbing': state.canComment,
-      }"
+      :movable="state.canComment"
+      :selected="state.thread?.id === pin.thread.id && popupOpen"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('flows.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
@@ -193,7 +190,6 @@ onUnmounted(() => popupObserver?.disconnect());
       "
       :aria-busy="isPending(pin.thread.id)"
       :aria-expanded="state.thread?.id === pin.thread.id && popupOpen"
-      aria-haspopup="dialog"
       @pointerdown.stop="startDrag($event, pin.thread)"
       @keydown="onPinKeyDown($event, pin.thread)"
       @lostpointercapture="onLostCapture"
@@ -202,15 +198,13 @@ onUnmounted(() => popupObserver?.disconnect());
       @focus="hoverId = pin.thread.id"
       @blur="onPinBlur"
       @click.stop="selectThread(pin.thread, $event)"
-    >
-      <MessageCircle class="size-4" />
-    </button>
+    />
 
-    <button
+    <CommentPin
       v-if="draftPoint"
       id="flow-comment-draft-pin"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40 active:cursor-grabbing"
+      draft
+      :movable="state.canComment"
       :style="{ left: `${draftPoint.x}px`, top: `${draftPoint.y}px` }"
       :aria-label="$t('flows.comments.move_pin')"
       aria-describedby="flow-comment-move-instructions"
@@ -219,9 +213,7 @@ onUnmounted(() => popupObserver?.disconnect());
       @keydown="onPinKeyDown($event, null)"
       @blur="onPinBlur"
       @lostpointercapture="onLostCapture"
-    >
-      <Plus class="size-4" />
-    </button>
+    />
 
     <div
       v-if="hoveredPin && !(popupOpen && state.thread?.id === hoveredPin.thread.id)"

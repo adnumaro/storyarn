@@ -307,6 +307,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     list_ideation_comment_threads: 3,
     list_ideation_comment_threads: 4,
     list_ideation_comment_threads: 5,
+    list_ideation_comment_pins: 3,
     create_ideation_comment: 5,
     subscribe_ideation_comments: 3,
     unsubscribe_ideation_comments: 2,

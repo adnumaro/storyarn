@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { MessageCircle, Plus, Repeat2 } from "@lucide/vue";
+import CommentPin from "@components/comments/CommentPin.vue";
+import { MessageCircle, Repeat2 } from "@lucide/vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import { useLive } from "@shared/composables/useLive";
@@ -337,16 +338,12 @@ onUnmounted(() => {
       {{ $t("sheets.comments.update_failed") }}
     </p>
 
-    <button
+    <CommentPin
       v-for="pin in pins"
       :id="`sheet-comment-pin-${pin.thread.id}`"
       :key="pin.thread.id"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md transition-[background-color,transform] hover:scale-105 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      :class="{
-        'ring-2 ring-ring ring-offset-2': state.thread?.id === pin.thread.id && popupOpen,
-        'cursor-grab active:cursor-grabbing': state.canComment,
-      }"
+      :movable="state.canComment"
+      :selected="state.thread?.id === pin.thread.id && popupOpen"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('sheets.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
@@ -356,7 +353,6 @@ onUnmounted(() => {
       "
       :aria-busy="isPending(pin.thread.id)"
       :aria-expanded="state.thread?.id === pin.thread.id && popupOpen"
-      aria-haspopup="dialog"
       @pointerdown.stop="startDrag($event, pin.thread)"
       @pointerenter="hoverId = pin.thread.id"
       @pointerleave="hoverId = null"
@@ -365,15 +361,13 @@ onUnmounted(() => {
       @lostpointercapture="onLostCapture"
       @click.stop="selectThread(pin.thread, $event)"
       @keydown="movePinWithKeyboard($event, pin.thread)"
-    >
-      <MessageCircle class="size-4" />
-    </button>
+    />
 
-    <button
+    <CommentPin
       v-if="draftPoint"
       id="sheet-comment-draft-pin"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40 active:cursor-grabbing"
+      draft
+      :movable="state.canComment"
       :style="{ left: `${draftPoint.x}px`, top: `${draftPoint.y}px` }"
       :aria-label="$t('sheets.comments.move_pin')"
       :aria-busy="panelState.draftPending"
@@ -382,9 +376,7 @@ onUnmounted(() => {
       @blur="onPinBlur"
       @lostpointercapture="onLostCapture"
       @keydown="movePinWithKeyboard($event, null)"
-    >
-      <Plus class="size-4" />
-    </button>
+    />
 
     <div
       v-if="hoveredPin && !(popupOpen && state.thread?.id === hoveredPin.thread.id)"
