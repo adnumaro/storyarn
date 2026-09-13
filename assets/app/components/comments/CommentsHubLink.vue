@@ -37,13 +37,12 @@ onUnmounted(() => unregister?.());
     :title="$t('comments_hub.title')"
     :aria-current="active ? 'page' : undefined"
     :class="[
-      'inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md px-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      'inline-flex size-9 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       active
         ? 'bg-accent text-accent-foreground'
         : 'text-muted-foreground hover:bg-accent hover:text-foreground',
     ]"
   >
     <MessagesSquare class="size-4" />
-    <span class="hidden xl:inline">{{ $t("comments_hub.title") }}</span>
   </LiveLink>
 </template>
