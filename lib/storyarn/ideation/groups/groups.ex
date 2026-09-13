@@ -1,7 +1,14 @@
 defmodule Storyarn.Ideation.Groups do
   @moduledoc false
   alias Storyarn.Ideation.Groups.Commands
+  alias Storyarn.Ideation.Groups.Queries.DecisionSources
   alias Storyarn.Ideation.Groups.Queries.List
+
+  @doc false
+  defdelegate decision_sources(session_id, ids), to: DecisionSources, as: :list
+
+  @doc false
+  defdelegate search_decision_sources(session_id, page), to: DecisionSources, as: :search
 
   defdelegate comment_source(scope, project_id, session_id, group_id, opts),
     to: Storyarn.Ideation.Groups.Execution.CommentSource,

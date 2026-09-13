@@ -10,6 +10,7 @@ import {
   Unplug,
   MessageCircle,
   Link2,
+  ListChecks,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -83,6 +84,32 @@ async function useReferences(ideaId: number | null) {
   const reply = await request("references_open", { idea_id: ideaId });
   if (reply.status === "error") failure.value = reply.code;
 }
+const preparingDecision = ref(false);
+const decisionReady = computed(
+  () =>
+    !preparingDecision.value &&
+    online.value &&
+    writable.value &&
+    !board.session?.configuration.private_mode,
+);
+watch(
+  () => board.epoch,
+  () => {
+    preparingDecision.value = false;
+  },
+);
+async function proposeDecision(groupId?: number) {
+  if (!decisionReady.value) return;
+  if (groupId === undefined && !decisionSelection.value) return;
+  const at = context();
+  preparingDecision.value = true;
+  const payload =
+    groupId === undefined ? { idea_ids: [...selectedIds.value] } : { group_id: groupId };
+  const reply = await request("decisions_new", payload);
+  if (at.epoch !== board.epoch || at.session_id !== board.session?.id) return;
+  preparingDecision.value = false;
+  if (reply.status === "error") failure.value = reply.code;
+}
 const notes = useCanvasNotes(
   () => board,
   request,
@@ -101,6 +128,18 @@ const selectionShape = computed(() => {
   return shapes.size === 1 ? [...shapes][0] : null;
 });
 const writable = computed(() => board.can_edit && board.session?.status === "open");
+const decisionSelection = computed(() => {
+  const sources = selectedNotes(selectedIds.value);
+  return (
+    sources.length > 0 &&
+    sources.length <= 20 &&
+    sources.length === selectedIds.value.length &&
+    sources.every(
+      (note) => note.id > 0 && note.visibility === "shared" && !!note.published_revision,
+    ) &&
+    !board.session?.configuration.private_mode
+  );
+});
 const canCreate = computed(() => writable.value && board.session?.contributions_open !== false);
 const own = computed(() => current.value?.author_id === board.current_user_id);
 const draft = computed(() =>
@@ -949,6 +988,7 @@ onUnmounted(() => {
         @separate-group="separateGroup"
         @delete-group="groups.remove"
         @reveal-group="revealGroup"
+        @propose-group-decision="proposeDecision"
         @edit="edit"
         @change="notes.change"
         @finish="finish"
@@ -1009,7 +1049,28 @@ onUnmounted(() => {
           ></Popover>
         </template>
         <template #selection="{ connectionTools }">
-          <div v-if="current" class="surface-panel flex items-center gap-1 p-1.5 whitespace-nowrap">
+          <div
+            v-if="current"
+            class="surface-panel flex items-center gap-1 overflow-x-auto p-1.5 whitespace-nowrap"
+          >
+            <ToolbarTooltip
+              v-if="writable"
+              :label="
+                t(
+                  decisionSelection
+                    ? 'brainstormingDecisions.propose'
+                    : 'brainstormingDecisions.sharedSourcesOnly',
+                )
+              "
+              ><Button
+                id="brainstorming-propose-decision"
+                variant="ghost"
+                size="icon-sm"
+                :disabled="!decisionSelection || !online || mutationBusy || preparingDecision"
+                :aria-label="t('brainstormingDecisions.propose')"
+                @click="proposeDecision()"
+                ><ListChecks class="size-4" /></Button
+            ></ToolbarTooltip>
             <Button
               v-if="
                 current.visibility === 'shared' &&

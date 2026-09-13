@@ -86,6 +86,7 @@ defmodule Storyarn.Ideation.Sessions do
 
   defdelegate contextual_receipt_sources_query(), to: Queries.ContextualReceipts, as: :sources
   defdelegate contextual_link_receipts_query(), to: Queries.ContextualReceipts, as: :links
+  defdelegate receipt_generations_query(), to: Queries.ReceiptGenerations, as: :query
 
   defdelegate record_contextual_link_receipt(access, key, fingerprint, reference_identity),
     to: Storyarn.Ideation.Sessions.Execution.ContextualLinkReceipt,
