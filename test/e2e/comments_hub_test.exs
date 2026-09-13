@@ -12,11 +12,12 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
   @moduletag :e2e
   @moduletag browser_context_opts: [viewport: %{width: 1440, height: 1000}]
 
-  test "project chrome opens the shared hub and replies return to the original Sheet", %{conn: conn} do
+  test "review preserves the editor and URL, restores drafts, and opens the original Sheet", %{conn: conn} do
     user = user_fixture(%{display_name: "Avery"})
     scope = user_scope_fixture(user)
     project = user |> project_fixture(%{name: "The Glass Harbor"}) |> Repo.preload(:workspace)
     sheet = sheet_fixture(project, %{name: "Mara — Character arc"})
+    block = block_fixture(sheet, %{config: %{"label" => "Motivation"}, value: %{"content" => "A promise to keep"}})
     other_sheet = sheet_fixture(project, %{name: "The lighthouse keeper"})
     other_project = project_fixture(user, %{name: "Other production"})
     foreign_sheet = sheet_fixture(other_project, %{name: "A separate review"})
@@ -29,9 +30,20 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
       conn
       |> authenticate(user)
       |> visit(path)
-      |> assert_has("#comments-hub-link[href='/comments?project_id=#{project.id}']", timeout: 20_000)
-      |> click("#comments-hub-link")
+      |> assert_has("#comments-hub-button", timeout: 20_000)
+      |> click_at("#sheet-block-#{block.id} > div.relative > .group", 12, 12)
+      |> assert_has("#sheet-block-#{block.id} .border-primary")
+      |> evaluate("window.commentsReviewHost = document.querySelector('#project-layout')")
+      |> click("#comments-hub-button")
+      |> assert_has("#comments-review-dialog[role='dialog'][aria-modal='true']")
+      |> assert_path(path)
       |> assert_has("#comments-hub-content", timeout: 20_000)
+      |> evaluate(
+        "(() => { const box = document.querySelector('#comments-review-dialog').getBoundingClientRect(); return [box.x, box.y, box.right < innerWidth, box.bottom < innerHeight]; })()",
+        fn [x, y, right_margin, bottom_margin] ->
+          assert x > 0 and y > 0 and right_margin and bottom_margin
+        end
+      )
       |> assert_has("#comments-hub-thread-#{thread.id}")
       |> refute_has("#comments-hub-thread-#{foreign.id}")
       |> refute_has("#hub-comment-body")
@@ -41,7 +53,13 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
       |> assert_has("#hub-comment-body", value: "")
       |> click("#comments-hub-thread-#{thread.id}")
       |> assert_has("#hub-comment-body", value: "Her promise to the keeper brings her back.")
-      |> PhoenixTest.Playwright.reload_page(timeout: 20_000)
+      |> press("#hub-comment-body", "Escape")
+      |> refute_has("#comments-review-dialog")
+      |> assert_path(path)
+      |> evaluate("document.querySelector('#project-layout') === window.commentsReviewHost", fn same -> assert same end)
+      |> evaluate("document.activeElement.id", fn id -> assert id == "comments-hub-button" end)
+      |> assert_has("#sheet-block-#{block.id} .border-primary")
+      |> click("#comments-hub-button")
       |> assert_has("#hub-comment-body", value: "Her promise to the keeper brings her back.", timeout: 20_000)
       |> click("#hub-comment-send")
       |> assert_has("#comments-hub-detail", text: "Her promise to the keeper brings her back.")
@@ -54,7 +72,7 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
   end
 
   @tag browser_context_opts: [viewport: %{width: 390, height: 844}]
-  test "on a narrow screen the conversation opens with a route back to the list", %{conn: conn} do
+  test "mobile review fills the screen and returns to the list without navigating", %{conn: conn} do
     user = user_fixture()
     scope = user_scope_fixture(user)
     project = project_fixture(user, %{name: "The Glass Harbor"})
@@ -64,8 +82,17 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
     browser =
       conn
       |> authenticate(user)
-      |> visit("/comments")
+      |> visit("/users/settings/preferences")
+      |> assert_has("#comments-hub-button", timeout: 20_000)
+      |> click("#comments-hub-button")
       |> assert_has("#comments-hub-content", timeout: 20_000)
+      |> evaluate(
+        "(() => { const box = document.querySelector('#comments-review-dialog').getBoundingClientRect(); return [box.x, box.y, box.width, box.height, innerWidth, innerHeight]; })()",
+        fn [x, y, width, height, viewport_width, viewport_height] ->
+          assert x == 0 and y == 0
+          assert width == viewport_width and height == viewport_height
+        end
+      )
       |> click("#comments-hub-thread-#{thread.id}")
       |> assert_has("#hub-comment-body")
 
@@ -73,6 +100,9 @@ defmodule StoryarnWeb.E2E.CommentsHubTest do
     |> click("#comments-hub-back")
     |> assert_has("#comments-hub-thread-#{thread.id}")
     |> refute_has("#hub-comment-body")
+    |> assert_path("/users/settings/preferences")
+    |> click("#comments-hub-close")
+    |> refute_has("#comments-review-dialog")
   end
 
   defp create_thread(scope, project, sheet, body) do

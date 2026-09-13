@@ -1867,6 +1867,9 @@ boundaries = %{
   # these adapters, keeping Phoenix and LiveVue out of business code.
   presentation_adapters: [
     "lib/storyarn_web/router.ex",
+    # Layout composition mounts the project-owned review LiveView without
+    # owning conversation reads, writes, authorization or navigation.
+    "lib/storyarn_web/components/comments_overlay.ex",
     "lib/storyarn_web/live_vue_encoders.ex",
     "lib/storyarn_web/live_vue_encoder/"
   ],
@@ -4277,7 +4280,7 @@ policy = %{
       reason: "Comment Hub and inbox queries consume audience-safe Ideation source projections before pagination"
     },
     %{
-      source: "lib/storyarn_web/live/comment_live/index.ex",
+      source: "lib/storyarn_web/live/comment_live/overlay.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "The project-owned conversation hub reads accessible workspace filters and subscribes to access changes"

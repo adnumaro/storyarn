@@ -1084,6 +1084,7 @@ defmodule Storyarn.Projects do
 
   @doc "Subscribes once to identity-only activity and source invalidations across the user's projects."
   defdelegate subscribe_comment_conversations(scope), to: Comments
+  defdelegate unsubscribe_comment_conversations(scope), to: Comments
 
   @doc false
   defdelegate invalidate_comment_conversations(project_id), to: Comments

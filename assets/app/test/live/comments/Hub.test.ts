@@ -143,7 +143,7 @@ describe("Comments hub", () => {
     const wrapper = hub({ ...hubState(), filters: { ...filters, project_id: "4" } });
     await wrapper.get("#comments-hub-search").setValue("guard");
     expect(live.pushEvent).not.toHaveBeenCalled();
-    await wrapper.get("#comments-hub-workspace").setValue("3");
+    await wrapper.get("#comments-hub-scope").setValue("workspace:3");
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "hub_filter",
       {
@@ -154,8 +154,7 @@ describe("Comments hub", () => {
       expect.any(Function),
       expect.any(Function),
     );
-    expect(wrapper.get("#comments-hub-project").text()).toContain("Archive");
-    expect(wrapper.get("#comments-hub-project").text()).not.toContain("Lierha");
+    expect(wrapper.get("#comments-hub-scope").text()).toContain("Archive");
     await vi.advanceTimersByTimeAsync(300);
     expect(live.pushEvent).toHaveBeenCalledTimes(1);
   });
@@ -180,6 +179,26 @@ describe("Comments hub", () => {
         personal: "mentioned",
         search: "guard",
       },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("clears search and review filters while retaining the selected project scope", async () => {
+    const wrapper = hub({
+      ...hubState(),
+      filters: {
+        ...filters,
+        workspace_id: "2",
+        project_id: "4",
+        status: "resolved",
+        search: "guard",
+      },
+    });
+    await wrapper.get("#comments-hub-reset").trigger("click");
+    expect(live.pushEvent).toHaveBeenLastCalledWith(
+      "hub_filter",
+      { ...filters, workspace_id: "2", project_id: "4" },
       expect.any(Function),
       expect.any(Function),
     );

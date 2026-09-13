@@ -60,6 +60,12 @@ defmodule StoryarnWeb.Components.SettingsLayout do
         project_context={project_context?(@settings_nav)}
         sudo_grant={@sudo_grant}
       />
+      <StoryarnWeb.Components.CommentsOverlay.overlay
+        socket={@socket}
+        current_scope={@current_scope}
+        project_id={comments_context_id(@settings_nav, @current_path, :project)}
+        workspace_id={comments_context_id(@settings_nav, @current_path, :workspace)}
+      />
       <Layouts.flash_group flash={@flash} socket={@socket} />
     </div>
     """
@@ -67,4 +73,10 @@ defmodule StoryarnWeb.Components.SettingsLayout do
 
   defp project_context?(%{project: %{}}), do: true
   defp project_context?(_settings_nav), do: false
+
+  # Account settings may display a default workspace in their rail. That is
+  # not the scope of the account page itself.
+  defp comments_context_id(nav, "/workspaces/" <> _path, kind), do: get_in(nav || %{}, [kind, :id])
+  defp comments_context_id(nav, "/users/settings/workspaces/" <> _path, kind), do: get_in(nav || %{}, [kind, :id])
+  defp comments_context_id(_nav, _path, _kind), do: nil
 end

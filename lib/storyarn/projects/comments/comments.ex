@@ -18,6 +18,11 @@ defmodule Storyarn.Projects.Comments do
 
   def subscribe_comment_conversations(_), do: {:error, :not_found}
 
+  def unsubscribe_comment_conversations(%{user: %{id: id}}) when is_integer(id) and id > 0,
+    do: PubSub.unsubscribe(Storyarn.PubSub, hub_topic(id))
+
+  def unsubscribe_comment_conversations(_), do: {:error, :not_found}
+
   def invalidate_comment_conversations(project_id) do
     publish_to_members(project_id, &hub_topic/1, {:comment_conversations_changed, project_id})
   end

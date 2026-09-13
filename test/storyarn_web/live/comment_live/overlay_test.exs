@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.CommentLive.IndexTest do
+defmodule StoryarnWeb.CommentLive.OverlayTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
@@ -18,14 +18,13 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     %{project: project, sheet: sheet, scope: user_scope_fixture(user)}
   end
 
-  test "the hub uses the workspace shell and lists all accessible conversations without participation", ctx do
+  test "the overlay lists accessible conversations without participation", ctx do
     thread = create_comment(ctx)
     reader = user_fixture()
     membership_fixture(ctx.project, reader, "viewer")
 
-    {:ok, view, _} = live(log_in_user(ctx.conn, reader), ~p"/comments")
-    assert has_element?(view, "#comments-hub[data-inject=workspace-layout]")
-    assert has_element?(view, "#workspace-layout")
+    {:ok, view, _} = open_hub(log_in_user(ctx.conn, reader), %{})
+    assert has_element?(view, "#comments-overlay-island")
     assert state(view)["filters"]["status"] == "all"
     assert [%{"id" => id, "project_name" => name}] = state(view)["threads"]
     assert id == thread.thread.id
@@ -35,23 +34,24 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     assert state(view)["conversation"]["thread"] == nil
   end
 
-  test "filters and selection survive direct links and returning to the list", ctx do
+  test "filters and selection survive closing and reopening without navigation", ctx do
     detail = create_comment(ctx)
     query = %{project_id: ctx.project.id, tool: "sheet", search: "Review", personal: "participated"}
-    {:ok, view, _} = live(ctx.conn, ~p"/comments?#{query}")
+    {:ok, view, _} = open_hub(ctx.conn, query)
 
     render_hook(view, "hub_select", %{thread_id: detail.thread.id, project_id: ctx.project.id})
-    selection = Map.merge(query, %{project: ctx.project.id, thread: detail.thread.id})
-    assert_comment_patch(view, selection)
+    refute_redirected(view)
+    render_hook(view, "hub_close", %{})
+    refute socket_assigns(view).open
+    render_hook(view, "hub_open", %{})
     assert state(view)["conversation"]["thread"]["id"] == detail.thread.id
     assert state(view)["contextUrl"] == sheet_path(ctx, detail.thread.id)
 
-    {:ok, reconnected, _} = live(ctx.conn, ~p"/comments?#{selection}")
-    assert state(reconnected)["selectedThreadId"] == detail.thread.id
-    assert state(reconnected)["filters"]["search"] == "Review"
+    assert state(view)["selectedThreadId"] == detail.thread.id
+    assert state(view)["filters"]["search"] == "Review"
 
     render_hook(view, "hub_clear_selection", %{})
-    assert_comment_patch(view, query)
+    refute_redirected(view)
     assert state(view)["selectedThreadId"] == nil
     assert state(view)["conversation"]["messages"] == []
   end
@@ -69,7 +69,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
         resolved.thread.revision
       )
 
-    {:ok, view, _} = live(ctx.conn, selected_path(ctx, open))
+    {:ok, view, _} = open_hub(ctx.conn, selected_params(ctx, open))
 
     render_hook(view, "hub_filter", %{project_id: to_string(ctx.project.id), status: "resolved", search: "ending"})
     assert state(view)["selectedThreadId"] == nil
@@ -81,7 +81,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
   test "reply and resolution reuse the selected conversation and reject cross-thread mutations", ctx do
     detail = create_comment(ctx)
     other = create_comment(ctx, %{body: "Another discussion"})
-    {:ok, view, _} = live(ctx.conn, selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(ctx.conn, selected_params(ctx, detail))
 
     render_hook(view, "comments_reply", reply_params(other, "A forged target"))
     assert_reply(view, %{ok: false})
@@ -122,7 +122,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     detail = create_comment(ctx)
     viewer = user_fixture()
     membership_fixture(ctx.project, viewer, "viewer")
-    {:ok, view, _} = live(log_in_user(ctx.conn, viewer), selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(log_in_user(ctx.conn, viewer), selected_params(ctx, detail))
     refute state(view)["conversation"]["canComment"]
 
     render_hook(view, "comments_reply", reply_params(detail, "Forged viewer reply"))
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     detail = create_comment(ctx)
     reader = user_fixture()
     membership = membership_fixture(ctx.project, reader, "editor")
-    {:ok, view, _} = live(log_in_user(ctx.conn, reader), selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(log_in_user(ctx.conn, reader), selected_params(ctx, detail))
     assert state(view)["conversation"]["canComment"]
     before_topics = MapSet.new(Registry.keys(Storyarn.PubSub, view.pid))
     send(view.pid, {:comment_conversations_changed, ctx.project.id})
@@ -185,7 +185,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
 
   test "realtime replies refresh the selected conversation and search results", ctx do
     detail = create_comment(ctx)
-    {:ok, view, _} = live(ctx.conn, selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(ctx.conn, selected_params(ctx, detail))
 
     {:ok, _} =
       Projects.reply_to_comment_thread(
@@ -202,7 +202,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
 
   test "deleted surfaces keep readable history and remove the context link and composer", ctx do
     detail = create_comment(ctx)
-    {:ok, view, _} = live(ctx.conn, selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(ctx.conn, selected_params(ctx, detail))
     assert state(view)["contextUrl"]
     {:ok, _} = Sheets.delete_sheet(ctx.scope, ctx.sheet)
     send(view.pid, :refresh_comment_hub)
@@ -216,15 +216,15 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     assert_reply(view, %{ok: false})
   end
 
-  test "malformed and inaccessible direct links reveal no conversation", ctx do
+  test "malformed and inaccessible selections reveal no conversation", ctx do
     detail = create_comment(ctx)
     stranger = user_fixture()
-    {:ok, denied, _} = live(log_in_user(ctx.conn, stranger), selected_path(ctx, detail))
+    {:ok, denied, _} = open_hub(log_in_user(ctx.conn, stranger), selected_params(ctx, detail))
     assert state(denied)["threads"] == []
     assert state(denied)["conversation"]["messages"] == []
     assert state(denied)["contextUrl"] == nil
 
-    {:ok, view, _} = live(ctx.conn, "/comments?project=999999999999999999999999999999&thread=bad&tool=unknown")
+    {:ok, view, _} = open_hub(ctx.conn, %{project: "999999999999999999999999999999", thread: "bad", tool: "unknown"})
     assert state(view)["selectedThreadId"] == nil
     assert state(view)["filters"]["tool"] == ""
     render_hook(view, "comments_load_messages", %{})
@@ -232,46 +232,84 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     assert_reply(view, %{ok: false})
   end
 
-  test "older list pages and selection survive editor return, browser back and fresh access checks", ctx do
+  test "loaded pages and selection survive closing and reauthorize when reopened", ctx do
     for number <- 1..31, do: create_comment(ctx, %{body: "Review #{number}"})
     reader = user_fixture()
     membership = membership_fixture(ctx.project, reader, "viewer")
-    {:ok, view, _} = live(log_in_user(ctx.conn, reader), ~p"/comments")
+    {:ok, view, _} = open_hub(log_in_user(ctx.conn, reader), %{})
     assert length(state(view)["threads"]) == 30
-    assert state(view)["nextCursor"]
     more_queries = capture_queries(view, fn -> render_hook(view, "hub_load_more", %{}) end)
     assert Enum.count(more_queries, &count_query?/1) == 1
-    assert_comment_patch(view, %{pages: 2})
     ids = Enum.map(state(view)["threads"], & &1["id"])
-    assert length(ids) == 31
     assert length(Enum.uniq(ids)) == 31
     assert state(view)["nextCursor"] == nil
-
     oldest_id = List.last(ids)
     render_hook(view, "hub_select", %{project_id: ctx.project.id, thread_id: oldest_id})
-    return_path = assert_comment_patch(view, %{pages: 2, project: ctx.project.id, thread: oldest_id})
-
-    {:ok, returned, _} = live(log_in_user(ctx.conn, reader), return_path)
-    assert Enum.map(state(returned)["threads"], & &1["id"]) == ids
-    assert state(returned)["selectedThreadId"] == oldest_id
-
-    render_patch(returned, ~p"/comments")
-    assert length(state(returned)["threads"]) == 30
-    assert state(returned)["selectedThreadId"] == nil
-    render_patch(returned, return_path)
-    assert length(state(returned)["threads"]) == 31
-
-    render_patch(returned, "/comments?pages=100000000")
-    assert length(state(returned)["threads"]) == 30
+    render_hook(view, "hub_close", %{})
+    render_hook(view, "hub_open", %{})
+    assert Enum.map(state(view)["threads"], & &1["id"]) == ids
+    assert state(view)["selectedThreadId"] == oldest_id
+    refute_redirected(view)
 
     render_hook(view, "hub_filter", %{project_id: to_string(ctx.project.id)})
-    assert_comment_patch(view, %{project_id: ctx.project.id})
     assert length(state(view)["threads"]) == 30
     assert state(view)["selectedThreadId"] == nil
-
+    render_hook(view, "hub_close", %{})
     {:ok, _} = Projects.remove_member(ctx.scope, ctx.project.id, membership.id)
-    render_hook(view, "hub_refresh", %{})
+    render_hook(view, "hub_open", %{})
     assert state(view)["threads"] == []
+  end
+
+  test "closing unsubscribes and stops both refreshes and forged mutations", ctx do
+    detail = create_comment(ctx)
+    {:ok, view, _} = open_hub(ctx.conn, selected_params(ctx, detail))
+    send(view.pid, {:comment_conversations_changed, ctx.project.id})
+    render(view)
+    pending = socket_assigns(view).comment_refresh
+    render_hook(view, "hub_close", %{})
+    assert Registry.keys(Storyarn.PubSub, view.pid) == []
+    assert socket_assigns(view).refresh_timer == nil
+    assert socket_assigns(view).comment_refresh == nil
+    assert state(view)["conversation"]["messages"] == []
+
+    assert capture_queries(view, fn ->
+             send(view.pid, :refresh_comment_hub)
+             send(view.pid, {:refresh_comment_hub, :comment_refresh, pending.token})
+             send(view.pid, {:dashboard_invalidate, :sheets})
+             render_hook(view, "hub_refresh", %{})
+             render_hook(view, "comments_reply", reply_params(detail, "Closed composer"))
+             render(view)
+           end) == []
+
+    assert {:ok, %{messages: [_]}} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+  end
+
+  test "opening follows the host project or workspace and keeps its LiveView alive", ctx do
+    create_comment(ctx)
+
+    for {path, project_id} <- [
+          {sheet_path(ctx, nil), to_string(ctx.project.id)},
+          {~p"/workspaces/#{ctx.project.workspace.slug}", ""},
+          {~p"/workspaces/#{ctx.project.workspace.slug}/projects/#{ctx.project.slug}/settings",
+           to_string(ctx.project.id)},
+          {~p"/users/settings/workspaces/#{ctx.project.workspace.slug}/general", ""}
+        ] do
+      {:ok, parent, _} = live(ctx.conn, path)
+      view = find_live_child(parent, "comments-overlay")
+      refute socket_assigns(view).open
+      assert Registry.keys(Storyarn.PubSub, view.pid) == []
+      assert state(view)["threads"] == []
+      render_hook(view, "hub_open", %{project_id: "999999"})
+      assert state(view)["filters"]["project_id"] == project_id
+      assert state(view)["filters"]["workspace_id"] == to_string(ctx.project.workspace_id)
+      render_hook(view, "hub_close", %{})
+      assert Process.alive?(parent.pid)
+      refute_redirected(parent)
+    end
+  end
+
+  test "there is no standalone comments route" do
+    assert Phoenix.Router.route_info(StoryarnWeb.Router, "GET", "/comments", "localhost") == :error
   end
 
   test "older history stays chronological across refreshes and replies and disappears on revocation", ctx do
@@ -289,7 +327,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
 
     reader = user_fixture()
     membership = membership_fixture(ctx.project, reader, "viewer")
-    {:ok, view, _} = live(log_in_user(ctx.conn, reader), selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(log_in_user(ctx.conn, reader), selected_params(ctx, detail))
     assert state(view)["conversation"]["messageNextCursor"]
     render_hook(view, "comments_load_messages", %{})
     messages = state(view)["conversation"]["messages"]
@@ -343,7 +381,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
         client_request_id: Ecto.UUID.generate()
       })
 
-    {:ok, view, _} = live(log_in_user(ctx.conn, ideation.peer.user), selected_path(ideation, detail))
+    {:ok, view, _} = open_hub(log_in_user(ctx.conn, ideation.peer.user), selected_params(ideation, detail))
     assert state(view)["selectedThreadId"] == detail.thread.id
 
     {:ok, _} =
@@ -365,7 +403,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
 
   test "selecting a thread reads its message page once without querying the list or workspace options", ctx do
     detail = create_comment(ctx)
-    {:ok, view, _} = live(ctx.conn, ~p"/comments")
+    {:ok, view, _} = open_hub(ctx.conn, %{})
 
     queries =
       capture_queries(view, fn ->
@@ -381,7 +419,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
 
   test "comment bursts share one refresh and a reply absorbs its own PubSub echo", ctx do
     detail = create_comment(ctx)
-    {:ok, view, _} = live(ctx.conn, selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(ctx.conn, selected_params(ctx, detail))
 
     burst_queries =
       capture_queries(view, fn ->
@@ -408,7 +446,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
 
   test "dashboard editing uses trailing debounce and a comment refresh cancels the superseded work", ctx do
     detail = create_comment(ctx)
-    {:ok, view, _} = live(ctx.conn, selected_path(ctx, detail))
+    {:ok, view, _} = open_hub(ctx.conn, selected_params(ctx, detail))
 
     initial_queries =
       capture_queries(view, fn ->
@@ -461,7 +499,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
     other_project = project_fixture(ctx.user, %{workspace: ctx.project.workspace})
     other_sheet = sheet_fixture(other_project)
     other = create_comment(%{ctx | project: other_project, sheet: other_sheet})
-    {:ok, view, _} = live(ctx.conn, ~p"/comments?#{%{project_id: ctx.project.id}}")
+    {:ok, view, _} = open_hub(ctx.conn, %{project_id: ctx.project.id})
 
     assert capture_queries(view, fn ->
              send(view.pid, {:comment_conversations_changed, other_project.id})
@@ -500,7 +538,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
       client_request_id: Ecto.UUID.generate()
     }
 
-  defp selected_path(ctx, detail), do: ~p"/comments?#{%{project: ctx.project.id, thread: detail.thread.id}}"
+  defp selected_params(ctx, detail), do: %{project: ctx.project.id, thread: detail.thread.id}
 
   defp sheet_path(ctx, thread_id),
     do:
@@ -508,7 +546,7 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
 
   defp state(view) do
     render(view)
-    LiveVue.Test.get_vue(view, name: "live/comments/Hub").props["state"]
+    LiveVue.Test.get_vue(view, name: "live/comments/Overlay").props["state"]
   end
 
   defp socket_assigns(view), do: :sys.get_state(view.pid).socket.assigns
@@ -557,14 +595,16 @@ defmodule StoryarnWeb.CommentLive.IndexTest do
   defp project_options_query?(query),
     do: query.source == "projects" and String.contains?(query.query, ~s(LEFT OUTER JOIN "workspace_memberships"))
 
-  defp assert_comment_patch(view, expected_query) do
-    path = assert_patch(view)
-    uri = URI.parse(path)
-    assert uri.path == "/comments"
+  defp open_hub(conn, params) do
+    {:ok, parent, html} = live(conn, ~p"/users/settings/preferences")
+    view = find_live_child(parent, "comments-overlay")
+    render_hook(view, "hub_open", %{})
+    if map_size(params) > 0, do: render_hook(view, "hub_filter", params)
 
-    assert URI.decode_query(uri.query || "") ==
-             Map.new(expected_query, fn {key, value} -> {to_string(key), to_string(value)} end)
+    if params[:thread] do
+      render_hook(view, "hub_select", %{project_id: params[:project], thread_id: params[:thread]})
+    end
 
-    path
+    {:ok, view, html}
   end
 end

@@ -15,13 +15,6 @@ defmodule StoryarnWeb.CommentLive.Params do
   def defaults, do: @defaults
   def max_pages, do: @max_pages
 
-  def page_count(value) do
-    case positive(value) do
-      count when count in 1..@max_pages -> count
-      _ -> 1
-    end
-  end
-
   def filters(params) do
     %{
       "workspace_id" => id_filter(params["workspace_id"]),
@@ -45,14 +38,6 @@ defmodule StoryarnWeb.CommentLive.Params do
     |> maybe_put(:tool, if(filters["tool"] != "", do: filters["tool"]))
   end
 
-  def query(filters, project_id, thread_id, pages \\ 1) do
-    filters
-    |> Enum.reject(fn {key, value} -> value == @defaults[key] end)
-    |> Map.new()
-    |> maybe_selection(project_id, thread_id)
-    |> maybe_pages(pages)
-  end
-
   def positive(value) when is_integer(value) and value > 0 and value <= @max_id, do: value
 
   def positive(value) when is_binary(value) and byte_size(value) in 1..19 do
@@ -74,12 +59,4 @@ defmodule StoryarnWeb.CommentLive.Params do
   defp search(_), do: ""
   defp maybe_put(options, _key, nil), do: options
   defp maybe_put(options, key, value), do: Keyword.put(options, key, value)
-
-  defp maybe_selection(query, project_id, thread_id) when is_integer(project_id) and is_integer(thread_id),
-    do: Map.merge(query, %{"project" => project_id, "thread" => thread_id})
-
-  defp maybe_selection(query, _, _), do: query
-
-  defp maybe_pages(query, pages) when pages in 2..@max_pages, do: Map.put(query, "pages", pages)
-  defp maybe_pages(query, _), do: query
 end

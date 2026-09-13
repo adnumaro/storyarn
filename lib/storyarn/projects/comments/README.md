@@ -9,12 +9,12 @@ Platform remains technical coordination; it does not own these conversations.
 
 ## Comments hub (ENG-188/189)
 
-The hub is a cross-project collaboration view at `/comments`, reached from the
-authenticated shell beside the notification bell and from workspace navigation.
-Project chrome opens the same route with `project_id` preselected. Comments are
-not a project tool: the tool switcher and editor sidebars keep their existing
-responsibilities. The route shares `:authenticated_app` and uses the workspace
-layout with a full-height list/detail region, without a project route parameter.
+The hub opens as a large dialog over the current page from the icon beside the
+notification bell or the command palette. It has no route or navigation menu.
+Project, workspace and settings layout boundaries mount an independent nested
+`CommentLive.Overlay`; opening, filtering and selecting do not navigate or
+remount the host editor. The signed session supplies the initial project or
+workspace scope; the user can broaden it with the scope selector.
 
 `Projects.list_comment_conversations(scope, opts)` queries all currently readable
 Flow, Sheet, Scene and brainstorming threads, including conversations in which
@@ -36,7 +36,8 @@ reopened before replying. Existing `?thread=` editor destinations provide the
 an explicit unavailable state, while inaccessible private brainstorming sources
 disappear entirely.
 
-Filters and selection live in the URL. List scroll and reply drafts are scoped
+Filters, loaded pages and selection stay in the overlay while its host page is
+mounted, including across close/reopen. List scroll and reply drafts are scoped
 to the signed-in user in tab session storage; drafts additionally include the
 project, thread and reply parent. Unconfirmed replies retain their request ID
 so retrying cannot append a second message. These drafts are best-effort local
@@ -49,8 +50,9 @@ refreshes reread authorized conversations without rebuilding workspace/project
 options. Explicit access changes refresh immediately, while manual refresh and
 the 30-second fallback also rebuild options and reconcile subscriptions, removing
 revoked projects and workspaces. These subscriptions do not grow with the number
-of documents. Reconnection reconstructs the view from its URL and persisted
-data rather than treating previous props as current authorization.
+of documents. The closed overlay holds no subscriptions or active refresh timers
+and rejects conversation events. Every opening reloads authorized data before
+displaying conversations. A new host mount starts with its own scope.
 
 ## Brainstorming adapter (ENG-139)
 

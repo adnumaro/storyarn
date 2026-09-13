@@ -1,7 +1,6 @@
 {
   "comments_hub": {
     "title": "Comments",
-    "subtitle": "Follow conversations across your projects.",
     "refresh": "Refresh comments",
     "loading": "Loading conversations",
     "filter_failed": "Could not update the search. Your filters are kept; try again.",
@@ -70,6 +69,12 @@
     "readonly_hint": "You can read this conversation. Editing access is required to reply or resolve it.",
     "threads": "Conversations",
     "load_threads": "Load more conversations",
-    "source_label": "Source {id}"
+    "source_label": "Source {id}",
+    "close": "Close comments",
+    "scope": "Conversation scope",
+    "workspace_scope": "All of {name}",
+    "filters": "Filters",
+    "open_failed": "Could not load comments. Please try again.",
+    "retry": "Retry"
   }
 }
