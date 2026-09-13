@@ -37,8 +37,8 @@ Project policy.
 | Group published ideas and edit synthesis                        | Current edit access; shared mode | Current edit access; shared mode | Same rule                                           | Same rule                                       |
 | Read shared decisions and their history                         | Shared mode and current access   | Shared mode and current access   | Same rule                                           | Same rule                                       |
 | Propose or revise a shared decision                             | Current edit access; shared mode | Current edit access; shared mode | Same rule                                           | Same rule                                       |
-| Accept a shared decision                                       | Only its responsible participant | Only its responsible participant | Only its responsible participant                    | Only its responsible participant                |
-| Invoke shared AI or attach private files                       | Not implemented                  | Not implemented                  | Not implemented                                     | Not implemented                                 |
+| Accept a shared decision                                        | Only its responsible participant | Only its responsible participant | Only its responsible participant                    | Only its responsible participant                |
+| Invoke shared AI or attach private files                        | Not implemented                  | Not implemented                  | Not implemented                                     | Not implemented                                 |
 
 All managerial actions remain subject to current project edit permission. The
 owner can recover or delete project data through Project lifecycle operations;
