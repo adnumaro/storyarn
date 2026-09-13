@@ -1,0 +1,185 @@
+assets/app/live/ideation/decisionTypes.ts
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-66
+lib/storyarn/ideation/groups/groups.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 4,7-11
+  s_ad18daab72f501::t_f47710d107ef95 12
+lib/storyarn/ideation/decisions/queries/catalog.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-95
+assets/app/modules/ideation/components/CanvasGroup.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 14,21-31,40,52,248-258
+docs/reference/brainstorming-recovery-contract.md
+  s_ad18daab72f501::t_2e35ac14d1dde7 38-41,45-50,64-65,100-102,104-105,141,158-176,305-306
+lib/storyarn/ideation/sessions/sessions.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 89
+config/architecture_boundaries.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 1971,4172-4189,4252-4257
+lib/storyarn/ideation/ideas/queries/decision_sources.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-37
+lib/storyarn/ideation/recovery/contracts/decision_state.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-188
+lib/storyarn/ideation/decisions/execution/mutation.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-95
+assets/app/live/ideation/DecisionsButton.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-63
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 35-39,43-44,113,151-154,158-160,217-218
+lib/storyarn/ideation/recovery/contracts/references.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 19,71-81
+  s_ad18daab72f501::t_543b57c1a28218 82-83
+lib/storyarn_web/live/ideation_live/handlers/decision_handlers.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-456,458-466
+  s_ad18daab72f501::t_690c9c0847ef27 457
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 30-31,346,348,380,383,423
+assets/app/live/ideation/DecisionSummary.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-45
+assets/app/test/live/ideation/decisionFixtures.ts
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-56
+lib/storyarn_web/live/ideation_live/board.ex
+  s_ad18daab72f501::t_690c9c0847ef27 96
+  s_ad18daab72f501::t_2e35ac14d1dde7 12,99-101,133,165,180,188-191,194-198,207-213,216-217,413-415,455,621,645
+lib/storyarn/ideation/sessions/queries/receipt_generations.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-18
+lib/storyarn/ideation/decisions/commands/propose.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-18
+lib/storyarn/ideation/decisions/decisions.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-16
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 12,93-118,137-148,1005,1049-1070
+lib/storyarn/ideation/recovery/execution/restore.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 195-196
+lib/storyarn/ideation/decisions/adapters/responsibility.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-12
+lib/storyarn/ideation/decisions/entities/decision.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-14
+lib/storyarn/ideation/decisions/queries/access.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-24
+lib/storyarn/ideation/decisions/execution/transaction.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-105
+assets/app/live/ideation/DecisionSourcePicker.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-158
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 3,25-26,34-35,42,102-104,278
+docs/features/brainstorming-board.md
+  s_ad18daab72f501::t_2e35ac14d1dde7 3-4,11-44
+  s_ad18daab72f501::t_e27fcf1d7a7b5e 45
+lib/storyarn/ideation/decisions/events/invalidation.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-11
+test/e2e/workspaces/projects/ideation/decisions_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-205
+assets/app/locales/es/brainstorming-decisions.json
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-101
+lib/storyarn/projects.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 896-912
+  s_ad18daab72f501::t_6620d924b202d2 895
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 9,58-65,183-186,220-232,245-246,264,290-292
+test/storyarn/ideation/reference_recovery_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 49,307-312,315
+test/storyarn_web/live/ideation_live/references_test.exs
+  s_ad18daab72f501::t_690c9c0847ef27 106,267,271,297
+lib/storyarn/ideation/recovery/adapters/records.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 30,101,119-126
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_ad18daab72f501::t_690c9c0847ef27 1175,1189
+  s_ad18daab72f501::t_2e35ac14d1dde7 112
+assets/app/test/modules/ideation/workspaceDecisions.test.ts
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-83
+lib/storyarn/projects/access/access.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 34-35
+priv/gettext/en/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_2e35ac14d1dde7 139,149
+lib/storyarn/ideation.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 13,20-42
+  s_ad18daab72f501::t_36a270bef414f2 43
+priv/repo/migrations/20260913100000_add_ideation_decisions.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-81
+test/storyarn/ideation/group_recovery_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 36,155-161,165
+test/storyarn/ideation/round_recovery_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 32,75-78,114
+test/storyarn/projects/access/memberships_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 160-220
+docs/reference/brainstorming-decisions-contract.md
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-141
+lib/storyarn/ideation/decisions/rules/input.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-103
+lib/storyarn/ideation/recovery/adapters/capsule.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 3,28-29
+lib/storyarn/ideation/decisions/queries/sources.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-142
+test/storyarn/ideation/timer_recovery_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 134,202-205
+assets/app/live/ideation/DecisionEditor.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-264
+lib/storyarn/ideation/groups/queries/decision_sources.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-35
+test/storyarn/projects/access/candidate_concurrency_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-198
+assets/app/live/ideation/BoardHeader.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 10,99
+lib/storyarn/ideation/ideas/ideas.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 7-12
+lib/storyarn_web/live/ideation_live/helpers/decision_data.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-71
+priv/gettext/default.pot
+  s_ad18daab72f501::t_2e35ac14d1dde7 139,149
+assets/app/locales/en/brainstorming-decisions.json
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-101
+test/storyarn/ideation/decision_recovery_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-347
+lib/storyarn/ideation/decisions/commands/revise.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-21
+test/storyarn/ideation/decisions_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-440
+assets/app/test/modules/ideation/BrainstormingCanvasComments.test.ts
+  s_ad18daab72f501::t_690c9c0847ef27 40-46,67-70
+assets/app/live/ideation/useDecisionRequests.ts
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-75
+lib/storyarn/ideation/decisions/contracts/view.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-55
+lib/storyarn/ideation/decisions/commands/accept.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-21
+assets/app/live/ideation/DecisionsPanel.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-455
+lib/storyarn/ideation/decisions/entities/revision.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-24
+assets/app/test/live/ideation/DecisionSourcePicker.test.ts
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-68
+priv/gettext/es/LC_MESSAGES/default.po
+  s_ad18daab72f501::t_2e35ac14d1dde7 139,149
+assets/app/test/live/ideation/DecisionsPanel.test.ts
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-284
+lib/storyarn/ideation/README.md
+  s_ad18daab72f501::t_2e35ac14d1dde7 4-5,78-101,161
+test/storyarn_web/live/ideation_live/decisions_test.exs
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-364
+assets/app/live/ideation/BoardPanels.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-22
+docs/reference/context-map.md
+  s_ad18daab72f501::t_2e35ac14d1dde7 51-59
+assets/app/shell/Sidebar.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 25-29,32,54
+assets/app/live/ideation/DecisionSources.vue
+  s_ad18daab72f501::t_2e35ac14d1dde7 1-72
+lib/storyarn/ideation/recovery/contracts/generations.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 14,26
+lib/storyarn/projects/access/memberships.ex
+  s_ad18daab72f501::t_2e35ac14d1dde7 7,38-62,192-208,315-316,318,322-323,328-329,332-339,351-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a3db04742b5ad760d668cdffe7715554fee83bec",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
