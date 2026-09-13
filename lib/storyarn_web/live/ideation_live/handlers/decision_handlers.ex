@@ -454,7 +454,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
   defp field(source, key) when is_map(source), do: Map.get(source, key, Map.get(source, Atom.to_string(key)))
   defp field(_, _), do: nil
 
-  defp close_other_panels(socket), do: socket |> CommentHandlers.init() |> ReferenceHandlers.init()
+  defp close_other_panels(socket), do: socket |> CommentHandlers.close() |> ReferenceHandlers.init()
   defp display_members(socket), do: socket.assigns.board.members
   defp opened(%{assigns: %{decisions: %{open: true}}} = socket), do: ok(socket)
   defp opened(socket), do: failure(socket, :not_found)

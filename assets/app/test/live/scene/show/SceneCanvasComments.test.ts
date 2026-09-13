@@ -34,7 +34,7 @@ const thread: SceneCommentThread = {
 };
 const base: SceneCommentsPanelState = {
   open: false,
-  presentation: "panel",
+  presentation: "canvas",
   placing: false,
   draftPosition: null,
   draftId: null,
@@ -122,7 +122,7 @@ function setup(
       focusThreadId,
       targets,
     },
-    global: { stubs: { SceneCommentsPanel: true } },
+    global: { stubs: { SceneCommentPopover: true } },
   });
   wrappers.push(wrapper);
   return { wrapper, container, canvas, elementSurface, nonCanvasUi, stage };
@@ -717,7 +717,7 @@ describe("Scene canvas comments", () => {
     expect(pin.attributes("aria-busy")).toBe("true");
     await wrapper.setProps({ state: { ...draft, draftPosition: position, draftContext: null } });
     expect(pin.attributes("aria-busy")).toBe("false");
-    expect(wrapper.findComponent({ name: "SceneCommentsPanel" }).props("state").draftPending).toBe(
+    expect(wrapper.findComponent({ name: "SceneCommentPopover" }).props("state").draftPending).toBe(
       false,
     );
   });
@@ -847,7 +847,7 @@ describe("Scene canvas comments", () => {
     expect(wrapper.find("#scene-comment-draft-pin").exists()).toBe(false);
   });
 
-  it.each(["canvas", "panel"] as const)(
+  it.each(["canvas"] as const)(
     "offers local hidden-context reveal from %s without pushing a layer mutation",
     async (presentation) => {
       const { wrapper } = setup({ open: true, presentation, thread });

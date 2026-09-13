@@ -47,7 +47,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
              content(view)["commentPins"]
 
     assert thread_id == thread["id"]
-    assert header_comments(view)["count"] == 1
+    refute Map.has_key?(header_props(view), "comments")
 
     render_hook(view, "comments_move", %{
       thread_id: thread["id"],
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
 
     assert panel(view)["thread"]["status"] == "resolved"
     assert content(view)["commentPins"] == []
-    assert header_comments(view)["count"] == 0
+    refute Map.has_key?(header_props(view), "comments")
   end
 
   test "a deep link opens the exact Sheet conversation and realtime refreshes it", context do
@@ -128,7 +128,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     assert header["source"] == thread["source"]
     assert header["context"]["type"] == "sheet_header"
     assert header["context"]["status"] == "available"
-    assert header_comments(view)["count"] == 1
+    refute Map.has_key?(header_props(view), "comments")
 
     render_hook(view, "comments_move", %{
       thread_id: header["id"],
@@ -393,7 +393,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     ~p"/workspaces/#{context.project.workspace.slug}/projects/#{context.project.slug}/sheets/#{context.sheet.id}"
   end
 
-  defp panel(view), do: panels(view)["comments"]
+  defp panel(view), do: content(view)["comments"]
 
   defp panels(view) do
     render(view)
@@ -405,8 +405,8 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetSurface").props["surface"]["content"]
   end
 
-  defp header_comments(view) do
+  defp header_props(view) do
     render(view)
-    LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader").props["comments"]
+    LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader").props
   end
 end

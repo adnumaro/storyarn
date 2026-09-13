@@ -225,9 +225,9 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
     render_hook(view, "comments_refresh", %{})
     refute Enum.any?(panel(view)["members"], &(&1["id"] == collaborator.id))
 
-    render_hook(view, "comments_open", %{})
-    assert [%{"id" => thread_id}] = panel(view)["threads"]
-    assert thread_id == detail.thread.id
+    render_hook(view, "comments_select_thread", %{thread_id: detail.thread.id})
+    assert panel(view)["thread"]["id"] == detail.thread.id
+    assert panel(view)["threads"] == []
   end
 
   test "refresh removes a canvas draft and its data when the editor loses project access", context do
@@ -361,7 +361,7 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
     assert panel(view)["draftId"] == current_id
     assert panel(view)["draftPosition"] == %{"x" => 60, "y" => 70}
     assert panel(view)["draftContext"]["id"] == to_string(pin.id)
-    render_hook(view, "comments_open", %{})
+    render_hook(view, "comments_close", %{})
     assert panel(view)["draftContext"] == nil
   end
 
@@ -444,7 +444,7 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
     assert state["thread"]["id"] == detail.thread.id
     assert state["thread"]["source"]["status"] == "unavailable"
     assert [%{"body" => "Review this area"}] = state["messages"]
-    assert state["presentation"] == "panel"
+    assert state["presentation"] == "canvas"
     assert canvas(view)["commentPins"] == []
     assert canvas(view)["commentFocusThreadId"] == nil
   end
@@ -603,7 +603,7 @@ defmodule StoryarnWeb.SceneLive.CommentsTest do
 
   defp panel(view) do
     render(view)
-    LiveVue.Test.get_vue(view, name: "live/scene/show/ScenePanels").props["panels"]["comments"]
+    canvas(view)["comments"]
   end
 
   defp canvas(view) do

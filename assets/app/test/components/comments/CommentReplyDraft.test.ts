@@ -12,7 +12,6 @@ const ui: CommentUiConfig = {
   domScope: "hub",
   i18nPrefix: "comments_hub",
   canvasSourceType: "sheet_canvas",
-  scopeThreadsKey: "threads",
   selectedSourceFallbackKey: "source_label",
 };
 const key = "storyarn:comments-hub:draft:9:4:12";

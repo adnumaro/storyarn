@@ -40,7 +40,7 @@ const props = {
 };
 const comments: FlowCommentsPanelState = {
   open: false,
-  presentation: "panel",
+  presentation: "canvas",
   threads: [],
   thread: null,
   messages: [],
@@ -125,7 +125,7 @@ describe("FlowCanvas spatial comment boundary", () => {
           connections: [],
         }),
         comments: {
-          state: { ...comments, open: true, presentation: "panel", thread: unavailable },
+          state: { ...comments, open: true, presentation: "canvas", thread: unavailable },
           pins: [],
           focusThreadId: null,
         },

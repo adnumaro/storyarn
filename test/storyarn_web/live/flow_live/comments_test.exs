@@ -49,7 +49,7 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
 
   test "creates and resolves a contextual conversation without acquiring an editor lock", context do
     view = open_flow(context)
-    render_hook(view, "comments_open", %{node_id: context.node.id})
+    render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
     assert panel(view)["canComment"]
 
     attrs = %{
@@ -472,13 +472,13 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert canvas(view)["commentFocusNodeId"] == nil
   end
 
-  test "Sequence filters follow reassociation and detachment without changing the conversation", context do
+  test "Sequence context follows reassociation and detachment without a local thread index", context do
     detail = create_comment(context)
     other_node = node_fixture(context.flow, %{type: "dialogue"})
     view = open_flow(context)
     render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
-    assert [%{"id" => id}] = panel(view)["threads"]
-    assert id == detail.thread.id
+    id = detail.thread.id
+    assert panel(view)["threads"] == []
 
     render_hook(view, "comments_move", %{
       thread_id: id,
@@ -491,8 +491,9 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
     assert panel(view)["threads"] == []
     render_hook(view, "comments_open", %{node_id: other_node.id, presentation: "workspace"})
-    assert [%{"id" => ^id} = moved] = panel(view)["threads"]
     render_hook(view, "comments_select_thread", %{thread_id: id})
+    moved = panel(view)["thread"]
+    assert moved["context"]["id"] == to_string(other_node.id)
     assert panel(view)["presentation"] == "workspace"
     assert [%{"body" => "Review this beat"}] = panel(view)["messages"]
 
@@ -506,8 +507,8 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
 
     render_hook(view, "comments_open", %{node_id: other_node.id, presentation: "workspace"})
     assert panel(view)["threads"] == []
-    render_hook(view, "comments_open", %{})
-    assert [%{"id" => ^id, "context" => nil}] = panel(view)["threads"]
+    render_hook(view, "comments_select_thread", %{thread_id: id})
+    assert panel(view)["thread"]["context"] == nil
 
     reloaded = open_flow(context, "?thread=#{id}")
     assert panel(reloaded)["thread"]["id"] == id
@@ -660,7 +661,7 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     membership_fixture(context.project, editor)
     assert {:ok, _lock} = Collaboration.acquire_lock({:flow, context.flow.id}, context.node.id, editor)
     view = open_flow(context)
-    render_hook(view, "comments_open", %{node_id: context.node.id})
+    render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
 
     render_hook(view, "comments_create", %{
       node_id: context.node.id,
@@ -770,7 +771,7 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
 
   defp panel(view) do
     render(view)
-    LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"]["comments"]
+    canvas(view)["comments"]
   end
 
   defp canvas(view) do

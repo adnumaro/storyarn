@@ -178,13 +178,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         searchFilter: assigns.search_filter,
         searchResults: assigns.search_results
       },
-      health: assigns.scene_health,
-      comments: %{
-        count: length(assigns.comment_pins),
-        open: assigns.comments.open && assigns.comments.presentation == "panel",
-        placing: assigns.comments.placing,
-        canComment: assigns.comments.canComment
-      }
+      health: assigns.scene_health
     }
   end
 
@@ -219,8 +213,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     %{
       versions: scene_panels_versions(assigns),
       element: scene_panels_element(assigns),
-      settings: scene_panels_settings(assigns),
-      comments: assigns.comments
+      settings: scene_panels_settings(assigns)
     }
   end
 
@@ -737,10 +730,6 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   @impl true
   def handle_event("exploration_" <> action, params, socket), do: ExplorationHandlers.handle(action, params, socket)
-
-  def handle_event("comments_open", params, socket) do
-    CommentHandlers.handle("open", params, prepare_for_comments(socket))
-  end
 
   def handle_event("comments_mode", %{"active" => true} = params, socket) do
     CommentHandlers.handle("mode", params, prepare_for_comments(socket))

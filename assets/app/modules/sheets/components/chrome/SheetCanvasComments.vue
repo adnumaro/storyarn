@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Magnet, MessageCircle, Plus, Repeat2, Unlink } from "@lucide/vue";
+import CommentPin from "@components/comments/CommentPin.vue";
+import { MessageCircle, Repeat2 } from "@lucide/vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import { useLive } from "@shared/composables/useLive";
 import { useSheetCanvasComments } from "../../composables/useSheetCanvasComments";
 import type { SheetCommentsPanelState, SheetCommentThread } from "../../types/comments";
-import SheetCommentsPanel from "../panels/SheetCommentsPanel.vue";
+import SheetCommentPopover from "../panels/SheetCommentPopover.vue";
 
 const {
   container,
@@ -48,13 +49,11 @@ const {
   contextMenuPoint,
   dragging,
   panelState,
-  magnetism,
   moving,
   keyboardDragging,
   dragPreview,
   snapOutline,
   isPending,
-  toggleMagnetism,
   cycleContext,
   onPinBlur,
   onLostCapture,
@@ -73,7 +72,10 @@ const {
 });
 
 const popupOpen = computed(
-  () => state.open && state.presentation === "canvas" && Boolean(activePoint.value),
+  () =>
+    state.open &&
+    state.presentation === "canvas" &&
+    Boolean(activePoint.value || state.thread || state.error),
 );
 const popupSize = computed(() => ({
   width: Math.max(0, Math.min(360, visibleBounds.value.width - 24)),
@@ -183,8 +185,7 @@ function onFocusOut(event: FocusEvent): void {
 function restoreFocusAfterPopup(previousId: number | null | undefined): void {
   const previousPin =
     previousId == null ? null : document.getElementById(`sheet-comment-pin-${previousId}`);
-  const target =
-    previousPin ?? document.getElementById("sheet-comments-toggle") ?? resolveContainer();
+  const target = previousPin ?? resolveContainer();
   target?.focus({ preventScroll: true });
 }
 
@@ -281,24 +282,6 @@ onUnmounted(() => {
     @focusout="onFocusOut"
   >
     <div
-      v-if="state.canComment && (pins.length || placing || draftPoint)"
-      class="pointer-events-auto absolute right-4 z-10 flex items-center gap-2"
-      :style="{ top: `${visibleBounds.top + 16}px` }"
-      @pointerdown.stop
-    >
-      <button
-        id="sheet-comment-magnetism-toggle"
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        :aria-pressed="magnetism"
-        :title="$t('sheets.comments.magnetism_hint')"
-        @click.stop="toggleMagnetism"
-      >
-        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
-        {{ $t(magnetism ? "sheets.comments.magnetism_on" : "sheets.comments.magnetism_off") }}
-      </button>
-    </div>
-    <div
       v-if="moving && snapOutline"
       class="absolute rounded-lg border-2 border-primary bg-primary/5"
       :style="{
@@ -355,16 +338,12 @@ onUnmounted(() => {
       {{ $t("sheets.comments.update_failed") }}
     </p>
 
-    <button
+    <CommentPin
       v-for="pin in pins"
       :id="`sheet-comment-pin-${pin.thread.id}`"
       :key="pin.thread.id"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md transition-[background-color,transform] hover:scale-105 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      :class="{
-        'ring-2 ring-ring ring-offset-2': state.thread?.id === pin.thread.id && popupOpen,
-        'cursor-grab active:cursor-grabbing': state.canComment,
-      }"
+      :movable="state.canComment"
+      :selected="state.thread?.id === pin.thread.id && popupOpen"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('sheets.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
@@ -374,7 +353,6 @@ onUnmounted(() => {
       "
       :aria-busy="isPending(pin.thread.id)"
       :aria-expanded="state.thread?.id === pin.thread.id && popupOpen"
-      aria-haspopup="dialog"
       @pointerdown.stop="startDrag($event, pin.thread)"
       @pointerenter="hoverId = pin.thread.id"
       @pointerleave="hoverId = null"
@@ -383,15 +361,13 @@ onUnmounted(() => {
       @lostpointercapture="onLostCapture"
       @click.stop="selectThread(pin.thread, $event)"
       @keydown="movePinWithKeyboard($event, pin.thread)"
-    >
-      <MessageCircle class="size-4" />
-    </button>
+    />
 
-    <button
+    <CommentPin
       v-if="draftPoint"
       id="sheet-comment-draft-pin"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40 active:cursor-grabbing"
+      draft
+      :movable="state.canComment"
       :style="{ left: `${draftPoint.x}px`, top: `${draftPoint.y}px` }"
       :aria-label="$t('sheets.comments.move_pin')"
       :aria-busy="panelState.draftPending"
@@ -400,9 +376,7 @@ onUnmounted(() => {
       @blur="onPinBlur"
       @lostpointercapture="onLostCapture"
       @keydown="movePinWithKeyboard($event, null)"
-    >
-      <Plus class="size-4" />
-    </button>
+    />
 
     <div
       v-if="hoveredPin && !(popupOpen && state.thread?.id === hoveredPin.thread.id)"
@@ -465,7 +439,7 @@ onUnmounted(() => {
       @wheel.stop
       @contextmenu.stop
     >
-      <SheetCommentsPanel :state="panelState" :draft-storage-key="draftStorageKey" embedded />
+      <SheetCommentPopover :state="panelState" :draft-storage-key="draftStorageKey" />
     </div>
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Magnet, MessageCircle, Plus, Unlink, Repeat2, Eye, EyeOff } from "@lucide/vue";
+import CommentPin from "@components/comments/CommentPin.vue";
+import { MessageCircle, Repeat2, Eye, EyeOff } from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
@@ -10,7 +11,7 @@ import type {
 } from "../../lib/comment-geometry";
 import type { SceneCommentTargets } from "../../lib/comment-snap-adapter";
 import { useSceneCanvasComments } from "../../composables/useSceneCanvasComments";
-import SceneCommentsPanel from "../panels/SceneCommentsPanel.vue";
+import SceneCommentPopover from "../panels/SceneCommentPopover.vue";
 
 const {
   container,
@@ -52,7 +53,6 @@ const {
   draftPoint,
   moveError,
   panelState,
-  magnetism,
   moving,
   keyboardDragging,
   dragPreview,
@@ -61,7 +61,6 @@ const {
   onPinKeyDown,
   onPinBlur,
   onLostCapture,
-  toggleMagnetism,
   cycleContext,
   discardStoredDraft,
   contextMenuPoint,
@@ -83,7 +82,10 @@ const {
 });
 
 const popupOpen = computed(
-  () => state.open && state.presentation === "canvas" && Boolean(activePoint.value),
+  () =>
+    state.open &&
+    state.presentation === "canvas" &&
+    Boolean(activePoint.value || state.thread || state.error),
 );
 const popupSize = computed(() => ({
   width: Math.max(0, Math.min(360, bounds.value.width - 24)),
@@ -157,23 +159,6 @@ onUnmounted(() => popupObserver?.disconnect());
     data-testid="scene-canvas-comments"
     data-scene-comment-ui="true"
   >
-    <div
-      v-if="state.canComment && (pins.length || placing || draftPoint)"
-      class="pointer-events-auto absolute right-4 top-4 z-10 flex items-center gap-2"
-      @pointerdown.stop
-    >
-      <button
-        id="scene-comment-magnetism-toggle"
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        :aria-pressed="magnetism"
-        :title="$t('scenes.comments.magnetism_hint')"
-        @click.stop="toggleMagnetism"
-      >
-        <Magnet v-if="magnetism" class="size-3.5" /><Unlink v-else class="size-3.5" />
-        {{ $t(magnetism ? "scenes.comments.magnetism_on" : "scenes.comments.magnetism_off") }}
-      </button>
-    </div>
     <div
       v-if="contextVisibility.local || (state.open && contextVisibility.hidden)"
       class="pointer-events-auto absolute left-4 top-4 z-20 max-w-xs rounded-lg border border-border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-md"
@@ -285,16 +270,12 @@ onUnmounted(() => popupObserver?.disconnect());
       {{ $t("scenes.comments.update_failed") }}
     </p>
 
-    <button
+    <CommentPin
       v-for="pin in pins"
       :id="`scene-comment-pin-${pin.thread.id}`"
       :key="pin.thread.id"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      :class="{
-        'ring-2 ring-ring ring-offset-2': state.thread?.id === pin.thread.id && popupOpen,
-        'cursor-grab active:cursor-grabbing': state.canComment,
-      }"
+      :movable="state.canComment"
+      :selected="state.thread?.id === pin.thread.id && popupOpen"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('scenes.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
@@ -304,7 +285,6 @@ onUnmounted(() => popupObserver?.disconnect());
       "
       :aria-busy="isPending(pin.thread.id)"
       :aria-expanded="state.thread?.id === pin.thread.id && popupOpen"
-      aria-haspopup="dialog"
       @pointerdown.stop="startDrag($event, pin.thread)"
       @keydown="onPinKeyDown($event, pin.thread)"
       @lostpointercapture="onLostCapture"
@@ -313,15 +293,13 @@ onUnmounted(() => popupObserver?.disconnect());
       @focus="hoverId = pin.thread.id"
       @blur="onPinBlur"
       @click.stop="selectThread(pin.thread, $event)"
-    >
-      <MessageCircle class="size-4" />
-    </button>
+    />
 
-    <button
+    <CommentPin
       v-if="draftPoint"
       id="scene-comment-draft-pin"
-      type="button"
-      class="pointer-events-auto absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab items-center justify-center rounded-full rounded-bl-sm border-2 border-background bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40 active:cursor-grabbing"
+      draft
+      :movable="state.canComment"
       :style="{ left: `${draftPoint.x}px`, top: `${draftPoint.y}px` }"
       :aria-label="$t('scenes.comments.move_pin')"
       aria-describedby="scene-comment-move-instructions"
@@ -330,9 +308,7 @@ onUnmounted(() => popupObserver?.disconnect());
       @keydown="onPinKeyDown($event, null)"
       @blur="onPinBlur"
       @lostpointercapture="onLostCapture"
-    >
-      <Plus class="size-4" />
-    </button>
+    />
 
     <div
       v-if="hoveredPin && !(popupOpen && state.thread?.id === hoveredPin.thread.id)"
@@ -395,10 +371,9 @@ onUnmounted(() => popupObserver?.disconnect());
       @wheel.stop
       @contextmenu.stop
     >
-      <SceneCommentsPanel
+      <SceneCommentPopover
         :state="panelState"
         :draft-storage-key="draftStorageKey"
-        embedded
         @close="discardStoredDraft"
       />
     </div>

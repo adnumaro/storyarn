@@ -60,7 +60,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.ReferenceHandlers do
         |> refresh()
 
       if socket.assigns.references.open,
-        do: {:reply, %{status: "ok"}, CommentHandlers.init(socket)},
+        do: {:reply, %{status: "ok"}, CommentHandlers.close(socket)},
         else: failure(socket, :not_found)
     else
       {:error, reason} ->

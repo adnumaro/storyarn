@@ -38,7 +38,7 @@ defmodule StoryarnWeb.ContextualSourceHeaderDiffTest do
     assert header(view).props_diff == [["replace", "/save-status", "idle"]]
   end
 
-  test "Sheet comment controls do not resend health", ctx do
+  test "Sheet comment placement does not change header props", ctx do
     sheet = sheet_fixture(ctx.project, %{name: "Reviewable sheet"})
 
     {:ok, view, _} =
@@ -49,8 +49,8 @@ defmodule StoryarnWeb.ContextualSourceHeaderDiffTest do
     render_hook(view, "comments_mode", %{active: true})
     patches = header(view).props_diff
 
-    assert [_ | _] = patches
-    assert Enum.all?(patches, fn [_, path | _] -> path == "/comments" or String.starts_with?(path, "/comments/") end)
+    assert patches == []
+    refute Map.has_key?(header(view).props, "comments")
   end
 
   defp header(view), do: LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader")

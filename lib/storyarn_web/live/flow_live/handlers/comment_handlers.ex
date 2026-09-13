@@ -75,12 +75,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
   def handle("open", params, socket) do
     with {:ok, _project, _membership} <- authorize_read(socket),
-         {:ok, node_id} <- optional_node(socket, params["node_id"]) do
+         {:ok, node_id} when is_integer(node_id) <- optional_node(socket, params["node_id"]),
+         "workspace" <- params["presentation"] do
       socket =
         socket
         |> put_state(%{
           open: true,
-          presentation: if(params["presentation"] == "workspace", do: "workspace", else: "panel"),
+          presentation: "workspace",
           placing: false,
           draftPosition: nil,
           draftContext: nil,
@@ -109,23 +110,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
         "canvas" -> "canvas"
         "workspace" -> "workspace"
         nil -> socket.assigns.comments.presentation
-        _ -> "panel"
+        _ -> "canvas"
       end
 
     socket = put_state(socket, %{presentation: presentation})
     {:noreply, select_thread(socket, positive_id(params["thread_id"]))}
-  end
-
-  def handle("filter", params, socket) do
-    status = if params["status"] in ~w(open resolved all), do: params["status"], else: "open"
-    {:noreply, socket |> put_state(%{statusFilter: status, error: nil}) |> refresh()}
-  end
-
-  def handle("load_more", _params, socket) do
-    case socket.assigns.comments.nextCursor do
-      nil -> {:noreply, socket}
-      cursor -> {:noreply, load_threads(socket, cursor)}
-    end
   end
 
   def handle("load_messages", _params, socket) do
@@ -167,7 +156,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp refresh_open(socket, %{open: false}), do: socket
 
   defp refresh_open(socket, state) do
-    socket = socket |> load_threads() |> load_members()
+    socket = load_members(socket)
 
     if state.thread do
       load_detail(socket, state.thread.id)
@@ -208,7 +197,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
           draftPosition: nil,
           draftContext: nil,
           draftId: nil,
-          presentation: "panel",
+          presentation: "canvas",
           error: error_message(:source_unavailable)
         })
     end
@@ -342,24 +331,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp select_thread(socket, thread_id) do
     socket
     |> put_state(%{open: true, placing: false, draftPosition: nil, draftContext: nil, draftId: nil, error: nil})
-    |> load_threads()
     |> load_members()
     |> load_detail(thread_id)
     |> focus_selected_thread()
-  end
-
-  defp load_threads(socket, cursor \\ nil) do
-    %{current_scope: scope, project: project, flow: flow, comments: state} = socket.assigns
-    opts = [status: state.statusFilter, cursor: cursor, node_id: state.selectedNodeId]
-
-    case Projects.list_flow_comment_threads(scope, project.id, flow.id, opts) do
-      {:ok, %{threads: threads, next_cursor: next_cursor}} ->
-        threads = if cursor, do: Enum.uniq_by(state.threads ++ threads, & &1.id), else: threads
-        put_state(socket, %{threads: threads, nextCursor: next_cursor})
-
-      _error ->
-        clear(socket)
-    end
   end
 
   defp load_detail(socket, thread_id, cursor \\ nil) do
@@ -376,7 +350,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
         available? = thread.source.status == "available"
         node_id = context_node_id(thread)
-        presentation = if available?, do: socket.assigns.comments.presentation, else: "panel"
+        presentation = if available?, do: socket.assigns.comments.presentation, else: "canvas"
 
         socket
         |> put_state(%{
@@ -405,7 +379,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
             draftPosition: nil,
             draftContext: nil,
             draftId: nil,
-            presentation: "panel",
+            presentation: "canvas",
             error: error_message(:not_found)
           })
         else
@@ -468,8 +442,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp draft_context(_socket, _node_id, _context), do: {:error, :invalid_context}
 
   defp authorize_read(socket), do: Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view)
-
-  defp focus_node(socket, nil), do: assign(socket, :comment_focus_node_id, nil)
 
   defp focus_node(socket, node_id) do
     socket
@@ -550,7 +522,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp empty_state do
     %{
       open: false,
-      presentation: "panel",
+      presentation: "canvas",
       placing: false,
       draftPosition: nil,
       draftContext: nil,

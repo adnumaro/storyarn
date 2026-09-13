@@ -5,7 +5,6 @@ export const flowCommentUi: CommentUiConfig = {
   domScope: "flow",
   i18nPrefix: "flows.comments",
   canvasSourceType: "flow_canvas",
-  scopeThreadsKey: "flow_threads",
   selectedSourceFallbackKey: "node_label",
   createSourceKey: "node_id",
 };

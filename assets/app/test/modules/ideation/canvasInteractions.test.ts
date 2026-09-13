@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, reactive, ref } from "vue";
-import { mount, type VueWrapper } from "@vue/test-utils";
+import { mount, flushPromises, DOMWrapper, type VueWrapper } from "@vue/test-utils";
 import BrainstormingCanvas from "@modules/ideation/components/BrainstormingCanvas.vue";
 import { idea, ideaGroup } from "./fixtures";
 
@@ -468,6 +468,9 @@ describe("canvas keyboard and selection", () => {
     // A note click inside the window selects without starting a drag: jsdom has
     // no setPointerCapture, so beginning one here would throw.
     key(wrapper, "ArrowDown");
+    // Vue timestamps bubbling handlers; the context-menu trigger adds a handler
+    // before the canvas, so advance the fake clock past their mount timestamp.
+    await vi.advanceTimersByTimeAsync(1);
     await pointer(wrapper.get('[data-note-id="11"]').element, "pointerdown", {
       button: 0,
       pointerId: 2,
@@ -492,5 +495,58 @@ describe("canvas keyboard and selection", () => {
     expect(wrapper.emitted("separateGroup")).toBeUndefined();
     expect(frame.text()).toContain("1 of 2 notes visible");
     expect(frame.get("#group-separate-40").attributes("disabled")).toBeDefined();
+  });
+});
+
+describe("contextual comments", () => {
+  it.each([
+    { selector: "#brainstorming-canvas", ideaId: null, groupId: null },
+    { selector: '[data-note-id="10"]', ideaId: 10, groupId: null },
+    { selector: '[data-group-id="30"]', ideaId: null, groupId: 30 },
+  ])("creates a comment from $selector", async ({ selector, ideaId, groupId }) => {
+    const wrapper = canvas({
+      notes: [idea({ visibility: "shared", published_revision: 1 })],
+      groupState: {
+        groups: [ideaGroup({ id: 30 })],
+        selectedId: null,
+        save: vi.fn(),
+        move: vi.fn(),
+      },
+      permissions: { edit: true, create: true, comment: true, privateMode: false },
+    });
+    const target = wrapper.get(selector);
+    // A right click on the blank canvas hits the context trigger's full-size surface.
+    const element = ideaId || groupId ? target.element : target.element.firstElementChild!;
+    element.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    await flushPromises();
+    const item = new DOMWrapper(
+      document.querySelector<HTMLElement>("#brainstorming-comment-context-add")!,
+    );
+    await item.trigger("click");
+    expect(wrapper.emitted("comment")).toEqual([
+      [{ ideaId, groupId, position: { x: expect.any(Number), y: expect.any(Number) } }],
+    ]);
+  });
+  it.each([
+    { comment: false, privateMode: false, visibility: "shared" as const, published_revision: 1 },
+    { comment: true, privateMode: true, visibility: "shared" as const, published_revision: 1 },
+    { comment: true, privateMode: false, visibility: "private" as const, published_revision: null },
+  ])("keeps unavailable sources out of comment creation: %o", async (config) => {
+    const wrapper = canvas({
+      notes: [idea(config)],
+      permissions: { edit: true, create: true, ...config },
+    });
+    await wrapper.get('[data-note-id="10"]').trigger("contextmenu", { button: 2 });
+    await flushPromises();
+    expect(document.querySelector("#brainstorming-comment-context-add")).toBeNull();
+    expect(wrapper.emitted("comment")).toBeUndefined();
   });
 });

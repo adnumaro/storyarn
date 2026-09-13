@@ -32,7 +32,7 @@ const thread: SheetCommentThread = {
 };
 const base: SheetCommentsPanelState = {
   open: false,
-  presentation: "panel",
+  presentation: "canvas",
   placing: false,
   draftPosition: null,
   draftId: null,
@@ -140,20 +140,19 @@ function setup(
   const button = document.createElement("button");
   const dragHandle = document.createElement("div");
   const outside = document.createElement("div");
-  const commentsToggle = document.createElement("button");
   container.dataset.sheetCommentSurface = "true";
   header.dataset.testid = "sheet-header";
   row.dataset.testid = "three-block-row";
   block.dataset.sheetBlockId = "42";
   dragHandle.className = "block-drag-handle";
-  commentsToggle.id = "sheet-comments-toggle";
+  container.tabIndex = -1;
   row.append(block);
   container.append(header, row, input, button, dragHandle);
   if (scrollOwner) {
     scrollOwner.append(container);
-    document.body.append(commentsToggle, scrollOwner, outside);
+    document.body.append(scrollOwner, outside);
   } else {
-    document.body.append(commentsToggle, container, outside);
+    document.body.append(container, outside);
   }
 
   const surfaceRect = vi
@@ -169,7 +168,7 @@ function setup(
       focusThreadId,
       draftStorageKey,
     },
-    global: { stubs: { SheetCommentsPanel: !renderPanel } },
+    global: { stubs: { SheetCommentPopover: !renderPanel } },
   });
   wrappers.push(wrapper);
   return {
@@ -181,7 +180,6 @@ function setup(
     input,
     button,
     dragHandle,
-    commentsToggle,
     outside,
     surfaceRect,
   };
@@ -590,7 +588,7 @@ describe("Sheet canvas comments", () => {
       resolved_by: author,
     };
     const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
-    const { wrapper, commentsToggle } = setup(
+    const { wrapper, container } = setup(
       {
         open: true,
         presentation: "canvas",
@@ -609,16 +607,16 @@ describe("Sheet canvas comments", () => {
     expect(document.activeElement).toBe(wrapper.get("#sheet-comment-popover").element);
 
     await wrapper.setProps({
-      state: { ...base, open: false, presentation: "panel", threads: [resolvedThread] },
+      state: { ...base, open: false, presentation: "canvas", threads: [resolvedThread] },
     });
     await flushPromises();
 
     expect(wrapper.find("#sheet-comment-pin-12").exists()).toBe(false);
-    expect(document.activeElement).toBe(commentsToggle);
+    expect(document.activeElement).toBe(container);
   });
 
-  it("returns focus to the comments control after closing a draft conversation", async () => {
-    const { wrapper, commentsToggle } = setup(
+  it("returns focus to the sheet after closing a draft conversation", async () => {
+    const { wrapper, container } = setup(
       {
         open: true,
         presentation: "canvas",
@@ -629,10 +627,10 @@ describe("Sheet canvas comments", () => {
     await flushPromises();
     expect(document.activeElement).toBe(wrapper.get("#sheet-comment-popover").element);
 
-    await wrapper.setProps({ state: { ...base, open: false, presentation: "panel" } });
+    await wrapper.setProps({ state: { ...base, open: false, presentation: "canvas" } });
     await flushPromises();
 
-    expect(document.activeElement).toBe(commentsToggle);
+    expect(document.activeElement).toBe(container);
   });
 
   it("restores a sheet-scoped draft position after a page reload", async () => {
@@ -672,7 +670,7 @@ describe("Sheet canvas comments", () => {
       storageKey,
     );
 
-    await wrapper.setProps({ state: { ...base, open: false, presentation: "panel" } });
+    await wrapper.setProps({ state: { ...base, open: false, presentation: "canvas" } });
     await flushPromises();
 
     expect(window.sessionStorage.getItem(storageKey)).toBeNull();
@@ -804,7 +802,7 @@ describe("Sheet canvas comments", () => {
     },
   );
 
-  it("uses Alt on release to detach context and the toggle to place freely", async () => {
+  it("uses Alt to detach context on release and place freely", async () => {
     const { wrapper, header } = setup({ placing: true });
     snapTarget(header, "sheet_header", "7", rect(170, 100, 500, 100), "Header");
     await nextTick();
@@ -813,9 +811,7 @@ describe("Sheet canvas comments", () => {
     pointer(window, "pointermove", 210, 150);
     pointer(window, "pointerup", 210, 150, 0, true);
     expect(lastRequest("comments_move")[1]).toMatchObject({ x: 25, y: 130, context: null });
-    await wrapper.get("#sheet-comment-magnetism-toggle").trigger("click");
-    expect(wrapper.get("#sheet-comment-magnetism-toggle").attributes("aria-pressed")).toBe("false");
-    pointer(header, "pointerdown", 210, 150);
+    pointer(header, "pointerdown", 210, 150, 0, true);
     expect(lastRequest("comments_place")[1]).toEqual({ x: 25, y: 130, context: null });
   });
 

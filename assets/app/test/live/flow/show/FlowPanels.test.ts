@@ -53,7 +53,7 @@ function mountPanels(panels: PanelsData) {
     global: {
       stubs: {
         FlowBuilderPanel: true,
-        FlowCommentsPanel: true,
+        FlowCommentPopover: true,
         FlowDialogueFullscreenEditor: true,
         FlowDialoguePanel: true,
         FlowPreview: true,

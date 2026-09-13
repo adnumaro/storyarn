@@ -162,7 +162,7 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
     assert Repo.aggregate(Message, :count) == 1
   end
 
-  test "member mentions are enabled but spatial moves and outsider mentions are rejected", ctx do
+  test "member mentions are enabled and spatial moves retain discussion identity", ctx do
     assert {:ok, _} = create(ctx, nil, Map.put(attrs(), :mention_user_ids, [ctx.peer.user.id]))
     {:ok, discussion} = create(ctx, nil, attrs())
 
@@ -177,7 +177,7 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
                })
              )
 
-    assert {:error, :invalid_position} =
+    assert {:ok, moved} =
              Projects.move_comment_thread(
                ctx.author,
                ctx.project.id,
@@ -185,6 +185,41 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
                %{x: 1, y: 1},
                discussion.thread.revision
              )
+
+    assert moved.id == discussion.thread.id
+    assert moved.position == %{x: 1.0, y: 1.0}
+    assert moved.source == discussion.thread.source
+    assert moved.revision == discussion.thread.revision + 1
+    assert {:ok, pins} = Projects.list_ideation_comment_pins(ctx.author, ctx.project.id, ctx.session.id)
+    assert Enum.find(pins, &(&1.id == moved.id)).position == moved.position
+  end
+
+  test "canvas positions are durable, idempotent, revision checked and hidden with their source", ctx do
+    idea = ctx |> idea_fixture() |> then(&publish_idea(ctx, &1))
+    attrs = Map.put(attrs(), :position, %{x: -45, y: 280})
+    assert {:ok, created} = create(ctx, idea.id, attrs)
+    assert created.thread.position == %{x: -45.0, y: 280.0}
+    assert {:ok, repeated} = create(ctx, idea.id, attrs)
+    assert repeated.thread.id == created.thread.id
+    assert {:error, :idempotency_conflict} = create(ctx, idea.id, %{attrs | position: %{x: 10, y: 20}})
+    assert {:ok, [pin]} = Projects.list_ideation_comment_pins(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert pin.id == created.thread.id
+
+    assert {:ok, moved} =
+             Projects.move_comment_thread(ctx.author, ctx.project.id, pin.id, %{x: 300, y: 400}, pin.revision)
+
+    assert {:error, :stale} =
+             Projects.move_comment_thread(ctx.author, ctx.project.id, pin.id, %{x: 500, y: 600}, pin.revision)
+
+    assert {:error, :invalid_position} = create(ctx, idea.id, Map.put(attrs(), :position, %{x: 10_000_001, y: 0}))
+
+    assert {:ok, _} =
+             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+
+    assert {:ok, []} = Projects.list_ideation_comment_pins(ctx.author, ctx.project.id, ctx.session.id)
+
+    assert {:error, _} =
+             Projects.move_comment_thread(ctx.author, ctx.project.id, pin.id, %{x: 500, y: 600}, moved.revision)
   end
 
   defp create(ctx, idea_id, attrs),

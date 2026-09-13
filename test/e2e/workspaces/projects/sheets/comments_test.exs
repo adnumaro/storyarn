@@ -13,7 +13,7 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
 
   @moduletag :e2e
 
-  test "a Sheet discussion moves from its header across the canvas and keeps its deep link", %{
+  test "a Sheet discussion starts in the context menu and moves across the canvas and keeps its deep link", %{
     conn: conn
   } do
     user = user_fixture()
@@ -36,8 +36,6 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
       |> assert_has("#sheet-comment-context-menu")
       |> click("#sheet-comment-context-add")
       |> assert_has("#sheet-comment-draft-pin")
-      |> click("#sheet-comment-magnetism-toggle")
-      |> assert_has("#sheet-comment-magnetism-toggle[aria-pressed=false]")
       |> fill_in("#sheet-comment-body", "New thread", with: feedback)
       |> drag_pin("#sheet-comment-draft-pin", 35, 180)
       |> assert_has("#sheet-comment-body", value: feedback)
@@ -62,11 +60,9 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
       |> reload_page()
       |> refute_has("#sheet-comment-popover")
       |> assert_has("#sheet-comment-pin-#{thread.id}", timeout: 20_000)
-      |> click("#sheet-comment-magnetism-toggle")
-      |> assert_has("#sheet-comment-magnetism-toggle[aria-pressed=false]")
       |> drag_pin("#sheet-comment-pin-#{thread.id}", 45, 60)
       |> assert_has("#sheet-comment-pin-#{thread.id}[aria-busy=false]")
-      |> hover_pin("#sheet-comment-magnetism-toggle")
+      |> hover_pin("h1")
       |> hover_pin("#sheet-comment-pin-#{thread.id}")
       |> assert_has("#sheet-comment-preview", text: feedback)
       |> click("#sheet-comment-pin-#{thread.id}")
@@ -99,7 +95,7 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
       |> right_click_at("[data-sheet-comment-surface=true]", 32, 32)
       |> click("#sheet-comment-context-add")
       |> assert_has("#{draft}[aria-busy=false]")
-      |> assert_has("#sheet-comment-magnetism-toggle[aria-pressed=true]")
+      |> refute_has("#sheet-comment-magnetism-toggle")
       |> fill_in("#sheet-comment-body", "New thread", with: feedback)
 
     session =
@@ -325,17 +321,17 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
       |> click(pin)
       |> assert_has("#sheet-comment-context", text: "Cover")
       |> click("#sheet-comment-popover-close")
-      |> click("#sheet-comment-magnetism-toggle")
-      |> assert_has("#sheet-comment-magnetism-toggle[aria-pressed=false]")
-      |> press(pin, "ArrowRight")
-      |> press(pin, "Enter")
+      |> press(pin, "Alt+ArrowRight")
+      |> press(pin, "Alt+Enter")
       |> assert_has("#{pin}[aria-busy=false]")
       |> click(pin)
       |> refute_has("#sheet-comment-context")
       |> click("#sheet-comment-popover-close")
+      |> alt_key(:keyboard_down)
       |> drag_pin_over(pin, "[data-sheet-comment-surface=true]", -0.2, 0.5)
       |> assert_has("#sheet-comment-snap-preview", text: "Free position")
       |> release_pin()
+      |> alt_key(:keyboard_up)
       |> assert_has("#{pin}[aria-busy=false]")
       |> assert_pin_inside_surface(pin)
 
@@ -387,6 +383,15 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
 
   defp release_pin(session) do
     {:ok, _} = Page.mouse_up(session.page_id, timeout: 10_000)
+    session
+  end
+
+  defp alt_key(session, action) do
+    {:ok, _} =
+      PlaywrightEx.Supervisor.Connection
+      |> PlaywrightEx.Connection.send(%{guid: session.page_id, method: action, params: %{key: "Alt"}}, 10_000)
+      |> PlaywrightEx.ChannelResponse.unwrap(& &1)
+
     session
   end
 

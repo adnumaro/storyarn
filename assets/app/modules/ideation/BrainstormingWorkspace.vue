@@ -8,7 +8,6 @@ import {
   RotateCcw,
   LayoutDashboard,
   Unplug,
-  MessageCircle,
   Link2,
   ListChecks,
 } from "@lucide/vue";
@@ -50,7 +49,12 @@ import type {
   ConnectionChange,
   RoundFilter as RoundSelection,
 } from "./types";
-const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
+import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
+const { board, baseUrl, comments } = defineProps<{
+  board: Board;
+  baseUrl: string;
+  comments?: BrainstormingCommentsState;
+}>();
 const { t, error, options, member } = useBoardText();
 const selectedIds = ref<number[]>([]);
 const selected = computed(() => selectedIds.value[0] ?? null);
@@ -74,11 +78,13 @@ const rounds = computed(() => {
 });
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
-function useComments(ideaId: number | null) {
-  void request("comments_open", { idea_id: ideaId });
-}
-function groupComments(groupId: number) {
-  void request("comments_open", { group_id: groupId });
+async function createComment(target: BrainstormingCommentTarget) {
+  const reply = await request("comments_open", {
+    idea_id: target.ideaId,
+    group_id: target.groupId,
+    position: target.position,
+  });
+  if (reply.status === "error") failure.value = reply.code;
 }
 async function useReferences(ideaId: number | null) {
   const reply = await request("references_open", { idea_id: ideaId });
@@ -977,10 +983,21 @@ onUnmounted(() => {
           busy: mutationBusy,
         }"
         :editing-id="editing"
-        :permissions="{ edit: writable, create: canCreate }"
-        :collaboration="{ context: context(), cursors: !board.session.configuration.private_mode }"
+        :permissions="{
+          edit: writable,
+          create: canCreate,
+          comment: board.can_edit && online,
+          privateMode: board.session.configuration.private_mode,
+        }"
+        :collaboration="{
+          context: context(),
+          cursors: !board.session.configuration.private_mode,
+          comments,
+          baseUrl,
+        }"
         :members="board.members"
         :statuses="statuses"
+        @comment="createComment"
         @add="add"
         @select="select"
         @select-group="groups.choose"
@@ -1007,23 +1024,6 @@ onUnmounted(() => {
         @list="list = true"
       >
         <template #session>
-          <Button
-            v-if="groups.selected.value !== null && !board.session.configuration.private_mode"
-            id="brainstorming-group-comments"
-            variant="ghost"
-            size="sm"
-            :disabled="!online"
-            @click="groupComments(groups.selected.value)"
-            ><MessageCircle class="size-4" />{{ t("brainstormingComments.group_comments") }}</Button
-          >
-          <Button
-            id="brainstorming-session-comments"
-            variant="ghost"
-            size="sm"
-            :disabled="!online"
-            @click="useComments(null)"
-            ><MessageCircle class="size-4" />{{ t("brainstormingComments.title") }}</Button
-          >
           <Button
             id="brainstorming-session-references"
             variant="ghost"
@@ -1085,16 +1085,7 @@ onUnmounted(() => {
               @click="useReferences(current.id)"
               ><Link2 class="size-4"
             /></Button>
-            <Button
-              v-if="current.published_revision && !board.session.configuration.private_mode"
-              id="brainstorming-idea-comments"
-              variant="ghost"
-              size="icon-sm"
-              :disabled="!online"
-              :aria-label="t('brainstormingComments.idea_comments')"
-              @click="useComments(current.id)"
-              ><MessageCircle class="size-4"
-            /></Button>
+
             <GroupSelectionTools
               v-if="writable"
               :notes="selectedNotes(selectedIds)"

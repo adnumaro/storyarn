@@ -276,10 +276,10 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     render_hook(view, "comments_open", payload(view, ctx, %{}))
     refute state(view)["open"]
     assert state(view)["items"] == []
-    assert LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["comments"]["open"]
+    assert LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["comments"]["open"]
     render_hook(view, "references_open", payload(view, ctx, %{}))
     assert state(view)["open"]
-    refute LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["comments"]["open"]
+    refute LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["comments"]["open"]
   end
 
   defp add_reference(ctx, target_id, idea_id \\ nil) do

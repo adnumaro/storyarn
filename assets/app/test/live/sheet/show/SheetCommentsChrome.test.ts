@@ -12,12 +12,12 @@ vi.mock("@shared/composables/useLive", () => ({ useLive: () => live }));
 const { default: SheetHeader } = await import("@app/live/sheet/show/SheetHeader.vue");
 const { default: SheetShowPanels } =
   await import("@modules/sheets/components/panels/SheetShowPanels.vue");
-const { default: SheetCommentsPanel } =
-  await import("@modules/sheets/components/panels/SheetCommentsPanel.vue");
+const { default: SheetCommentPopover } =
+  await import("@modules/sheets/components/panels/SheetCommentPopover.vue");
 
 const comments: SheetCommentsPanelState = {
   open: true,
-  presentation: "panel",
+  presentation: "canvas",
   placing: false,
   draftPosition: null,
   draftId: null,
@@ -39,40 +39,16 @@ beforeEach(() => {
 });
 
 describe("Sheet comments chrome wiring", () => {
-  it("exposes comment mode, count, and a viewer-safe panel toggle in the header", async () => {
-    const wrapper = mount(SheetHeader, {
-      props: {
-        health: { errorItems: [], warningItems: [], infoItems: [] },
-        comments: { count: 3, open: false, placing: false, canComment: true },
-      },
-      global: {
-        stubs: {
-          SheetHealthStatus: true,
-          ToolbarTooltip: passthrough,
-        },
-      },
-    });
-
-    expect(wrapper.get("#sheet-comments-toggle").text()).toContain("3");
-    await wrapper.get("#sheet-comments-create-mode").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_mode", { active: true });
-    await wrapper.get("#sheet-comments-toggle").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_open", {});
-
-    await wrapper.setProps({
-      comments: { count: 3, open: true, placing: false, canComment: false },
-    });
+  it("keeps the Sheet header free of comment controls", () => {
+    const wrapper = mount(SheetHeader, { global: { stubs: { SheetHealthStatus: true } } });
+    expect(wrapper.find("#sheet-comments-toggle").exists()).toBe(false);
     expect(wrapper.find("#sheet-comments-create-mode").exists()).toBe(false);
-    expect(wrapper.get("#sheet-comments-toggle").attributes("aria-expanded")).toBe("true");
-    await wrapper.get("#sheet-comments-toggle").trigger("click");
-    expect(live.pushEvent).toHaveBeenLastCalledWith("comments_close", {});
   });
 
-  it("mounts the shared panel alongside the active sheet tab", () => {
+  it("does not mount a comments sidebar alongside the active sheet tab", () => {
     const wrapper = mount(SheetShowPanels, {
       props: {
         panels: {
-          comments,
           currentTab: "content",
           compact: false,
           references: null,
@@ -82,7 +58,7 @@ describe("Sheet comments chrome wiring", () => {
       },
       global: {
         stubs: {
-          SheetCommentsPanel: {
+          SheetCommentPopover: {
             props: ["state"],
             template: '<section data-testid="comments-panel" />',
           },
@@ -90,15 +66,14 @@ describe("Sheet comments chrome wiring", () => {
       },
     });
 
-    expect(wrapper.find('[data-testid="comments-panel"]').exists()).toBe(true);
-    expect(wrapper.find("#sheet-comments-panel").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="comments-panel"]').exists()).toBe(false);
+    expect(wrapper.find("#sheet-comments-panel").exists()).toBe(false);
   });
 
   it("creates a sheet canvas thread with its surface position", async () => {
     const position = { x: 25, y: 50 };
-    const wrapper = mount(SheetCommentsPanel, {
+    const wrapper = mount(SheetCommentPopover, {
       props: {
-        embedded: true,
         state: {
           ...comments,
           presentation: "canvas",
@@ -139,9 +114,8 @@ describe("Sheet comments chrome wiring", () => {
       storageKey,
       JSON.stringify({ position, body: "A draft that survives reload", mentionIds: [] }),
     );
-    const wrapper = mount(SheetCommentsPanel, {
+    const wrapper = mount(SheetCommentPopover, {
       props: {
-        embedded: true,
         draftStorageKey: storageKey,
         state: {
           ...comments,
@@ -248,9 +222,8 @@ describe("Sheet comments chrome wiring", () => {
     };
     window.sessionStorage.setItem(storageKey, JSON.stringify(storedDraft));
 
-    const wrapper = mount(SheetCommentsPanel, {
+    const wrapper = mount(SheetCommentPopover, {
       props: {
-        embedded: true,
         draftStorageKey: storageKey,
         state: { ...comments, presentation: "canvas", thread, messages: [rootMessage] },
       },
@@ -285,9 +258,8 @@ describe("Sheet comments chrome wiring", () => {
       storageKey,
       JSON.stringify({ position, body: "Publish this draft", mentionIds: [] }),
     );
-    const wrapper = mount(SheetCommentsPanel, {
+    const wrapper = mount(SheetCommentPopover, {
       props: {
-        embedded: true,
         draftStorageKey: storageKey,
         state: {
           ...comments,
@@ -350,7 +322,6 @@ describe("Sheet comments chrome wiring", () => {
     const storageKey = "storyarn:sheet-comment-draft:4:7";
     const position = { x: 25, y: 50 };
     const panelProps = {
-      embedded: true,
       draftStorageKey: storageKey,
       state: {
         ...comments,
@@ -369,7 +340,7 @@ describe("Sheet comments chrome wiring", () => {
         PopoverTrigger: passthrough,
       },
     };
-    const first = mount(SheetCommentsPanel, { props: panelProps, global });
+    const first = mount(SheetCommentPopover, { props: panelProps, global });
     await first.get("#sheet-comment-body").setValue("Retry this exact draft");
     await first.get("form").trigger("submit");
     const firstCreate = vi
@@ -383,7 +354,7 @@ describe("Sheet comments chrome wiring", () => {
 
     first.unmount();
     vi.mocked(live.pushEvent).mockClear();
-    const restored = mount(SheetCommentsPanel, { props: panelProps, global });
+    const restored = mount(SheetCommentPopover, { props: panelProps, global });
     expect(restored.get<HTMLTextAreaElement>("#sheet-comment-body").element.value).toBe(
       "Retry this exact draft",
     );

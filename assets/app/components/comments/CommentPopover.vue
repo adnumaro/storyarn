@@ -2,18 +2,15 @@
 import { MessageCircle, X } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
-import Sidebar from "@app/shell/Sidebar.vue";
 import CommentConversation from "./CommentConversation.vue";
 import type { CommentsPanelState, CommentUiConfig } from "./types";
 
 const {
   state,
-  embedded = false,
   ui,
   draftStorageKey = null,
 } = defineProps<{
   state: CommentsPanelState;
-  embedded?: boolean;
   ui: CommentUiConfig;
   draftStorageKey?: string | null;
 }>();
@@ -28,7 +25,6 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
 
 <template>
   <section
-    v-if="embedded"
     class="flex min-h-0 max-h-full flex-col overflow-hidden rounded-xl border border-border bg-background shadow-xl"
     :aria-label="$t(translationKey('title'))"
   >
@@ -53,33 +49,8 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
       :state="state"
       :ui="ui"
       :draft-storage-key="draftStorageKey"
-      embedded
       class="min-h-0 overflow-y-auto overscroll-contain p-3"
     />
+    <slot name="footer" />
   </section>
-  <Sidebar v-else side="right" :open="state.open && state.presentation !== 'canvas'" @close="close">
-    <template #header>
-      <div class="flex items-center justify-between gap-2 py-2.5">
-        <div class="flex min-w-0 items-center gap-2 text-sm font-medium">
-          <MessageCircle class="size-4 shrink-0" /><span>{{ $t(translationKey("title")) }}</span>
-        </div>
-        <Button
-          :id="`${ui.domScope}-comments-close`"
-          variant="ghost"
-          size="icon"
-          class="size-7"
-          :aria-label="$t(translationKey('close'))"
-          @click="close"
-          ><X class="size-4"
-        /></Button>
-      </div>
-    </template>
-    <CommentConversation
-      v-if="state.presentation !== 'canvas'"
-      :state="state"
-      :ui="ui"
-      :draft-storage-key="draftStorageKey"
-    />
-    <template v-if="$slots.footer" #footer><slot name="footer" /></template>
-  </Sidebar>
 </template>

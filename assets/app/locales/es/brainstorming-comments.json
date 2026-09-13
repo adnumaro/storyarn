@@ -2,7 +2,6 @@
   "brainstormingComments": {
     "title": "Comentarios",
     "group_label": "Grupo compartido",
-    "group_comments": "Comentar grupo seleccionado",
     "follow": "Seguir",
     "unfollow": "Dejar de seguir",
     "follow_help": "Seguir avisa de mensajes nuevos. Las respuestas directas y menciones pueden avisarte aunque no sigas la conversación.",
@@ -12,7 +11,6 @@
     "search_people": "Buscar personas",
     "no_people": "No hay coincidencias",
     "remove_mention": "Quitar mención de {name}",
-    "idea_comments": "Comentar idea compartida",
     "canvas_label": "Conversación de la sesión",
     "idea_label": "Idea compartida",
     "session_threads": "Hilos de la sesión",
@@ -44,6 +42,9 @@
     "empty_hint": "Inicia una conversación abajo. Los comentarios son visibles para quienes pueden leer este origen.",
     "readonly_hint": "Puedes leer las conversaciones. Necesitas permisos de edición para comentar.",
     "threads": "Hilos de comentarios",
-    "load_threads": "Cargar más hilos"
+    "load_threads": "Cargar más hilos",
+    "add_comment": "Añadir comentario",
+    "pin_label": "Comentario de {author}",
+    "keyboard_move_hint": "Usa las flechas para mover, Mayús para mayor precisión, Intro para guardar y Escape para cancelar."
   }
 }

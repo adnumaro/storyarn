@@ -36,7 +36,7 @@ const content: SheetSurfaceContent = {
 
 const comments: SheetCommentsPanelState = {
   open: false,
-  presentation: "panel",
+  presentation: "canvas",
   placing: false,
   draftPosition: null,
   draftId: null,

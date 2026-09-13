@@ -85,7 +85,6 @@ defmodule StoryarnWeb.SheetLive.Show do
         id="sheet-header"
         source-type="sheet"
         health={@sheet_health}
-        comments={sheet_header_comment_props(assigns)}
         exploration-state={@explorations}
         exploration-source-key={"sheet:#{@sheet.id}"}
       />
@@ -217,15 +216,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     }
   end
 
-  defp sheet_header_comment_props(assigns) do
-    %{
-      count: length(assigns.comment_pins),
-      open: assigns.comments.open && assigns.comments.presentation == "panel",
-      placing: assigns.comments.placing,
-      canComment: assigns.comments.canComment
-    }
-  end
-
   defp sheet_surface_content_props(%{current_tab: "content"} = assigns) do
     content = %{
       blocks:
@@ -270,15 +260,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   defp sheet_surface_content_props(_assigns), do: nil
 
   defp sheet_panels_props(assigns) do
-    panels = %{
+    %{
       currentTab: assigns.current_tab,
       compact: assigns.compact,
       references: sheet_references_panel_props(assigns),
       audio: sheet_audio_panel_props(assigns),
       history: sheet_history_panel_props(assigns)
     }
-
-    if assigns.compact, do: panels, else: Map.put(panels, :comments, assigns.comments)
   end
 
   defp sheet_references_panel_props(%{current_tab: "references"} = assigns) do
@@ -574,10 +562,6 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event(event, _params, socket) when event in ~w(main_sidebar_toggle main_sidebar_pin main_sidebar_init) do
     {:noreply, socket}
-  end
-
-  def handle_event("comments_open", params, socket) do
-    CommentHandlers.handle("open", params, socket)
   end
 
   def handle_event("comments_mode", %{"active" => true} = params, socket) do

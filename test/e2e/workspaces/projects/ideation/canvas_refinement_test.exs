@@ -195,7 +195,7 @@ defmodule StoryarnWeb.E2E.BrainstormingCanvasRefinementTest do
           const note = document.querySelector('#canvas-note-#{id}');
           const wrapper = note.closest('[data-note-id]');
           const metadata = note.querySelector('.note-metadata');
-          const world = document.querySelector('#brainstorming-canvas > .origin-top-left');
+          const world = document.querySelector('#brainstorming-canvas .origin-top-left');
           const nodes = [...document.querySelectorAll('.canvas-note')];
           const shapes = {};
           const overlaps = [];

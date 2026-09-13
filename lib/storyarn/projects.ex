@@ -1140,6 +1140,8 @@ defmodule Storyarn.Projects do
     as: :list_ideation_threads
 
   defdelegate create_ideation_comment(scope, project_id, session_id, anchor, attrs), to: Comments, as: :create_ideation
+
+  defdelegate list_ideation_comment_pins(scope, project_id, session_id), to: Comments, as: :list_ideation_pins
   defdelegate subscribe_ideation_comments(scope, project_id, session_id), to: Comments, as: :subscribe_ideation
   defdelegate unsubscribe_ideation_comments(project_id, session_id), to: Comments, as: :unsubscribe_ideation
 end

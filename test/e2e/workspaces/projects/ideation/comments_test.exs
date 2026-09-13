@@ -21,9 +21,15 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> authenticate(ctx.author.user)
       |> visit(path)
       |> assert_has("#brainstorming-canvas", timeout: 20_000)
-      |> assert_has("#brainstorming-session-comments", timeout: 20_000)
-      |> click("#brainstorming-session-comments")
+      |> refute_has("#brainstorming-session-comments")
+      |> right_click_at("#brainstorming-canvas", 32, 200)
+      |> click("#brainstorming-comment-context-add")
+      |> assert_has("#brainstorming-comment-draft-pin")
+      |> assert_has("#brainstorming-comment-popover")
+      |> refute_has("[role=dialog]")
       |> fill_in("#brainstorming-comment-body", "New thread", with: "Should the ending stay open?")
+      |> drag_pin("#brainstorming-comment-draft-pin", 120, 40)
+      |> assert_has("#brainstorming-comment-body", value: "Should the ending stay open?")
       |> click_button("Mention people")
       |> click_button("Review partner")
       |> click_button("Mention people")
@@ -38,11 +44,29 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
     {:ok, %{threads: [thread]}} = Projects.list_ideation_comment_threads(ctx.author, project.id, ctx.session.id)
     assert [%{kind: "comment_mention"}] = Storyarn.NotificationInbox.list_notifications(ctx.peer)
 
+    pin = "#brainstorming-comment-pin-#{thread.id}"
+
+    session =
+      session
+      |> visit(path <> "?thread=#{thread.id}")
+      |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.", timeout: 20_000)
+      |> click("#brainstorming-comment-status")
+      |> assert_has("#brainstorming-comment-status", text: "Resolve")
+      |> click("#brainstorming-comment-popover-close")
+      |> drag_pin(pin, 40, 60)
+      |> assert_has("#{pin}[aria-busy=false]")
+
+    assert {:ok, %{thread: moved}} = Projects.get_comment_thread(ctx.author, project.id, thread.id)
+    assert moved.position.x > thread.position.x
+    assert moved.position.y > thread.position.y
+    assert moved.message_count == 2
+
     session
-    |> visit(path <> "?thread=#{thread.id}")
-    |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.", timeout: 20_000)
-    |> click("#brainstorming-comment-status")
-    |> assert_has("#brainstorming-comment-status", text: "Resolve")
+    |> reload_page()
+    |> assert_has(pin, timeout: 20_000)
+    |> click(pin)
+    |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.")
+    |> refute_has("[role=dialog]")
   end
 
   test "shared idea discussion disappears when the session switches to private mode", %{conn: conn} do
@@ -56,20 +80,54 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> authenticate(ctx.peer.user)
       |> visit(path)
       |> assert_has("#canvas-note-#{idea.id}", timeout: 20_000)
-      |> click("#canvas-note-#{idea.id} .note-content")
-      |> click("#brainstorming-idea-comments")
+      |> right_click("#canvas-note-#{idea.id}")
+      |> click("#brainstorming-comment-context-add")
       |> fill_in("#brainstorming-comment-body", "New thread", with: "A shared suggestion")
       |> click("#brainstorming-comment-send")
       |> assert_has("#brainstorming-comments-content", text: "A shared suggestion")
 
-    assert {:ok, %{threads: [_]}} =
+    assert {:ok, %{threads: [thread]}} =
              Projects.list_ideation_comment_threads(ctx.peer, project.id, ctx.session.id, idea.id)
 
     {:ok, _} = Ideation.set_private_mode(ctx.facilitator, project.id, ctx.session.id, ctx.session.revision, true)
 
     browser
     |> refute_has("#brainstorming-comments-content")
+    |> refute_has("#brainstorming-comment-pin-#{thread.id}")
     |> refute_has("#brainstorming-idea-comments")
+  end
+
+  test "a group discussion is created from its context menu", %{conn: conn} do
+    ctx = ideation_fixture()
+    first = idea_fixture(ctx, %{visibility: :shared})
+    second = idea_fixture(ctx, %{visibility: :shared}, ctx.peer)
+
+    {:ok, group} =
+      Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, %{
+        request_key: Ecto.UUID.generate(),
+        title: "Alternative endings",
+        idea_ids: [first.id, second.id],
+        canvas: %{x: 100, y: 100, width: 650, height: 450}
+      })
+
+    project = Repo.preload(ctx.project, :workspace)
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/brainstorming/#{ctx.session.id}"
+
+    conn
+    |> authenticate(ctx.author.user)
+    |> visit(path)
+    |> assert_has("#canvas-group-#{group.id}", timeout: 20_000)
+    |> right_click("#canvas-group-#{group.id} header")
+    |> click("#brainstorming-comment-context-add")
+    |> fill_in("#brainstorming-comment-body", "New thread", with: "Compare these endings together.")
+    |> click("#brainstorming-comment-send")
+    |> assert_has("#brainstorming-comments-content", text: "Compare these endings together.")
+    |> refute_has("#brainstorming-comment-list")
+
+    assert {:ok, %{threads: [%{source: %{type: "ideation_group", id: id}}]}} =
+             Projects.list_ideation_comment_threads(ctx.author, project.id, ctx.session.id, {:group, group.id})
+
+    assert id == group.id
   end
 
   test "group discussion offers persistent explicit follow and read state to a viewer", %{conn: conn} do
@@ -100,10 +158,8 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> authenticate(ctx.viewer.user)
       |> visit(path)
       |> assert_has("#canvas-group-#{group.id}", timeout: 20_000)
-      |> click("#canvas-group-#{group.id} header")
-      |> click("#brainstorming-group-comments")
+      |> visit(path <> "?thread=#{detail.thread.id}")
       |> assert_has("#brainstorming-comments-content", text: "Which ending fits the game?")
-      |> click("#brainstorming-comment-thread-#{detail.thread.id}")
       |> refute_has("#brainstorming-comment-body")
       |> assert_has("#brainstorming-comment-read")
       |> click("#brainstorming-comment-follow")

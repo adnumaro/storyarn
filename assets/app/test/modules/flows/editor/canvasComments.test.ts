@@ -44,7 +44,7 @@ const thread: FlowCommentThread = {
 };
 const base: FlowCommentsPanelState = {
   open: false,
-  presentation: "panel",
+  presentation: "canvas",
   placing: false,
   threads: [thread],
   nextCursor: null,
@@ -159,7 +159,7 @@ function setup(
       focusThreadId,
       draftStorageKey,
     },
-    global: { stubs: { FlowCommentsPanel: true } },
+    global: { stubs: { FlowCommentPopover: true } },
   });
   wrappers.push(wrapper);
   return { wrapper, area, container, pipes, node, addNode };
@@ -491,7 +491,7 @@ describe("spatial comment geometry and interactions", () => {
     );
   });
 
-  it("supports keyboard cancellation and explicit free positioning with magnetism disabled", async () => {
+  it("supports keyboard cancellation and explicit free positioning with Alt", async () => {
     const { wrapper } = setup();
     await nextTick();
     const pin = wrapper.get("#flow-comment-pin-12");
@@ -500,10 +500,8 @@ describe("spatial comment geometry and interactions", () => {
     await nextTick();
     expect(pin.attributes("style")).toContain("left: 420px");
     expect(live.pushEvent).not.toHaveBeenCalled();
-    await wrapper.get("#flow-comment-magnetism-toggle").trigger("click");
-    expect(wrapper.get("#flow-comment-magnetism-toggle").attributes("aria-pressed")).toBe("false");
-    key(pin.element, "ArrowRight");
-    key(pin.element, "Enter");
+    key(pin.element, "ArrowRight", { altKey: true });
+    key(pin.element, "Enter", { altKey: true });
     expect(live.pushEvent).toHaveBeenCalledExactlyOnceWith(
       "comments_move",
       { thread_id: 12, x: 165, y: 110, context: null, expected_revision: 3 },
@@ -728,7 +726,7 @@ describe("spatial comment geometry and interactions", () => {
     const pin = wrapper.get("#flow-comment-draft-pin");
     expect(pin.attributes("style")).toContain("left: 620px");
     expect(pin.attributes("style")).toContain("top: 470px");
-    expect(wrapper.getComponent({ name: "FlowCommentsPanel" }).props("state")).toMatchObject({
+    expect(wrapper.getComponent({ name: "FlowCommentPopover" }).props("state")).toMatchObject({
       draftPosition: { x: 260, y: 210 },
       draftContext: context,
       selectedNodeId: null,
@@ -747,7 +745,7 @@ describe("spatial comment geometry and interactions", () => {
     });
     await nextTick();
     const pin = wrapper.get("#flow-comment-draft-pin");
-    const panel = wrapper.getComponent({ name: "FlowCommentsPanel" });
+    const panel = wrapper.getComponent({ name: "FlowCommentPopover" });
     pointer(pin.element, "pointerdown", 150, 130);
     pointer(window, "pointermove", 470, 310);
     await nextTick();
@@ -785,7 +783,7 @@ describe("spatial comment geometry and interactions", () => {
     const { wrapper } = setup(initialState);
     await nextTick();
     const pin = wrapper.get("#flow-comment-draft-pin");
-    const panel = wrapper.getComponent({ name: "FlowCommentsPanel" });
+    const panel = wrapper.getComponent({ name: "FlowCommentPopover" });
     pointer(pin.element, "pointerdown", 150, 130);
     pointer(window, "pointerup", 470, 310);
     const reply = vi.mocked(live.pushEvent).mock.calls[0][2]!;

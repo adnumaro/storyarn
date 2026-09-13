@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import FlowBuilderPanel from "@modules/flows/editor/components/panels/FlowBuilderPanel.vue";
-import FlowCommentsPanel from "@modules/flows/editor/components/panels/FlowCommentsPanel.vue";
-import type { FlowCommentsPanelState } from "@modules/flows/types/comments";
 import FlowDialogueFullscreenEditor from "@modules/flows/editor/components/panels/FlowDialogueFullscreenEditor.vue";
 import FlowDialoguePanel from "@modules/flows/editor/components/panels/FlowDialoguePanel.vue";
 import FlowPreview from "@modules/flows/editor/components/panels/FlowPreview.vue";
@@ -52,7 +49,6 @@ interface FlowPreviewPanel {
 }
 
 interface FlowPanels {
-  comments?: FlowCommentsPanelState;
   versions: FlowVersionsPanel;
   builder: FlowBuilderPanelState;
   dialogue: FlowPanelState;
@@ -65,24 +61,13 @@ interface FlowPanels {
 const { panels } = defineProps<{
   panels: FlowPanels;
 }>();
-
-const commentsPanelOpen = computed(
-  () => panels.comments?.open && panels.comments.presentation !== "canvas",
-);
 </script>
 
 <template>
   <div class="contents">
-    <div
-      v-if="panels.comments && panels.comments.presentation !== 'workspace'"
-      id="flow-comments-panel"
-      class="contents"
-    >
-      <FlowCommentsPanel :state="panels.comments" />
-    </div>
     <div id="flow-versions-panel" class="contents">
       <FlowVersionHistoryPanel
-        :open="panels.versions.open && !commentsPanelOpen"
+        :open="panels.versions.open"
         :named-versions="panels.versions.namedVersions"
         :auto-versions="panels.versions.autoVersions"
         :has-more="panels.versions.hasMore"
@@ -100,7 +85,7 @@ const commentsPanelOpen = computed(
 
     <div id="flow-builder-panel" class="contents">
       <FlowBuilderPanel
-        :open="panels.builder.open && !commentsPanelOpen"
+        :open="panels.builder.open"
         :node-type="panels.builder.nodeType"
         :node-id="panels.builder.nodeId"
         :condition="panels.builder.condition"
@@ -113,7 +98,7 @@ const commentsPanelOpen = computed(
 
     <div id="flow-dialogue-panel" class="contents">
       <FlowDialoguePanel
-        :open="panels.dialogue.open && !commentsPanelOpen"
+        :open="panels.dialogue.open"
         :data="panels.dialogue.data"
         :can-edit="panels.dialogue.canEdit"
       />
@@ -121,7 +106,7 @@ const commentsPanelOpen = computed(
 
     <div id="flow-dialogue-fullscreen" class="contents">
       <FlowDialogueFullscreenEditor
-        :open="panels.dialogueFullscreen.open && !commentsPanelOpen"
+        :open="panels.dialogueFullscreen.open"
         :data="panels.dialogueFullscreen.data"
         :can-edit="panels.dialogueFullscreen.canEdit"
       />
@@ -129,7 +114,7 @@ const commentsPanelOpen = computed(
 
     <div id="flow-sequence-config-panel" class="contents">
       <FlowSequenceConfigPanel
-        :open="Boolean(panels.sequence?.open && !commentsPanelOpen)"
+        :open="Boolean(panels.sequence?.open)"
         :data="panels.sequence?.data ?? null"
         :can-edit="panels.sequence?.canEdit ?? false"
       />
@@ -137,7 +122,7 @@ const commentsPanelOpen = computed(
 
     <div id="flow-preview" class="contents">
       <FlowPreview
-        :open="panels.preview.open && !commentsPanelOpen"
+        :open="panels.preview.open"
         :current-node="panels.preview.currentNode"
         :responses="panels.preview.responses"
         :has-next="panels.preview.hasNext"

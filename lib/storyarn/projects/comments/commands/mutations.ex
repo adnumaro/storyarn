@@ -18,7 +18,9 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def create_ideation(scope, project_id, session_id, anchor, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
+         {:ok, position} <- Payload.position(Payload.value(attrs, :position)),
          true <- Payload.valid_id?(session_id) and Payload.valid_ideation_anchor?(anchor) do
+      payload = if position, do: Map.put(payload, :position, position), else: payload
       target = {:create_ideation, session_id, anchor}
 
       transact_request(scope, project_id, payload, target, fn project, actor_id, hash ->
@@ -36,6 +38,8 @@ defmodule Storyarn.Projects.Comments.Mutations do
             ideation_session_id: session_id,
             ideation_idea_id: if(type == "ideation_idea", do: source.id),
             ideation_group_id: if(type == "ideation_group", do: source.id),
+            position_x: if(position, do: position.x),
+            position_y: if(position, do: position.y),
             source_inserted_at: source.inserted_at,
             source_recovery_identity: source.recovery_identity,
             source_label:
@@ -182,7 +186,6 @@ defmodule Storyarn.Projects.Comments.Mutations do
   defp move_thread!(project_id, thread_id, position, expected_revision, context, scope) do
     thread = Queries.thread(project_id, thread_id) || Repo.rollback(:not_found)
     Queries.available_source(thread, lock: :share, scope: scope) || Repo.rollback(:source_unavailable)
-    if Queries.ideation?(thread), do: Repo.rollback(:invalid_position)
     validate_position_for_thread!(thread, position)
 
     attributes =

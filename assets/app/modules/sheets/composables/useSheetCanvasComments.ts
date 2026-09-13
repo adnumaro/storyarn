@@ -212,7 +212,6 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
   const movedPositions = ref(new Map<number, PendingMove>());
   const pendingDraft = shallowRef<PendingDraft | null>(null);
   const dragPreview = shallowRef<CommentMagneticPreview | null>(null);
-  const magnetism = ref(true);
   let request = 0;
   let altHeld = false;
   let geometryObserver: MutationObserver | null = null;
@@ -346,7 +345,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     const pointer = adapter.toScreen(position);
     const preview = new CommentMagneticDrag(adapter, { position, context: null }, pointer).update(
       pointer,
-      !magnetism.value || suppress,
+      suppress,
     );
     storeDraft(preview);
     live.pushEvent("comments_place", { ...preview.position, context: preview.context });
@@ -646,7 +645,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
   function updatePreview(): void {
     const current = drag.value;
     if (!current) return;
-    dragPreview.value = current.session.update(current.lastClient, !magnetism.value || altHeld);
+    dragPreview.value = current.session.update(current.lastClient, altHeld);
     hoverId.value = null;
   }
   function updateDraggedPosition(client: SheetCommentPosition): void {
@@ -657,12 +656,8 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     drag.value = { ...current, lastClient: client, moved: true };
     updatePreview();
   }
-  function toggleMagnetism(): void {
-    magnetism.value = !magnetism.value;
-    if (drag.value?.moved) updatePreview();
-  }
   function cycleContext(direction: 1 | -1 = 1): void {
-    if (!drag.value?.moved || !magnetism.value || altHeld) return;
+    if (!drag.value?.moved || altHeld) return;
     dragPreview.value = drag.value.session.cycle(direction);
   }
   function onKeyUp(event: KeyboardEvent): void {
@@ -1063,9 +1058,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     snapOutline,
     moving,
     keyboardDragging,
-    magnetism,
     isPending,
-    toggleMagnetism,
     cycleContext,
     onPinBlur,
     onLostCapture,

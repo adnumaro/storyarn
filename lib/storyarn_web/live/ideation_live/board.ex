@@ -89,6 +89,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
           })
         }
         base-url={@urls.tools["brainstorming"]}
+        comments={@comments}
       />
       <.vue
         :if={@board.session}
@@ -96,12 +97,10 @@ defmodule StoryarnWeb.IdeationLive.Board do
         v-socket={@socket}
         v-inject:panels="project-layout"
         id="brainstorming-panels"
-        comments={@comments}
         references={@references}
         decisions={@decisions}
         epoch={@epoch}
         session-id={@session_id}
-        base-url={@urls.tools["brainstorming"]}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
