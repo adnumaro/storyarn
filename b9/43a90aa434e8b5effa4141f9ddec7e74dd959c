@@ -1,0 +1,19 @@
+test/e2e/workspaces/projects/ideation/canvas_refinement_test.exs
+  s_ad18daab72f501::t_d7d0e731856129 198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b943a90aa434e8b5effa4141f9ddec7e74dd959c",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
