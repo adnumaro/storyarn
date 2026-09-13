@@ -22,9 +22,14 @@
 import { onClickOutside } from "@vueuse/core";
 import { nextTick, onMounted, ref, watch } from "vue";
 
-const { side = "left", open = false } = defineProps<{
+const {
+  side = "left",
+  open = false,
+  closeOnOutside = true,
+} = defineProps<{
   side?: "left" | "right";
   open?: boolean;
+  closeOnOutside?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -46,7 +51,7 @@ function cancelPendingAnimation() {
 onClickOutside(
   panelRef,
   () => {
-    if (side === "right" && open) {
+    if (side === "right" && open && closeOnOutside) {
       emit("close");
     }
   },

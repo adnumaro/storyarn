@@ -893,6 +893,24 @@ defmodule Storyarn.Projects do
           | {:error, :not_found | :unauthorized | :invalid_candidate | :authorization_transaction_required}
   defdelegate check_editor_candidate_locked(scope, project_id, candidate_user_id), to: Access
 
+  @doc """
+  Checks a candidate without waiting for an effective membership lock.
+
+  The :nowait mode returns :candidate_busy when a concurrent membership change
+  holds the candidate row. Successful locks remain held until the caller commits;
+  a busy result leaves the caller's transaction usable and grants no eligibility.
+  The port reauthorizes the actor's editing access just like the blocking
+  three-argument check. The consumer must still authorize the assignment itself.
+  """
+  @spec check_editor_candidate_locked(scope(), integer(), integer(), :nowait) ::
+          {:ok, boolean()}
+          | {:error,
+             :not_found | :unauthorized | :invalid_candidate | :authorization_transaction_required | :candidate_busy}
+  defdelegate check_editor_candidate_locked(scope, project_id, candidate_user_id, mode), to: Access
+
+  @doc "Lists currently eligible editors for an explicit responsibility assignment without granting access."
+  defdelegate list_editor_candidates(scope, project_id), to: Access
+
   # =============================================================================
   # Invitations
   # =============================================================================

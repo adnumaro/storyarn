@@ -192,6 +192,8 @@ defmodule Storyarn.Ideation.Recovery.Restore do
   defp insert_row("group_revisions", row), do: insert_one("ideation_group_revisions", row)
   defp insert_row("references", row), do: insert_one("ideation_references", row)
   defp insert_row("reference_revisions", row), do: insert_one("ideation_reference_revisions", row)
+  defp insert_row("decisions", row), do: insert_one("ideation_decisions", row)
+  defp insert_row("decision_revisions", row), do: insert_one("ideation_decision_revisions", row)
 
   defp insert_one(table, row), do: Repo.insert_all(table, [row], returning: [:id], log: false)
 end

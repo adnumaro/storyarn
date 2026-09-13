@@ -31,6 +31,8 @@ defmodule Storyarn.Projects.Access do
   defdelegate lock_background_write(project_id), to: Storyarn.Projects.Access.Commands.LockBackgroundWrite, as: :run
   defdelegate authorize_locked(scope, project_id, action, lock_mode), to: Memberships
   defdelegate check_editor_candidate_locked(scope, project_id, candidate_user_id), to: Memberships
+  defdelegate check_editor_candidate_locked(scope, project_id, candidate_user_id, mode), to: Memberships
+  defdelegate list_editor_candidates(scope, project_id), to: Memberships
 
   def transfer_owner(scope, project_id, target_user_id) do
     if Repo.in_transaction?() do

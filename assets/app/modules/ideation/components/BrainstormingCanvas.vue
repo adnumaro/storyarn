@@ -109,6 +109,7 @@ const emit = defineEmits<{
   separateGroup: [id: number];
   deleteGroup: [id: number];
   revealGroup: [id: number];
+  proposeGroupDecision: [id: number];
   edit: [id: number];
   change: [id: number, body: string];
   finish: [];
@@ -1171,6 +1172,7 @@ onUnmounted(() => {
               :zoom="view.zoom"
               :selected="selectedGroupId === layout.group.id"
               :can-edit="permissions.edit"
+              :can-propose-decision="permissions.edit && collaboration.cursors"
               :busy="historyState.busy"
               :save="saveGroup"
               @pointer="groupPointer"
@@ -1184,6 +1186,7 @@ onUnmounted(() => {
               @separate="emit('separateGroup', $event)"
               @remove="emit('deleteGroup', $event)"
               @reveal="emit('revealGroup', $event)"
+              @propose-decision="emit('proposeGroupDecision', $event)"
             />
             <svg class="pointer-events-none absolute overflow-visible" width="1" height="1">
               <defs>

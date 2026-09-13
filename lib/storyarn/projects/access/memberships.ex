@@ -4,6 +4,7 @@ defmodule Storyarn.Projects.Memberships do
   import Ecto.Query, warn: false
 
   alias Storyarn.Projects.Access.Rules.OwnershipInvariant
+  alias Storyarn.Projects.Comments
   alias Storyarn.Projects.MembershipOperations
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
@@ -33,6 +34,31 @@ defmodule Storyarn.Projects.Memberships do
   def list_project_members(project_id), do: MembershipOperations.list_members(@config, project_id)
 
   def get_membership(project_id, user_id), do: MembershipOperations.get_membership(@config, project_id, user_id)
+
+  def list_editor_candidates(scope, project_id) do
+    with {:ok, project, _} <- authorize(scope, project_id, :view),
+         {:ok, members} <- Comments.list_members(scope, project_id) do
+      direct =
+        ProjectMembership
+        |> where(project_id: ^project.id)
+        |> select([member], {member.user_id, member.role})
+        |> Repo.all()
+        |> Map.new()
+
+      inherited =
+        WorkspaceMembership
+        |> where(workspace_id: ^project.workspace_id)
+        |> select([member], {member.user_id, member.role})
+        |> Repo.all()
+        |> Map.new()
+
+      {:ok,
+       Enum.filter(members, fn member ->
+         role = effective_role(direct[member.id], inherited[member.id])
+         ProjectMembership.can?(role, :edit_content)
+       end)}
+    end
+  end
 
   @doc """
   Resolves the effective project role from a direct project role and a
@@ -163,6 +189,23 @@ defmodule Storyarn.Projects.Memberships do
 
   def check_editor_candidate_locked(_scope, _project_id, _candidate_user_id), do: {:error, :invalid_candidate}
 
+  def check_editor_candidate_locked(scope, project_id, candidate_user_id, :nowait) when valid_id(candidate_user_id) do
+    with {:ok, project, _actor_membership} <- authorize_locked(scope, project_id, :edit_content) do
+      case locked_effective_membership(project, candidate_user_id, :nowait) do
+        %ProjectMembership{role: role} -> {:ok, ProjectMembership.can?(role, :edit_content)}
+        nil -> {:ok, false}
+      end
+    end
+  rescue
+    error in Postgrex.Error ->
+      case error.postgres do
+        %{code: :lock_not_available} -> {:error, :candidate_busy}
+        _ -> reraise error, __STACKTRACE__
+      end
+  end
+
+  def check_editor_candidate_locked(_, _, _, _), do: {:error, :invalid_candidate}
+
   defp authorize_membership_locked(project, user_id, action, lock_mode) when action in @canonical_owner_actions do
     with :ok <- ensure_canonical_owner_actor(project, user_id),
          memberships = lock_all_project_memberships(project.id, lock_mode),
@@ -269,29 +312,31 @@ defmodule Storyarn.Projects.Memberships do
     )
   end
 
-  defp locked_effective_membership(%Project{} = project, user_id) do
-    case lock_project_membership(project.id, user_id) do
+  defp locked_effective_membership(%Project{} = project, user_id, mode \\ :wait) do
+    case lock_project_membership(project.id, user_id, mode) do
       %ProjectMembership{} = membership -> membership
-      nil -> lock_workspace_membership(project, user_id)
+      nil -> lock_workspace_membership(project, user_id, mode)
     end
   end
 
-  defp lock_project_membership(project_id, user_id) do
-    Repo.one(
+  defp lock_project_membership(project_id, user_id, mode) do
+    query =
       from(membership in ProjectMembership,
         where: membership.project_id == ^project_id and membership.user_id == ^user_id,
         lock: "FOR SHARE"
       )
-    )
+
+    read_candidate_membership(query, mode)
   end
 
-  defp lock_workspace_membership(%Project{} = project, user_id) do
-    case Repo.one(
-           from(membership in WorkspaceMembership,
-             where: membership.workspace_id == ^project.workspace_id and membership.user_id == ^user_id,
-             lock: "FOR SHARE"
-           )
-         ) do
+  defp lock_workspace_membership(%Project{} = project, user_id, mode) do
+    query =
+      from(membership in WorkspaceMembership,
+        where: membership.workspace_id == ^project.workspace_id and membership.user_id == ^user_id,
+        lock: "FOR SHARE"
+      )
+
+    case read_candidate_membership(query, mode) do
       %WorkspaceMembership{role: workspace_role} ->
         %ProjectMembership{
           project_id: project.id,
@@ -302,5 +347,15 @@ defmodule Storyarn.Projects.Memberships do
       nil ->
         nil
     end
+  end
+
+  defp read_candidate_membership(query, :wait), do: Repo.one(query)
+
+  defp read_candidate_membership(query, :nowait) do
+    # Workspace management locks memberships in user order. A caller can already
+    # hold a later actor row: never wait for an earlier candidate while holding it.
+    # The savepoint contains a failed NOWAIT statement without poisoning the
+    # caller's transaction; successful SHARE locks still last until outer commit.
+    query |> lock("FOR SHARE NOWAIT") |> Repo.one(mode: :savepoint)
   end
 end

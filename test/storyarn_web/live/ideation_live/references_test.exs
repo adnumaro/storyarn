@@ -103,7 +103,7 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
   test "links an existing sheet, compares saved context and explicitly refreshes it", ctx do
     sheet = sheet_fixture(ctx.project, %{name: "Original design", description: "Starting context"})
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
-    assert has_element?(view, "#brainstorming-references[data-inject-slot=panels]")
+    assert has_element?(view, "#brainstorming-panels[data-inject-slot=panels]")
     render_hook(view, "references_open", payload(view, ctx, %{}))
     assert state(view)["open"]
     assert state(view)["canEdit"]
@@ -264,11 +264,11 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     sheet = sheet_fixture(ctx.project)
     add_reference(ctx, sheet.id)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), path(ctx))
-    assert has_element?(view, "#brainstorming-references[data-inject=project-layout][data-inject-slot=panels]")
+    assert has_element?(view, "#brainstorming-panels[data-inject=project-layout][data-inject-slot=panels]")
 
     refute has_element?(
              view,
-             "[data-inject=project-layout][data-inject-slot=panels]:not(#brainstorming-references)"
+             "[data-inject=project-layout][data-inject-slot=panels]:not(#brainstorming-panels)"
            )
 
     render_hook(view, "references_open", payload(view, ctx, %{}))
@@ -294,7 +294,7 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     reference
   end
 
-  defp state(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/ReferencesPanel").props["state"]
+  defp state(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["references"]
 
   defp payload(view, ctx, attrs) do
     board = LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["board"]

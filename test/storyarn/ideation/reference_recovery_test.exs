@@ -46,7 +46,7 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
              )
 
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 5, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 6, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["references"]) == 2
     assert length(rows["reference_revisions"]) == 3
     refute Jason.encode!(capsule) =~ "Original overview"
@@ -304,10 +304,15 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
 
   test "version four capsules normalize empty references without dropping their other history", ctx do
     {:ok, data} = ctx |> capture() |> Capsule.open()
-    legacy = data |> Map.put("version", 4) |> update_in(["rows"], &Map.drop(&1, ~w(references reference_revisions)))
+
+    legacy =
+      data
+      |> Map.put("version", 4)
+      |> update_in(["rows"], &Map.drop(&1, ~w(references reference_revisions decisions decision_revisions)))
+
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 5
+    assert normalized["version"] == 6
     assert normalized["rows"]["references"] == []
     assert normalized["rows"]["reference_revisions"] == []
     maps = restore(ctx, capsule)

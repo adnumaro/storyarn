@@ -11,13 +11,24 @@ import {
   X,
   LoaderCircle,
   Trash2,
+  ListChecks,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useBoardText } from "../composables/useBoardText";
 import type { GroupBounds } from "../lib/groups";
 import type { GroupText, IdeaGroup } from "../types";
-const { group, bounds, selected, canEdit, busy, visibleCount, zoom, save } = defineProps<{
+const {
+  group,
+  bounds,
+  selected,
+  canEdit,
+  busy,
+  visibleCount,
+  zoom,
+  save,
+  canProposeDecision = false,
+} = defineProps<{
   group: IdeaGroup;
   bounds: GroupBounds;
   selected: boolean;
@@ -26,6 +37,7 @@ const { group, bounds, selected, canEdit, busy, visibleCount, zoom, save } = def
   visibleCount: number;
   zoom: number;
   save: (id: number, text: GroupText, version: number) => Promise<boolean>;
+  canProposeDecision?: boolean;
 }>();
 const emit = defineEmits<{
   pointer: [event: PointerEvent, group: IdeaGroup, move: boolean];
@@ -37,6 +49,7 @@ const emit = defineEmits<{
   resize: [id: number, height: number];
   synthesisVisibility: [id: number, visible: boolean];
   finish: [];
+  proposeDecision: [id: number];
 }>();
 const { t } = useBoardText();
 const title = ref(group.title ?? "");
@@ -232,6 +245,17 @@ function keydown(event: KeyboardEvent) {
         data-canvas-chrome
         class="ml-auto flex items-center gap-0.5 rounded-md bg-background/85 p-0.5 shadow-xs"
       >
+        <ToolbarTooltip v-if="canProposeDecision" :label="t('brainstormingDecisions.propose')"
+          ><button
+            :id="`group-propose-decision-${group.id}`"
+            type="button"
+            class="toolbar-btn"
+            :aria-label="t('brainstormingDecisions.propose')"
+            :disabled="busy"
+            @click="emit('proposeDecision', group.id)"
+          >
+            <ListChecks class="size-4" /></button
+        ></ToolbarTooltip>
         <ToolbarTooltip :label="t('ideation.groups.rename')"
           ><button
             :id="`group-title-edit-${group.id}`"

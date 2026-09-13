@@ -37,6 +37,13 @@ const initial: BrainstormingCommentsState = {
 };
 let wrapper: VueWrapper;
 function setup(state: Partial<BrainstormingCommentsState> = {}) {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
   const pushEvent = vi.fn();
   wrapper = mount(CanvasComments, {
     attachTo: document.body,
@@ -57,7 +64,10 @@ function setup(state: Partial<BrainstormingCommentsState> = {}) {
   });
   return pushEvent;
 }
-afterEach(() => wrapper?.unmount());
+afterEach(() => {
+  wrapper?.unmount();
+  vi.unstubAllGlobals();
+});
 
 describe("Brainstorming canvas comments", () => {
   it("keeps the composer beside a world-positioned draft without a modal", async () => {
@@ -95,7 +105,6 @@ describe("Brainstorming canvas comments", () => {
         expected_revision: 3,
         position: { x: 55, y: 60.5 },
       },
-      expect.any(Function),
       expect.any(Function),
     );
     push.mock.calls[0][2]({ ok: false });
