@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { MessageCircle, Plus } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
@@ -24,6 +24,7 @@ const popupSize = ref({ width: 360, height: 400 });
 const hoverId = ref<number | null>(null);
 const moveError = ref(false);
 const pending = ref(false);
+const canMove = computed(() => state.canComment && !pending.value);
 const optimistic = shallowRef<{ id: number | null; position: CommentPosition } | null>(null);
 interface Drag {
   thread: CommentThread | null;
@@ -43,21 +44,26 @@ const threads = computed(() => {
   if (state.thread) entries.set(state.thread.id, state.thread);
   return [...entries.values()];
 });
+function threadId(thread: CommentThread | null) {
+  return thread?.id ?? null;
+}
 function position(thread: CommentThread | null): CommentPosition {
-  const id = thread?.id ?? null;
-  if (drag.value && (drag.value.thread?.id ?? null) === id) return drag.value.position;
+  const id = threadId(thread);
+  if (drag.value && threadId(drag.value.thread) === id) return drag.value.position;
   if (optimistic.value?.id === id) return optimistic.value.position;
   if (!thread) return state.draftPosition ?? { x: 0, y: 0 };
-  if (thread.position) return thread.position;
+  return thread.position ?? sourcePosition(thread);
+}
+function sourcePosition(thread: CommentThread): CommentPosition {
   // Discussions created before spatial placement appear next to their source.
-  const source =
-    thread.source.type === "ideation_idea"
-      ? notes.find((note) => note.id === thread.source.id)
-      : groups.find((group) => group.id === thread.source.id);
-  const canvas = source?.canvas;
+  let canvas: CanvasIdea["canvas"] | undefined;
+  if (thread.source.type === "ideation_idea")
+    canvas = notes.find((note) => note.id === thread.source.id)?.canvas;
+  if (thread.source.type === "ideation_group")
+    canvas = groups.find((group) => group.id === thread.source.id)?.canvas;
   const index = Math.max(
     0,
-    threads.value.findIndex((item) => item.id === id),
+    threads.value.findIndex((item) => item.id === thread.id),
   );
   return {
     x: (canvas?.x ?? 0) + 32 + (index % 5) * 40,
@@ -188,7 +194,7 @@ function key(event: KeyboardEvent, thread: CommentThread | null) {
     ArrowDown: { x: 0, y: 1 },
   };
   const direction = directions[event.key];
-  if (!direction || !state.canComment || pending.value || event.metaKey || event.ctrlKey) return;
+  if (!direction || !canMove.value || event.metaKey || event.ctrlKey) return;
   event.preventDefault();
   const point = position(thread);
   const current = drag.value ?? {
@@ -243,17 +249,31 @@ watch(
   },
   { immediate: true },
 );
+watch([() => state.open, () => state.thread?.id], async ([open], [previousOpen, previousId]) => {
+  await nextTick();
+  if (open) popup.value?.focus({ preventScroll: true });
+  else if (previousOpen) {
+    const pin =
+      previousId == null
+        ? null
+        : document.getElementById(`brainstorming-comment-pin-${previousId}`);
+    (pin ?? document.getElementById("brainstorming-canvas"))?.focus({ preventScroll: true });
+  }
+});
 watch(popup, (element) => {
   observer?.disconnect();
   if (!element) return;
   const measure = () => {
-    popupSize.value = { width: element.offsetWidth, height: element.offsetHeight };
+    const { width, height } = element.getBoundingClientRect();
+    if (width > 0 && height > 0) popupSize.value = { width, height };
   };
   observer = new ResizeObserver(measure);
   observer.observe(element);
   measure();
 });
+onMounted(() => window.addEventListener("blur", cancel));
 onUnmounted(() => {
+  window.removeEventListener("blur", cancel);
   observer?.disconnect();
   cancel();
 });
@@ -332,7 +352,8 @@ onUnmounted(() => {
       v-if="state.open"
       id="brainstorming-comment-popover"
       ref="popup"
-      class="pointer-events-auto absolute flex flex-col"
+      tabindex="-1"
+      class="pointer-events-auto absolute flex flex-col outline-none"
       :style="{
         left: `${popupPosition.x}px`,
         top: `${popupPosition.y}px`,

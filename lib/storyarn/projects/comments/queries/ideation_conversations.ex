@@ -16,12 +16,13 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
   @max_id 9_223_372_036_854_775_807
 
   def pins(scope, project_id, session_id) do
-    from([thread: t] in readable_query(scope),
-      where: t.project_id == ^project_id and t.ideation_session_id == ^session_id and t.status == "open",
-      order_by: [asc: t.id],
-      select: t
+    Repo.all(
+      from([thread: t] in readable_query(scope),
+        where: t.project_id == ^project_id and t.ideation_session_id == ^session_id and t.status == "open",
+        order_by: [asc: t.id],
+        select: t
+      )
     )
-    |> Repo.all()
   end
 
   def member_ids(project_id) do

@@ -72,11 +72,7 @@ const {
   members,
   statuses,
   historyState,
-  comments,
-  baseUrl = "",
 } = defineProps<{
-  comments?: BrainstormingCommentsState;
-  baseUrl?: string;
   notes: CanvasIdea[];
   groupState?: {
     groups: IdeaGroup[];
@@ -89,7 +85,12 @@ const {
   historyState: HistoryState;
   editingId: number | null;
   permissions: { edit: boolean; create: boolean; comment?: boolean; privateMode?: boolean };
-  collaboration: { context: BoardContext; cursors: boolean };
+  collaboration: {
+    context: BoardContext;
+    cursors: boolean;
+    comments?: BrainstormingCommentsState;
+    baseUrl?: string;
+  };
   members: Member[];
   statuses: { [id: number]: string };
 }>();
@@ -1549,12 +1550,12 @@ onUnmounted(() => {
       </ContextMenuContent>
     </ContextMenu>
     <BrainstormingCanvasComments
-      v-if="comments && collaboration.context.session_id !== null"
-      :state="comments"
+      v-if="collaboration.comments && collaboration.context.session_id !== null"
+      :state="collaboration.comments"
       :view="view"
       :epoch="collaboration.context.epoch"
       :session-id="collaboration.context.session_id"
-      :base-url="baseUrl"
+      :base-url="collaboration.baseUrl ?? ''"
       :notes="notes"
       :groups="groups"
       @focus="

@@ -969,8 +969,6 @@ onUnmounted(() => {
         ref="canvas"
         :key="`${board.epoch}:${board.session.id}`"
         :notes="visible"
-        :comments="comments"
-        :base-url="baseUrl"
         :group-state="{
           groups: groups.groups.value,
           selectedId: groups.selected.value,
@@ -991,7 +989,12 @@ onUnmounted(() => {
           comment: board.can_edit && online,
           privateMode: board.session.configuration.private_mode,
         }"
-        :collaboration="{ context: context(), cursors: !board.session.configuration.private_mode }"
+        :collaboration="{
+          context: context(),
+          cursors: !board.session.configuration.private_mode,
+          comments,
+          baseUrl,
+        }"
         :members="board.members"
         :statuses="statuses"
         @comment="createComment"

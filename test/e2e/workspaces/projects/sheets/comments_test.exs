@@ -327,9 +327,11 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
       |> click(pin)
       |> refute_has("#sheet-comment-context")
       |> click("#sheet-comment-popover-close")
+      |> alt_key(:keyboard_down)
       |> drag_pin_over(pin, "[data-sheet-comment-surface=true]", -0.2, 0.5)
       |> assert_has("#sheet-comment-snap-preview", text: "Free position")
       |> release_pin()
+      |> alt_key(:keyboard_up)
       |> assert_has("#{pin}[aria-busy=false]")
       |> assert_pin_inside_surface(pin)
 
@@ -381,6 +383,15 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
 
   defp release_pin(session) do
     {:ok, _} = Page.mouse_up(session.page_id, timeout: 10_000)
+    session
+  end
+
+  defp alt_key(session, action) do
+    {:ok, _} =
+      PlaywrightEx.Supervisor.Connection
+      |> PlaywrightEx.Connection.send(%{guid: session.page_id, method: action, params: %{key: "Alt"}}, 10_000)
+      |> PlaywrightEx.ChannelResponse.unwrap(& &1)
+
     session
   end
 

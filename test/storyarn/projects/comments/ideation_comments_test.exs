@@ -212,8 +212,12 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
              Projects.move_comment_thread(ctx.author, ctx.project.id, pin.id, %{x: 500, y: 600}, pin.revision)
 
     assert {:error, :invalid_position} = create(ctx, idea.id, Map.put(attrs(), :position, %{x: 10_000_001, y: 0}))
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+
+    assert {:ok, _} =
+             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+
     assert {:ok, []} = Projects.list_ideation_comment_pins(ctx.author, ctx.project.id, ctx.session.id)
+
     assert {:error, _} =
              Projects.move_comment_thread(ctx.author, ctx.project.id, pin.id, %{x: 500, y: 600}, moved.revision)
   end

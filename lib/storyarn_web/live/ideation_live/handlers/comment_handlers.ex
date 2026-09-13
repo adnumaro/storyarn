@@ -44,7 +44,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     end
   end
 
-  defp dispatch(action, params, socket) when action in ~w(create reply set_status move) do
+  defp dispatch(action, params, socket) when action in ~w(create reply set_status move place) do
     Authorize.with_authorization(socket, :edit_content, &mutate(action, params, &1), fn current, _ ->
       failure(init(current), :not_found)
     end)
@@ -60,6 +60,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
         |> init()
         |> put(%{open: true, ideaId: idea_id, groupId: group_id, draftPosition: position})
         |> refresh()
+
       {:reply, %{ok: socket.assigns.comments.open}, socket}
     else
       _ ->
@@ -78,15 +79,6 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
 
   defp dispatch("close", _, socket), do: {:noreply, close(socket)}
   defp dispatch("select_thread", params, socket), do: {:noreply, select(socket, positive(params["thread_id"]))}
-
-  defp dispatch("place", params, socket) do
-    with %{open: true, thread: nil, canComment: true} <- socket.assigns.comments,
-         {:ok, position} <- position(params) do
-      {:reply, %{ok: true}, put(socket, %{draftPosition: position})}
-    else
-      _ -> failure(socket, :not_found)
-    end
-  end
 
   defp dispatch("load_messages", _, socket) do
     case socket.assigns.comments do
@@ -156,6 +148,15 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   def linked(socket, %{"thread" => id}), do: select(socket, positive(id))
   def linked(socket, _), do: socket
 
+  defp mutate("place", params, socket) do
+    with %{open: true, thread: nil, canComment: true} <- socket.assigns.comments,
+         {:ok, position} <- position(params) do
+      {:reply, %{ok: true}, put(socket, %{draftPosition: position})}
+    else
+      _ -> failure(socket, :not_found)
+    end
+  end
+
   defp mutate("create", params, socket) do
     %{current_scope: scope, project: project, session_id: session_id, comments: state} = socket.assigns
 
@@ -164,7 +165,9 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
       project.id,
       session_id,
       anchor(state),
-      params |> Map.take(~w(body client_request_id mention_user_ids)) |> Map.put("position", state.draftPosition)
+      params
+      |> Map.take(~w(body client_request_id mention_user_ids position))
+      |> Map.put_new("position", state.draftPosition)
     )
     |> result(socket)
   end
@@ -224,8 +227,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     end
   end
 
-  defp result({:ok, %{thread: %{id: id}}}, socket),
-    do: {:reply, %{ok: true}, socket |> select(id) |> refresh_pins()}
+  defp result({:ok, %{thread: %{id: id}}}, socket), do: {:reply, %{ok: true}, socket |> select(id) |> refresh_pins()}
   defp result({:error, reason}, socket), do: failure(refresh(socket), reason)
 
   defp select(socket, id) do
@@ -246,7 +248,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
           groupId: group_id,
           context: context,
           thread: nil,
-          draftPosition: nil,
+          draftPosition: if(context == socket.assigns.comments.context, do: socket.assigns.comments.draftPosition),
           messages: [],
           error: nil
         })
@@ -307,8 +309,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   defp anchor(state), do: state.ideaId
 
   defp position(%{"position" => %{"x" => x, "y" => y}})
-       when is_number(x) and is_number(y) and abs(x) <= 10_000_000 and abs(y) <= 10_000_000,
-       do: {:ok, %{x: x, y: y}}
+       when is_number(x) and is_number(y) and abs(x) <= 10_000_000 and abs(y) <= 10_000_000, do: {:ok, %{x: x, y: y}}
 
   defp position(params) when not is_map_key(params, "position"), do: {:ok, %{x: 0, y: 0}}
   defp position(_), do: {:error, :invalid_position}
