@@ -78,6 +78,12 @@ defmodule StoryarnWeb.Components.ProjectLayout do
       {render_slot(@inner_block)}
 
       <Layouts.command_palette socket={@socket} current_scope={@current_scope} project_context />
+      <StoryarnWeb.Components.CommentsOverlay.overlay
+        socket={@socket}
+        current_scope={@current_scope}
+        project_id={@project.id}
+        workspace_id={@workspace.id}
+      />
       <Layouts.flash_group flash={@flash} socket={@socket} />
     </div>
     """

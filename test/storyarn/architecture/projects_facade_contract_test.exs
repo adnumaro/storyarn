@@ -289,6 +289,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     list_comment_conversations: 1,
     list_comment_conversations: 2,
     subscribe_comment_conversations: 1,
+    unsubscribe_comment_conversations: 1,
     invalidate_comment_conversations: 1,
     restricted_comment_message_ids_query: 0,
     readable_comment_message_ids_query: 1,

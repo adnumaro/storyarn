@@ -30,7 +30,7 @@ import {
 } from "@lucide/vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import NotificationBell from "@components/notifications/NotificationBell.vue";
-import CommentsHubLink from "@components/comments/CommentsHubLink.vue";
+import CommentsHubButton from "@components/comments/CommentsHubButton.vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import {
   DropdownMenu,
@@ -551,7 +551,7 @@ watch(
 
     <div class="relative flex min-w-0 flex-1 flex-col">
       <div class="absolute right-3 top-2.5 z-10 flex items-center gap-1 lg:right-4 lg:top-4">
-        <CommentsHubLink />
+        <CommentsHubButton />
         <NotificationBell />
       </div>
 

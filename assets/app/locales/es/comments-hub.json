@@ -1,7 +1,6 @@
 {
   "comments_hub": {
     "title": "Comentarios",
-    "subtitle": "Sigue las conversaciones de tus proyectos.",
     "refresh": "Actualizar comentarios",
     "loading": "Cargando conversaciones",
     "filter_failed": "No se pudo actualizar la búsqueda. Se conservan tus filtros; inténtalo de nuevo.",
@@ -70,6 +69,12 @@
     "readonly_hint": "Puedes leer esta conversación. Necesitas permiso de edición para responder o resolverla.",
     "threads": "Conversaciones",
     "load_threads": "Cargar más conversaciones",
-    "source_label": "Origen {id}"
+    "source_label": "Origen {id}",
+    "close": "Cerrar comentarios",
+    "scope": "Ámbito de las conversaciones",
+    "workspace_scope": "Todo {name}",
+    "filters": "Filtros",
+    "open_failed": "No se pudieron cargar los comentarios. Inténtalo de nuevo.",
+    "retry": "Reintentar"
   }
 }

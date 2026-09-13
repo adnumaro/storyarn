@@ -5,7 +5,6 @@ defmodule StoryarnWeb.LayoutsTest do
 
   alias StoryarnWeb.Components.AuthLayout
   alias StoryarnWeb.Components.PublicLanguageSwitcher
-  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
 
   # ── Helpers ──────────────────────────────────────────────────────────
@@ -38,23 +37,14 @@ defmodule StoryarnWeb.LayoutsTest do
              end)
     end
 
-    test "project settings preserve project-scoped advanced search" do
-      html =
-        render_component(&SettingsLayout.settings/1,
-          flash: %{},
-          socket: mock_socket(),
-          current_scope: %{user: nil},
-          current_path: "/workspaces/acme/projects/story/settings",
-          settings_nav: %{
-            workspace: %{id: 3, slug: "acme", name: "Acme", access: "manage", owner: true},
-            workspaces: [],
-            project: %{id: 7, name: "Story", slug: "story", workspaceSlug: "acme", access: "owner"},
-            projects: []
-          },
-          inner_block: []
-        )
+    test "project settings preserve project-scoped advanced search", ctx do
+      %{conn: conn, user: user} = register_and_log_in_user(ctx)
+      project = user |> Storyarn.ProjectsFixtures.project_fixture() |> Storyarn.Repo.preload(:workspace)
 
-      vue = LiveVue.Test.get_vue(html, name: "live/layouts/CommandPalette")
+      {:ok, view, _} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+
+      vue = LiveVue.Test.get_vue(view, name: "live/layouts/CommandPalette")
 
       assert vue.props["project-context"]
     end

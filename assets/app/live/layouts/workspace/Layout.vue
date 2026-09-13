@@ -3,7 +3,7 @@ import { PanelLeft, PanelLeftClose } from "@lucide/vue";
 import { onUnmounted, ref, watch } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import NotificationBell from "@components/notifications/NotificationBell.vue";
-import CommentsHubLink from "@components/comments/CommentsHubLink.vue";
+import CommentsHubButton from "@components/comments/CommentsHubButton.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
 import { registerPaletteCommands } from "@shared/command-palette/registry";
@@ -14,15 +14,11 @@ const {
   workspaces = [],
   currentWorkspaceSlug = null,
   onboarding = null,
-  contentMode = "scroll",
-  commentsActive = false,
 } = defineProps<{
   currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
   currentWorkspaceSlug?: string | null;
   onboarding?: { guide: string; autoShow: boolean } | null;
-  contentMode?: "scroll" | "fill";
-  commentsActive?: boolean;
 }>();
 
 const { sidebarOpen, toggleSidebar, desktopSidebarOpen } = useResponsiveSidebar();
@@ -77,7 +73,6 @@ onUnmounted(() => {
         :workspaces="workspaces"
         :current-workspace-slug="currentWorkspaceSlug"
         :has-tutorial="Boolean(onboarding)"
-        :comments-active="commentsActive"
         @show-tutorial="showTutorial"
       />
     </aside>
@@ -115,18 +110,12 @@ onUnmounted(() => {
         <div class="flex-1" />
 
         <div :class="['flex items-center gap-1', sidebarOpen && 'hidden lg:flex']">
-          <CommentsHubLink :active="commentsActive" />
+          <CommentsHubButton />
           <NotificationBell />
         </div>
       </div>
 
-      <div
-        :class="
-          contentMode === 'fill'
-            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-            : 'flex-1 min-h-0 overflow-y-auto p-4 lg:px-6 lg:py-6'
-        "
-      >
+      <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:px-6 lg:py-6">
         <slot />
       </div>
     </main>

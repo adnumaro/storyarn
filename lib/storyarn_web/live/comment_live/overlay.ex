@@ -1,5 +1,5 @@
-defmodule StoryarnWeb.CommentLive.Index do
-  @moduledoc "Authenticated, cross-project review of conversations created in the editors."
+defmodule StoryarnWeb.CommentLive.Overlay do
+  @moduledoc "On-demand conversation review, mounted beside the current editor without navigation."
   use StoryarnWeb, :live_view
 
   alias Storyarn.Platform.Collaboration
@@ -14,15 +14,20 @@ defmodule StoryarnWeb.CommentLive.Index do
   @access_events ~w(project_membership_changed project_ownership_transferred workspace_membership_changed workspace_ownership_transferred)a
 
   @impl true
-  def mount(_params, _session, socket) do
-    if connected?(socket) do
-      Projects.subscribe_comment_conversations(socket.assigns.current_scope)
-      schedule_refresh()
-    end
+  def mount(_params, session, socket) do
+    if locale = session["locale"], do: Gettext.put_locale(Storyarn.Gettext, locale)
+
+    filters =
+      Params.filters(%{
+        "project_id" => session["project_id"],
+        "workspace_id" => session["workspace_id"]
+      })
 
     {:ok,
      socket
-     |> assign(:page_title, gettext("Comments"))
+     |> assign(:current_scope, session["current_scope"])
+     |> assign(:open, false)
+     |> assign(:refresh_timer, nil)
      |> assign(:project, nil)
      |> assign(:project_id, nil)
      |> assign(:page_count, 1)
@@ -38,7 +43,7 @@ defmodule StoryarnWeb.CommentLive.Index do
        threads: [],
        nextCursor: nil,
        counts: %{all: 0, open: 0, resolved: 0},
-       filters: Params.defaults(),
+       filters: filters,
        workspaces: [],
        projects: [],
        conversation: empty_conversation(),
@@ -46,55 +51,56 @@ defmodule StoryarnWeb.CommentLive.Index do
        selectedThreadId: nil,
        contextUrl: nil,
        error: nil
-     })}
-  end
-
-  @impl true
-  def handle_params(params, _url, socket) do
-    {:noreply,
-     socket
-     |> assign(:page_count, Params.page_count(params["pages"]))
-     |> put_hub(%{
-       filters: Params.filters(params),
-       selectedProjectId: Params.positive(params["project"]),
-       selectedThreadId: Params.positive(params["thread"])
-     })
-     |> refresh_navigation()}
+     }), layout: false}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.WorkspaceLayout.workspace
-      flash={@flash}
-      socket={@socket}
-      current_scope={@current_scope}
-      current_workspace={@current_workspace}
-      workspaces={@workspaces}
-      onboarding={@onboarding}
-      content_mode="fill"
-      comments_active={true}
-    >
+    <div>
       <.vue
-        v-component="live/comments/Hub"
+        v-component="live/comments/Overlay"
         v-socket={@socket}
-        v-inject="workspace-layout"
-        id="comments-hub"
+        id="comments-overlay-island"
+        open={@open}
         state={@hub}
         current-user-id={@current_scope.user.id}
       />
-    </StoryarnWeb.Components.WorkspaceLayout.workspace>
+    </div>
     """
   end
 
   @impl true
+  def handle_event("hub_open", _params, %{assigns: %{open: true}} = socket), do: {:reply, %{ok: true}, socket}
+
+  def handle_event("hub_open", _params, socket) do
+    Projects.subscribe_comment_conversations(socket.assigns.current_scope)
+    {:reply, %{ok: true}, socket |> assign(:open, true) |> schedule_refresh() |> refresh_access()}
+  end
+
+  def handle_event("hub_close", _params, socket) do
+    Projects.unsubscribe_comment_conversations(socket.assigns.current_scope)
+    if timer = socket.assigns.refresh_timer, do: Process.cancel_timer(timer)
+
+    {:reply, %{ok: true},
+     socket
+     |> assign(:open, false)
+     |> assign(:refresh_timer, nil)
+     |> cancel_refreshes()
+     |> subscribe_access_changes([], [])
+     |> assign(:hub_projects, %{})
+     |> put_hub(%{threads: [], projects: [], workspaces: [], conversation: empty_conversation(), contextUrl: nil})}
+  end
+
+  def handle_event(_event, _params, %{assigns: %{open: false}} = socket), do: {:reply, %{ok: false}, socket}
+
   def handle_event("hub_filter", params, socket) do
     {:noreply,
      socket
      |> assign(:page_count, 1)
      |> put_hub(%{filters: Params.filters(params)})
      |> clear_selection()
-     |> patch()}
+     |> refresh_navigation()}
   end
 
   def handle_event("hub_select", params, socket) do
@@ -104,16 +110,18 @@ defmodule StoryarnWeb.CommentLive.Index do
        selectedProjectId: Params.positive(params["project_id"]),
        selectedThreadId: Params.positive(params["thread_id"])
      })
-     |> patch()}
+     |> refresh_navigation()}
   end
 
-  def handle_event("hub_clear_selection", _params, socket), do: {:noreply, socket |> clear_selection() |> patch()}
+  def handle_event("hub_clear_selection", _params, socket),
+    do: {:noreply, socket |> clear_selection() |> refresh_navigation()}
+
   def handle_event("hub_refresh", _params, socket), do: {:reply, %{ok: true}, refresh_access(socket)}
 
   def handle_event("hub_load_more", _params, socket) do
     socket =
       if socket.assigns.hub.nextCursor && socket.assigns.page_count < Params.max_pages() do
-        socket |> assign(:page_count, socket.assigns.page_count + 1) |> patch()
+        socket |> assign(:page_count, socket.assigns.page_count + 1) |> refresh_navigation()
       else
         socket
       end
@@ -139,6 +147,8 @@ defmodule StoryarnWeb.CommentLive.Index do
   def handle_event(_event, _params, socket), do: failure(socket, :not_found)
 
   @impl true
+  def handle_info(_message, %{assigns: %{open: false}} = socket), do: {:noreply, socket}
+
   def handle_info({event, _payload}, socket) when event in @access_events, do: {:noreply, refresh_access(socket)}
 
   def handle_info({:comment_conversations_changed, project_id}, socket),
@@ -156,8 +166,7 @@ defmodule StoryarnWeb.CommentLive.Index do
   end
 
   def handle_info(:refresh_comment_hub, socket) do
-    schedule_refresh()
-    {:noreply, refresh_access(socket)}
+    {:noreply, socket |> schedule_refresh() |> refresh_access()}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -491,12 +500,6 @@ defmodule StoryarnWeb.CommentLive.Index do
 
   defp destination_url(_, _, _), do: nil
 
-  defp patch(socket) do
-    hub = socket.assigns.hub
-    query = Params.query(hub.filters, hub.selectedProjectId, hub.selectedThreadId, socket.assigns.page_count)
-    push_patch(socket, to: ~p"/comments?#{query}")
-  end
-
   defp clear_selection(socket) do
     socket
     |> assign(:project_id, nil)
@@ -538,5 +541,9 @@ defmodule StoryarnWeb.CommentLive.Index do
   end
 
   defp put_hub(socket, changes), do: assign(socket, :hub, Map.merge(socket.assigns.hub, changes))
-  defp schedule_refresh, do: Process.send_after(self(), :refresh_comment_hub, @refresh_interval)
+
+  defp schedule_refresh(socket) do
+    if timer = socket.assigns.refresh_timer, do: Process.cancel_timer(timer)
+    assign(socket, :refresh_timer, Process.send_after(self(), :refresh_comment_hub, @refresh_interval))
+  end
 end

@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   CheckCheck,
+  ChevronDown,
   ChevronRight,
   FileText,
   GitBranch,
@@ -13,6 +14,7 @@ import {
   MessagesSquare,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   X,
 } from "@lucide/vue";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -21,10 +23,12 @@ import CommentConversation from "@components/comments/CommentConversation.vue";
 import type { CommentUiConfig } from "@components/comments/types";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { Button } from "@components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
 import type { HubFilters, HubState, HubThread } from "./types";
 
 const { state, currentUserId } = defineProps<{ state: HubState; currentUserId: number }>();
+const emit = defineEmits<{ close: [] }>();
 const live = useLive();
 const { t, locale } = useI18n();
 const filters = ref<HubFilters>({ ...state.filters });
@@ -52,12 +56,27 @@ const ui: CommentUiConfig = {
   selectedSourceFallbackKey: "source_label",
 };
 
-const projects = computed(() =>
-  state.projects.filter(
-    (project) =>
-      !filters.value.workspace_id || String(project.workspace_id) === filters.value.workspace_id,
-  ),
+const scopeValue = computed(() => {
+  if (filters.value.project_id) return `project:${filters.value.project_id}`;
+  if (filters.value.workspace_id) return `workspace:${filters.value.workspace_id}`;
+  return "all";
+});
+const extraFilterCount = computed(
+  () =>
+    [filters.value.tool, filters.value.status !== "all", filters.value.personal !== "all"].filter(
+      Boolean,
+    ).length,
 );
+
+function changeScope(event: Event) {
+  const [kind, id = ""] = (event.target as HTMLSelectElement).value.split(":");
+  const project = state.projects.find((item) => String(item.id) === id);
+  filters.value.project_id = kind === "project" ? id : "";
+  if (kind === "workspace") filters.value.workspace_id = id;
+  else if (kind === "project" && project) filters.value.workspace_id = String(project.workspace_id);
+  else filters.value.workspace_id = "";
+  submitFilters();
+}
 const selected = computed(() =>
   state.threads.find(
     (thread) =>
@@ -73,8 +92,6 @@ const draftStorageKey = computed(() =>
 );
 const hasFilters = computed(() =>
   Boolean(
-    filters.value.workspace_id ||
-    filters.value.project_id ||
     filters.value.tool ||
     filters.value.search ||
     filters.value.status !== "all" ||
@@ -173,15 +190,10 @@ function search() {
   searchTimer = setTimeout(submitFilters, 250);
 }
 
-function changeWorkspace() {
-  filters.value.project_id = "";
-  submitFilters();
-}
-
 function resetFilters() {
   filters.value = {
-    workspace_id: "",
-    project_id: "",
+    workspace_id: filters.value.workspace_id,
+    project_id: filters.value.project_id,
     tool: "",
     status: "all",
     personal: "all",
@@ -270,25 +282,69 @@ onBeforeUnmount(() => {
     class="flex h-full min-h-0 flex-col bg-background"
     :aria-label="$t('comments_hub.title')"
   >
-    <header class="shrink-0 border-b border-border px-4 py-5 sm:px-6">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h1 class="text-xl font-semibold tracking-tight">{{ $t("comments_hub.title") }}</h1>
-          <p class="mt-1 text-sm text-muted-foreground">{{ $t("comments_hub.subtitle") }}</p>
+    <header class="shrink-0 border-b border-border bg-background px-4 py-3 sm:px-5">
+      <div class="flex min-w-0 items-center gap-3">
+        <h1 class="shrink-0 text-sm font-semibold tracking-tight">
+          {{ $t("comments_hub.title") }}
+        </h1>
+        <span class="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+        <div class="relative min-w-0 max-w-64 flex-1 sm:flex-none">
+          <select
+            id="comments-hub-scope"
+            :value="scopeValue"
+            :aria-label="$t('comments_hub.scope')"
+            class="h-8 w-full appearance-none truncate rounded-md bg-transparent py-1 pl-2 pr-7 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            @change="changeScope"
+          >
+            <option value="all">{{ $t("comments_hub.all_projects") }}</option>
+            <optgroup
+              v-for="workspace in state.workspaces"
+              :key="workspace.id"
+              :label="workspace.name"
+            >
+              <option :value="`workspace:${workspace.id}`">
+                {{ $t("comments_hub.workspace_scope", { name: workspace.name }) }}
+              </option>
+              <option
+                v-for="project in state.projects.filter(
+                  (item) => item.workspace_id === workspace.id,
+                )"
+                :key="project.id"
+                :value="`project:${project.id}`"
+              >
+                {{ project.name }}
+              </option>
+            </optgroup>
+          </select>
+          <ChevronDown
+            class="pointer-events-none absolute right-2 top-2.5 size-3.5 text-muted-foreground"
+          />
         </div>
-        <Button
-          id="comments-hub-refresh"
-          variant="ghost"
-          size="icon"
-          :disabled="refreshPending"
-          :aria-label="$t('comments_hub.refresh')"
-          @click="refresh"
-        >
-          <RefreshCw class="size-4" :class="{ 'animate-spin': refreshPending }" />
-        </Button>
+        <div class="ml-auto flex shrink-0 items-center gap-1">
+          <Button
+            id="comments-hub-refresh"
+            variant="ghost"
+            size="icon"
+            class="size-8 text-muted-foreground"
+            :disabled="refreshPending"
+            :aria-label="$t('comments_hub.refresh')"
+            @click="refresh"
+          >
+            <RefreshCw class="size-4" :class="{ 'animate-spin': refreshPending }" />
+          </Button>
+          <Button
+            id="comments-hub-close"
+            variant="ghost"
+            size="icon"
+            class="size-8 text-muted-foreground"
+            :aria-label="$t('comments_hub.close')"
+            @click="emit('close')"
+            ><X class="size-4"
+          /></Button>
+        </div>
       </div>
-      <form class="mt-5 space-y-3" role="search" @submit.prevent="submitFilters">
-        <div class="relative max-w-xl">
+      <form class="mt-3 flex items-center gap-2" role="search" @submit.prevent="submitFilters">
+        <div class="relative min-w-0 flex-1">
           <Search
             class="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground"
           />
@@ -304,81 +360,82 @@ onBeforeUnmount(() => {
             @input="search"
           />
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <select
-            id="comments-hub-workspace"
-            v-model="filters.workspace_id"
-            :class="filterClass"
-            :aria-label="$t('comments_hub.workspace')"
-            @change="changeWorkspace"
-          >
-            <option value="">{{ $t("comments_hub.all_workspaces") }}</option>
-            <option
-              v-for="workspace in state.workspaces"
-              :key="workspace.id"
-              :value="String(workspace.id)"
+        <Popover>
+          <PopoverTrigger as-child>
+            <Button
+              id="comments-hub-filters"
+              variant="outline"
+              class="gap-2"
+              :aria-label="$t('comments_hub.filter')"
             >
-              {{ workspace.name }}
-            </option>
-          </select>
-          <select
-            id="comments-hub-project"
-            v-model="filters.project_id"
-            :class="filterClass"
-            :aria-label="$t('comments_hub.project')"
-            @change="submitFilters"
-          >
-            <option value="">{{ $t("comments_hub.all_projects") }}</option>
-            <option v-for="project in projects" :key="project.id" :value="String(project.id)">
-              {{ project.name }}
-            </option>
-          </select>
-          <select
-            id="comments-hub-tool"
-            v-model="filters.tool"
-            :class="filterClass"
-            :aria-label="$t('comments_hub.tool')"
-            @change="submitFilters"
-          >
-            <option value="">{{ $t("comments_hub.all_tools") }}</option>
-            <option v-for="tool in tools" :key="tool" :value="tool">
-              {{ $t(`comments_hub.tools.${tool}`) }}
-            </option>
-          </select>
-          <select
-            id="comments-hub-status"
-            v-model="filters.status"
-            :class="filterClass"
-            :aria-label="$t('comments_hub.status')"
-            @change="submitFilters"
-          >
-            <option value="all">{{ $t("comments_hub.all_statuses") }}</option>
-            <option value="open">{{ $t("comments_hub.open") }}</option>
-            <option value="resolved">{{ $t("comments_hub.resolved") }}</option>
-          </select>
-          <select
-            id="comments-hub-personal"
-            v-model="filters.personal"
-            :class="filterClass"
-            :aria-label="$t('comments_hub.participation')"
-            @change="submitFilters"
-          >
-            <option value="all">{{ $t("comments_hub.everyone") }}</option>
-            <option value="participated">{{ $t("comments_hub.participated") }}</option>
-            <option value="mentioned">{{ $t("comments_hub.mentioned") }}</option>
-          </select>
-          <Button
-            v-if="hasFilters"
-            id="comments-hub-reset"
-            type="button"
-            variant="ghost"
-            size="sm"
-            class="h-8 gap-1 text-xs text-muted-foreground"
-            @click="resetFilters"
-          >
-            <X class="size-3" />{{ $t("comments_hub.clear_filters") }}
-          </Button>
-        </div>
+              <SlidersHorizontal class="size-4" />
+              <span class="hidden sm:inline">{{ $t("comments_hub.filters") }}</span>
+              <span
+                v-if="extraFilterCount"
+                class="flex size-4 items-center justify-center rounded bg-accent text-[10px] font-semibold"
+                >{{ extraFilterCount }}</span
+              >
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" class="w-64 space-y-4 p-4">
+            <div class="space-y-1.5">
+              <label for="comments-hub-tool" class="block text-xs font-medium">{{
+                $t("comments_hub.tool")
+              }}</label>
+              <select
+                id="comments-hub-tool"
+                v-model="filters.tool"
+                :class="[filterClass, 'w-full']"
+                @change="submitFilters"
+              >
+                <option value="">{{ $t("comments_hub.all_tools") }}</option>
+                <option v-for="tool in tools" :key="tool" :value="tool">
+                  {{ $t(`comments_hub.tools.${tool}`) }}
+                </option>
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label for="comments-hub-status" class="block text-xs font-medium">{{
+                $t("comments_hub.status")
+              }}</label>
+              <select
+                id="comments-hub-status"
+                v-model="filters.status"
+                :class="[filterClass, 'w-full']"
+                @change="submitFilters"
+              >
+                <option value="all">{{ $t("comments_hub.all_statuses") }}</option>
+                <option value="open">{{ $t("comments_hub.open") }}</option>
+                <option value="resolved">{{ $t("comments_hub.resolved") }}</option>
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label for="comments-hub-personal" class="block text-xs font-medium">{{
+                $t("comments_hub.participation")
+              }}</label>
+              <select
+                id="comments-hub-personal"
+                v-model="filters.personal"
+                :class="[filterClass, 'w-full']"
+                @change="submitFilters"
+              >
+                <option value="all">{{ $t("comments_hub.everyone") }}</option>
+                <option value="participated">{{ $t("comments_hub.participated") }}</option>
+                <option value="mentioned">{{ $t("comments_hub.mentioned") }}</option>
+              </select>
+            </div>
+            <Button
+              v-if="hasFilters"
+              id="comments-hub-reset"
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="w-full gap-1.5"
+              @click="resetFilters"
+              ><X class="size-3.5" />{{ $t("comments_hub.clear_filters") }}</Button
+            >
+          </PopoverContent>
+        </Popover>
       </form>
     </header>
 

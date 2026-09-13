@@ -28,10 +28,7 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
       "[data-operation-id='create'][data-operation-available='false']",
       text: "Requires edit access to at least one project."
     )
-    |> assert_has(
-      "[data-operation-id='run_command'][data-operation-available='false']",
-      text: "No commands are available in this view."
-    )
+    |> assert_has("[data-operation-id='run_command'][data-operation-available='true']")
     |> assert_has("[data-operation-id='open_view'][data-operation-available='true']")
     |> evaluate(active_palette_input_expression(), fn active? -> assert active? end)
     |> evaluate(close_palette_from_input_expression())
