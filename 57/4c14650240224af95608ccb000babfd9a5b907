@@ -1,0 +1,39 @@
+test/e2e/workspaces/projects/scenes/comments_test.exs
+  s_ad18daab72f501::t_c364cce28e6516 79,112,119
+test/e2e/workspaces/projects/sheets/comments_test.exs
+  s_ad18daab72f501::t_c364cce28e6516 65,98,324-325
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_ad18daab72f501::t_c364cce28e6516 494,503-504
+assets/app/test/live/sheet/show/SheetCanvasComments.test.ts
+  s_ad18daab72f501::t_c364cce28e6516 805,814
+assets/app/modules/flows/editor/components/chrome/FlowCanvasComments.vue
+  s_ad18daab72f501::t_c364cce28e6516 2
+assets/app/modules/flows/editor/composables/useCanvasComments.ts
+  s_ad18daab72f501::t_c364cce28e6516 271,388,522
+assets/app/modules/scenes/editor/components/chrome/SceneCanvasComments.vue
+  s_ad18daab72f501::t_c364cce28e6516 2
+assets/app/modules/sheets/composables/useSheetCanvasComments.ts
+  s_ad18daab72f501::t_c364cce28e6516 348,648,660
+assets/app/modules/scenes/editor/composables/useSceneCanvasComments.ts
+  s_ad18daab72f501::t_c364cce28e6516 420,506,645
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_ad18daab72f501::t_c364cce28e6516 206,240,248
+assets/app/modules/sheets/components/chrome/SheetCanvasComments.vue
+  s_ad18daab72f501::t_c364cce28e6516 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "574c14650240224af95608ccb000babfd9a5b907",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
