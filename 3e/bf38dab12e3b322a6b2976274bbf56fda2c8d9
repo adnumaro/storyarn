@@ -1,0 +1,78 @@
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_ad18daab72f501::t_80924a6ec2c115 57-58,75-76,78-79,104,129,141,1548,1550-1556,1563
+  s_ad18daab72f501::t_1362d5b01e8207 142-144,1549,1557-1562
+assets/app/test/modules/ideation/BrainstormingCommentPopover.test.ts
+  s_ad18daab72f501::t_1362d5b01e8207 1-3,5,10-134
+  s_ad18daab72f501::t_3711437c5980d8 4,6-9
+lib/storyarn/projects/comments/README.md
+  s_ad18daab72f501::t_1362d5b01e8207 61-62,68,87
+test/storyarn/projects/comments/ideation_comments_test.exs
+  s_ad18daab72f501::t_5c2eba6b11ab84 165,188-192
+  s_ad18daab72f501::t_95b48e455f048c 180,208
+  s_ad18daab72f501::t_c6b7acc8df1370 193-207,209-218
+assets/app/locales/en/brainstorming-comments.json
+  s_ad18daab72f501::t_1362d5b01e8207 46-48
+test/storyarn_web/live/ideation_live/references_test.exs
+  s_ad18daab72f501::t_d92b32318fb380 106,267,271
+  s_ad18daab72f501::t_1362d5b01e8207 279,282,297
+assets/app/live/ideation/BrainstormingBoard.vue
+  s_ad18daab72f501::t_1362d5b01e8207 6-8
+  s_ad18daab72f501::t_80924a6ec2c115 3-4
+assets/app/locales/es/brainstorming-comments.json
+  s_ad18daab72f501::t_1362d5b01e8207 46-48
+lib/storyarn/projects/comments/queries/ideation_conversations.ex
+  s_ad18daab72f501::t_66f0d6af4488e0 18-26
+lib/storyarn_web/live/ideation_live/handlers/reference_handlers.ex
+  s_ad18daab72f501::t_5c2eba6b11ab84 63
+priv/repo/migrations/20260913170000_allow_spatial_ideation_comments.exs
+  s_ad18daab72f501::t_66f0d6af4488e0 1-41
+assets/app/modules/ideation/commentTypes.ts
+  s_ad18daab72f501::t_80924a6ec2c115 6-18
+  s_ad18daab72f501::t_1362d5b01e8207 1-5
+assets/app/test/modules/ideation/canvasInteractions.test.ts
+  s_ad18daab72f501::t_d92b32318fb380 534-536
+lib/storyarn/projects.ex
+  s_ad18daab72f501::t_66f0d6af4488e0 1125-1126
+test/e2e/workspaces/projects/ideation/comments_test.exs
+  s_ad18daab72f501::t_4408ff9659fe65 27-29,31-32,47-63,65-69,89,96
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_ad18daab72f501::t_66f0d6af4488e0 21,23,41-42
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_ad18daab72f501::t_80924a6ec2c115 51,80,84,933-934
+  s_ad18daab72f501::t_1362d5b01e8207 52-56
+assets/app/modules/ideation/BrainstormingCommentPopover.vue
+  s_ad18daab72f501::t_80924a6ec2c115 1-152
+assets/app/modules/ideation/BrainstormingCanvasComments.vue
+  s_ad18daab72f501::t_1362d5b01e8207 53-56,58-65,70-72,75-89,92-95,105-113,121-122,126-130,135-136,156-166,174-189,194-202,204-211,213-245,249-251,255-258,263-275,277-294,297-300,302-313,316-329,331-350,352-358
+  s_ad18daab72f501::t_beed36dcde2b0e 1-52,57,66-69,73-74,90-91,96-104,114-120,123-125,131-134,137-155,167-173,190-193,203,212,246-248,252-254,259-262,276,295-296,301,314-315,330,351,359-360
+assets/app/test/modules/ideation/BrainstormingCanvasComments.test.ts
+  s_ad18daab72f501::t_abafb1e0f77afa 1-7,17,20-21,37-42,57-65,72-73,77-87,101-123,133-134
+  s_ad18daab72f501::t_0cf9dccd39698a 8-16,18-19,22-36,43-56,66-71,74-76,88-100,124-132
+lib/storyarn_web/live/ideation_live/board.ex
+  s_ad18daab72f501::t_80924a6ec2c115 91,95,98-99
+lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex
+  s_ad18daab72f501::t_0305a474638a1a 13-15,47,56,58-62,82-90,123,125-141,167,172-176,178-190,227-228,249,309-314
+  s_ad18daab72f501::t_5c2eba6b11ab84 33-34,79,142-145
+  s_ad18daab72f501::t_95b48e455f048c 177
+  s_ad18daab72f501::t_a73f8cfa761db9 315
+lib/storyarn/projects/comments/comments.ex
+  s_ad18daab72f501::t_66f0d6af4488e0 151-160
+test/storyarn_web/live/ideation_live/comments_test.exs
+  s_ad18daab72f501::t_1362d5b01e8207 18,205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3ebf38dab12e3b322a6b2976274bbf56fda2c8d9",
+  "prompts": {},
+  "sessions": {
+    "s_ad18daab72f501": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09691-4310-7451-9ea9-ccdf03ec7e0a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
