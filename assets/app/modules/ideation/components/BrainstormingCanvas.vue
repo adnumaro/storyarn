@@ -54,6 +54,8 @@ import type {
   ConnectionChange,
   LinkDirection,
 } from "../types";
+import BrainstormingCanvasComments from "../BrainstormingCanvasComments.vue";
+import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "../commentTypes";
 interface HistoryState {
   canUndo: boolean;
   canRedo: boolean;
@@ -70,7 +72,11 @@ const {
   members,
   statuses,
   historyState,
+  comments,
+  baseUrl = "",
 } = defineProps<{
+  comments?: BrainstormingCommentsState;
+  baseUrl?: string;
   notes: CanvasIdea[];
   groupState?: {
     groups: IdeaGroup[];
@@ -95,7 +101,7 @@ const moveGroup = (id: number, point: Point, expected?: GroupVersions) =>
   groupState?.move(id, point, expected) ?? Promise.resolve();
 const canCreate = computed(() => permissions.edit && permissions.create);
 const emit = defineEmits<{
-  comment: [target: { ideaId: number | null; groupId: number | null }];
+  comment: [target: BrainstormingCommentTarget];
   add: [point: Point];
   select: [ids: number[]];
   selectGroup: [id: number | null];
@@ -120,7 +126,7 @@ const emit = defineEmits<{
   paste: [event: ClipboardEvent, point: Point];
   list: [];
 }>();
-const commentTarget = ref<{ ideaId: number | null; groupId: number | null } | null>(null);
+const commentTarget = ref<BrainstormingCommentTarget | null>(null);
 function prepareComment(event: MouseEvent) {
   commentTarget.value = null;
   const target = event.target instanceof Element ? event.target : null;
@@ -132,7 +138,10 @@ function prepareComment(event: MouseEvent) {
     event.stopPropagation();
     return;
   }
-  commentTarget.value = resolveCommentTarget(target);
+  const source = resolveCommentTarget(target);
+  commentTarget.value = source
+    ? { ...source, position: world(event.clientX, event.clientY) }
+    : null;
   if (!commentTarget.value) event.stopPropagation();
 }
 function resolveCommentTarget(target: Element) {
@@ -1536,5 +1545,21 @@ onUnmounted(() => {
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
+    <BrainstormingCanvasComments
+      v-if="comments && collaboration.context.session_id !== null"
+      :state="comments"
+      :view="view"
+      :epoch="collaboration.context.epoch"
+      :session-id="collaboration.context.session_id"
+      :base-url="baseUrl"
+      :notes="notes"
+      :groups="groups"
+      @focus="
+        (point) => {
+          view.x = view.width / 2 - point.x * view.zoom;
+          view.y = view.height / 2 - point.y * view.zoom;
+        }
+      "
+    />
   </div>
 </template>

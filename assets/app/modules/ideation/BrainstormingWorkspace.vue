@@ -48,7 +48,12 @@ import type {
   ConnectionChange,
   RoundFilter as RoundSelection,
 } from "./types";
-const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
+import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
+const { board, baseUrl, comments } = defineProps<{
+  board: Board;
+  baseUrl: string;
+  comments?: BrainstormingCommentsState;
+}>();
 const { t, error, options, member } = useBoardText();
 const selectedIds = ref<number[]>([]);
 const selected = computed(() => selectedIds.value[0] ?? null);
@@ -72,10 +77,11 @@ const rounds = computed(() => {
 });
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
-async function createComment(target: { ideaId: number | null; groupId: number | null }) {
+async function createComment(target: BrainstormingCommentTarget) {
   const reply = await request("comments_open", {
     idea_id: target.ideaId,
     group_id: target.groupId,
+    position: target.position,
   });
   if (reply.status === "error") failure.value = reply.code;
 }
@@ -924,6 +930,8 @@ onUnmounted(() => {
         ref="canvas"
         :key="`${board.epoch}:${board.session.id}`"
         :notes="visible"
+        :comments="comments"
+        :base-url="baseUrl"
         :group-state="{
           groups: groups.groups.value,
           selectedId: groups.selected.value,

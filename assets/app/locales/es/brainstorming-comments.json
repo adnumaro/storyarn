@@ -43,6 +43,8 @@
     "readonly_hint": "Puedes leer las conversaciones. Necesitas permisos de edición para comentar.",
     "threads": "Hilos de comentarios",
     "load_threads": "Cargar más hilos",
-    "add_comment": "Añadir comentario"
+    "add_comment": "Añadir comentario",
+    "pin_label": "Comentario de {author}",
+    "keyboard_move_hint": "Usa las flechas para mover, Mayús para mayor precisión, Intro para guardar y Escape para cancelar."
   }
 }

@@ -24,7 +24,12 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> refute_has("#brainstorming-session-comments")
       |> right_click_at("#brainstorming-canvas", 32, 200)
       |> click("#brainstorming-comment-context-add")
+      |> assert_has("#brainstorming-comment-draft-pin")
+      |> assert_has("#brainstorming-comment-popover")
+      |> refute_has("[role=dialog]")
       |> fill_in("#brainstorming-comment-body", "New thread", with: "Should the ending stay open?")
+      |> drag_pin("#brainstorming-comment-draft-pin", 120, 40)
+      |> assert_has("#brainstorming-comment-body", value: "Should the ending stay open?")
       |> click_button("Mention people")
       |> click_button("Review partner")
       |> click_button("Mention people")
@@ -39,11 +44,29 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
     {:ok, %{threads: [thread]}} = Projects.list_ideation_comment_threads(ctx.author, project.id, ctx.session.id)
     assert [%{kind: "comment_mention"}] = Storyarn.NotificationInbox.list_notifications(ctx.peer)
 
+    pin = "#brainstorming-comment-pin-#{thread.id}"
+
+    session =
+      session
+      |> visit(path <> "?thread=#{thread.id}")
+      |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.", timeout: 20_000)
+      |> click("#brainstorming-comment-status")
+      |> assert_has("#brainstorming-comment-status", text: "Resolve")
+      |> click("#brainstorming-comment-popover-close")
+      |> drag_pin(pin, 40, 60)
+      |> assert_has("#{pin}[aria-busy=false]")
+
+    assert {:ok, %{thread: moved}} = Projects.get_comment_thread(ctx.author, project.id, thread.id)
+    assert moved.position.x > thread.position.x
+    assert moved.position.y > thread.position.y
+    assert moved.message_count == 2
+
     session
-    |> visit(path <> "?thread=#{thread.id}")
-    |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.", timeout: 20_000)
-    |> click("#brainstorming-comment-status")
-    |> assert_has("#brainstorming-comment-status", text: "Resolve")
+    |> reload_page()
+    |> assert_has(pin, timeout: 20_000)
+    |> click(pin)
+    |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.")
+    |> refute_has("[role=dialog]")
   end
 
   test "shared idea discussion disappears when the session switches to private mode", %{conn: conn} do
@@ -63,13 +86,14 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> click("#brainstorming-comment-send")
       |> assert_has("#brainstorming-comments-content", text: "A shared suggestion")
 
-    assert {:ok, %{threads: [_]}} =
+    assert {:ok, %{threads: [thread]}} =
              Projects.list_ideation_comment_threads(ctx.peer, project.id, ctx.session.id, idea.id)
 
     {:ok, _} = Ideation.set_private_mode(ctx.facilitator, project.id, ctx.session.id, ctx.session.revision, true)
 
     browser
     |> refute_has("#brainstorming-comments-content")
+    |> refute_has("#brainstorming-comment-pin-#{thread.id}")
     |> refute_has("#brainstorming-idea-comments")
   end
 

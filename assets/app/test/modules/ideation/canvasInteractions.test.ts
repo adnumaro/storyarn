@@ -531,7 +531,9 @@ describe("contextual comments", () => {
       document.querySelector<HTMLElement>("#brainstorming-comment-context-add")!,
     );
     await item.trigger("click");
-    expect(wrapper.emitted("comment")).toEqual([[{ ideaId, groupId }]]);
+    expect(wrapper.emitted("comment")).toEqual([
+      [{ ideaId, groupId, position: { x: expect.any(Number), y: expect.any(Number) } }],
+    ]);
   });
   it.each([
     { comment: false, privateMode: false, visibility: "shared" as const, published_revision: 1 },

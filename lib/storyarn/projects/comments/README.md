@@ -58,14 +58,14 @@ displaying conversations. A new host mount starts with its own scope.
 
 Editor toolbars have no comment creation or conversation-list actions. Create
 threads from the context menu in Sheets, Flows, Scenes, Sequence and Brainstorming.
-Sheet, Flow and Scene conversations open beside their canvas pin. Sequence and
-Brainstorming open a focused dialog for the selected context; they do not mount a
+Sheet, Flow, Scene and Brainstorming conversations open beside their canvas pin.
+Sequence opens a focused dialog for the selected context. Editors do not mount a
 thread list or sidebar. The global hub is the shared conversation index. Editor
 permalinks still open an existing thread in its context.
 
 ## Brainstorming adapter (ENG-139)
 
-`ideation_session`, `ideation_idea` and `ideation_group` are non-spatial discussion sources. The
+`ideation_session`, `ideation_idea` and `ideation_group` support canvas positions while retaining their source audience. The
 existing Flow/Sheet/Scene surface ownership and optional context remain unchanged.
 Session metadata is project-readable even during private contribution mode.
 Idea discussions require a live, published idea in a session outside private
@@ -84,7 +84,7 @@ The nullable source pointers and immutable recovery UUID prevent rebinding to
 replacement rows. Archived sessions still support discussion; round/contribution
 gates do not close conversations.
 
-The contextual dialog creates threads on the chosen session, shared idea or group
+The canvas popover creates threads on the chosen session, shared idea or group
 and opens existing conversations from `?thread=` links. It supports explicit
 parent replies and revision-checked resolution/reopening.
 Requests bind to board epoch, session and discussion context. Invalidation

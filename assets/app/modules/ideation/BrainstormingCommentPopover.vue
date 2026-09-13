@@ -3,7 +3,7 @@ import { computed, provide, ref, watch } from "vue";
 import { Bell, BellOff, CheckCheck } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { useI18n } from "vue-i18n";
-import CommentDialog from "@components/comments/CommentDialog.vue";
+import CommentPopover from "@components/comments/CommentPopover.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import type { CommentUiConfig } from "@components/comments/types";
 import { useLive, type LiveInterface } from "@shared/composables/useLive";
@@ -101,7 +101,7 @@ function personalAction(action: "follow" | "read") {
 </script>
 
 <template>
-  <CommentDialog
+  <CommentPopover
     v-if="state.open"
     :key="`${epoch}:${sessionId}:${state.context}`"
     :state="panel"
@@ -148,5 +148,5 @@ function personalAction(action: "follow" | "read") {
         >{{ $t("brainstormingComments.permalink") }}</LiveLink
       >
     </template>
-  </CommentDialog>
+  </CommentPopover>
 </template>

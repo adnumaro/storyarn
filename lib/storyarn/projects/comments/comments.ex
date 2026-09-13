@@ -148,6 +148,16 @@ defmodule Storyarn.Projects.Comments do
     |> publish_and_read(scope, project_id)
   end
 
+  def list_ideation_pins(scope, project_id, session_id) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(session_id),
+         {:ok, _source} <- Queries.ideation_source(scope, project_id, session_id, nil, []) do
+      {:ok, scope |> IdeationConversations.pins(project_id, session_id) |> thread_dtos(scope)}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
   def subscribe_ideation(scope, project_id, session_id) do
     with {:ok, _} <- Storyarn.Ideation.comment_source(scope, project_id, session_id, nil) do
       PubSub.subscribe(Storyarn.PubSub, ideation_topic(project_id, session_id))

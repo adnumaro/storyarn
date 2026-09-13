@@ -43,6 +43,8 @@
     "readonly_hint": "You can read discussions. Editing access is required to comment.",
     "threads": "Comment threads",
     "load_threads": "Load more threads",
-    "add_comment": "Add comment"
+    "add_comment": "Add comment",
+    "pin_label": "Comment by {author}",
+    "keyboard_move_hint": "Use arrow keys to move, Shift for precision, Enter to save, Escape to cancel."
   }
 }

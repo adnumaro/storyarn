@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
-import Panel from "@app/live/ideation/CommentDialog.vue";
-import type { CommentsPanelState, CommentThread } from "@components/comments/types";
+import Panel from "@modules/ideation/BrainstormingCommentPopover.vue";
+import type { CommentThread } from "@components/comments/types";
 
-const state: CommentsPanelState & { ideaId: number | null; context: string } = {
+import type { BrainstormingCommentsState } from "@modules/ideation/commentTypes";
+
+const state: BrainstormingCommentsState = {
+  pins: [],
   open: true,
   presentation: "workspace",
   threads: [],
