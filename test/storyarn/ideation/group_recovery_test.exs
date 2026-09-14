@@ -159,7 +159,6 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
           ~w(groups group_memberships group_revisions references reference_revisions decisions decision_revisions)
         )
       )
-      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "canvas_offset_y") end))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)

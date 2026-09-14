@@ -5,7 +5,7 @@ import { useCanvasNotes } from "@modules/ideation/composables/useCanvasNotes";
 import type { Reply, Request } from "@modules/ideation/types";
 import { idea, board, round } from "./fixtures";
 
-function setup() {
+function setup(offsets: () => Map<number, number> = () => new Map()) {
   vi.useFakeTimers();
   const current = ref(board());
   const replies: ((reply: Reply<unknown>) => void)[] = [];
@@ -20,6 +20,8 @@ function setup() {
       request as Request,
       () => ({ epoch: current.value.epoch, session_id: 1 }),
       selected,
+      undefined,
+      offsets,
     ),
   );
   return { result, app, current, request, replies, selected };
@@ -339,17 +341,22 @@ describe("canvas acknowledged undo primitives", () => {
 });
 
 describe("round contribution provenance", () => {
-  const bands = () => [round(), round({ id: 21, number: 2, canvas_offset_y: 400 })];
+  const bands = () => [round(), round({ id: 21, number: 2 })];
+  const offsets = () =>
+    new Map([
+      [20, 0],
+      [21, 400],
+    ]);
 
   it("keeps the round of the band where writing began when the first save happens after another round starts", async () => {
-    const { result, app, current, request, replies } = setup();
+    const { result, app, current, request, replies } = setup(offsets);
     current.value = { ...current.value, rounds: [round()], active_round: round() };
     const local = result.add({ x: 10, y: 20 });
     result.change(local, "<p>Started in round one</p>");
     current.value = {
       ...current.value,
       rounds: bands(),
-      active_round: round({ id: 21, number: 2, canvas_offset_y: 400 }),
+      active_round: round({ id: 21, number: 2 }),
     };
     const saving = result.save(local);
     expect(request.mock.calls[0][1]).toMatchObject({ round_id: 20 });
@@ -360,7 +367,7 @@ describe("round contribution provenance", () => {
   });
 
   it("retries uncertain creation with the same round and content after the active round changes", async () => {
-    const { result, app, current, request, replies } = setup();
+    const { result, app, current, request, replies } = setup(offsets);
     current.value = { ...current.value, rounds: [round()], active_round: round() };
     const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Initial</p>" });
     const saving = result.save(local);
@@ -369,7 +376,7 @@ describe("round contribution provenance", () => {
     current.value = {
       ...current.value,
       rounds: bands(),
-      active_round: round({ id: 21, number: 2, canvas_offset_y: 400 }),
+      active_round: round({ id: 21, number: 2 }),
     };
     result.change(local, "<p>More text</p>");
     const retry = result.save(local);
@@ -382,7 +389,7 @@ describe("round contribution provenance", () => {
   });
 
   it("places a note in the band under its point and sends the position relative to that header", async () => {
-    const { result, app, current, request, replies } = setup();
+    const { result, app, current, request, replies } = setup(offsets);
     current.value = { ...current.value, rounds: bands(), active_round: round() };
     const local = result.add({ x: 10, y: 460 }, "mint", { body: "<p>Second band</p>" });
     expect(result.find(local)).toMatchObject({ round_id: 21, canvas: { y: 460 } });
@@ -398,7 +405,7 @@ describe("round contribution provenance", () => {
   });
 
   it("keeps notes of a session without rounds unassigned when a round starts before autosave", async () => {
-    const { result, app, current, request, replies } = setup();
+    const { result, app, current, request, replies } = setup(offsets);
     const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Open exploration</p>" });
     current.value = { ...current.value, rounds: [round()], active_round: round() };
     const saving = result.save(local);
@@ -409,14 +416,14 @@ describe("round contribution provenance", () => {
   });
 
   it("restores a locally deleted note to its original round while a copy lands in the band under it", async () => {
-    const { result, app, current } = setup();
+    const { result, app, current } = setup(offsets);
     current.value = { ...current.value, rounds: [round()], active_round: round() };
     const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Keep provenance</p>" });
     const deletion = await result.remove(local);
     current.value = {
       ...current.value,
       rounds: bands(),
-      active_round: round({ id: 21, number: 2, canvas_offset_y: 400 }),
+      active_round: round({ id: 21, number: 2 }),
     };
     const restored = await result.restore(deletion!);
     expect(result.find(restored!)?.round_id).toBe(20);
@@ -426,7 +433,7 @@ describe("round contribution provenance", () => {
   });
 
   it("preserves unsaved text and unfinished notes while the board reloads its history", async () => {
-    const { result, app, current } = setup();
+    const { result, app, current } = setup(offsets);
     result.open(result.find(10)!);
     result.change(10, "<p>Draft kept</p>");
     const local = result.add({ x: 40, y: 50 }, "mint", { body: "<p>Unsubmitted note</p>" });

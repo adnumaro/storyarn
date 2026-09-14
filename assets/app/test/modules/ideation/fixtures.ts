@@ -79,7 +79,6 @@ export function round(overrides: Partial<Round> = {}): Round {
     number: 1,
     prompt: "What motivates this character?",
     status: "active",
-    canvas_offset_y: 0,
     started_at: "2026-09-08T10:00:00Z",
     closed_at: null,
     inserted_at: "2026-09-08T09:00:00Z",

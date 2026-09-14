@@ -17,7 +17,6 @@ defmodule Storyarn.Ideation.RoundsTest do
     assert first.number == 1
     assert first.status == :active
     assert first.prompt == nil
-    assert first.canvas_offset_y == 0
     assert first.started_at
     assert first.closed_at == nil
     assert first.recovery_identity
@@ -26,7 +25,6 @@ defmodule Storyarn.Ideation.RoundsTest do
     assert {:ok, started} =
              Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{
                prompt: "  Explore the antagonist  ",
-               canvas_offset_y: 640,
                number: 99,
                status: :closed,
                session_id: -1,
@@ -44,7 +42,6 @@ defmodule Storyarn.Ideation.RoundsTest do
     assert second.number == 2
     assert second.prompt == "Explore the antagonist"
     assert second.status == :active
-    assert second.canvas_offset_y == 640
     assert second.started_at
     assert second.closed_at == nil
     assert second.session_id == ctx.session.id
@@ -75,25 +72,15 @@ defmodule Storyarn.Ideation.RoundsTest do
     assert closed_revision.snapshot["round"]["number"] == 2
   end
 
-  test "the header of a new round is placed below the previous band, never inside it", ctx do
-    assert {:ok, _} = Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{})
-    assert {:ok, [second, _first]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
-    assert second.canvas_offset_y == 320
-
-    for offset <- [second.canvas_offset_y + 119, -1, 1.5, "900", 1_000_001] do
-      assert {:error, :invalid_round_offset} =
-               Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 2, %{canvas_offset_y: offset})
-    end
+  test "a new round takes nothing but its prompt", ctx do
+    assert {:error, :invalid_round} = Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, nil)
 
     assert {:ok, _} =
-             Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 2, %{
-               "canvas_offset_y" => second.canvas_offset_y + 120
-             })
+             Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{"canvas_offset_y" => 900})
 
-    assert {:ok, [third | _]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
-    assert third.number == 3
-    assert third.canvas_offset_y == second.canvas_offset_y + 120
-    assert {:error, :invalid_round} = Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 3, nil)
+    assert {:ok, [second, _first]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert second.number == 2
+    refute Map.has_key?(second, :canvas_offset_y)
   end
 
   test "session managers alone can start, edit and close rounds with current revisions", ctx do
@@ -198,8 +185,7 @@ defmodule Storyarn.Ideation.RoundsTest do
         number: number,
         status: :closed,
         started_at: now,
-        closed_at: now,
-        canvas_offset_y: number * 400
+        closed_at: now
       })
     end
 
@@ -250,7 +236,6 @@ defmodule Storyarn.Ideation.RoundsTest do
                number: 99,
                status: :closed,
                session_id: -1,
-               canvas_offset_y: 500,
                started_at: ~U[2026-09-01 00:00:00Z]
              })
 
@@ -262,7 +247,6 @@ defmodule Storyarn.Ideation.RoundsTest do
     assert corrected.prompt == "Correct question?"
     assert corrected.number == 1
     assert corrected.status == :active
-    assert corrected.canvas_offset_y == 0
     assert corrected.started_at == round.started_at
     assert corrected.recovery_identity == round.recovery_identity
 

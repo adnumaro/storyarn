@@ -156,7 +156,6 @@ export interface Round {
   prompt: string | null;
   status: "active" | "closed";
   /** Canvas y of the round header; note positions in the band are relative to it. */
-  canvas_offset_y: number;
   started_at: string | null;
   closed_at: string | null;
   inserted_at: string;

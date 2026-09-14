@@ -29,14 +29,15 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> visit(board_path(ctx))
       |> assert_has("#canvas-note-#{existing.id}")
       |> refute_has("#brainstorming-band-#{first.id}")
-      |> assert_has("#brainstorming-round-next")
-      |> click("#brainstorming-round-next button:not([disabled])")
+      |> evaluate(
+        "document.querySelector('#brainstorming-canvas').dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 400, clientY: 300}))"
+      )
+      |> click("#brainstorming-round-context-new")
       |> assert_has("#brainstorming-round-#{first.id}[data-status=closed]", text: "Round 1")
       |> assert_has("[id^='brainstorming-round-'][data-status=active]", text: "Round 2")
 
     assert {:ok, [second, closed]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert closed.id == first.id
-    assert second.canvas_offset_y > 120
 
     browser =
       browser
@@ -138,7 +139,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     ctx = ideation_fixture()
     first = first_round(ctx)
     parked = idea_fixture(ctx, %{visibility: :shared, state: :parked, canvas: %{"x" => 0, "y" => 100}})
-    {ctx, second} = new_round(ctx, %{prompt: "Second question", canvas_offset_y: 900})
+    {ctx, second} = new_round(ctx, %{prompt: "Second question"})
 
     conn
     |> authenticate(ctx.author.user)

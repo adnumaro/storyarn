@@ -27,14 +27,5 @@ defmodule StoryarnWeb.IdeationLive.Handlers.RoundHandlers do
 
   # The client measures the previous band and proposes the header offset; the
   # command keeps bands ordered. A missing offset places an empty band.
-  defp new_round_attrs(params) do
-    attrs = Params.fields(params, [:prompt])
-
-    case params["canvas_offset_y"] do
-      nil -> {:ok, attrs}
-      value when is_integer(value) -> {:ok, Map.put(attrs, "canvas_offset_y", value)}
-      value when is_float(value) -> {:ok, Map.put(attrs, "canvas_offset_y", round(value))}
-      _ -> {:error, :invalid_parameters}
-    end
-  end
+  defp new_round_attrs(params), do: {:ok, Params.fields(params, [:prompt])}
 end

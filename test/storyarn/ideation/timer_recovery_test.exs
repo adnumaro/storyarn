@@ -205,7 +205,6 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
         )
       )
       |> update_in(["rows", "sessions"], &Enum.map(&1, fn row -> Map.delete(row, "contributions_open") end))
-      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "canvas_offset_y") end))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     {_ctx, _timer} = start(ctx)

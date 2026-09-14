@@ -30,8 +30,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.Create do
       session_id: session.id,
       number: 1,
       status: :active,
-      started_at: %{TimeHelpers.now() | microsecond: {0, 6}},
-      canvas_offset_y: 0
+      started_at: %{TimeHelpers.now() | microsecond: {0, 6}}
     }
   end
 end

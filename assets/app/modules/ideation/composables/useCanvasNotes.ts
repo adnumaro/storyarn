@@ -1,3 +1,4 @@
+import { bandAt, orderRounds, type BandOffsets } from "../lib/bands";
 import { computed, onUnmounted, reactive, watch } from "vue";
 import { useIdeaDrafts, type Draft } from "./useIdeaDrafts";
 import type {
@@ -44,16 +45,15 @@ export function useCanvasNotes(
   context: () => BoardContext,
   replaceSelection: (from: number, to: number) => void,
   onCreated: (idea: CreatedIdea) => void = () => {},
+  offsets: () => BandOffsets = () => new Map(),
 ) {
   const activeRoundId = computed(() => board().active_round?.id ?? null);
-  // Round headers sit at a canvas y; the server stores note y relative to that
-  // header. Everything local works in absolute canvas units, so the conversion
-  // happens exactly where notes enter from and leave for the server.
-  const offsets = computed(
-    () => new Map(board().rounds.map((round) => [round.id, round.canvas_offset_y ?? 0])),
-  );
+  // Round headers sit at a canvas y the canvas derives from each band's content;
+  // the server stores note y relative to that header. Everything local works in
+  // absolute canvas units, so the conversion happens exactly where notes enter
+  // from and leave for the server.
   function offsetFor(roundId: number | null | undefined): number {
-    return roundId == null ? 0 : (offsets.value.get(roundId) ?? 0);
+    return roundId == null ? 0 : (offsets().get(roundId) ?? 0);
   }
   function absolute<T extends { round_id: number | null; canvas?: CanvasPlacement }>(idea: T): T {
     if (typeof idea.canvas?.y !== "number") return idea;
@@ -62,14 +62,9 @@ export function useCanvasNotes(
   function relative(canvas: CanvasPlacement, roundId: number | null | undefined): CanvasPlacement {
     return typeof canvas.y === "number" ? { ...canvas, y: canvas.y - offsetFor(roundId) } : canvas;
   }
-  // The band a canvas y falls in: the last header at or above it, else the first.
   function roundAt(y: number | undefined): number | null {
-    const bands = [...board().rounds].sort((a, b) => a.canvas_offset_y - b.canvas_offset_y);
-    if (!bands.length) return null;
-    if (typeof y !== "number") return activeRoundId.value ?? bands[0].id;
-    let found = bands[0];
-    for (const round of bands) if (round.canvas_offset_y <= y) found = round;
-    return found.id;
+    if (typeof y === "number") return bandAt(board().rounds, offsets(), y);
+    return activeRoundId.value ?? orderRounds(board().rounds)[0]?.id ?? null;
   }
   const canWrite = () => board().can_edit && board().session?.status === "open";
   const drafts = useIdeaDrafts(request, context, canWrite);

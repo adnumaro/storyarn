@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { bandOffsets as layoutBands, NOTE_HEIGHT, type BandOffsets } from "./lib/bands";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   StickyNote,
@@ -113,6 +114,25 @@ async function proposeDecision(groupId?: number) {
   preparingDecision.value = false;
   if (reply.status === "error") failure.value = reply.code;
 }
+// Bands are as tall as their content. The canvas measures and reports the
+// layout; until it does, note geometry from the board gives a first estimate.
+const measuredBands = ref<BandOffsets | null>(null);
+const bandOffsets = computed<BandOffsets>(
+  () =>
+    measuredBands.value ??
+    layoutBands(rounds.value, (roundId) => {
+      const bottoms = board.ideas
+        .filter((idea) => idea.round_id === roundId && typeof idea.canvas?.y === "number")
+        .map((idea) => (idea.canvas?.y ?? 0) + NOTE_HEIGHT);
+      return bottoms.length ? Math.max(...bottoms) : null;
+    }),
+);
+watch(
+  () => board.session?.id,
+  () => {
+    measuredBands.value = null;
+  },
+);
 const notes = useCanvasNotes(
   () => board,
   request,
@@ -122,6 +142,7 @@ const notes = useCanvasNotes(
     if (editing.value === from) editing.value = to;
   },
   (idea) => connections.created(idea),
+  () => bandOffsets.value,
 );
 const current = computed(() => notes.notes.value.find((n) => n.id === selected.value));
 const selectionShape = computed(() => {
@@ -460,17 +481,14 @@ function focusRound(target: number | ((round: Round) => boolean)) {
     focusStop = undefined;
   };
 }
-async function newRound(offset: number) {
+async function newRound() {
   if (!board.can_manage || !board.session || roundPending.value) return;
   finish();
   failure.value = null;
   roundPending.value = true;
   // The board still shows the previous round when the reply lands; wait for the new one.
   const previous = board.active_round?.id ?? null;
-  const reply = await request("new_round", {
-    revision: board.session.revision,
-    canvas_offset_y: Math.round(offset),
-  });
+  const reply = await request("new_round", { revision: board.session.revision });
   roundPending.value = false;
   if (reply.status !== "ok") {
     failure.value = reply.status === "error" ? reply.code : "unavailable";
@@ -1015,7 +1033,13 @@ onUnmounted(() => {
         }"
         :members="board.members"
         :statuses="statuses"
-        :bands="{ rounds, canManage: board.can_manage, pending: roundPending }"
+        :bands="{
+          rounds,
+          offsets: bandOffsets,
+          canManage: board.can_manage,
+          pending: roundPending,
+        }"
+        @bands="measuredBands = $event"
         @new-round="newRound"
         @close-round="closeRound"
         @comment="createComment"

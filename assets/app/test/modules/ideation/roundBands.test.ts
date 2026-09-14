@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, reactive, ref } from "vue";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import BrainstormingCanvas from "@modules/ideation/components/BrainstormingCanvas.vue";
+import { bandAt, bandOffsets } from "@modules/ideation/lib/bands";
 import { idea, round } from "./fixtures";
 
 const view = reactive({ x: 0, y: 0, zoom: 1, width: 800, height: 600 });
@@ -21,6 +22,19 @@ const NoteStub = defineComponent({
   setup: (props) => () => h("article", { "data-test-note": props.note.id }, "Text"),
 });
 const mounted: VueWrapper[] = [];
+async function pointer(target: Element, type: string, options: PointerEventInit = {}) {
+  target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...options }));
+  await nextTick();
+}
+const capturing = () => ({
+  setPointerCapture: vi.fn(),
+  hasPointerCapture: () => false,
+  releasePointerCapture: vi.fn(),
+});
+const twoRounds = () => [
+  round({ id: 20, number: 1, status: "closed", prompt: "First?" }),
+  round({ id: 21, number: 2, status: "active", prompt: null }),
+];
 function canvas(props = {}) {
   const wrapper = mount(BrainstormingCanvas, {
     attachTo: document.body,
@@ -37,10 +51,11 @@ function canvas(props = {}) {
       statuses: {},
       collaboration: { context: { epoch: "a", session_id: 1 }, cursors: false },
       bands: {
-        rounds: [
-          round({ id: 20, number: 1, status: "closed", canvas_offset_y: 0, prompt: "First?" }),
-          round({ id: 21, number: 2, status: "active", canvas_offset_y: 500, prompt: null }),
-        ],
+        rounds: twoRounds(),
+        offsets: new Map([
+          [20, 0],
+          [21, 500],
+        ]),
         canManage: true,
         pending: false,
       },
@@ -48,6 +63,7 @@ function canvas(props = {}) {
     },
     global: { stubs: { CanvasNote: NoteStub, CanvasCursors: true } },
   });
+  Object.assign(wrapper.element, capturing());
   mounted.push(wrapper);
   return wrapper;
 }
@@ -56,21 +72,108 @@ afterEach(() => {
   Object.assign(view, { x: 0, y: 0, zoom: 1 });
 });
 
+describe("band layout", () => {
+  it("stacks bands as tall as their content, with a floor for empty ones", () => {
+    const rounds = [
+      round({ id: 3, number: 3 }),
+      round({ id: 1, number: 1 }),
+      round({ id: 2, number: 2 }),
+    ];
+    const content = new Map([
+      [1, 156],
+      [2, null],
+      [3, 900],
+    ]);
+    const offsets = bandOffsets(rounds, (id) => content.get(id) ?? null);
+    // 156 + 160 is under the 320 floor; an empty band is 320 tall.
+    expect([...offsets]).toEqual([
+      [1, 0],
+      [2, 320],
+      [3, 640],
+    ]);
+    expect(bandAt(rounds, offsets, -50)).toBe(1);
+    expect(bandAt(rounds, offsets, 319)).toBe(1);
+    expect(bandAt(rounds, offsets, 320)).toBe(2);
+    expect(bandAt(rounds, offsets, 5000)).toBe(3);
+    expect(bandAt([], offsets, 10)).toBeNull();
+  });
+});
+
 describe("round bands on the canvas", () => {
-  it("draws one header per round at its canvas offset, in screen space, following the viewport", async () => {
+  it("draws one header per round at its offset in screen space and reports the layout it measures", async () => {
     const wrapper = canvas();
     const first = wrapper.get("#brainstorming-band-20");
-    const second = wrapper.get("#brainstorming-band-21");
     expect(first.attributes("style")).toContain("top: 0px");
-    expect(second.attributes("style")).toContain("top: 500px");
+    expect(wrapper.get("#brainstorming-band-21").attributes("style")).toContain("top: 500px");
     expect(first.text()).toContain("Round 1");
     expect(first.text()).toContain("First?");
     expect(first.text()).toContain("Closed");
-    expect(second.text()).toContain("In progress");
+    expect(wrapper.get("#brainstorming-band-21").text()).toContain("In progress");
+    // Note 10 ends at 60 + 96, so band 1 is 320 tall: the given 500 is corrected.
+    expect(wrapper.emitted("bands")).toEqual([
+      [
+        new Map([
+          [20, 0],
+          [21, 320],
+        ]),
+      ],
+    ]);
+    await wrapper.setProps({
+      bands: {
+        rounds: twoRounds(),
+        offsets: new Map([
+          [20, 0],
+          [21, 320],
+        ]),
+        canManage: true,
+        pending: false,
+      },
+    });
+    expect(wrapper.emitted("bands")).toHaveLength(1);
     view.y = -100;
     view.zoom = 0.5;
     await nextTick();
-    expect(wrapper.get("#brainstorming-band-21").attributes("style")).toContain("top: 150px");
+    expect(wrapper.get("#brainstorming-band-21").attributes("style")).toContain("top: 60px");
+  });
+
+  it("grows a band while a note is dragged past its bottom and shrinks it back", async () => {
+    const wrapper = canvas({
+      bands: {
+        rounds: twoRounds(),
+        offsets: new Map([
+          [20, 0],
+          [21, 320],
+        ]),
+        canManage: true,
+        pending: false,
+      },
+    });
+    const note = wrapper.get('[data-note-id="10"]');
+    Object.assign(note.element, capturing());
+    await pointer(note.element, "pointerdown", {
+      button: 0,
+      pointerId: 1,
+      clientX: 20,
+      clientY: 70,
+    });
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 20, clientY: 470 });
+    // The note now ends at 460 + 96; the next header follows 160 below.
+    expect(wrapper.emitted("bands")?.at(-1)).toEqual([
+      new Map([
+        [20, 0],
+        [21, 716],
+      ]),
+    ]);
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 20, clientY: 90 });
+    // Back near the top: 80 + 96 + 160.
+    expect(wrapper.emitted("bands")?.at(-1)).toEqual([
+      new Map([
+        [20, 0],
+        [21, 336],
+      ]),
+    ]);
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
+    expect(wrapper.emitted("move")).toEqual([[[{ id: 10, point: { x: 10, y: 80 } }]]]);
   });
 
   it("offers the facilitator round actions on the right rounds only", async () => {
@@ -81,17 +184,20 @@ describe("round bands on the canvas", () => {
     await wrapper.get("#brainstorming-round-close-21").trigger("click");
     expect(wrapper.emitted("closeRound")).toEqual([[21]]);
     await wrapper.get("#brainstorming-round-new-21").trigger("click");
-    // 560 + the 96 px fallback note height + the gap under the lowest note.
-    expect(wrapper.emitted("newRound")).toEqual([[816]]);
+    expect(wrapper.emitted("newRound")).toEqual([[]]);
   });
 
   it("keeps the last closed band able to start the next round and hides actions from members", () => {
     const closed = canvas({
       bands: {
         rounds: [
-          round({ id: 20, number: 1, status: "closed", canvas_offset_y: 0 }),
-          round({ id: 21, number: 2, status: "closed", canvas_offset_y: 500 }),
+          round({ id: 20, number: 1, status: "closed" }),
+          round({ id: 21, number: 2, status: "closed" }),
         ],
+        offsets: new Map([
+          [20, 0],
+          [21, 320],
+        ]),
         canManage: true,
         pending: false,
       },
@@ -104,16 +210,16 @@ describe("round bands on the canvas", () => {
 
     const member = canvas({
       bands: {
-        rounds: [
-          round({ id: 20, number: 1, canvas_offset_y: 0 }),
-          round({ id: 21, number: 2, canvas_offset_y: 500 }),
-        ],
+        rounds: [round({ id: 20, number: 1 }), round({ id: 21, number: 2 })],
+        offsets: new Map([
+          [20, 0],
+          [21, 320],
+        ]),
         canManage: false,
         pending: false,
       },
     });
     expect(member.find("#brainstorming-round-new-21").exists()).toBe(false);
-    expect(member.find("#brainstorming-round-next").exists()).toBe(false);
     expect(member.find("#brainstorming-band-21").exists()).toBe(true);
   });
 
@@ -121,20 +227,22 @@ describe("round bands on the canvas", () => {
     const quiet = canvas({
       notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
       bands: {
-        rounds: [round({ id: 20, number: 1, canvas_offset_y: 0, prompt: null })],
+        rounds: [round({ id: 20, number: 1, prompt: null })],
+        offsets: new Map([[20, 0]]),
         canManage: true,
         pending: false,
       },
     });
     expect(quiet.find("#brainstorming-band-20").exists()).toBe(false);
-    expect(quiet.find("#brainstorming-round-next").exists()).toBe(true);
+    expect(quiet.find("#brainstorming-round-next").exists()).toBe(false);
     quiet.unmount();
     mounted.splice(mounted.indexOf(quiet), 1);
 
     const asked = canvas({
       notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
       bands: {
-        rounds: [round({ id: 20, number: 1, canvas_offset_y: 0, prompt: "Where does Mara go?" })],
+        rounds: [round({ id: 20, number: 1, prompt: "Where does Mara go?" })],
+        offsets: new Map([[20, 0]]),
         canManage: true,
         pending: false,
       },
@@ -145,19 +253,14 @@ describe("round bands on the canvas", () => {
     expect(asked.find("#brainstorming-round-new-20").exists()).toBe(false);
   });
 
-  it("places the next-round affordance under the lowest note and scrolls a band to the top", async () => {
+  it("scrolls a band's header to the top at any zoom", () => {
     const wrapper = canvas();
-    expect(wrapper.get("#brainstorming-round-next").attributes("style")).toContain("top: 816px");
-    await wrapper.get("#brainstorming-round-next button").trigger("click");
-    expect(wrapper.emitted("newRound")).toEqual([[816]]);
-    (
-      wrapper.vm as unknown as { scrollToRound: (round: { canvas_offset_y: number }) => void }
-    ).scrollToRound(round({ id: 21, canvas_offset_y: 500 }));
+    const scroll = (wrapper.vm as unknown as { scrollToRound: (round: { id: number }) => void })
+      .scrollToRound;
+    scroll(round({ id: 21 }));
     expect(view.y).toBe(60 - 500);
     view.zoom = 0.5;
-    (
-      wrapper.vm as unknown as { scrollToRound: (round: { canvas_offset_y: number }) => void }
-    ).scrollToRound(round({ id: 21, canvas_offset_y: 500 }));
+    scroll(round({ id: 21 }));
     expect(view.y).toBe(60 - 250);
   });
 });

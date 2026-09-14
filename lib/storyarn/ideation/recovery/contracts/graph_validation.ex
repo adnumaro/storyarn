@@ -65,8 +65,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   end
 
   defp valid_links?(row, "rounds", index) do
-    Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row) and
-      is_integer(row["canvas_offset_y"]) and abs(row["canvas_offset_y"]) <= 1_000_000
+    Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
   end
 
   defp valid_links?(row, "timers", index),

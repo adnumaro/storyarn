@@ -192,7 +192,6 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       data
       |> Map.put("version", 5)
       |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions)))
-      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "canvas_offset_y") end))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)

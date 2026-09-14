@@ -31,6 +31,7 @@ import CanvasGroup from "./CanvasGroup.vue";
 import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups";
 import CanvasCursors from "./CanvasCursors.vue";
 import RoundBar from "./RoundBar.vue";
+import { bandOffsets, orderRounds, sameOffsets, type BandOffsets } from "../lib/bands";
 import { useCanvasViewport, type Point } from "../composables/useCanvasViewport";
 import { useCanvasMarquee } from "../composables/useCanvasMarquee";
 import { useBoardText } from "../composables/useBoardText";
@@ -73,7 +74,7 @@ const {
   members,
   statuses,
   historyState,
-  bands = { rounds: [], canManage: false, pending: false },
+  bands = { rounds: [], offsets: new Map(), canManage: false, pending: false },
 } = defineProps<{
   notes: CanvasIdea[];
   groupState?: {
@@ -95,7 +96,7 @@ const {
   members: Member[];
   statuses: { [id: number]: string };
   /** Round bands in canvas order; their headers are drawn in screen space. */
-  bands?: { rounds: Round[]; canManage: boolean; pending: boolean };
+  bands?: { rounds: Round[]; offsets: BandOffsets; canManage: boolean; pending: boolean };
 }>();
 const groups = computed(() => groupState?.groups ?? []);
 const selectedGroupId = computed(() => groupState?.selectedId ?? null);
@@ -130,26 +131,28 @@ const emit = defineEmits<{
   cut: [event: ClipboardEvent, ids: number[]];
   paste: [event: ClipboardEvent, point: Point];
   list: [];
-  newRound: [offset: number];
+  newRound: [];
+  bands: [offsets: BandOffsets];
   closeRound: [id: number];
 }>();
 const commentTarget = ref<BrainstormingCommentTarget | null>(null);
+const canStartRound = computed(() => bands.canManage && permissions.edit);
+// The context menu serves comments and, for the facilitator, the next round.
 function prepareComment(event: MouseEvent) {
   commentTarget.value = null;
   const target = event.target instanceof Element ? event.target : null;
   if (
     !target ||
-    !permissions.comment ||
     target.closest('input, textarea, select, [contenteditable="true"], [data-canvas-chrome]')
   ) {
     event.stopPropagation();
     return;
   }
-  const source = resolveCommentTarget(target);
+  const source = permissions.comment ? resolveCommentTarget(target) : null;
   commentTarget.value = source
     ? { ...source, position: world(event.clientX, event.clientY) }
     : null;
-  if (!commentTarget.value) event.stopPropagation();
+  if (!commentTarget.value && !canStartRound.value) event.stopPropagation();
 }
 function resolveCommentTarget(target: Element) {
   const noteId = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
@@ -283,31 +286,40 @@ function bounds() {
 function fitAll() {
   fit([...bounds(), ...layouts.value.map((layout) => layout.bounds)]);
 }
-// Canvas units a new band keeps under the lowest note of the previous one.
-const BAND_GAP = 160;
-const EMPTY_BAND = 320;
-const orderedRounds = computed(() => [...bands.rounds].sort((a, b) => a.number - b.number));
+const orderedRounds = computed(() => orderRounds(bands.rounds));
 const multiRound = computed(() => orderedRounds.value.length > 1);
 const lastRound = computed(() => orderedRounds.value[orderedRounds.value.length - 1] ?? null);
-// Where the next header goes: below everything the last band holds.
-const nextRoundOffset = computed(() => {
-  const last = lastRound.value;
+function offsetOf(roundId: number | null | undefined): number {
+  return roundId == null ? 0 : (bands.offsets.get(roundId) ?? 0);
+}
+// A band is as tall as what it holds. Its lowest note or frame is measured on
+// live positions, so a drag past the bottom grows the band as it goes.
+function contentBottom(roundId: number): number | null {
+  const top = offsetOf(roundId);
   const bottoms = notes
-    .filter((note) => (last ? note.round_id === last.id : true))
-    .map((note) => {
-      const rect = noteBounds(note);
-      return rect.y + rect.height;
-    });
-  if (!bottoms.length) return last ? last.canvas_offset_y + EMPTY_BAND : 0;
-  return Math.round(Math.max(...bottoms) + BAND_GAP);
-});
-function headerTop(offset: number) {
-  return view.y + offset * view.zoom;
+    .filter((note) => note.round_id === roundId)
+    .map((note) => position(note).y + (noteHeights.value.get(note.id) ?? 96) - top);
+  for (const layout of layouts.value) {
+    if (layout.group.members[0]?.round_id !== roundId) continue;
+    bottoms.push(layout.bounds.y + layout.bounds.height - top);
+  }
+  return bottoms.length ? Math.max(...bottoms) : null;
+}
+const bandLayout = computed(() => bandOffsets(bands.rounds, contentBottom));
+watch(
+  bandLayout,
+  (next) => {
+    if (!sameOffsets(next, bands.offsets)) emit("bands", next);
+  },
+  { immediate: true },
+);
+function headerTop(round: Round) {
+  return view.y + offsetOf(round.id) * view.zoom;
 }
 // Bring a band's header just under the floating chrome, keeping zoom and x.
 const HEADER_REST = 60;
 function scrollToRound(round: Round) {
-  view.y = HEADER_REST - round.canvas_offset_y * view.zoom;
+  view.y = HEADER_REST - offsetOf(round.id) * view.zoom;
 }
 function center(note: Idea) {
   const rect = noteBounds(note);
@@ -1192,7 +1204,7 @@ onUnmounted(() => {
     "
   >
     <ContextMenu>
-      <ContextMenuTrigger as-child :disabled="!permissions.comment">
+      <ContextMenuTrigger as-child :disabled="!permissions.comment && !canStartRound">
         <div class="absolute inset-0">
           <div class="absolute left-0 top-0 origin-top-left" :style="{ transform }">
             <CanvasGroup
@@ -1348,7 +1360,7 @@ onUnmounted(() => {
               v-if="multiRound || round.prompt"
               :id="`brainstorming-band-${round.id}`"
               class="absolute left-0 right-0 z-10"
-              :style="{ top: `${headerTop(round.canvas_offset_y)}px` }"
+              :style="{ top: `${headerTop(round)}px` }"
             >
               <RoundBar
                 :round="round"
@@ -1357,34 +1369,10 @@ onUnmounted(() => {
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
                 @close="emit('closeRound', $event)"
-                @new-round="emit('newRound', nextRoundOffset)"
+                @new-round="emit('newRound')"
               />
             </div>
           </template>
-          <div
-            v-if="bands.canManage && permissions.edit"
-            id="brainstorming-round-next"
-            data-canvas-chrome
-            class="absolute left-0 right-0 z-10 flex items-center gap-3 px-4"
-            :style="{ top: `${headerTop(nextRoundOffset)}px` }"
-          >
-            <span
-              aria-hidden="true"
-              class="h-px flex-1 border-t border-dashed border-muted-foreground/50"
-            />
-            <button
-              type="button"
-              class="toolbar-btn gap-1.5 text-muted-foreground"
-              :disabled="bands.pending"
-              @click="emit('newRound', nextRoundOffset)"
-            >
-              <Plus class="size-3.5" />{{ t("ideation.rounds.newRound") }}
-            </button>
-            <span
-              aria-hidden="true"
-              class="h-px flex-1 border-t border-dashed border-muted-foreground/50"
-            />
-          </div>
           <div
             v-if="selectedId !== null && !selectionArea"
             id="brainstorming-note-toolbar"
@@ -1611,14 +1599,23 @@ onUnmounted(() => {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent
-        v-if="commentTarget"
+        v-if="commentTarget || canStartRound"
         @close-auto-focus.prevent="root?.focus({ preventScroll: true })"
       >
         <ContextMenuItem
+          v-if="commentTarget"
           id="brainstorming-comment-context-add"
           @select="emit('comment', commentTarget)"
         >
           <MessageSquarePlus class="size-4" />{{ t("brainstormingComments.add_comment") }}
+        </ContextMenuItem>
+        <ContextMenuItem
+          v-if="canStartRound"
+          id="brainstorming-round-context-new"
+          :disabled="bands.pending"
+          @select="emit('newRound')"
+        >
+          <Plus class="size-4" />{{ t("ideation.rounds.newRound") }}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

@@ -17,16 +17,5 @@ defmodule StoryarnWeb.IdeationLive.Helpers.RoundData do
 
   def round_view(value),
     do:
-      Map.take(value, [
-        :id,
-        :session_id,
-        :number,
-        :prompt,
-        :status,
-        :canvas_offset_y,
-        :started_at,
-        :closed_at,
-        :inserted_at,
-        :updated_at
-      ])
+      Map.take(value, [:id, :session_id, :number, :prompt, :status, :started_at, :closed_at, :inserted_at, :updated_at])
 end

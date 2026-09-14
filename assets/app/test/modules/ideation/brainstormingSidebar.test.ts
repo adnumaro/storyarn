@@ -45,7 +45,7 @@ describe("brainstorming session tree", () => {
         title: "Endings we could ship",
         rounds: [
           round({ id: 20, number: 1, status: "closed" }),
-          round({ id: 21, number: 2, status: "active", canvas_offset_y: 500 }),
+          round({ id: 21, number: 2, status: "active" }),
         ],
         parked_count: 1,
       }),
@@ -69,10 +69,7 @@ describe("brainstorming session tree", () => {
       [
         session({
           id: 1,
-          rounds: [
-            round({ id: 20, number: 1 }),
-            round({ id: 21, number: 2, canvas_offset_y: 500 }),
-          ],
+          rounds: [round({ id: 20, number: 1 }), round({ id: 21, number: 2 })],
           parked_count: 2,
         }),
       ],
@@ -94,10 +91,7 @@ describe("brainstorming session tree", () => {
         session({
           id: 2,
           title: "Later",
-          rounds: [
-            round({ id: 30, number: 1 }),
-            round({ id: 31, number: 2, canvas_offset_y: 400 }),
-          ],
+          rounds: [round({ id: 30, number: 1 }), round({ id: 31, number: 2 })],
           parked_count: 0,
         }),
       ],

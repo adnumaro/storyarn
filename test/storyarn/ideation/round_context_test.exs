@@ -13,7 +13,7 @@ defmodule Storyarn.Ideation.RoundContextTest do
   test "the canvas context lists every round in band order with the current one after one authorization", ctx do
     first = first_round(ctx)
     {ctx, second} = new_round(ctx, %{prompt: "Second question"})
-    {_ctx, third} = new_round(ctx, %{prompt: "Third question", canvas_offset_y: 900})
+    {_ctx, third} = new_round(ctx, %{prompt: "Third question"})
 
     {single_read, single_queries} =
       queries(fn -> Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id) end)
@@ -30,7 +30,6 @@ defmodule Storyarn.Ideation.RoundContextTest do
     assert {:ok, [_, _, _]} = single_read
     assert {:ok, %{rounds: rounds, active_round: active}} = result
     assert Enum.map(rounds, & &1.id) == [first.id, second.id, third.id]
-    assert Enum.map(rounds, & &1.canvas_offset_y) == [0, 320, 900]
     assert active.id == third.id
     refute result |> elem(1) |> Map.has_key?(:rounds_next)
     assert combined_queries == single_queries

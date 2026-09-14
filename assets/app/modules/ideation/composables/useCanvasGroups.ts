@@ -1,5 +1,6 @@
 import { computed, onScopeDispose, ref, watch } from "vue";
 import type { Board, GroupText, GroupVersions, IdeaGroup, Request } from "../types";
+import type { BandOffsets } from "../lib/bands";
 import type { Point } from "./useCanvasViewport";
 import type { useCanvasHistory, CanvasCommand } from "./useCanvasHistory";
 
@@ -57,25 +58,33 @@ export function useCanvasGroups(
   notify: (code: string | null, replacing?: string) => void,
   select: (id: number | null) => void,
   settleNotes: (ids: number[]) => Promise<boolean>,
+  offsets: () => BandOffsets = () => new Map(),
 ) {
   const selected = ref<number | null>(null);
-  const offsets = computed(
-    () => new Map(board().rounds.map((round) => [round.id, round.canvas_offset_y ?? 0])),
-  );
-  // Member positions arrive relative to their round header; the canvas is absolute.
+  // A group holds notes of one round. Its frame and its members are stored
+  // relative to that round's header; the canvas works in absolute units.
+  const offsetFor = (roundId: number | null | undefined) =>
+    roundId == null ? 0 : (offsets().get(roundId) ?? 0);
+  const roundOfGroup = (group: IdeaGroup) => group.members[0]?.round_id ?? null;
+  const roundOfIdeas = (ids: number[]) =>
+    board().ideas.find((idea) => ids.includes(idea.id))?.round_id ?? null;
+  const shifted = <T extends { y: number }>(point: T, by: number): T =>
+    by === 0 ? point : { ...point, y: point.y + by };
+  const outgoing = (group: IdeaGroup | undefined, changes: GroupChanges): GroupChanges =>
+    changes.canvas && group
+      ? { ...changes, canvas: shifted(changes.canvas, -offsetFor(roundOfGroup(group))) }
+      : changes;
   const groups = computed(() =>
     board().session?.configuration.private_mode
       ? []
       : (board().groups ?? []).map((group) => ({
           ...group,
+          canvas: shifted(group.canvas, offsetFor(roundOfGroup(group))),
           members: group.members.map((member) =>
             typeof member.canvas?.y === "number" && member.round_id != null
               ? {
                   ...member,
-                  canvas: {
-                    ...member.canvas,
-                    y: member.canvas.y + (offsets.value.get(member.round_id) ?? 0),
-                  },
+                  canvas: { ...member.canvas, y: member.canvas.y + offsetFor(member.round_id) },
                 }
               : member,
           ),
@@ -173,7 +182,7 @@ export function useCanvasGroups(
       const result = await mutate("update_group", {
         group_id: current.id,
         version: current.version,
-        ...changes,
+        ...outgoing(current, changes),
       });
       if (!result) return false;
       expected = changes;
@@ -197,7 +206,11 @@ export function useCanvasGroups(
     if (JSON.stringify(previous) === JSON.stringify(changes)) return true;
     const initial = snapshot(before);
     const result = await history.run(() =>
-      mutate("update_group", { group_id: id, version: initial.version, ...changes }),
+      mutate("update_group", {
+        group_id: id,
+        version: initial.version,
+        ...outgoing(before, changes),
+      }),
     );
     if (!result) return false;
     history.push(updateCommand(initial, result, previous, previousChanges(result, changes)));
@@ -251,7 +264,12 @@ export function useCanvasGroups(
     if (!allowed.value || history.busy.value || ids.length < 2) return;
     const result = await history.run(async () => {
       if (!(await settleNotes(ids))) return null;
-      return mutate("create_group", { idea_ids: ids, title: "", synthesis: "", canvas });
+      return mutate("create_group", {
+        idea_ids: ids,
+        title: "",
+        synthesis: "",
+        canvas: shifted(canvas, -offsetFor(roundOfIdeas(ids))),
+      });
     });
     if (!result) return;
     history.push(presenceCommand(result, true));
@@ -318,7 +336,7 @@ export function useCanvasGroups(
       group_id: group.id,
       version: group.version,
       x: point.x,
-      y: point.y,
+      y: point.y - offsetFor(roundOfGroup(group)),
       member_versions: group.members.map((member) => ({
         id: member.idea_id,
         version: member.canvas.version ?? 0,

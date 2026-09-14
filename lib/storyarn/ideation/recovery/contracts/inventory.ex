@@ -10,7 +10,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"session_revisions", "ideation_session_revisions", :session_id,
      ~w(id recovery_identity session_id actor_id number action snapshot inserted_at)a},
     {"rounds", "ideation_rounds", :session_id,
-     ~w(id recovery_identity session_id number prompt status canvas_offset_y started_at closed_at inserted_at updated_at)a},
+     ~w(id recovery_identity session_id number prompt status started_at closed_at inserted_at updated_at)a},
     {"timers", "ideation_timers", :session_id,
      ~w(id recovery_identity session_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at reveal_on_expiry close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
     {"ideas", "ideation_ideas", :session_id,
@@ -157,10 +157,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   # and disappear; every remaining round gets a header offset. Older captures
   # keep absolute note positions, so their headers all start at 0.
   def normalize(%{"version" => 6, "rows" => rows} = data) do
-    rounds =
-      rows["rounds"]
-      |> Enum.filter(&(&1["status"] in ["active", "closed"]))
-      |> Enum.map(&Map.put(&1, "canvas_offset_y", 0))
+    rounds = Enum.filter(rows["rounds"], &(&1["status"] in ["active", "closed"]))
 
     %{data | "version" => 7, "rows" => Map.put(rows, "rounds", rounds)}
   end
@@ -169,12 +166,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   defp tables_for(7), do: @tables
 
-  defp tables_for(6) do
-    for {collection, table, parent, fields} <- tables_for(7) do
-      fields = if collection == "rounds", do: fields -- [:canvas_offset_y], else: fields
-      {collection, table, parent, fields}
-    end
-  end
+  defp tables_for(6), do: tables_for(7)
 
   defp tables_for(5), do: Enum.reject(tables_for(6), &(elem(&1, 0) in @decision_collections))
   defp tables_for(4), do: Enum.reject(tables_for(5), &(elem(&1, 0) in @reference_collections))

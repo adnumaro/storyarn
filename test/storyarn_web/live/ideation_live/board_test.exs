@@ -472,18 +472,18 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     first = first_round(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.facilitator.user), board_path(ctx, session.id))
     {:ok, participant, _} = live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, session.id))
-    assert [%{"status" => "active", "canvas_offset_y" => 0}] = data(view)["rounds"]
+    assert [%{"status" => "active"}] = data(view)["rounds"]
 
     render_hook(
       view,
       "new_round",
-      payload(view, %{revision: session.revision, prompt: "What motivates the rival?", canvas_offset_y: 640})
+      payload(view, %{revision: session.revision, prompt: "What motivates the rival?"})
     )
 
     assert_reply(view, %{status: "ok"})
 
     assert_board_eventually(view, fn board ->
-      assert [%{"status" => "closed"}, %{"status" => "active", "canvas_offset_y" => 640}] = board["rounds"]
+      assert [%{"status" => "closed"}, %{"status" => "active"}] = board["rounds"]
     end)
 
     [closed, round] = data(view)["rounds"]
@@ -546,10 +546,6 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_reply(manager, %{status: "error", code: "stale_revision"})
     render_hook(manager, "new_round", %{epoch: data(manager)["epoch"], session_id: -1, revision: 1})
     assert_reply(manager, %{status: "error", code: "stale_board"})
-    render_hook(manager, "new_round", payload(manager, %{revision: 1, canvas_offset_y: "far"}))
-    assert_reply(manager, %{status: "error", code: "invalid_parameters"})
-    render_hook(manager, "new_round", payload(manager, %{revision: 1, canvas_offset_y: 10}))
-    assert_reply(manager, %{status: "error", code: "invalid_round_offset"})
     {:ok, readonly, _} = live(log_in_user(build_conn(), ctx.viewer.user), board_path(ctx, ctx.session.id))
     render_hook(readonly, "close_round", payload(readonly, %{revision: 1, round_id: round.id}))
     assert_reply(readonly, %{status: "error", code: "unauthorized"})
@@ -615,7 +611,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     rounds = data(view)["rounds"]
     assert length(rounds) == 61
     assert Enum.map(rounds, & &1["number"]) == Enum.to_list(1..61)
-    assert Enum.all?(rounds, &is_integer(&1["canvas_offset_y"]))
+    refute Enum.any?(rounds, &Map.has_key?(&1, "canvas_offset_y"))
     assert data(view)["active_round"]["number"] == 61
     refute Map.has_key?(data(view), "rounds_next")
     refute Map.has_key?(data(view), "round_filter")

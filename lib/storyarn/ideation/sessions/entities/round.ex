@@ -1,8 +1,8 @@
 defmodule Storyarn.Ideation.Sessions.Round do
   @moduledoc """
   A session-owned creative round. Rounds are horizontal bands of the session
-  canvas, stacked in chronological order; `canvas_offset_y` is the canvas y of
-  the round's header and note positions inside the band are relative to it.
+  canvas, stacked in chronological order. A band is as tall as its content, so
+  nothing about its height is stored; note positions are relative to its header.
   """
   use Ecto.Schema
 
@@ -14,7 +14,6 @@ defmodule Storyarn.Ideation.Sessions.Round do
     field :number, :integer
     field :prompt, :string
     field :status, Ecto.Enum, values: [:active, :closed], default: :active
-    field :canvas_offset_y, :integer, default: 0
     field :started_at, :utc_datetime_usec
     field :closed_at, :utc_datetime_usec
     timestamps(type: :utc_datetime_usec)
