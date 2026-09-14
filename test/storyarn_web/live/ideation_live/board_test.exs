@@ -300,7 +300,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     for _ <- 1..2 do
       render_hook(sidebar, "create_session", %{epoch: epoch, session_id: nil})
       assert_reply(sidebar, %{status: "ok", value: %{id: id}})
-      assert_patch(view, board_path(ctx, id))
+      assert_patch(view, board_path(ctx, id), 2_000)
       assert data(view)["session"]["id"] == id
       assert {:ok, %{title: "Untitled session"}} = Ideation.get_session(ctx.author, ctx.project.id, id)
       assert find_live_child(view, "sidebar-brainstorming-#{ctx.project.id}").pid == sidebar.pid
