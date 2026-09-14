@@ -115,7 +115,7 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
              })
 
     assert {:ok, round_session} =
-             Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, configured.revision, %{
+             Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, configured.revision, %{
                prompt: "Alternatives"
              })
 

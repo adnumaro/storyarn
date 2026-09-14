@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.E2E.IdeationRoundsTest do
   use PhoenixTest.Playwright.Case, async: false
 
-  import PhoenixTest.Playwright, only: [press: 3, type: 3]
+  import PhoenixTest.Playwright, only: [click: 2, press: 3, type: 3]
   import Storyarn.IdeationFixtures
   import StoryarnWeb.E2EHelpers
 
@@ -29,9 +29,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> visit(board_path(ctx))
       |> assert_has("#canvas-note-#{existing.id}")
       |> refute_has("#brainstorming-band-#{first.id}")
-      |> evaluate(
-        "document.querySelector('#brainstorming-canvas').dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 400, clientY: 300}))"
-      )
+      |> right_click("#brainstorming-canvas")
       |> click("#brainstorming-round-context-new")
       |> assert_has("#brainstorming-round-#{first.id}[data-status=closed]", text: "Round 1")
       |> assert_has("[id^='brainstorming-round-'][data-status=active]", text: "Round 2")

@@ -143,7 +143,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     capsule = capture(ctx)
     assert {:ok, data} = Capsule.open(capsule)
     assert data["version"] == 7
-    assert [saved_first, saved_second] = data["rows"]["rounds"]
+    assert [saved_first, _saved_second] = data["rows"]["rounds"]
     assert saved_first["status"] == "closed"
     assert saved_first["prompt"] == "Corrected question"
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
