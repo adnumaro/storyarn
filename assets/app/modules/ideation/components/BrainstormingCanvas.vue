@@ -317,9 +317,16 @@ function headerTop(round: Round) {
   return view.y + offsetOf(round.id) * view.zoom;
 }
 // Bring a band's header just under the floating chrome, keeping zoom and x.
+// The freshly measured layout already knows a round the props have not yet.
 const HEADER_REST = 60;
 function scrollToRound(round: Round) {
-  view.y = HEADER_REST - offsetOf(round.id) * view.zoom;
+  view.y = HEADER_REST - (bandLayout.value.get(round.id) ?? offsetOf(round.id)) * view.zoom;
+}
+// A session with several rounds opens on the one in progress; the rest fit everything.
+function openView() {
+  const active = orderedRounds.value.find((round) => round.status === "active");
+  if (multiRound.value && active) scrollToRound(active);
+  else fitAll();
 }
 function center(note: Idea) {
   const rect = noteBounds(note);
@@ -1146,7 +1153,7 @@ onMounted(async () => {
     });
   await nextTick();
   measureNotes();
-  fitAll();
+  openView();
 });
 watch(
   () => notes.map((note) => note.id),

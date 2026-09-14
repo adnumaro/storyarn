@@ -253,14 +253,37 @@ describe("round bands on the canvas", () => {
     expect(asked.find("#brainstorming-round-new-20").exists()).toBe(false);
   });
 
+  it("opens on the round in progress and fits everything when there is one round", async () => {
+    const wrapper = canvas();
+    await nextTick();
+    // The measured layout puts Round 2 at 320, whatever the props said.
+    expect(view.y).toBe(60 - 320);
+    wrapper.unmount();
+    mounted.splice(mounted.indexOf(wrapper), 1);
+    Object.assign(view, { x: 0, y: 0, zoom: 1 });
+    const single = canvas({
+      notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
+      bands: {
+        rounds: [round({ id: 20, number: 1, prompt: null })],
+        offsets: new Map([[20, 0]]),
+        canManage: false,
+        pending: false,
+      },
+    });
+    await nextTick();
+    expect(view.y).toBe(0);
+    // The single band already sits at 0: nothing to report, everything fitted.
+    expect(single.emitted("bands")).toBeUndefined();
+  });
+
   it("scrolls a band's header to the top at any zoom", () => {
     const wrapper = canvas();
     const scroll = (wrapper.vm as unknown as { scrollToRound: (round: { id: number }) => void })
       .scrollToRound;
     scroll(round({ id: 21 }));
-    expect(view.y).toBe(60 - 500);
+    expect(view.y).toBe(60 - 320);
     view.zoom = 0.5;
     scroll(round({ id: 21 }));
-    expect(view.y).toBe(60 - 250);
+    expect(view.y).toBe(60 - 160);
   });
 });

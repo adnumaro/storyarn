@@ -664,7 +664,8 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   defp assert_board_eventually(view, assertion, attempts \\ 200)
 
   defp assert_board_eventually(view, assertion, attempts) when attempts > 1 do
-    render_async(view)
+    # The board loads asynchronously; under a full-suite load it can exceed the default 500 ms.
+    render_async(view, 2_000)
 
     try do
       assertion.(data(view))
