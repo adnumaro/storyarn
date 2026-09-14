@@ -117,7 +117,9 @@
       "idempotency_conflict": "Esta solicitud ya se usó para un cambio distinto. Actualiza y vuelve a intentarlo.",
       "stale_connections": "Los enlaces han cambiado en otra sesión. Actualiza el tablero antes de volver a intentarlo.",
       "connections_pending": "Todavía no se ha confirmado un enlace. Reinténtalo para continuar.",
-      "invalid_connections": "Algunos enlaces de la selección ya no son válidos. Vuelve a seleccionar las notas."
+      "invalid_connections": "Algunos enlaces de la selección ya no son válidos. Vuelve a seleccionar las notas.",
+      "outside_band": "Ese sitio pertenece a otra ronda. Mantén la nota dentro de su banda.",
+      "mixed_rounds": "Un grupo solo puede contener notas de una misma ronda."
     },
     "saveStatus": {
       "saved": "Guardado",
@@ -230,7 +232,9 @@
       "loadingPrompt": "Cargando la pregunta actual…",
       "newRound": "Nueva ronda",
       "addQuestion": "Añade una pregunta",
-      "bandsHelp": "Todo lo que hay bajo un encabezado pertenece a esa ronda."
+      "bandsHelp": "Todo lo que hay bajo un encabezado pertenece a esa ronda.",
+      "started": "Ha empezado la Ronda {number}",
+      "go": "Ir"
     },
     "timer": {
       "title": "Cronómetro",

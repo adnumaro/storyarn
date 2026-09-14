@@ -5,6 +5,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.UpdateCanvas do
   alias Storyarn.Ideation.Ideas.Execution.Transaction
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Queries.Visible
+  alias Storyarn.Ideation.Ideas.Rules.Band
   alias Storyarn.Ideation.Ideas.Rules.Canvas
   alias Storyarn.Ideation.Ideas.Rules.Input
   alias Storyarn.Ideation.Ideas.View
@@ -37,10 +38,18 @@ defmodule Storyarn.Ideation.Ideas.Commands.UpdateCanvas do
           {:error, :stale_canvas}
 
         true ->
-          persist(idea, placement, expected, key, access.user_id)
+          place(idea, placement, expected, key, access.user_id)
       end
     end
   end
+
+  defp place(idea, placement, expected, key, actor_id) do
+    with :ok <- within_band(idea, placement), do: persist(idea, placement, expected, key, actor_id)
+  end
+
+  # Notes never rise above their round header.
+  defp within_band(%{round_id: nil}, _placement), do: :ok
+  defp within_band(_idea, placement), do: Band.check(placement)
 
   defp persist(idea, placement, expected, key, actor_id) do
     canvas = Map.merge(Map.merge(idea.canvas, placement), %{"version" => expected + 1, "request_key" => key})

@@ -148,14 +148,14 @@ defmodule StoryarnWeb.IdeationLive.ConnectionBoardTest do
       idea_attrs(%{
         body: "<p>Continue this thought</p>",
         connection: %{source_ids: [first.id, second.id]},
-        canvas: %{x: 540, y: -120, width: 260, color: "yellow"}
+        canvas: %{x: 540, y: 120, width: 260, color: "yellow"}
       })
 
     render_hook(author, "create_idea", payload(author, attrs))
     assert_reply(author, %{status: "ok", value: created})
     assert created.body == "<p>Continue this thought</p>"
     assert created.canvas["x"] == 540
-    assert created.canvas["y"] == -120
+    assert created.canvas["y"] == 120
 
     assert created.connected_from == [
              %{id: first.id, before_version: 0, version: 1},

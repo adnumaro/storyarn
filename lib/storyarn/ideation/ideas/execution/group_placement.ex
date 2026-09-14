@@ -4,6 +4,7 @@ defmodule Storyarn.Ideation.Ideas.Execution.GroupPlacement do
 
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Queries.GroupSources
+  alias Storyarn.Ideation.Ideas.Rules.Band
   alias Storyarn.Ideation.Ideas.Rules.Canvas
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
@@ -15,7 +16,8 @@ defmodule Storyarn.Ideation.Ideas.Execution.GroupPlacement do
       sources = GroupSources.list(access.session_id, ids)
 
       with :ok <- validate_versions(sources, versions),
-           {:ok, placements} <- placements(sources, dx, dy) do
+           {:ok, placements} <- placements(sources, dx, dy),
+           :ok <- within_bands(sources, placements) do
         now = %{TimeHelpers.now() | microsecond: {0, 6}}
         Enum.each(placements, &persist_placement(&1, now))
 
@@ -46,6 +48,21 @@ defmodule Storyarn.Ideation.Ideas.Execution.GroupPlacement do
     expected = Map.new(sources, &{&1.idea_id, Map.get(&1.canvas, "version", 0)})
     if expected == versions, do: :ok, else: {:error, :stale_canvas}
   end
+
+  # A group moves as one block, so no member may rise above its round header.
+  defp within_bands(sources, placements) do
+    rounds = Map.new(sources, &{&1.idea_id, &1.round_id})
+
+    Enum.reduce_while(placements, :ok, fn {id, canvas}, :ok ->
+      case member_check(Map.get(rounds, id), canvas) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp member_check(nil, _canvas), do: :ok
+  defp member_check(_round_id, canvas), do: Band.check(canvas)
 
   defp placements(sources, dx, dy) do
     Enum.reduce_while(sources, {:ok, []}, fn source, {:ok, result} ->
