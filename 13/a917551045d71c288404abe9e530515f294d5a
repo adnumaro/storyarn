@@ -1,0 +1,78 @@
+lib/storyarn/ideation/ideas/execution/group_placement.ex
+  s_02773c3f2b5565::t_7a4eb842f699a2 7,19,54-56,60-61
+  s_02773c3f2b5565::t_9f6998084a2ee5 58-59,62,66
+  s_02773c3f2b5565::t_601d17d6f372bd 20,52-53
+  s_02773c3f2b5565::t_ef8cb63f30c3c7 57,63-65
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_02773c3f2b5565::t_7cca652680a9f6 30,492,496,502-515,520-524,528-534,892-894,1084,1269-1271,1273-1274
+  s_02773c3f2b5565::t_c65f9811781c30 525-527
+  s_02773c3f2b5565::t_3b893c21ba8c0e 516-519,1272
+test/storyarn/ideation/round_contributions_test.exs
+  s_02773c3f2b5565::t_9c652889f26778 276,278-292,296-298,301-323,325-329
+  s_02773c3f2b5565::t_e98e55a17a10b9 275,277,299-300,324
+  s_02773c3f2b5565::t_eb6a7ba24b9f21 293-295
+lib/storyarn/ideation/ideas/commands/update_canvas.ex
+  s_02773c3f2b5565::t_601d17d6f372bd 50,52
+  s_02773c3f2b5565::t_9f6998084a2ee5 41,46-47
+  s_02773c3f2b5565::t_7a4eb842f699a2 8,48-49,51
+  s_02773c3f2b5565::t_dcf8e1527f6200 53
+assets/app/test/modules/ideation/roundStartedToast.test.ts
+  s_02773c3f2b5565::t_3c23ca5b1e3176 18
+  s_02773c3f2b5565::t_a413c341d00c18 1-17,19-26
+lib/storyarn/ideation/ideas/rules/band.ex
+  s_02773c3f2b5565::t_601d17d6f372bd 4-8
+  s_02773c3f2b5565::t_77f7b0bebf4a38 1-3,9
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_7a4eb842f699a2 120-122
+  s_02773c3f2b5565::t_7cca652680a9f6 235-237
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_02773c3f2b5565::t_ed1f66929647cd 138,326-330,334,338-340,343,354-355,360,746,749,752,757,759,781,809,815,860-866,869-872,913-915,1391,1402,1405
+  s_02773c3f2b5565::t_0510684d412f30 344,347-348,351-353
+  s_02773c3f2b5565::t_ec5a72e4081441 35
+  s_02773c3f2b5565::t_4b41a337f93724 331-333,335-337,341-342,345-346,350,356-359
+  s_02773c3f2b5565::t_a413c341d00c18 349,441-442
+  s_02773c3f2b5565::t_0d08caad3aa0de 833
+assets/app/modules/ideation/lib/interactive.ts
+  s_02773c3f2b5565::t_c59949cec656b1 15
+  s_02773c3f2b5565::t_ec5a72e4081441 1-14,16
+test/storyarn_web/live/ideation_live/connection_board_test.exs
+  s_02773c3f2b5565::t_8b30e999ca6d2b 151,158
+lib/storyarn/ideation/groups/execution/memberships.ex
+  s_02773c3f2b5565::t_7a4eb842f699a2 25
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_7a4eb842f699a2 120-122
+  s_02773c3f2b5565::t_7cca652680a9f6 235-237
+assets/app/modules/ideation/components/RoundStartedToast.vue
+  s_02773c3f2b5565::t_3b893c21ba8c0e 24-27,45
+  s_02773c3f2b5565::t_6b885fcc754879 1-23,28-44,46-48
+lib/storyarn/ideation/ideas/commands/create.ex
+  s_02773c3f2b5565::t_601d17d6f372bd 74,150-151
+  s_02773c3f2b5565::t_1f463d83cddbff 152
+  s_02773c3f2b5565::t_7a4eb842f699a2 12
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_601d17d6f372bd 38-42,75-79,123,125,136,138-139,160-203,215-222,233,247,256-267,271-274,277
+  s_02773c3f2b5565::t_0d08caad3aa0de 223-225
+  s_02773c3f2b5565::t_a413c341d00c18 275-276
+assets/app/test/modules/ideation/interactive.test.ts
+  s_02773c3f2b5565::t_c59949cec656b1 1-37
+assets/app/modules/ideation/components/RoundBar.vue
+  s_02773c3f2b5565::t_ec5a72e4081441 40-48,73
+  s_02773c3f2b5565::t_eb6a7ba24b9f21 6,19,28-34,38-39,50,61,70-72,74-79,81
+  s_02773c3f2b5565::t_c59949cec656b1 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "13a917551045d71c288404abe9e530515f294d5a",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
