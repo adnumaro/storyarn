@@ -35,6 +35,11 @@ const twoRounds = () => [
   round({ id: 20, number: 1, status: "closed", prompt: "First?" }),
   round({ id: 21, number: 2, status: "active", prompt: null }),
 ];
+const measured = () =>
+  new Map([
+    [20, 0],
+    [21, 320],
+  ]);
 function canvas(props = {}) {
   const wrapper = mount(BrainstormingCanvas, {
     attachTo: document.body,
@@ -66,6 +71,11 @@ function canvas(props = {}) {
   Object.assign(wrapper.element, capturing());
   mounted.push(wrapper);
   return wrapper;
+}
+function grab(wrapper: VueWrapper, id: number) {
+  const note = wrapper.get(`[data-note-id="${id}"]`);
+  Object.assign(note.element, capturing());
+  return note.element;
 }
 afterEach(() => {
   for (const wrapper of mounted.splice(0)) wrapper.unmount();
@@ -110,24 +120,9 @@ describe("round bands on the canvas", () => {
     expect(first.text()).toContain("Closed");
     expect(wrapper.get("#brainstorming-band-21").text()).toContain("In progress");
     // Note 10 ends at 60 + 96, so band 1 is 320 tall: the given 500 is corrected.
-    expect(wrapper.emitted("bands")).toEqual([
-      [
-        new Map([
-          [20, 0],
-          [21, 320],
-        ]),
-      ],
-    ]);
+    expect(wrapper.emitted("bands")).toEqual([[measured()]]);
     await wrapper.setProps({
-      bands: {
-        rounds: twoRounds(),
-        offsets: new Map([
-          [20, 0],
-          [21, 320],
-        ]),
-        canManage: true,
-        pending: false,
-      },
+      bands: { rounds: twoRounds(), offsets: measured(), canManage: true, pending: false },
     });
     expect(wrapper.emitted("bands")).toHaveLength(1);
     view.y = -100;
@@ -138,24 +133,10 @@ describe("round bands on the canvas", () => {
 
   it("grows a band while a note is dragged past its bottom and shrinks it back", async () => {
     const wrapper = canvas({
-      bands: {
-        rounds: twoRounds(),
-        offsets: new Map([
-          [20, 0],
-          [21, 320],
-        ]),
-        canManage: true,
-        pending: false,
-      },
+      bands: { rounds: twoRounds(), offsets: measured(), canManage: true, pending: false },
     });
-    const note = wrapper.get('[data-note-id="10"]');
-    Object.assign(note.element, capturing());
-    await pointer(note.element, "pointerdown", {
-      button: 0,
-      pointerId: 1,
-      clientX: 20,
-      clientY: 70,
-    });
+    const note = grab(wrapper, 10);
+    await pointer(note, "pointerdown", { button: 0, pointerId: 1, clientX: 20, clientY: 70 });
     await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 20, clientY: 470 });
     // The note now ends at 460 + 96; the next header follows 160 below.
     expect(wrapper.emitted("bands")?.at(-1)).toEqual([
@@ -176,6 +157,50 @@ describe("round bands on the canvas", () => {
     expect(wrapper.emitted("move")).toEqual([[[{ id: 10, point: { x: 10, y: 80 } }]]]);
   });
 
+  it("stops a drag at the round's own header, lights it, and stops a selection as a whole", async () => {
+    const wrapper = canvas({
+      selectedIds: [10, 11],
+      bands: { rounds: twoRounds(), offsets: measured(), canManage: true, pending: false },
+    });
+    const note = grab(wrapper, 10);
+    await pointer(note, "pointerdown", { button: 0, pointerId: 1, clientX: 20, clientY: 70 });
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 20, clientY: -500 });
+    expect(wrapper.get("#brainstorming-round-20").classes()).toContain("bg-primary/5");
+    expect(wrapper.get("#brainstorming-round-21").classes()).not.toContain("bg-primary/5");
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
+    // Note 10 stops under the 44 px header row; note 11 moves the same 16 px.
+    expect(wrapper.emitted("move")).toEqual([
+      [
+        [
+          { id: 10, point: { x: 10, y: 44 } },
+          { id: 11, point: { x: 40, y: 544 } },
+        ],
+      ],
+    ]);
+    expect(wrapper.get("#brainstorming-round-20").classes()).not.toContain("bg-primary/5");
+  });
+
+  it("keeps keyboard nudges under the header", async () => {
+    const wrapper = canvas({
+      notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 46 } })],
+      selectedIds: [10],
+      bands: { rounds: twoRounds(), offsets: measured(), canManage: true, pending: false },
+    });
+    const arrow = (key: string) =>
+      wrapper.element.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+      );
+    arrow("ArrowUp");
+    expect(wrapper.emitted("move")).toEqual([[[{ id: 10, point: { x: 10, y: 44 } }]]]);
+    await wrapper.setProps({
+      notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 44 } })],
+    });
+    arrow("ArrowUp");
+    expect(wrapper.emitted("move")).toHaveLength(1);
+    arrow("ArrowDown");
+    expect(wrapper.emitted("move")?.[1]).toEqual([[{ id: 10, point: { x: 10, y: 46 } }]]);
+  });
+
   it("offers the facilitator round actions on the right rounds only", async () => {
     const wrapper = canvas();
     expect(wrapper.find("#brainstorming-round-close-20").exists()).toBe(false);
@@ -187,6 +212,17 @@ describe("round bands on the canvas", () => {
     expect(wrapper.emitted("newRound")).toEqual([[]]);
   });
 
+  it("lets the facilitator edit the question of the round in progress in place", async () => {
+    const wrapper = canvas();
+    expect(wrapper.find("#brainstorming-round-prompt-20").exists()).toBe(false);
+    await wrapper.get("#brainstorming-round-prompt-21").trigger("dblclick");
+    const input = wrapper.get("#brainstorming-band-21 input");
+    await input.setValue("Which ending lets the player choose?");
+    await input.trigger("blur");
+    expect(wrapper.emitted("updatePrompt")).toEqual([[21, "Which ending lets the player choose?"]]);
+    expect(wrapper.emitted("add")).toBeUndefined();
+  });
+
   it("keeps the last closed band able to start the next round and hides actions from members", () => {
     const closed = canvas({
       bands: {
@@ -194,10 +230,7 @@ describe("round bands on the canvas", () => {
           round({ id: 20, number: 1, status: "closed" }),
           round({ id: 21, number: 2, status: "closed" }),
         ],
-        offsets: new Map([
-          [20, 0],
-          [21, 320],
-        ]),
+        offsets: measured(),
         canManage: true,
         pending: false,
       },
@@ -211,10 +244,7 @@ describe("round bands on the canvas", () => {
     const member = canvas({
       bands: {
         rounds: [round({ id: 20, number: 1 }), round({ id: 21, number: 2 })],
-        offsets: new Map([
-          [20, 0],
-          [21, 320],
-        ]),
+        offsets: measured(),
         canManage: false,
         pending: false,
       },
@@ -223,34 +253,31 @@ describe("round bands on the canvas", () => {
     expect(member.find("#brainstorming-band-21").exists()).toBe(true);
   });
 
-  it("stays quiet with a single round and only shows its question when there is one", () => {
-    const quiet = canvas({
-      notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
-      bands: {
-        rounds: [round({ id: 20, number: 1, prompt: null })],
-        offsets: new Map([[20, 0]]),
-        canManage: true,
-        pending: false,
-      },
-    });
+  it("stays quiet with a single round and only shows its question, or the facilitator's placeholder", () => {
+    const single = (prompt: string | null, canManage: boolean) =>
+      canvas({
+        notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
+        bands: {
+          rounds: [round({ id: 20, number: 1, prompt })],
+          offsets: new Map([[20, 0]]),
+          canManage,
+          pending: false,
+        },
+      });
+    const quiet = single(null, false);
     expect(quiet.find("#brainstorming-band-20").exists()).toBe(false);
     expect(quiet.find("#brainstorming-round-next").exists()).toBe(false);
-    quiet.unmount();
-    mounted.splice(mounted.indexOf(quiet), 1);
 
-    const asked = canvas({
-      notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
-      bands: {
-        rounds: [round({ id: 20, number: 1, prompt: "Where does Mara go?" })],
-        offsets: new Map([[20, 0]]),
-        canManage: true,
-        pending: false,
-      },
-    });
+    const facilitator = single(null, true);
+    const placeholder = facilitator.get("#brainstorming-band-20");
+    expect(placeholder.text()).not.toContain("Round 1");
+    expect(placeholder.find("#brainstorming-round-prompt-20").exists()).toBe(true);
+    expect(facilitator.find("#brainstorming-round-new-20").exists()).toBe(false);
+
+    const asked = single("Where does Mara go?", false);
     const header = asked.get("#brainstorming-band-20");
     expect(header.text()).toContain("Where does Mara go?");
     expect(header.text()).not.toContain("Round 1");
-    expect(asked.find("#brainstorming-round-new-20").exists()).toBe(false);
   });
 
   it("scrolls a band's header to the top at any zoom", () => {

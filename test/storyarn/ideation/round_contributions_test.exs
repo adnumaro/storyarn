@@ -272,6 +272,61 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     assert counts == %{ctx.session.id => 1}
   end
 
+  test "notes never rise above their header and a group holds notes of one round only", ctx do
+    first = first_round(ctx)
+    {ctx, second} = new_round(ctx)
+    placed = fn round, y -> %{round_id: round.id, visibility: :shared, canvas: %{"x" => 0, "y" => y}} end
+
+    assert {:error, :outside_band} =
+             Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(placed.(first, -5)))
+
+    assert {:error, :outside_band} =
+             Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(placed.(second, -1)))
+
+    a = idea_fixture(ctx, placed.(first, 100))
+    c = idea_fixture(ctx, placed.(first, 300))
+    b = idea_fixture(ctx, placed.(second, 50))
+    assert b.canvas["y"] == 50
+
+    move = fn idea, y, version ->
+      Ideation.update_idea_canvas(ctx.author, ctx.project.id, ctx.session.id, idea.id, version, %{
+        "request_key" => Ecto.UUID.generate(),
+        "x" => 40,
+        "y" => y
+      })
+    end
+
+    assert {:error, :outside_band} = move.(a, -1, 0)
+    # Bands grow with their content: nothing stops a note below.
+    assert {:ok, moved} = move.(a, 550, 0)
+    assert moved["y"] == 550
+
+    group = fn ids ->
+      Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, %{
+        request_key: Ecto.UUID.generate(),
+        idea_ids: ids,
+        canvas: %{x: -28, y: 36, width: 600, height: 400}
+      })
+    end
+
+    assert {:error, :mixed_rounds} = group.([a.id, b.id])
+    assert {:ok, grouped} = group.([a.id, c.id])
+
+    shift = fn dy ->
+      Ideation.move_group(ctx.author, ctx.project.id, ctx.session.id, grouped.id, grouped.version, %{
+        request_key: Ecto.UUID.generate(),
+        x: grouped.canvas["x"],
+        y: grouped.canvas["y"] + dy,
+        member_versions: [%{id: a.id, version: 1}, %{id: c.id, version: 0}]
+      })
+    end
+
+    assert {:error, :outside_band} = shift.(-600)
+    assert {:ok, _} = shift.(-100)
+    assert {:ok, lifted} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, a.id)
+    assert lifted.canvas["y"] == 450
+  end
+
   test "connections and existing source provenance survive round changes without creating derived ideas", ctx do
     original = idea_fixture(ctx)
     {ctx, second} = new_round(ctx)

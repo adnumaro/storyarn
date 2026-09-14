@@ -27,6 +27,7 @@ import { useCanvasGroups } from "./composables/useCanvasGroups";
 import SessionDialog from "./components/SessionDialog.vue";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
+import RoundStartedToast from "./components/RoundStartedToast.vue";
 import { useBoardConnection } from "./composables/useBoardConnection";
 import { useCanvasNotes, type RemovedNote } from "./composables/useCanvasNotes";
 import {
@@ -488,14 +489,49 @@ async function newRound() {
   roundPending.value = true;
   // The board still shows the previous round when the reply lands; wait for the new one.
   const previous = board.active_round?.id ?? null;
+  startingRound = true;
   const reply = await request("new_round", { revision: board.session.revision });
   roundPending.value = false;
   if (reply.status !== "ok") {
+    startingRound = false;
     failure.value = reply.status === "error" ? reply.code : "unavailable";
     return;
   }
   focusRound((round) => round.status === "active" && round.id !== previous);
 }
+async function updatePrompt(id: number, prompt: string) {
+  if (!board.can_manage || !board.session || roundPending.value) return;
+  failure.value = null;
+  const reply = await request("update_round", {
+    revision: board.session.revision,
+    round_id: id,
+    prompt: prompt.trim() || null,
+  });
+  if (reply.status !== "ok") failure.value = reply.status === "error" ? reply.code : "unavailable";
+}
+// A round somebody else started shows up as a toast; the one we start is focused.
+const startedRound = ref<Round | null>(null);
+let knownRoundIds: Set<number> | null = null;
+let startingRound = false;
+function goToStartedRound(round: Round) {
+  startedRound.value = null;
+  focusRound(round.id);
+}
+watch(
+  rounds,
+  (list) => {
+    const ids = new Set(list.map((round) => round.id));
+    if (knownRoundIds !== null) {
+      const fresh = list.find(
+        (round) => round.status === "active" && !knownRoundIds!.has(round.id),
+      );
+      if (fresh && !startingRound) startedRound.value = fresh;
+      if (fresh) startingRound = false;
+    }
+    knownRoundIds = ids;
+  },
+  { immediate: true },
+);
 async function closeRound(id: number) {
   if (!board.can_manage || !board.session || roundPending.value) return;
   finish();
@@ -853,6 +889,9 @@ watch(
     list.value = false;
     historyGeneration++;
     focusStop?.();
+    startedRound.value = null;
+    knownRoundIds = null;
+    startingRound = false;
   },
   { immediate: true },
 );
@@ -1042,6 +1081,7 @@ onUnmounted(() => {
         @bands="measuredBands = $event"
         @new-round="newRound"
         @close-round="closeRound"
+        @update-prompt="updatePrompt"
         @comment="createComment"
         @add="add"
         @select="select"
@@ -1226,6 +1266,12 @@ onUnmounted(() => {
           </div>
         </template>
       </BrainstormingCanvas>
+      <RoundStartedToast
+        v-if="!list"
+        :round="startedRound"
+        @go="goToStartedRound"
+        @dismiss="startedRound = null"
+      />
       <div v-if="list" class="h-full overflow-auto p-4 lg:p-6">
         <DashboardContent
           :title="board.session.title"

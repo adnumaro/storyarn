@@ -32,6 +32,7 @@ import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups
 import CanvasCursors from "./CanvasCursors.vue";
 import RoundBar from "./RoundBar.vue";
 import { bandOffsets, orderRounds, sameOffsets, type BandOffsets } from "../lib/bands";
+import { interactivePath, interactiveTarget } from "../lib/interactive";
 import { useCanvasViewport, type Point } from "../composables/useCanvasViewport";
 import { useCanvasMarquee } from "../composables/useCanvasMarquee";
 import { useBoardText } from "../composables/useBoardText";
@@ -134,6 +135,7 @@ const emit = defineEmits<{
   newRound: [];
   bands: [offsets: BandOffsets];
   closeRound: [id: number];
+  updatePrompt: [id: number, prompt: string];
 }>();
 const commentTarget = ref<BrainstormingCommentTarget | null>(null);
 const canStartRound = computed(() => bands.canManage && permissions.edit);
@@ -321,6 +323,41 @@ const HEADER_REST = 60;
 function scrollToRound(round: Round) {
   view.y = HEADER_REST - offsetOf(round.id) * view.zoom;
 }
+// The header row a band keeps free under its offset, in canvas units.
+const HEADER_STRIP = 44;
+function headerShown(round: Round) {
+  return multiRound.value || !!round.prompt || (bands.canManage && round.status === "active");
+}
+// Where a note of this round may start: under its header. Bands grow with
+// their content, so nothing bounds them below.
+function bandTop(roundId: number | null): { round: Round; top: number } | null {
+  if (roundId == null) return null;
+  const round = orderedRounds.value.find((candidate) => candidate.id === roundId);
+  if (!round) return null;
+  return { round, top: offsetOf(round.id) + (headerShown(round) ? HEADER_STRIP : 0) };
+}
+// Which header lines a dragged note is pressing against.
+const contact = ref(new Set<number>());
+// Notes never rise above their header. A multi-selection stops as a whole when
+// any of its notes touches its line; the delta comes back clamped in canvas units.
+function clampDelta(moving: Array<{ id: number; origin: Point }>, dy: number): number {
+  const reaches = moving.flatMap((entry) => {
+    const note = notes.find((candidate) => candidate.id === entry.id);
+    const band = note ? bandTop(note.round_id) : null;
+    return band ? [{ min: band.top - entry.origin.y, roundId: band.round.id }] : [];
+  });
+  const low = Math.max(-Infinity, ...reaches.map((reach) => reach.min));
+  const clamped = Math.max(dy, low);
+  // Only the header that actually stops the movement lights up.
+  const blocking = reaches.filter((reach) => reach.min === low).map((reach) => reach.roundId);
+  contact.value = clamped === dy ? new Set() : new Set(blocking);
+  return clamped;
+}
+// Keep a point under the header of the round it belongs to.
+function clampPoint(point: Point, roundId: number | null): Point {
+  const band = bandTop(roundId);
+  return band ? { x: point.x, y: Math.max(point.y, band.top) } : point;
+}
 function center(note: Idea) {
   const rect = noteBounds(note);
   view.x = view.width / 2 - (rect.x + rect.width / 2) * view.zoom;
@@ -401,7 +438,8 @@ function addConnected(direction: ConnectionDirection) {
   if (connectionWriteBlocked() || !canCreate.value || !visibleSelection.value.length) return;
   const selected = notes.filter((note) => visibleSelection.value.includes(note.id));
   const obstacles = [...notes.map(noteBounds), ...layouts.value.map((layout) => layout.bounds)];
-  const point = connectedPlacement(selected.map(noteBounds), obstacles, direction);
+  const placed = connectedPlacement(selected.map(noteBounds), obstacles, direction);
+  const point = placed ? clampPoint(placed, selected[0]?.round_id ?? null) : placed;
   if (!point) return;
   emit("finish");
   tool.value = "select";
@@ -534,16 +572,6 @@ function selectNote(id: number, shift: boolean): number[] {
   const ids = selectionForNote(id, shift);
   emit("select", ids);
   return ids;
-}
-function interactiveTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element &&
-    Boolean(
-      target.closest(
-        'input, textarea, select, button, a, [contenteditable="true"], [role="textbox"], [data-canvas-chrome]',
-      ),
-    )
-  );
 }
 function pointerDown(event: PointerEvent) {
   if (ignorePointer(event)) return;
@@ -715,24 +743,20 @@ function pointerMove(event: PointerEvent) {
   if (!drag.moved) return;
   updateDropTarget(drag, ghost.value);
   if (drag.groupId !== undefined) {
+    const delta = clampDelta(drag.notes, dy / view.zoom);
     groupAnchors.value.set(drag.groupId, {
       x: drag.origin.x + dx / view.zoom,
-      y: drag.origin.y + dy / view.zoom,
+      y: drag.origin.y + delta,
     });
     for (const note of drag.notes)
-      positions.value.set(note.id, {
-        x: note.origin.x + dx / view.zoom,
-        y: note.origin.y + dy / view.zoom,
-      });
+      positions.value.set(note.id, { x: note.origin.x + dx / view.zoom, y: note.origin.y + delta });
   } else if (drag.id === null) {
     view.x = drag.origin.x + dx;
     view.y = drag.origin.y + dy;
   } else {
+    const delta = clampDelta(drag.notes, dy / view.zoom);
     for (const note of drag.notes)
-      positions.value.set(note.id, {
-        x: note.origin.x + dx / view.zoom,
-        y: note.origin.y + dy / view.zoom,
-      });
+      positions.value.set(note.id, { x: note.origin.x + dx / view.zoom, y: note.origin.y + delta });
   }
 }
 function updateToolTarget(point: Point) {
@@ -754,6 +778,7 @@ function finishNoteDrag(current: CanvasDrag) {
     );
   }
   for (const note of current.notes) positions.value.delete(note.id);
+  contact.value = new Set();
 }
 async function pointerUp(event: PointerEvent) {
   if (marquee.finish(event)) return;
@@ -781,11 +806,13 @@ async function finishGroupDrag(event: PointerEvent, finished: CanvasDrag) {
     );
   for (const note of finished.notes) positions.value.delete(note.id);
   groupAnchors.value.delete(finished.groupId!);
+  contact.value = new Set();
 }
 function cancelDrag(event: PointerEvent) {
   marquee.cancel(event);
   connectionTarget.value = null;
   dragConnectionSource.value = null;
+  contact.value = new Set();
   if (!drag || drag.pointer !== event.pointerId) return;
   if (drag?.groupId !== undefined) groupAnchors.value.delete(drag.groupId);
   for (const note of drag?.notes ?? []) positions.value.delete(note.id);
@@ -803,7 +830,7 @@ function cancelActiveDrag() {
     current.capture.releasePointerCapture(current.pointer);
 }
 function doubleClick(event: MouseEvent) {
-  if (interactiveTarget(event.target) || historyState.busy) return;
+  if (interactivePath(event) || historyState.busy) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   if (element) emit("edit", Number(element.dataset.noteId));
   else if (canCreate.value) emit("add", world(event.clientX, event.clientY));
@@ -830,17 +857,19 @@ function nudge(event: KeyboardEvent) {
     if (group && !groupVisibility(group, visibleIds).partial) nudgeGroup(group, direction, step);
     return;
   }
+  const selection = notes.filter((note) => visibleSelection.value.includes(note.id));
+  const delta = clampDelta(
+    selection.map((note) => ({ id: note.id, origin: position(note) })),
+    direction.y * step,
+  );
+  contact.value = new Set();
+  if (direction.y !== 0 && delta === 0) return;
   emit(
     "move",
-    notes
-      .filter((note) => visibleSelection.value.includes(note.id))
-      .map((note) => {
-        const point = position(note);
-        return {
-          id: note.id,
-          point: { x: point.x + direction.x * step, y: point.y + direction.y * step },
-        };
-      }),
+    selection.map((note) => {
+      const point = position(note);
+      return { id: note.id, point: { x: point.x + direction.x * step, y: point.y + delta } };
+    }),
   );
 }
 interface GroupNudge {
@@ -881,7 +910,9 @@ function nudgeGroup(group: IdeaGroup, direction: Point, step: number) {
   };
   const nudge = groupNudge;
   clearTimeout(nudge.timer);
-  nudge.delta = { x: nudge.delta.x + direction.x * step, y: nudge.delta.y + direction.y * step };
+  const dy = clampDelta(nudge.notes, nudge.delta.y + direction.y * step);
+  contact.value = new Set();
+  nudge.delta = { x: nudge.delta.x + direction.x * step, y: dy };
   groupAnchors.value.set(nudge.id, {
     x: nudge.origin.x + nudge.delta.x,
     y: nudge.origin.y + nudge.delta.y,
@@ -1357,7 +1388,7 @@ onUnmounted(() => {
           </div>
           <template v-for="round in orderedRounds" :key="`round-${round.id}`">
             <div
-              v-if="multiRound || round.prompt"
+              v-if="headerShown(round)"
               :id="`brainstorming-band-${round.id}`"
               class="absolute left-0 right-0 z-10"
               :style="{ top: `${headerTop(round)}px` }"
@@ -1368,8 +1399,10 @@ onUnmounted(() => {
                 :last="round.id === lastRound?.id"
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
+                :contact="contact.has(round.id)"
                 @close="emit('closeRound', $event)"
                 @new-round="emit('newRound')"
+                @update-prompt="(id, prompt) => emit('updatePrompt', id, prompt)"
               />
             </div>
           </template>

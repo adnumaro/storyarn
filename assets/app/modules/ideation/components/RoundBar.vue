@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { Plus, Square } from "@lucide/vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
+import EditableText from "@components/forms/EditableText.vue";
 import { useBoardText } from "../composables/useBoardText";
 import type { Round } from "../types";
 
@@ -15,6 +16,7 @@ const {
   last = false,
   canManage = false,
   pending = false,
+  contact = false,
 } = defineProps<{
   round: Round;
   /** The session has a single round: the header stays quiet about rounds. */
@@ -23,11 +25,29 @@ const {
   last?: boolean;
   canManage?: boolean;
   pending?: boolean;
+  /** A dragged note is pressing against this header's line. */
+  contact?: boolean;
 }>();
-const emit = defineEmits<{ close: [id: number]; newRound: [] }>();
+const emit = defineEmits<{
+  close: [id: number];
+  newRound: [];
+  updatePrompt: [id: number, prompt: string];
+}>();
 const { t } = useBoardText();
 const active = computed(() => round.status === "active");
+// The facilitator writes the question in place while the round is in progress.
+const editable = computed(() => canManage && active.value);
+// Enter saves and the blur that follows saves again; the draft makes the
+// second one a no-op while the server's echo of the prompt is still on its way.
+const draft = ref(round.prompt ?? "");
+watch(
+  () => round.prompt,
+  (prompt) => {
+    draft.value = prompt ?? "";
+  },
+);
 const lineClass = computed(() => {
+  if (contact) return "h-0.5 bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]";
   if (single) return "h-0 bg-transparent";
   return active.value ? "h-0.5 bg-foreground/20" : "h-px bg-border";
 });
@@ -38,6 +58,7 @@ const lineClass = computed(() => {
     :data-status="round.status"
     data-canvas-chrome
     class="relative select-none"
+    :class="contact ? 'bg-primary/5' : ''"
   >
     <div class="flex min-h-10 items-center gap-3 px-4">
       <span
@@ -46,8 +67,18 @@ const lineClass = computed(() => {
         :class="active ? 'text-primary' : 'text-muted-foreground'"
         >{{ t("ideation.rounds.number", { number: round.number }) }}</span
       >
+      <EditableText
+        v-if="editable"
+        :id="`brainstorming-round-prompt-${round.id}`"
+        v-model="draft"
+        :placeholder="t('ideation.rounds.addQuestion')"
+        :disabled="pending"
+        class="min-w-0 flex-initial truncate text-sm"
+        display-class="text-sm"
+        @save="emit('updatePrompt', round.id, $event)"
+      />
       <span
-        v-if="round.prompt"
+        v-else-if="round.prompt"
         class="min-w-0 truncate text-sm"
         :class="active ? 'text-foreground' : 'text-muted-foreground'"
         :title="round.prompt"

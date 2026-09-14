@@ -117,7 +117,9 @@
       "idempotency_conflict": "This request was already used for a different change. Refresh and try again.",
       "stale_connections": "These connections changed elsewhere. Refresh the board before trying again.",
       "connections_pending": "A connection has not been confirmed yet. Retry it to continue.",
-      "invalid_connections": "Some selected connections are no longer valid. Select the notes again."
+      "invalid_connections": "Some selected connections are no longer valid. Select the notes again.",
+      "outside_band": "That spot belongs to another round. Keep the note inside its band.",
+      "mixed_rounds": "A group can only hold notes from the same round."
     },
     "saveStatus": {
       "saved": "Saved",
@@ -230,7 +232,9 @@
       "loadingPrompt": "Loading the current question…",
       "newRound": "New round",
       "addQuestion": "Add a question",
-      "bandsHelp": "Everything below a header belongs to that round."
+      "bandsHelp": "Everything below a header belongs to that round.",
+      "started": "Round {number} started",
+      "go": "Go"
     },
     "timer": {
       "title": "Timer",
