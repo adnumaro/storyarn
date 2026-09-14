@@ -41,10 +41,8 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       browser
       |> assert_has("#brainstorming-tree-round-#{second.id}[data-status=active]", text: "Round 2")
       |> press("#brainstorming-canvas", "n")
-      |> assert_has("[data-note-id^='-'] [contenteditable=true]")
-      |> dump_notes("after n")
+      |> assert_has("[data-note-id^='-'] [contenteditable=true]:focus")
       |> type("[data-note-id^='-'] [contenteditable=true]", "The antagonist wants to return a stolen memory.")
-      |> dump_notes("after typing")
       |> assert_has("[data-note-id] [contenteditable=true]", text: "The antagonist wants to return a stolen memory.")
       |> assert_has("[data-note-id]:not([data-note-id^='-'])", text: "The antagonist wants to return a stolen memory.")
       |> press("[contenteditable=true]", "Escape")
@@ -92,7 +90,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> refute_has("#brainstorming-round-close-#{round.id}")
       |> refute_has("#brainstorming-round-next")
       |> press("#brainstorming-canvas", "n")
-      |> assert_has("[data-note-id^='-'] [contenteditable=true]")
+      |> assert_has("[data-note-id^='-'] [contenteditable=true]:focus")
       |> type("[data-note-id^='-'] [contenteditable=true]", "A secret promise could change the river.")
       |> assert_has("[data-note-id] [contenteditable=true]", text: "A secret promise could change the river.")
       |> assert_has("[data-note-id]:not([data-note-id^='-'])", text: "A secret promise could change the river.")
@@ -173,31 +171,6 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     |> refute_has("#brainstorming-round-next")
     |> refute_has("#brainstorming-round-new-#{round.id}")
     |> refute_has("#brainstorming-round-close-#{round.id}")
-  end
-
-  # Temporary diagnostics for CI: what the canvas holds right after typing.
-  defp dump_notes(browser, label) do
-    Process.sleep(1_500)
-
-    {:ok, dump} =
-      PlaywrightEx.Frame.evaluate(browser.frame_id,
-        timeout: 10_000,
-        expression: """
-        JSON.stringify({
-          active: document.activeElement && (document.activeElement.tagName + '#' + document.activeElement.id + '.' + document.activeElement.className),
-          notes: [...document.querySelectorAll('[data-note-id]')].map((el) => ({
-            id: el.dataset.noteId,
-            editable: !!el.querySelector('[contenteditable=true]'),
-            text: el.textContent.trim().slice(0, 80)
-          })),
-          editors: [...document.querySelectorAll('[contenteditable=true]')].map((el) => el.textContent.trim().slice(0, 80)),
-          workspace: (document.querySelector('#brainstorming-workspace') || {}).outerHTML?.slice(0, 200)
-        })
-        """
-      )
-
-    IO.puts("[rounds e2e] " <> label <> ": " <> inspect(dump))
-    browser
   end
 
   defp persisted(browser, count) do
