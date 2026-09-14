@@ -5,10 +5,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useBoardText } from "../composables/useBoardText";
 import type { Idea, IdeaGroup } from "../types";
-const { notes, groups, privateMode, busy } = defineProps<{
+const {
+  notes,
+  groups,
+  privateRound = false,
+  busy,
+} = defineProps<{
   notes: Idea[];
   groups: IdeaGroup[];
-  privateMode: boolean;
+  /** The selected notes belong to a private round: nothing groups until it is revealed. */
+  privateRound?: boolean;
   busy: boolean;
 }>();
 const emit = defineEmits<{
@@ -24,7 +30,7 @@ const memberships = computed(() =>
 );
 const ungrouped = computed(() => shared.value && !memberships.value.length);
 const hint = computed(() => {
-  if (privateMode) return t("ideation.groups.privateHelp");
+  if (privateRound) return t("ideation.groups.privateHelp");
   if (!shared.value) return t("ideation.groups.sharedHelp");
   if (memberships.value.length) return t("ideation.groups.alreadyGrouped");
   return t("ideation.groups.createHelp");
@@ -38,13 +44,13 @@ const hint = computed(() => {
         type="button"
         class="toolbar-btn gap-1.5 px-2.5 disabled:opacity-45"
         aria-keyshortcuts="Meta+G Control+G"
-        :disabled="privateMode || !ungrouped || busy"
+        :disabled="privateRound || !ungrouped || busy"
         @click="emit('create')"
       >
         <Group class="size-4" /><span>{{ t("ideation.groups.create") }}</span>
       </button>
     </ToolbarTooltip>
-    <Popover v-if="ungrouped && groups.length && !privateMode">
+    <Popover v-if="ungrouped && groups.length && !privateRound">
       <PopoverTrigger
         class="toolbar-btn gap-1.5 px-2.5"
         :disabled="busy"
@@ -77,7 +83,7 @@ const hint = computed(() => {
         </button></PopoverContent
       >
     </Popover>
-    <template v-if="!privateMode">
+    <template v-if="!privateRound">
       <ToolbarTooltip
         v-for="group in memberships"
         :key="group.id"

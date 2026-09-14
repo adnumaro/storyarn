@@ -123,7 +123,16 @@ defmodule Storyarn.Ideation.ReferencesTest do
     shared = idea_fixture(ctx, %{visibility: :shared})
     {:ok, reference} = add(ctx, shared.id)
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, session.id, session.revision, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               session.id,
+               session.revision,
+               true
+             )
+
     assert {:error, :not_found} = list(ctx, ctx.author, shared.id)
 
     assert {:ok, %{references: []}} =

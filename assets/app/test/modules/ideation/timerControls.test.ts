@@ -117,11 +117,11 @@ describe("session timer controls", () => {
   );
   it("keeps a newly started timer pending until its first rendered version arrives", async () => {
     const { current, send } = controls();
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     await flushPromises();
     await wrapper.setProps({ session: { ...current.session!, revision: 2 } });
     expect(wrapper.get("#brainstorming-timer-start").attributes("disabled")).toBeDefined();
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     expect(send).toHaveBeenCalledTimes(1);
     await wrapper.setProps({ timer: timer() });
     expect(wrapper.get("#brainstorming-timer-extend").attributes("disabled")).toBeUndefined();
@@ -159,62 +159,35 @@ describe("session timer controls", () => {
   });
   it("starts with the chosen duration and notification-only defaults", async () => {
     const { send } = controls();
-    await wrapper.get("#brainstorming-timer-duration").setValue("90");
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("#brainstorming-timer-input").setValue("1:30");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     await flushPromises();
     expect(send).toHaveBeenCalledExactlyOnceWith("start_timer", {
       epoch: "epoch-one",
       session_id: 1,
       revision: 1,
       seconds: 90,
-      reveal_on_expiry: false,
       close_contributions_on_expiry: false,
     });
   });
-  it("keeps duration limits and reveal options explicit and independent of closing contributions", async () => {
-    const { send, current } = controls();
-    await wrapper.get("#brainstorming-timer-duration").setValue("14");
-    await wrapper.get("form").trigger("submit");
+  it("takes minutes, m:ss or h:mm:ss and refuses anything outside one second to 24 hours", async () => {
+    const { send } = controls();
+    const input = wrapper.get("#brainstorming-timer-input");
+    await input.setValue("0:00");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     expect(send).not.toHaveBeenCalled();
     expect(wrapper.get("#brainstorming-timer-start").attributes("disabled")).toBeDefined();
-    expect(wrapper.get("#brainstorming-timer-reveal").attributes("disabled")).toBeDefined();
-    await wrapper.get("#brainstorming-timer-duration").setValue("86401");
+    await input.setValue("25:00:00");
     expect(wrapper.get("#brainstorming-timer-start").attributes("disabled")).toBeDefined();
-    await wrapper.get("#brainstorming-timer-duration").setValue("15");
-    await wrapper.setProps({
-      session: {
-        ...current.session!,
-        configuration: { ...current.session!.configuration, private_mode: true },
-      },
-    });
-    await wrapper.get("#brainstorming-timer-reveal").trigger("click");
-    await wrapper.get("form").trigger("submit");
+    await input.setValue("7");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     await flushPromises();
     expect(send).toHaveBeenLastCalledWith(
       "start_timer",
       expect.objectContaining({
-        seconds: 15,
-        reveal_on_expiry: true,
+        seconds: 420,
         close_contributions_on_expiry: false,
       }),
-    );
-  });
-  it("clears the chosen reveal option if private mode is turned off before starting", async () => {
-    const { current, send } = controls();
-    await wrapper.setProps({
-      session: {
-        ...current.session!,
-        configuration: { ...current.session!.configuration, private_mode: true },
-      },
-    });
-    await wrapper.get("#brainstorming-timer-reveal").trigger("click");
-    await wrapper.setProps({ session: current.session! });
-    await wrapper.get("#brainstorming-timer-close").trigger("click");
-    await wrapper.get("form").trigger("submit");
-    await flushPromises();
-    expect(send).toHaveBeenLastCalledWith(
-      "start_timer",
-      expect.objectContaining({ reveal_on_expiry: false, close_contributions_on_expiry: true }),
     );
   });
   it("shows the shared countdown to participants without manager actions", () => {
@@ -263,12 +236,12 @@ describe("session timer controls", () => {
       { epoch: "epoch-one", session_id: 1 },
       undefined,
     );
-    expect(wrapper.get("#brainstorming-timer-countdown").text()).toBe("Time’s up");
+    expect(wrapper.get("#brainstorming-timer-countdown").text()).toBe("0:00");
     await wrapper.setProps({
       timer: timer({ status: "elapsed", outcome: "skipped_configuration" }),
     });
-    expect(wrapper.get("#brainstorming-timer-finished").text()).toBe("Time’s up");
-    expect(wrapper.findAll('[role="status"]')).toHaveLength(1);
+    expect(wrapper.find("#brainstorming-timer-finished").exists()).toBe(false);
+    expect(wrapper.findAll('[role="status"]')).toHaveLength(0);
     expect(wrapper.text()).toContain("session settings changed");
   });
   it.each(["running", "paused"] as const)(
@@ -316,24 +289,24 @@ describe("session timer controls", () => {
   it("keeps the chosen options and releases pending state after null or offline replies", async () => {
     const send = vi.fn().mockResolvedValue(null);
     controls(null, send);
-    await wrapper.get("#brainstorming-timer-duration").setValue("75");
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("#brainstorming-timer-input").setValue("1:15");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     await flushPromises();
     expect(wrapper.get("#brainstorming-timer-start").attributes("disabled")).toBeUndefined();
     vi.spyOn(console, "warn").mockImplementation(() => {});
     send.mockRejectedValue(new Error("offline"));
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     await flushPromises();
     expect(wrapper.get("#brainstorming-timer-start").attributes("disabled")).toBeUndefined();
-    expect((wrapper.get("#brainstorming-timer-duration").element as HTMLInputElement).value).toBe(
-      "75",
+    expect((wrapper.get("#brainstorming-timer-input").element as HTMLInputElement).value).toBe(
+      "1:15",
     );
     expect(wrapper.get('[role="alert"]').text()).toContain("connection");
   });
   it("clears an old error on close without discarding the chosen options", async () => {
     controls(null, vi.fn().mockResolvedValue({ status: "error", code: "stale_timer" }));
-    await wrapper.get("#brainstorming-timer-duration").setValue("75");
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("#brainstorming-timer-input").setValue("1:15");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     await flushPromises();
     expect(wrapper.find('[role="alert"]').exists()).toBe(true);
     wrapper.getComponent(Popover).vm.$emit("update:open", false);
@@ -341,8 +314,8 @@ describe("session timer controls", () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
     wrapper.getComponent(Popover).vm.$emit("update:open", true);
     await nextTick();
-    expect((wrapper.get("#brainstorming-timer-duration").element as HTMLInputElement).value).toBe(
-      "75",
+    expect((wrapper.get("#brainstorming-timer-input").element as HTMLInputElement).value).toBe(
+      "1:15",
     );
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
   });
@@ -432,7 +405,7 @@ describe("session timer controls", () => {
           }),
       ),
     );
-    await wrapper.get("form").trigger("submit");
+    await wrapper.get("#brainstorming-timer-start").trigger("click");
     await wrapper.setProps({ epoch: "new-epoch", session: { ...current.session!, id: 2 } });
     finish({ status: "error", code: "stale_timer" });
     await flushPromises();

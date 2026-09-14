@@ -13,7 +13,6 @@ defmodule StoryarnWeb.IdeationLive.Helpers.TimerData do
       :deadline_at,
       :remaining_seconds,
       :duration_seconds,
-      :reveal_on_expiry,
       :close_contributions_on_expiry
     ])
     |> Map.put(:outcome, timer.expiry_outcome)

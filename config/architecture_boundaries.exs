@@ -3087,9 +3087,9 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Ideation.Ideas",
     path: "lib/storyarn/ideation/ideas/ideas.ex",
-    functions: [set_private_mode_locked: 3],
+    functions: [reveal_round_locked: 3],
     allowed_callers: ["lib/storyarn/ideation/sessions/commands/expire_timer.ex"],
-    reason: "Scheduled reveal participates in the timer transaction after locked authorization"
+    reason: "Scheduled reveal of the round in progress participates in the timer transaction after locked authorization"
   },
   %{
     module: "Storyarn.Accounts",

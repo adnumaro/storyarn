@@ -174,17 +174,11 @@ describe("workspace editing transitions", () => {
     expect(canvas.props("historyState").canRedo).toBe(false);
   });
 
-  it("turns off canvas cursors while private mode is active", async () => {
+  it("turns off canvas cursors while the round in progress is private", async () => {
     const { current, canvas } = workspace();
     expect(canvas.props("collaboration").cursors).toBe(true);
     await wrapper.setProps({
-      board: {
-        ...current,
-        session: {
-          ...current.session!,
-          configuration: { ...current.session!.configuration, private_mode: true },
-        },
-      },
+      board: { ...current, active_round: { ...current.active_round!, private: true } },
     });
     expect(canvas.props("collaboration").cursors).toBe(false);
   });

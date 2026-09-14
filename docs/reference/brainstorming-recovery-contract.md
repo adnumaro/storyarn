@@ -2,9 +2,9 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-12
+> Last reviewed: 2026-09-15
 >
-> Scope: ENG-129, ENG-136, ENG-137, ENG-138, ENG-143 and the sessions/ideas/groups/references slice of ENG-147
+> Scope: ENG-129, ENG-136, ENG-137, ENG-138, ENG-143, the sessions/ideas/groups/references slice of ENG-147 and the round-privacy revision of 2026-09-15
 
 ## Ownership and permissions
 
@@ -23,22 +23,22 @@ by the session lock. Session responsibility is not membership and never grants
 access to a project. Direct membership precedence and inherited access remain
 Project policy.
 
-| Operation                                                       | Author with current access       | Other participant                | Facilitator                                         | Project owner                                   |
-| --------------------------------------------------------------- | -------------------------------- | -------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
-| Read session metadata and published ideas                       | Yes                              | Yes, including viewers           | Yes                                                 | Yes                                             |
-| Read a private draft, unpublished revision or conflicting input | Own only                         | No                               | Own only                                            | Own only                                        |
-| Create/edit an idea                                             | Edit permission; own ideas       | Own ideas with edit permission   | Own ideas                                           | Own ideas                                       |
-| Publish a revision                                              | Own revision                     | No                               | Exact eligible manifest with prior assisted consent | Same rule as facilitator, no extra draft access |
-| Change creative state                                           | Own idea with edit permission    | No                               | Own only                                            | Own only                                        |
-| Configure/archive/reopen a session                              | Only when also facilitator/owner | No                               | With edit permission                                | Yes                                             |
-| Recover a replaced session                                      | Only when also facilitator/owner | No                               | With edit permission                                | Yes                                             |
-| Permanently purge a replaced session                            | Only when also owner             | No                               | Only when also owner                                | Explicit action with current edit permission    |
-| Read groups and synthesis                                       | Shared mode and current access   | Shared mode and current access   | Same rule                                           | Same rule                                       |
-| Group published ideas and edit synthesis                        | Current edit access; shared mode | Current edit access; shared mode | Same rule                                           | Same rule                                       |
-| Read shared decisions and their history                         | Shared mode and current access   | Shared mode and current access   | Same rule                                           | Same rule                                       |
-| Propose or revise a shared decision                             | Current edit access; shared mode | Current edit access; shared mode | Same rule                                           | Same rule                                       |
-| Accept a shared decision                                        | Only its responsible participant | Only its responsible participant | Only its responsible participant                    | Only its responsible participant                |
-| Invoke shared AI or attach private files                        | Not implemented                  | Not implemented                  | Not implemented                                     | Not implemented                                 |
+| Operation                                                       | Author with current access             | Other participant                      | Facilitator                                         | Project owner                                   |
+| --------------------------------------------------------------- | -------------------------------------- | -------------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
+| Read session metadata and published ideas                       | Yes                                    | Yes, including viewers                 | Yes                                                 | Yes                                             |
+| Read a private draft, unpublished revision or conflicting input | Own only                               | No                                     | Own only                                            | Own only                                        |
+| Create/edit an idea                                             | Edit permission; own ideas             | Own ideas with edit permission         | Own ideas                                           | Own ideas                                       |
+| Publish a revision                                              | Own revision                           | No                                     | Exact eligible manifest with prior assisted consent | Same rule as facilitator, no extra draft access |
+| Change creative state                                           | Own idea with edit permission          | No                                     | Own only                                            | Own only                                        |
+| Configure/archive/reopen a session                              | Only when also facilitator/owner       | No                                     | With edit permission                                | Yes                                             |
+| Recover a replaced session                                      | Only when also facilitator/owner       | No                                     | With edit permission                                | Yes                                             |
+| Permanently purge a replaced session                            | Only when also owner                   | No                                     | Only when also owner                                | Explicit action with current edit permission    |
+| Read groups and synthesis                                       | Current access; not in a private round | Current access; not in a private round | Same rule                                           | Same rule                                       |
+| Group published ideas and edit synthesis                        | Current edit access; shared round      | Current edit access; shared round      | Same rule                                           | Same rule                                       |
+| Read shared decisions and their history                         | Current access                         | Current access                         | Same rule                                           | Same rule                                       |
+| Propose or revise a shared decision                             | Current edit access; shared sources    | Current edit access; shared sources    | Same rule                                           | Same rule                                       |
+| Accept a shared decision                                        | Only its responsible participant       | Only its responsible participant       | Only its responsible participant                    | Only its responsible participant                |
+| Invoke shared AI or attach private files                        | Not implemented                        | Not implemented                        | Not implemented                                     | Not implemented                                 |
 
 All managerial actions remain subject to current project edit permission. The
 owner can recover or delete project data through Project lifecycle operations;
@@ -61,8 +61,12 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **6**. Version **5** inventories normalize to no
-decisions or decision revisions. Version **4** inventories also normalize to no
+The inner inventory is version **8**. Version **7** inventories carry no round
+privacy and no group round: normalization marks the active round of a session
+that used the former session-wide private mode as private, strips that session
+key and leaves groups without a round. Version **6** inventories additionally
+drop prepared and cancelled rounds, which never held a note. Version **5**
+inventories normalize to no decisions or decision revisions. Version **4** inventories also normalize to no
 content references or reference revisions. Version **3** inventories also normalize to no
 groups, memberships or group revisions. Version **2** inventories also normalize to no
 timer and open contributions. Version **1** additionally normalizes to no rounds
@@ -71,9 +75,10 @@ The inventory covers:
 
 - Open, archived and previously replaced sessions, their independent
   configuration, responsibilities and complete session revision history.
-- Planned, active, closed and cancelled rounds, their prompts and lifecycle timestamps.
-- Shared timer state, remaining duration, deadline, actor, expiry options and
-  outcome, plus the session contribution gate.
+- Active and closed rounds, their prompts, lifecycle timestamps and privacy:
+  `private`, `reveal_on_expiry` and `revealed_at`.
+- Shared timer state, remaining duration, deadline, actor, persisted expiry flags
+  and outcome, plus the session contribution gate.
 - Every idea, current creative state, authorship, publication consent,
   configuration version, source idea/revision and immutable creation-request
   source identity, immutable round membership and late-contribution flag.
@@ -89,7 +94,7 @@ The inventory covers:
 - All authored revisions and successful/conflicting edit receipts.
 - Prepared/completed reveal operations, exact selections/manifests, and the
   immutable publication ledger.
-- Groups, encrypted titles and synthesis, canvas placement, deletion markers,
+- Groups, their round, encrypted titles and synthesis, canvas placement, deletion markers,
   complete membership history and the published source revision pinned by each
   membership. Immutable group revisions retain their source map, actor, state and
   durable request receipt.
@@ -170,9 +175,9 @@ decrypts frozen source context to verify that it matches the cited shared
 revision. Acceptance cannot change the preceding proposal's content, sources or
 responsible participant. Every revision participates in generation matching;
 unavailable source tombstones, previous agreements and pending revisions remain
-recoverable. Private-mode decisions stay hidden after restoration. Versions
-before decisions normalize empty collections without discarding later retained
-generations.
+recoverable. Sources of a round restored private stay unavailable to decisions
+after restoration. Versions before decisions normalize empty collections without
+discarding later retained generations.
 
 References are inserted after their session and optional idea, followed by their
 immutable context revisions. All internal IDs and actors are remapped. Current
@@ -214,15 +219,17 @@ sources, duplicate active memberships, malformed receipts and invalid group
 versions before replacing any session. A published source later deleted remains
 recoverable as a tombstone with its original publication and provenance; recovery
 never republishes it. Ordinary group queries still enforce current project access
-and hide groups before decryption when the restored session is private. Restoring
-encrypted synthesis grants no additional draft access.
+and hide groups before decryption while the restored group's round is private.
+Restoring encrypted synthesis grants no additional draft access.
 
-Rounds are inserted before ideas, and idea-to-round references are remapped
-within the restored session. Validation rejects cross-session round references,
-multiple active rounds, invalid lifecycle timestamps and impossible late-note
-flags before any replacement. Round actions in session revisions carry the
-stable round number and its metadata, not database IDs. Restoring an active
-round restores that state without starting a timer or revealing any contribution.
+Rounds are inserted before ideas, and idea-to-round and group-to-round references
+are remapped within the restored session. Validation rejects cross-session round
+references, multiple active rounds, invalid lifecycle timestamps, non-boolean
+privacy flags and impossible late-note flags before any replacement. Round
+actions in session revisions carry the stable round number and its metadata, not
+database IDs. Restoring an active round restores that state without starting a
+timer or revealing any contribution; a private round is restored private, with
+its reveal-on-expiry setting and reveal timestamp, and its mask applies again.
 
 Running timers restore paused with a new version and no deadline, retaining the
 last persisted remaining duration. Restoring cannot trigger an old timer job or

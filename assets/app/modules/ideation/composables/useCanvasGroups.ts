@@ -75,27 +75,20 @@ export function useCanvasGroups(
       ? { ...changes, canvas: shifted(changes.canvas, -offsetFor(roundOfGroup(group))) }
       : changes;
   const groups = computed(() =>
-    board().session?.configuration.private_mode
-      ? []
-      : (board().groups ?? []).map((group) => ({
-          ...group,
-          canvas: shifted(group.canvas, offsetFor(roundOfGroup(group))),
-          members: group.members.map((member) =>
-            typeof member.canvas?.y === "number" && member.round_id != null
-              ? {
-                  ...member,
-                  canvas: { ...member.canvas, y: member.canvas.y + offsetFor(member.round_id) },
-                }
-              : member,
-          ),
-        })),
+    (board().groups ?? []).map((group) => ({
+      ...group,
+      canvas: shifted(group.canvas, offsetFor(roundOfGroup(group))),
+      members: group.members.map((member) =>
+        typeof member.canvas?.y === "number" && member.round_id != null
+          ? {
+              ...member,
+              canvas: { ...member.canvas, y: member.canvas.y + offsetFor(member.round_id) },
+            }
+          : member,
+      ),
+    })),
   );
-  const allowed = computed(
-    () =>
-      board().can_edit &&
-      board().session?.status === "open" &&
-      !board().session?.configuration.private_mode,
-  );
+  const allowed = computed(() => board().can_edit && board().session?.status === "open");
   const retryKeys = new Map<string, string>();
   const pending = new Set<() => void>();
   const find = (id: number) => groups.value.find((group) => group.id === id);

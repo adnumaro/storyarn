@@ -327,7 +327,10 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
 
   test "competing timer expirations publish and close contributions exactly once", ctx do
     Sandbox.unboxed_run(Repo, fn ->
-      {:ok, _} = Ideation.set_private_mode(ctx.scope, ctx.project.id, ctx.session.id, 1, true)
+      {:ok, _} =
+        Storyarn.IdeationFixtures.set_private_mode(ctx.scope, ctx.project.id, ctx.session.id, 1, true,
+          reveal_on_expiry: true
+        )
 
       {:ok, idea} =
         Ideation.create_canvas_idea(ctx.scope, ctx.project.id, ctx.session.id, %{
@@ -338,7 +341,6 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
       {:ok, _} =
         Ideation.start_timer(ctx.scope, ctx.project.id, ctx.session.id, 2, %{
           seconds: 60,
-          reveal_on_expiry: true,
           close_contributions_on_expiry: true
         })
 
@@ -370,7 +372,7 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
         assert Enum.count(results, &match?({:ok, %{outcome: :stale}}, &1)) == 1
         assert {:ok, session} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
         assert session.revision == 5
-        refute session.configuration.private_mode
+        refute Storyarn.IdeationFixtures.private_round?(ctx.scope, ctx.project.id, ctx.session.id)
         refute session.contributions_open
         assert {:ok, published} = Ideation.get_idea(ctx.owner_scope, ctx.project.id, ctx.session.id, idea.id)
         assert published.published_revision == 1

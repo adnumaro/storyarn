@@ -70,9 +70,18 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
   test "a round closes in both browsers while private notes remain private and editable",
        %{conn: conn} = test_context do
     ctx = ideation_fixture()
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
-    assert {:ok, private} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {ctx, round} = new_round(%{ctx | session: private}, %{prompt: "What would make the river forget?"})
+    {ctx, round} = new_round(ctx, %{prompt: "What would make the river forget?"})
+
+    # Privacy belongs to the round itself; nothing is inherited from the previous one.
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
+
     path = board_path(ctx)
 
     facilitator =
@@ -110,7 +119,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> click("#brainstorming-round-close-#{round.id}:not([disabled])")
       |> assert_has("#brainstorming-round-#{round.id}[data-status=closed]")
       |> assert_has("#brainstorming-round-new-#{round.id}")
-      |> assert_has("button[aria-label='End private mode and reveal to everyone']")
+      |> assert_has("#brainstorming-round-private-#{round.id}")
 
     peer = assert_has(peer, "#brainstorming-round-#{round.id}[data-status=closed]")
 
@@ -136,7 +145,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     refute updated.late_contribution
     assert {:error, :not_found} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, note.id)
     assert {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert current.configuration == private.configuration
+    assert current.configuration == ctx.session.configuration
     assert current.status == :open
   end
 

@@ -173,7 +173,7 @@ defmodule StoryarnWeb.Live.Hooks.NotificationsTest do
     {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
     assert {:ok, _} =
-             Storyarn.Ideation.set_private_mode(
+             Storyarn.IdeationFixtures.set_private_mode(
                ctx.facilitator,
                ctx.project.id,
                ctx.session.id,
@@ -206,7 +206,7 @@ defmodule StoryarnWeb.Live.Hooks.NotificationsTest do
     assert_reply(view, %{unreadCount: 1, items: [_]})
 
     assert {:ok, _} =
-             Storyarn.Ideation.set_private_mode(
+             Storyarn.IdeationFixtures.set_private_mode(
                ctx.facilitator,
                ctx.project.id,
                ctx.session.id,

@@ -17,7 +17,7 @@ const reference: BrainstormingReference = {
 };
 
 describe("Board header with starting context", () => {
-  it("retains title, settings, timer and private controls together with return navigation", async () => {
+  it("retains title, settings and timer together with return navigation", async () => {
     const current = board();
     const pushEvent = vi.fn();
     const wrapper = mount(BoardHeader, {
@@ -42,9 +42,6 @@ describe("Board header with starting context", () => {
     });
     expect(wrapper.get("#brainstorming-session-title").text()).toBe(current.session!.title);
     expect(wrapper.find("#brainstorming-timer-trigger").exists()).toBe(true);
-    expect(wrapper.find('button[aria-label="Start private mode for everyone"]').exists()).toBe(
-      true,
-    );
     await wrapper.get('button[aria-label="Session details and settings"]').trigger("click");
     expect(pushEvent.mock.calls[0][0]).toBe("board_action");
     const back = wrapper.get("#brainstorming-origin-return-4");

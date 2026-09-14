@@ -6,6 +6,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Delete do
   alias Storyarn.Ideation.Ideas.Execution.Transaction
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Rules.Policy
+  alias Storyarn.Ideation.Sessions
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 
@@ -35,9 +36,11 @@ defmodule Storyarn.Ideation.Ideas.Commands.Delete do
         deleted = idea |> change(deleted_at: %{TimeHelpers.now() | microsecond: {0, 6}}) |> Repo.update!()
 
         audiences =
-          if deleted.published_revision,
-            do: [:shared, :comment_sources, access.user_id],
-            else: [access.user_id]
+          cond do
+            deleted.published_revision -> [:shared, :comment_sources, access.user_id]
+            Sessions.round_private?(deleted.round_id) -> [:shared, access.user_id]
+            true -> [access.user_id]
+          end
 
         audiences = if deleted.state == :parked, do: [:tree | audiences], else: audiences
 

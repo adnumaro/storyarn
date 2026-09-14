@@ -192,7 +192,16 @@ defmodule StoryarnWeb.IdeationLive.ContextualExplorationsTest do
       })
 
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, true)
+
+    {:ok, _} =
+      Storyarn.IdeationFixtures.set_private_mode(
+        ctx.facilitator,
+        ctx.project.id,
+        ctx.session.id,
+        session.revision,
+        true
+      )
+
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.viewer.user), board_path(ctx, ctx.session.id, reference.id))
     assert context_reference(view) == nil
   end

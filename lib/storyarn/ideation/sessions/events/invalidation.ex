@@ -33,8 +33,7 @@ defmodule Storyarn.Ideation.Sessions.Events.Invalidation do
   # round, title and no-op mutations must not wake the notification inbox.
   def comment_change(before, after_session) do
     cond do
-      before.deleted_at != after_session.deleted_at or
-          before.configuration.private_mode != after_session.configuration.private_mode ->
+      before.deleted_at != after_session.deleted_at ->
         :sources
 
       before.title != after_session.title ->

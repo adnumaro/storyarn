@@ -15,8 +15,13 @@ defmodule Storyarn.Ideation.CanvasModeTest do
     assert {:ok, first} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
     assert first.visibility == :shared
     assert {:ok, _} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, first.id)
-    assert {:error, :unauthorized} = Ideation.set_private_mode(ctx.peer, ctx.project.id, ctx.session.id, 1, true)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
+    assert {:error, :unauthorized} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.peer, ctx.project.id, ctx.session.id, 1, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
     assert {:error, :not_found} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, first.id)
 
     assert {:ok, second} =
@@ -25,7 +30,7 @@ defmodule Storyarn.Ideation.CanvasModeTest do
     assert second.visibility == :private
     assert {:error, :not_found} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, second.id)
 
-    assert {:error, :session_private} =
+    assert {:error, _} =
              Ideation.prepare_idea_reveal(ctx.peer, ctx.project.id, ctx.session.id, Ecto.UUID.generate(), [
                %{idea_id: second.id, revision: 1}
              ])
@@ -41,7 +46,9 @@ defmodule Storyarn.Ideation.CanvasModeTest do
              )
 
     assert edited.revision == 2
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 2, false)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 2, false)
 
     assert {:ok, %{body: "<p>Private revision</p>", revision: 2}} =
              Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, first.id)
@@ -118,7 +125,9 @@ defmodule Storyarn.Ideation.CanvasModeTest do
   test "ending private mode excludes discarded heads and legacy author-only drafts", ctx do
     legacy = idea_fixture(ctx)
     {:ok, published} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs())
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
 
     assert {:ok, _} =
              Ideation.update_canvas_idea(
@@ -138,7 +147,9 @@ defmodule Storyarn.Ideation.CanvasModeTest do
         {state, note}
       end
 
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 2, false)
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 2, false)
+
     assert {:ok, prior_publication} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, published.id)
     assert prior_publication.body == published.body
     assert prior_publication.revision == 1
@@ -165,7 +176,9 @@ defmodule Storyarn.Ideation.CanvasModeTest do
   test "archiving private work restores prior publications without publishing drafts", ctx do
     {:ok, published} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs())
     legacy = idea_fixture(ctx)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
 
     assert {:ok, _} =
              Ideation.update_canvas_idea(
@@ -186,8 +199,8 @@ defmodule Storyarn.Ideation.CanvasModeTest do
     assert {:error, :not_found} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, published.id)
 
     assert {:ok, archived} = Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, 2)
-    refute archived.configuration.private_mode
-    assert archived.configuration_version == 3
+    refute Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
+    assert archived.configuration_version == 1
 
     assert {:ok, visible} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, published.id)
     assert visible.body == published.body
@@ -199,7 +212,7 @@ defmodule Storyarn.Ideation.CanvasModeTest do
     end
 
     assert {:ok, reopened} = Ideation.reopen_session(ctx.facilitator, ctx.project.id, ctx.session.id, archived.revision)
-    refute reopened.configuration.private_mode
+    refute Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert {:ok, _} = Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, reopened.revision)
 
     for note <- [private, discarded, legacy] do
@@ -208,18 +221,22 @@ defmodule Storyarn.Ideation.CanvasModeTest do
   end
 
   test "reveal excludes deleted notes, and archive and stale revisions block mode changes", ctx do
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
     assert {:ok, idea} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs())
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, 1)
 
     assert {:error, :stale_revision} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, false)
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, false)
 
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 2, false)
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 2, false)
+
     assert is_nil(Repo.get!(Idea, idea.id).published_revision)
     assert {:ok, _} = Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, 3)
 
     assert {:error, :session_archived} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 4, true)
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 4, true)
   end
 end

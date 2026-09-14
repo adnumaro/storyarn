@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-07
+> Last reviewed: 2026-09-15
 >
 > Source of truth: `Storyarn.Ideation` and its session commands/queries
 
@@ -63,8 +63,10 @@ used to authenticate the caller.
 Configuration stores separate round and timer preferences, optional duration,
 new-idea default visibility and publication policy. Defaults disable rounds and
 timer and specify private, author-controlled drafts. Enabling the timer requires
-a duration between 15 seconds and 24 hours. These are preferences only: this
-capability contains no running rounds or clock. Ideas owns contributions and
+a duration between 1 second and 24 hours. These are preferences only: this
+capability contains no running rounds or clock. Privacy is not a session
+preference: it belongs to each round, as described in the
+[round contract](brainstorming-rounds-contract.md). Ideas owns contributions and
 explicit publication through the separately documented capability.
 
 Writes take Project authorization locks before the session row lock and validate

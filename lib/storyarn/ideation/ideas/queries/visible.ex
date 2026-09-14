@@ -21,11 +21,11 @@ defmodule Storyarn.Ideation.Ideas.Queries.Visible do
             fragment("CASE WHEN ? = ? THEN ? ELSE ? END", i.author_id, ^actor_id, i.revision, i.published_revision),
       left_join: source in Publication,
       on: source.idea_id == i.source_idea_id and source.revision == i.source_revision,
-      join: s in subquery(Sessions.canvas_settings_query()),
-      on: s.id == i.session_id,
+      left_join: mask in subquery(Sessions.round_mask_query()),
+      on: mask.id == i.round_id,
       where:
         i.session_id == ^session_id and is_nil(i.deleted_at) and
-          (i.author_id == ^actor_id or not s.private_mode),
+          (i.author_id == ^actor_id or not fragment("COALESCE(?, false)", mask.private)),
       select: {i, r, not is_nil(source.id)}
   end
 
@@ -52,10 +52,10 @@ defmodule Storyarn.Ideation.Ideas.Queries.Visible do
   def visible_link_ids(session_id, actor_id, ids) do
     Repo.all(
       from i in Idea,
-        join: s in subquery(Sessions.canvas_settings_query()),
-        on: s.id == i.session_id,
+        left_join: mask in subquery(Sessions.round_mask_query()),
+        on: mask.id == i.round_id,
         where:
-          (i.author_id == ^actor_id or not s.private_mode) and
+          (i.author_id == ^actor_id or not fragment("COALESCE(?, false)", mask.private)) and
             i.id in ^ids and i.session_id == ^session_id and is_nil(i.deleted_at) and
             (i.author_id == ^actor_id or not is_nil(i.published_revision)),
         select: i.id

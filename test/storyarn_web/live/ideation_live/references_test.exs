@@ -197,7 +197,15 @@ defmodule StoryarnWeb.IdeationLive.ReferencesTest do
     assert state(view)["items"] != []
     before_privacy_change = :sys.get_state(view.pid).socket
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, true)
+
+    {:ok, _} =
+      Storyarn.IdeationFixtures.set_private_mode(
+        ctx.facilitator,
+        ctx.project.id,
+        ctx.session.id,
+        session.revision,
+        true
+      )
 
     # Even a board read completed before private mode changed must reauthorize
     # references when accepted, rather than keeping its older target previews.

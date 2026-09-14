@@ -16,17 +16,31 @@ interface PendingWrite {
 export type TimerControl = "pause_timer" | "resume_timer" | "cancel_timer" | "extend_timer";
 export interface TimerStart {
   seconds: number;
-  reveal_on_expiry: boolean;
   close_contributions_on_expiry: boolean;
 }
-/** What the facilitator has chosen for the next timer, kept across popover opens. */
-export interface TimerDraft {
-  duration: string | number;
-  reveal: boolean;
-  closeContributions: boolean;
+export const DEFAULT_TIMER_SECONDS = 300;
+export const MAX_TIMER_SECONDS = 86_400;
+
+/** m:ss, or h:mm:ss from an hour up. */
+export function formatSeconds(value: number): string {
+  const total = Math.max(0, Math.floor(value));
+  const minutes = Math.floor(total / 60);
+  const tail = String(total % 60).padStart(2, "0");
+  return total >= 3600
+    ? `${Math.floor(total / 3600)}:${String(minutes % 60).padStart(2, "0")}:${tail}`
+    : `${minutes}:${tail}`;
 }
-export function timerDraft(): TimerDraft {
-  return { duration: 300, reveal: false, closeContributions: false };
+
+/** "5" is five minutes, "1:30" a minute and a half, "1:00:00" an hour; anything else is nothing. */
+export function parseDuration(text: string): number | null {
+  const parts = text.trim().split(":");
+  if (parts.length > 3 || parts.some((part) => !/^\d{1,5}$/.test(part))) return null;
+  const numbers = parts.map(Number);
+  if (parts.length > 1 && numbers.slice(1).some((part) => part > 59)) return null;
+  let seconds = numbers[0] * 60;
+  if (parts.length === 2) seconds = numbers[0] * 60 + numbers[1];
+  if (parts.length === 3) seconds = numbers[0] * 3600 + numbers[1] * 60 + numbers[2];
+  return seconds >= 1 && seconds <= MAX_TIMER_SECONDS ? seconds : null;
 }
 export function activeTimer(timer: SessionTimer | null): boolean {
   return timer?.status === "running" || timer?.status === "paused";

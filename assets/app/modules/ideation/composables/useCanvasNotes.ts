@@ -180,7 +180,9 @@ export function useCanvasNotes(
       body: seed.body ?? "<p></p>",
       preview: "",
       state: seed.state ?? "active",
-      visibility: board().session?.configuration.private_mode ? "private" : "shared",
+      visibility: board().rounds.find((round) => round.id === roundId)?.private
+        ? "private"
+        : "shared",
       revision: 0,
       published_revision: null,
       source_idea_id: null,
@@ -579,8 +581,12 @@ export function useCanvasNotes(
       timers.clear();
     }
   });
+  // A round going private or being revealed changes what everyone can link to.
   watch(
-    () => board().session?.configuration.private_mode,
+    () =>
+      board()
+        .rounds.map((round) => `${round.id}:${round.private}`)
+        .join(),
     () => connections.clear(),
   );
   onUnmounted(() => reset(false));

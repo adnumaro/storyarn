@@ -505,14 +505,17 @@ defmodule Storyarn.Ideation.RecoveryTest do
   test "deleted notes remain deleted after snapshot restore and session private mode is preserved", ctx do
     note = idea_fixture(ctx)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, note.id, 1)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
     capsule = snapshot(ctx)["ideation"]
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
     assert {:error, :not_found} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][note.id])
     assert {:ok, []} = Ideation.list_ideas(ctx.author, ctx.project.id, session_id, state: :all)
-    assert {:ok, session} = Ideation.get_session(ctx.author, ctx.project.id, session_id)
-    assert session.configuration.private_mode
+    assert {:ok, _session} = Ideation.get_session(ctx.author, ctx.project.id, session_id)
+    assert Storyarn.IdeationFixtures.private_round?(ctx.author, ctx.project.id, session_id)
     assert Repo.get!(Idea, maps["ideas"][note.id]).deleted_at
     assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
   end

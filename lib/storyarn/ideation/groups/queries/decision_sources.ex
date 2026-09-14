@@ -19,9 +19,9 @@ defmodule Storyarn.Ideation.Groups.Queries.DecisionSources do
     from g in Group,
       join: r in Revision,
       on: r.group_id == g.id and r.number == g.version,
-      join: s in subquery(Sessions.canvas_settings_query()),
-      on: s.id == g.session_id,
-      where: g.session_id == ^session_id and is_nil(g.deleted_at) and not s.private_mode,
+      left_join: mask in subquery(Sessions.round_mask_query()),
+      on: mask.id == g.round_id,
+      where: g.session_id == ^session_id and is_nil(g.deleted_at) and not fragment("COALESCE(?, false)", mask.private),
       select: %{
         type: "group",
         id: g.id,

@@ -36,5 +36,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundContribution do
     do: Repo.one(from r in Round, where: r.session_id == ^session_id and r.status == :active)
 
   defp contribution(nil), do: {:error, :round_required}
-  defp contribution(round), do: {:ok, %{round_id: round.id, late_contribution: round.status == :closed}}
+
+  defp contribution(round),
+    do: {:ok, %{round_id: round.id, late_contribution: round.status == :closed, private: round.private}}
 end

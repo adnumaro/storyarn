@@ -7,8 +7,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.StartTimer do
   def run(scope, project_id, session_id, revision, attrs) when is_map(attrs) do
     TimerMutation.run(scope, project_id, session_id, revision, fn session, access, timer ->
       with :ok <- available(timer),
-           {:ok, options} <- options(attrs),
-           :ok <- TimerMutation.reveal_allowed(session, options.reveal_on_expiry) do
+           {:ok, options} <- options(attrs) do
         now = TimerMutation.now()
         timer = timer || %Timer{session_id: session.id, version: 0}
 
@@ -36,13 +35,12 @@ defmodule Storyarn.Ideation.Sessions.Commands.StartTimer do
 
   defp options(attrs) do
     duration = MapAccess.get_flexible(attrs, :seconds)
-    reveal = option(attrs, :reveal_on_expiry)
     close = option(attrs, :close_contributions_on_expiry)
 
     cond do
-      not (is_integer(duration) and duration in 15..86_400) -> {:error, :invalid_timer_duration}
-      not (is_boolean(reveal) and is_boolean(close)) -> {:error, :invalid_timer_options}
-      true -> {:ok, %{duration_seconds: duration, reveal_on_expiry: reveal, close_contributions_on_expiry: close}}
+      not (is_integer(duration) and duration in 1..86_400) -> {:error, :invalid_timer_duration}
+      not is_boolean(close) -> {:error, :invalid_timer_options}
+      true -> {:ok, %{duration_seconds: duration, close_contributions_on_expiry: close}}
     end
   end
 

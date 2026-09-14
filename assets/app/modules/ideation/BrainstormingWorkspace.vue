@@ -48,6 +48,7 @@ import type {
   NoteShape,
   ConnectionChange,
   Round,
+  RoundPrivacy,
 } from "./types";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
 const { board, baseUrl, comments } = defineProps<{
@@ -75,6 +76,10 @@ const rounds = computed(() => {
   if (board.active_round) entries.set(board.active_round.id, board.active_round);
   return [...entries.values()].sort((a, b) => a.number - b.number);
 });
+const privateRounds = computed(
+  () => new Set(rounds.value.filter((round) => round.private).map((round) => round.id)),
+);
+const activeRoundPrivate = computed(() => !!board.active_round?.private);
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
 async function createComment(target: BrainstormingCommentTarget) {
@@ -90,22 +95,31 @@ async function useReferences(ideaId: number | null) {
   if (reply.status === "error") failure.value = reply.code;
 }
 const preparingDecision = ref(false);
-const decisionReady = computed(
-  () =>
-    !preparingDecision.value &&
-    online.value &&
-    writable.value &&
-    !board.session?.configuration.private_mode,
-);
+const decisionReady = computed(() => !preparingDecision.value && online.value && writable.value);
 watch(
   () => board.epoch,
   () => {
     preparingDecision.value = false;
   },
 );
+// A group of a private round is only visible to its members' authors; the
+// server would refuse the decision, so the proposal is not even sent.
+function groupInPrivateRound(groupId: number) {
+  const group = groups.groups.value.find((group) => group.id === groupId);
+  return (
+    group?.idea_ids.some((ideaId) => {
+      const note = board.ideas.find((idea) => idea.id === ideaId);
+      return note?.round_id != null && privateRounds.value.has(note.round_id);
+    }) ?? false
+  );
+}
+function decisionBlocked(groupId?: number) {
+  if (!decisionReady.value) return true;
+  if (groupId === undefined) return !decisionSelection.value;
+  return groupInPrivateRound(groupId);
+}
 async function proposeDecision(groupId?: number) {
-  if (!decisionReady.value) return;
-  if (groupId === undefined && !decisionSelection.value) return;
+  if (decisionBlocked(groupId)) return;
   const at = context();
   preparingDecision.value = true;
   const payload =
@@ -145,6 +159,31 @@ const notes = useCanvasNotes(
   (idea) => connections.created(idea),
   () => bandOffsets.value,
 );
+// Placeholders for other people's private notes, in canvas units like everything else.
+const masked = computed(() =>
+  board.masked_ideas.map((item) => ({
+    ...item,
+    canvas: {
+      ...item.canvas,
+      y: (item.canvas.y ?? 0) + (bandOffsets.value.get(item.round_id) ?? 0),
+    },
+  })),
+);
+// Notes per round for the headers: what this client holds plus what it cannot read.
+const roundCounts = computed(() => {
+  const counts = new Map<number, number>();
+  const bump = (roundId: number | null | undefined) => {
+    if (roundId != null) counts.set(roundId, (counts.get(roundId) ?? 0) + 1);
+  };
+  for (const note of notes.notes.value) if (note.id > 0) bump(note.round_id);
+  for (const item of board.masked_ideas) bump(item.round_id);
+  return counts;
+});
+const selectionPrivate = computed(() =>
+  selectedNotes(selectedIds.value).some(
+    (note) => note.round_id != null && privateRounds.value.has(note.round_id),
+  ),
+);
 const current = computed(() => notes.notes.value.find((n) => n.id === selected.value));
 const selectionShape = computed(() => {
   const shapes = new Set(
@@ -161,8 +200,7 @@ const decisionSelection = computed(() => {
     sources.length === selectedIds.value.length &&
     sources.every(
       (note) => note.id > 0 && note.visibility === "shared" && !!note.published_revision,
-    ) &&
-    !board.session?.configuration.private_mode
+    )
   );
 });
 const canCreate = computed(() => writable.value && board.session?.contributions_open !== false);
@@ -532,6 +570,20 @@ watch(
   },
   { immediate: true },
 );
+async function updatePrivacy(id: number, attrs: RoundPrivacy) {
+  await roundWrite("set_round_privacy", { round_id: id, ...attrs });
+}
+async function revealRound(id: number) {
+  await roundWrite("reveal_round", { round_id: id });
+}
+async function roundWrite(event: string, payload: Record<string, unknown>) {
+  if (!board.can_manage || !board.session || roundPending.value) return;
+  failure.value = null;
+  roundPending.value = true;
+  const reply = await request(event, { revision: board.session.revision, ...payload });
+  roundPending.value = false;
+  if (reply.status !== "ok") failure.value = reply.status === "error" ? reply.code : "unavailable";
+}
 async function closeRound(id: number) {
   if (!board.can_manage || !board.session || roundPending.value) return;
   finish();
@@ -910,7 +962,7 @@ watch(
   },
 );
 watch(
-  () => board.session?.configuration.private_mode,
+  () => rounds.value.map((round) => `${round.id}:${round.private}`).join(),
   () => {
     cancelHistoryPreparation?.();
     history.clear();
@@ -1062,11 +1114,10 @@ onUnmounted(() => {
           edit: writable,
           create: canCreate,
           comment: board.can_edit && online,
-          privateMode: board.session.configuration.private_mode,
         }"
         :collaboration="{
           context: context(),
-          cursors: !board.session.configuration.private_mode,
+          cursors: !activeRoundPrivate,
           comments,
           baseUrl,
         }"
@@ -1085,8 +1136,12 @@ onUnmounted(() => {
                 canEdit: board.can_edit,
               }
             : null,
+          counts: roundCounts,
+          masked,
         }"
         @bands="measuredBands = $event"
+        @update-privacy="updatePrivacy"
+        @reveal="revealRound"
         @new-round="newRound"
         @close-round="closeRound"
         @update-prompt="updatePrompt"
@@ -1150,11 +1205,7 @@ onUnmounted(() => {
                 ><ListChecks class="size-4" /></Button
             ></ToolbarTooltip>
             <Button
-              v-if="
-                current.visibility === 'shared' &&
-                current.published_revision &&
-                !board.session.configuration.private_mode
-              "
+              v-if="current.visibility === 'shared' && current.published_revision"
               id="brainstorming-idea-references"
               variant="ghost"
               size="icon-sm"
@@ -1168,7 +1219,7 @@ onUnmounted(() => {
               v-if="writable"
               :notes="selectedNotes(selectedIds)"
               :groups="groups.groups.value"
-              :private-mode="board.session.configuration.private_mode"
+              :private-round="selectionPrivate"
               :busy="mutationBusy"
               @create="createGroup()"
               @membership="groupMembership"

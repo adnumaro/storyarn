@@ -6,7 +6,6 @@ defmodule Storyarn.Ideation.Sessions.Configuration do
 
   @primary_key false
   embedded_schema do
-    field :private_mode, :boolean, default: false
     field :rounds_enabled, :boolean, default: false
     field :timer_enabled, :boolean, default: false
     field :timer_seconds, :integer
@@ -18,7 +17,7 @@ defmodule Storyarn.Ideation.Sessions.Configuration do
     configuration
     |> cast(attrs, [:rounds_enabled, :timer_enabled, :timer_seconds, :default_visibility, :publication_policy])
     |> validate_required([:rounds_enabled, :timer_enabled, :default_visibility, :publication_policy])
-    |> validate_number(:timer_seconds, greater_than_or_equal_to: 15, less_than_or_equal_to: 86_400)
+    |> validate_number(:timer_seconds, greater_than_or_equal_to: 1, less_than_or_equal_to: 86_400)
     |> require_timer_duration()
   end
 

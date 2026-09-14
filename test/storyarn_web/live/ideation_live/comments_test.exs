@@ -56,7 +56,16 @@ defmodule StoryarnWeb.IdeationLive.CommentsTest do
 
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.peer.user), path(ctx) <> "?thread=#{detail.thread.id}")
     assert state(view)["open"]
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+
+    {:ok, _} =
+      Storyarn.IdeationFixtures.set_private_mode(
+        ctx.facilitator,
+        ctx.project.id,
+        ctx.session.id,
+        ctx.session.revision,
+        true
+      )
+
     # The comment invalidation handler independently rechecks the source, even
     # before the asynchronously refreshed canvas has caught up.
     send(view.pid, {:ideation_comments_changed, ctx.session.id})
@@ -133,7 +142,16 @@ defmodule StoryarnWeb.IdeationLive.CommentsTest do
     send(view.pid, :notifications_changed)
     assert_push_event(view, "notifications_updated", %{unreadCount: 1, items: [%{href: href}]})
     assert href =~ "/brainstorming/#{ctx.session.id}?thread="
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+
+    {:ok, _} =
+      Storyarn.IdeationFixtures.set_private_mode(
+        ctx.facilitator,
+        ctx.project.id,
+        ctx.session.id,
+        ctx.session.revision,
+        true
+      )
+
     # Flush the coalesced refresh deterministically, using the same handler as its timer.
     send(view.pid, :refresh_comment_notification_sources)
     assert_push_event(view, "notifications_updated", %{unreadCount: 0, items: []})

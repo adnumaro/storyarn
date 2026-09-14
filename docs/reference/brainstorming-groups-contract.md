@@ -2,7 +2,7 @@
 
 > Scope: ENG-138
 >
-> Last reviewed: 2026-09-08
+> Last reviewed: 2026-09-15
 
 Groups organize contributions spatially and support an authored synthesis of
 their sources. They live in the existing brainstorming canvas. This capability
@@ -26,8 +26,10 @@ another author's note text.
 
 Groups use sources already shared with the session. Creating or changing a
 group cannot publish a private note or another author's unpublished revision.
-Groups are hidden and their writes unavailable while session private mode is
-active. Read access follows current project membership; writes additionally
+A group records the round of its first source. While that round is private the
+group is hidden before decryption and its writes fail with `private_round`; notes
+of a private round cannot be grouped until the reveal. Read access follows
+current project membership; writes additionally
 require editing access and an open session. Closing new contributions alone
 does not disable organizing existing material.
 
@@ -74,9 +76,9 @@ different group in the meantime.
 
 ## Conservation and recovery
 
-Groups, memberships, authored revisions and retry receipts belong to the sealed
-project recovery inventory. Capture includes their encrypted content and source
-references. Restoration remaps group, idea and actor identities, validates the
+Groups, their round, memberships, authored revisions and retry receipts belong to
+the sealed project recovery inventory. Capture includes their encrypted content
+and source references. Restoration remaps group, idea and actor identities, validates the
 graph before committing and retains source publication provenance. Older
 inventory versions have no groups and remain readable. See the
 [recovery contract](brainstorming-recovery-contract.md).
@@ -85,6 +87,6 @@ inventory versions have no groups and remain readable. See the
 
 Release checks cover direct canvas grouping and editing, movement and keyboard
 undo, a second participant receiving updates, read-only permissions, private
-mode, partial visibility, competing writes, uncertain retries, and snapshot
+rounds, partial visibility, competing writes, uncertain retries, and snapshot
 capture/restoration with source identities remapped. Browser coverage uses
 LiveVue prop diffing, matching production behavior.

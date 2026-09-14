@@ -101,14 +101,12 @@ describe("timer on the round header", () => {
     const { send } = bar(null);
     expect(wrapper.find("#brainstorming-round-timer").exists()).toBe(false);
     expect(wrapper.find("#brainstorming-round-progress-21").exists()).toBe(false);
+    await wrapper.get("#brainstorming-round-timer-input").setValue("1:30");
     await wrapper.get("#brainstorming-round-timer-start").trigger("click");
-    await wrapper.get("#brainstorming-timer-duration").setValue("90");
-    await wrapper.get("form").trigger("submit");
     expect(send).toHaveBeenLastCalledWith(
       "start_timer",
       expect.objectContaining({
         seconds: 90,
-        reveal_on_expiry: false,
         close_contributions_on_expiry: false,
       }),
     );
@@ -119,7 +117,7 @@ describe("timer on the round header", () => {
     await nextTick();
     expect(wrapper.get("#brainstorming-round-timer").text()).toBe("0:00");
     expect(wrapper.text()).not.toContain("Time’s up");
-    expect(wrapper.find("#brainstorming-round-timer-start").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-round-timer-input").exists()).toBe(false);
     expect(wrapper.get("#brainstorming-round-progress-21").attributes("style")).toContain(
       "width: 100%",
     );
@@ -143,9 +141,10 @@ describe("timer on the round header", () => {
       },
     });
     await flushPromises();
-    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("0:00");
+    const input = wrapper.get("#brainstorming-round-timer-input");
+    expect((input.element as HTMLInputElement).value).toBe("0:00");
+    await input.setValue("5:00");
     await wrapper.get("#brainstorming-round-timer-start").trigger("click");
-    await wrapper.get("form").trigger("submit");
     expect(send).toHaveBeenLastCalledWith("start_timer", expect.objectContaining({ seconds: 300 }));
   });
 });

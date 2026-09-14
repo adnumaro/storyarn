@@ -11,7 +11,7 @@ defmodule Storyarn.Ideation.Groups.Execution.CommentSource do
   def get(%{user: %{id: _}} = scope, project_id, session_id, group_id, opts)
       when valid_id?(project_id) and valid_id?(session_id) and valid_id?(group_id) do
     case Sessions.comment_source(scope, project_id, session_id, opts) do
-      {:ok, %{private_mode: false}} ->
+      {:ok, _session} ->
         source(session_id, group_id, opts)
 
       _ ->

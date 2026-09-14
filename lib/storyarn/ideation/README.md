@@ -26,7 +26,7 @@ adapters cannot become application orchestrators. The architecture ratchet and
 Ideas owns `ideation_ideas`, immutable `ideation_idea_revisions`, idempotent
 `ideation_idea_edits` (including private conflicting input), frozen
 `ideation_reveal_operations` and `ideation_idea_publications`. Its `commands/`
-implement creation, save, delete, undo of a matching deletion, placement, connections and session-mode reveal; `execution/` retains
+implement creation, save, delete, undo of a matching deletion, placement, connections and round reveal; `execution/` retains
 atomic transaction/revision/publication workflows. `queries/` selects authorized
 revisions before decryption; `contracts/` builds safe views; `rules/` validates
 content, policy and selection; `events/` sends content-free invalidations.
@@ -67,8 +67,9 @@ same group and note, including undo after the note receives a newer revision.
 Changing visible members keeps the membership of a deleted note; separating removes all.
 
 Every write uses current project editor access, the open session contribution lock,
-an optimistic group version and a UUID request identity. Private mode hides group
-content before decryption and rejects group writes. Group movement delegates geometry
+an optimistic group version and a UUID request identity. A group records its round;
+a private round hides its groups before decryption and rejects their writes with
+`private_round`. Group movement delegates geometry
 writes through Ideas' closed transaction port and checks every live member version.
 Revisions support provenance and exact browser undo only, with no history endpoint.
 Deleting a group permits only its deleting actor to restore that exact deletion.
@@ -88,8 +89,8 @@ session authorization, optimistic decision versions and durable request receipts
 Revising preserves the previously accepted agreement while producing a new
 proposal. Accepting records the exact proposal as a new revision; previous
 agreements and their sources remain in history. Responsibility is explicit and
-does not grant membership or private-content access. Private mode hides decisions
-before decryption and prevents shared mutations.
+does not grant membership or private-content access. Sources of a private round
+are unavailable to decisions until the round is revealed.
 
 Decisions do not rewrite their source material, create Drafts, start conversations
 or apply changes to authoring tools. Recovery retains all revisions, accepted
@@ -176,19 +177,23 @@ before commit so it cannot strand future backups above those bounds. See [privac
 [session behavior](../../../docs/reference/brainstorming-contract.md) and
 [idea publication](../../../docs/reference/brainstorming-ideas-contract.md).
 
-The canvas uses facilitator-controlled session privacy and direct editing. See
+The canvas uses facilitator-controlled round privacy and direct editing. See
 [canvas behavior](../../../docs/features/brainstorming-board.md) for interaction,
 delete/discard semantics and the compatibility boundary of publication ports.
 
 Optional rounds are Session-owned children. Their start/close operations share
 the session lock with contributions and record session revisions atomically.
 Ideas asks the Sessions contribution port to bind its immutable round provenance;
-closing a round never publishes or freezes content. See the
+closing a round never publishes or freezes content. The round in progress can be
+private: Sessions flips the flag under the contribution lock, and Ideas publishes
+the round's consenting contributions when that mask ends, manually or at timer
+expiry when the round asked for it. See the
 [round contract](../../../docs/reference/brainstorming-rounds-contract.md).
 
 Independent countdowns belong to Sessions. Its execution runtime wakes persisted
 deadlines without idle polling; the owner-scoped worker provides durable delivery.
-Expiry revalidates the original actor and policy before applying optional reveal
-and contribution closure in one transaction. Recovery pauses running timers and
+Expiry revalidates the original actor and policy before revealing the round in
+progress, when it asked for that, and closing contributions when the timer asked,
+in one transaction. Recovery pauses running timers and
 fences their old deliveries. See the
 [timer contract](../../../docs/reference/brainstorming-timer-contract.md).

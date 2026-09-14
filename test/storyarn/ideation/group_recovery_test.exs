@@ -33,7 +33,7 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
 
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, third.id, third.revision)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 7, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 8, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["groups"]) == 1
     assert length(rows["group_memberships"]) == 3
     assert length(rows["group_revisions"]) == 2
@@ -85,7 +85,16 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
 
   test "private-mode recovery keeps retained synthesis hidden before ordinary reads", ctx do
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, session.id, session.revision, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               session.id,
+               session.revision,
+               true
+             )
+
     capsule = capture(ctx)
     Repo.delete_all(from(s in Session, where: s.project_id == ^ctx.project.id))
     maps = restore(ctx, capsule)
@@ -153,6 +162,12 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
       data
       |> Map.put("version", 3)
       |> update_in(
+        ["rows", "rounds"],
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+      )
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+      |> update_in(
         ["rows"],
         &Map.drop(
           &1,
@@ -162,7 +177,7 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 7
+    assert normalized["version"] == 8
     assert normalized["rows"]["groups"] == []
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]

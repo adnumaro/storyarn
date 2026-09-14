@@ -36,8 +36,8 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     manager =
       manager
       |> click("#brainstorming-timer-trigger")
-      |> press("#brainstorming-timer-duration", "ControlOrMeta+a")
-      |> type("#brainstorming-timer-duration", "600")
+      |> press("#brainstorming-timer-input", "ControlOrMeta+a")
+      |> type("#brainstorming-timer-input", "10:00")
       |> click("#brainstorming-timer-start:not([disabled])")
       |> assert_has("#brainstorming-timer-pause:not([disabled])")
       |> press("#brainstorming-timer-pause[aria-disabled=false]", "Enter")
@@ -48,7 +48,6 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     assert {:ok, paused} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert paused.status == :paused
     assert paused.duration_seconds == 600
-    refute paused.reveal_on_expiry
     refute paused.close_contributions_on_expiry
 
     viewer =

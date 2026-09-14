@@ -3,6 +3,7 @@ defmodule Storyarn.Ideation.Sessions do
 
   alias Storyarn.Ideation.Sessions.Commands
   alias Storyarn.Ideation.Sessions.Events.Invalidation
+  alias Storyarn.Ideation.Sessions.Execution.RoundPrivacy
   alias Storyarn.Ideation.Sessions.Queries
 
   defdelegate comment_sources_query(), to: Storyarn.Ideation.Sessions.Queries.CommentSources, as: :query
@@ -68,11 +69,15 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate recover_session(scope, project_id, session_id, revision), to: Commands.Recover, as: :run
   defdelegate purge_replaced_session(scope, project_id, session_id, revision), to: Commands.PurgeReplaced, as: :run
 
-  defdelegate set_canvas_mode_locked(access, revision, enabled),
-    to: Storyarn.Ideation.Sessions.Execution.CanvasMode,
+  defdelegate set_round_privacy_locked(access, revision, round_id, attrs),
+    to: RoundPrivacy,
     as: :set
 
-  defdelegate notify_canvas_mode(result, project_id), to: Invalidation, as: :notify
+  defdelegate active_private_round(session_id), to: RoundPrivacy
+  defdelegate round_private?(round_id), to: RoundPrivacy, as: :private?
+  defdelegate round_mask_query(), to: Queries.RoundMask, as: :query
+
+  defdelegate notify_round_privacy(result, project_id), to: Invalidation, as: :notify
   defdelegate notify_tree_changed(project_id), to: Invalidation, as: :broadcast_tree
 
   defdelegate canvas_settings_query(), to: Queries.CanvasSettings, as: :query

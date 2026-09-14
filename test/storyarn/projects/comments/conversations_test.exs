@@ -172,7 +172,13 @@ defmodule Storyarn.Projects.CommentConversationsTest do
     assert {:ok, session} = Storyarn.Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
 
     assert {:ok, _} =
-             Storyarn.Ideation.set_private_mode(ctx.facilitator, ctx.project.id, session.id, session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               session.id,
+               session.revision,
+               true
+             )
 
     assert {:ok, %{threads: [thread], next_cursor: nil, counts: %{all: 1}}} =
              Projects.list_comment_conversations(ctx.peer, limit: 1)

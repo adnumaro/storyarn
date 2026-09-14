@@ -14,7 +14,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.TimerHandlers do
     with {:ok, seconds} <- Params.positive(params["seconds"]) do
       attrs =
         params
-        |> Params.fields([:reveal_on_expiry, :close_contributions_on_expiry])
+        |> Params.fields([:close_contributions_on_expiry])
         |> Map.put("seconds", seconds)
 
       Ideation.start_timer(scope, project_id, session_id, revision, attrs)

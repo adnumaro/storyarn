@@ -44,6 +44,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       session: nil,
       session_missing: false,
       ideas: [],
+      masked_ideas: [],
       groups: [],
       ideas_next: nil,
       idea_before: nil,
@@ -75,7 +76,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       :deleted_at,
       :inserted_at
     ])
-    |> Map.put(:configuration, Map.take(value.configuration, [:default_visibility, :publication_policy, :private_mode]))
+    |> Map.put(:configuration, Map.take(value.configuration, [:default_visibility, :publication_policy]))
     |> Map.put(:can_manage, can_edit and (owner? or value.facilitator_id == actor_id))
   end
 
@@ -102,6 +103,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
 
     with {:ok, ideas, next} <- read_idea_pages(scope, project_id, current.id, filters.idea_before, opts, []),
          {:ok, groups} <- Ideation.list_groups(scope, project_id, current.id),
+         {:ok, masked} <- Ideation.list_masked_ideas(scope, project_id, current.id),
          {:ok, counts} <- Ideation.count_ideas(scope, project_id, current.id),
          {:ok, rounds} <- RoundData.load(scope, project_id, current.id) do
       {:ok,
@@ -109,6 +111,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
          session: session(current, scope.user.id, false, false),
          session_missing: false,
          ideas: Enum.map(ideas, &idea/1),
+         masked_ideas: masked,
          groups: groups,
          ideas_next: next,
          idea_before: filters.idea_before,
@@ -159,6 +162,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       :session,
       :session_missing,
       :ideas,
+      :masked_ideas,
       :groups,
       :ideas_next,
       :idea_before,
