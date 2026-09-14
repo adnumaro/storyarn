@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Pause, Play, Plus, Timer } from "@lucide/vue";
+import { Pause, Play, Plus, Square, Timer } from "@lucide/vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -69,13 +69,21 @@ function start(options: TimerStart) {
 </script>
 <template>
   <div class="pointer-events-auto flex shrink-0 items-center gap-2">
-    <span
-      v-if="elapsed"
-      id="brainstorming-round-timer"
-      role="status"
-      class="text-base font-semibold text-primary"
-      >{{ t("ideation.timer.elapsed") }}</span
-    >
+    <template v-if="elapsed">
+      <span
+        id="brainstorming-round-timer"
+        class="text-[22px] font-semibold leading-none tabular-nums text-muted-foreground"
+        :aria-label="`${t('ideation.timer.title')}: ${t('ideation.timer.elapsed')}`"
+        >0:00</span
+      >
+      <Badge
+        id="brainstorming-round-timer-elapsed"
+        role="status"
+        variant="outline"
+        class="font-medium text-primary"
+        >{{ t("ideation.timer.elapsed") }}</Badge
+      >
+    </template>
     <template v-else-if="active">
       <span
         id="brainstorming-round-timer"
@@ -109,8 +117,19 @@ function start(options: TimerStart) {
           <Plus class="size-3.5" />{{ t("ideation.timer.oneMinute") }}
         </button>
       </template>
+      <button
+        v-if="mayManage"
+        id="brainstorming-round-timer-cancel"
+        type="button"
+        class="toolbar-btn"
+        :aria-label="t('ideation.timer.cancel')"
+        :disabled="writes.pending.value"
+        @click="writes.control('cancel_timer', seconds)"
+      >
+        <Square class="size-3.5" />
+      </button>
     </template>
-    <Popover v-else-if="mayManage" :open="open" @update:open="onOpen">
+    <Popover v-if="!active && mayManage" :open="open" @update:open="onOpen">
       <PopoverTrigger as-child>
         <Button id="brainstorming-round-timer-start" variant="ghost" size="sm"
           ><Timer class="size-3.5" />{{ t("ideation.timer.start") }}</Button

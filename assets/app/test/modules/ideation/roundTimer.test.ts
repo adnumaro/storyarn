@@ -117,10 +117,35 @@ describe("timer on the round header", () => {
   it("says time is up and fills the whole line, even on a quiet single round", async () => {
     bar(timer({ status: "elapsed", remaining_seconds: 0 }), { canManage: false, single: true });
     await nextTick();
-    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("Time’s up");
+    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("0:00");
+    expect(wrapper.get("#brainstorming-round-timer-elapsed").text()).toBe("Time’s up");
+    expect(wrapper.find("#brainstorming-round-timer-start").exists()).toBe(false);
     expect(wrapper.get("#brainstorming-round-progress-21").attributes("style")).toContain(
       "width: 100%",
     );
     expect(wrapper.text()).not.toContain("Round 2");
+  });
+
+  it("lets the facilitator cancel a running timer and start again once it is up", async () => {
+    const { send } = bar(timer({ version: 7 }));
+    await wrapper.get("#brainstorming-round-timer-cancel").trigger("click");
+    expect(send).toHaveBeenLastCalledWith(
+      "cancel_timer",
+      expect.objectContaining({ timer_version: 7 }),
+    );
+    await flushPromises();
+    await wrapper.setProps({
+      timer: {
+        session: { ...board().session!, revision: 2 },
+        epoch: board().epoch,
+        timer: timer({ version: 8, status: "elapsed", remaining_seconds: 0 }),
+        canEdit: true,
+      },
+    });
+    await flushPromises();
+    expect(wrapper.get("#brainstorming-round-timer-elapsed").text()).toBe("Time’s up");
+    await wrapper.get("#brainstorming-round-timer-start").trigger("click");
+    await wrapper.get("form").trigger("submit");
+    expect(send).toHaveBeenLastCalledWith("start_timer", expect.objectContaining({ seconds: 300 }));
   });
 });
