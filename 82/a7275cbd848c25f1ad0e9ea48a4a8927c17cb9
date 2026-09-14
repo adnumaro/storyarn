@@ -1,0 +1,102 @@
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_021963f0952213::t_ca8791b3a9e1c8 33,41-46
+  s_021963f0952213::t_8b839f2c2aca60 47-49
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_021963f0952213::t_6832dba6b5ef97 33-42
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_021963f0952213::t_fee36a798f39db 57
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_021963f0952213::t_fee36a798f39db 191,467,472,477,492,497
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_021963f0952213::t_fee36a798f39db 191,467,472,477,492,497
+lib/storyarn/projects/comments/rules/context.ex
+  s_021963f0952213::t_e5f8b2501355d0 272-273
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_021963f0952213::t_09382a9090004f 303
+.gitignore
+  s_021963f0952213::t_e83909b0b851a6 8
+lib/storyarn/projects/comments/queries/conversations.ex
+  s_021963f0952213::t_644ad50b414bfb 41
+  s_021963f0952213::t_048315c5955a56 152-155,171,173-187,192-194,197-199,204,209
+  s_021963f0952213::t_744a12c5a081ef 42-47,51,55-57,61-77
+  s_021963f0952213::t_ef85ae33d3789c 48-50,52-54,58-60
+  s_021963f0952213::t_cc6b0c2a4a9036 147-148
+  s_021963f0952213::t_44c6d764d86047 210
+priv/gettext/en/LC_MESSAGES/default.po
+  s_021963f0952213::t_fee36a798f39db 53,154,159,164,169
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_021963f0952213::t_fee36a798f39db 35,234,273,743,748,753,769,774,934,939,944,949,954
+lib/storyarn_web/live/sheet_live/show.ex
+  s_021963f0952213::t_fbb19cf5a34cc6 944-953
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_021963f0952213::t_fee36a798f39db 312,461,466,471
+priv/gettext/es/LC_MESSAGES/default.po
+  s_021963f0952213::t_fee36a798f39db 53,154,159,164,169
+priv/gettext/scenes.pot
+  s_021963f0952213::t_fee36a798f39db 35,234,273,743,748,753,769,774,934,939,944,949,954
+lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex
+  s_021963f0952213::t_b44419433d0ff7 34-43
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_021963f0952213::t_fee36a798f39db 34-35,102
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_021963f0952213::t_fee36a798f39db 312,461,466,471
+lib/storyarn/projects/comments/comments.ex
+  s_021963f0952213::t_01d725c24005da 47-51
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_021963f0952213::t_fee36a798f39db 57
+lib/storyarn/projects/comments/commands/participation_state.ex
+  s_021963f0952213::t_6704669ed2843a 24
+lib/storyarn_web/live/flow_live/show.ex
+  s_021963f0952213::t_e3c935645512b0 1525-1534
+assets/app/components/comments/CommentConversation.vue
+  s_021963f0952213::t_81247a7abdc8f4 247
+  s_021963f0952213::t_b00bdcf86b638f 222-223
+lib/storyarn/projects.ex
+  s_021963f0952213::t_d70f05ce357210 1120
+priv/gettext/default.pot
+  s_021963f0952213::t_fee36a798f39db 53,154,159,164,169
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_021963f0952213::t_fee36a798f39db 34-35,102
+priv/gettext/flows.pot
+  s_021963f0952213::t_fee36a798f39db 191,467,472,477,492,497
+priv/gettext/versioning.pot
+  s_021963f0952213::t_fee36a798f39db 34-35,102
+lib/storyarn_web/live/comment_live/overlay.ex
+  s_021963f0952213::t_b0cb49c1de7914 78,84
+  s_021963f0952213::t_e6022d3dbc6b23 168-170
+priv/gettext/assets.pot
+  s_021963f0952213::t_fee36a798f39db 57
+priv/gettext/sheets.pot
+  s_021963f0952213::t_fee36a798f39db 312,461,466,471
+test/storyarn/projects/comments/conversations_test.exs
+  s_021963f0952213::t_6d7102a218e12b 297-307
+  s_021963f0952213::t_ee55b3c5814fa4 139,144,148-150
+  s_021963f0952213::t_1cc491dcd5a4f2 200
+  s_021963f0952213::t_db23014fc258dd 109-113,117-124
+  s_021963f0952213::t_ef85ae33d3789c 151
+lib/storyarn/projects/comments/README.md
+  s_021963f0952213::t_455db3e485d6d0 250-251
+  s_021963f0952213::t_0938663787c0b9 34-41
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_021963f0952213::t_fee36a798f39db 35,234,273,743,748,753,769,774,934,939,944,949,954
+lib/storyarn_web/live/scene_live/show.ex
+  s_021963f0952213::t_9a21a3d566b8b8 1793-1802
+assets/app/test/modules/flows/components/FlowCommentPopover.test.ts
+  s_021963f0952213::t_cf1ac62890e562 201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "82a7275cbd848c25f1ad0e9ea48a4a8927c17cb9",
+  "prompts": {},
+  "sessions": {
+    "s_021963f0952213": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f00d562-80fc-4259-982c-2b4f186ecded",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
