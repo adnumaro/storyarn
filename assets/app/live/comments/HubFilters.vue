@@ -127,15 +127,6 @@ defineExpose({ reset });
   <header class="shrink-0 border-b border-border bg-card">
     <div class="flex h-12 items-center gap-3 px-3 sm:px-5">
       <MessagesSquare class="hidden size-4 shrink-0 text-muted-foreground sm:block" />
-      <Button
-        id="comments-hub-close"
-        variant="ghost"
-        size="icon-sm"
-        class="-ml-1 text-muted-foreground sm:hidden"
-        :aria-label="$t('comments_hub.close')"
-        @click="emit('close')"
-        ><X class="size-4"
-      /></Button>
       <h1 class="shrink-0 text-[15px] font-semibold tracking-tight">
         {{ $t("comments_hub.title") }}
       </h1>

@@ -64,10 +64,13 @@ const kindLabel = computed(() => {
       <span
         v-if="sourceLabel"
         class="min-w-0 truncate"
-        :class="context ? 'text-muted-foreground' : 'font-semibold'"
+        :class="context ? 'shrink-[3] text-muted-foreground' : 'font-semibold'"
         >{{ sourceLabel }}</span
       >
-      <span v-if="context" :id="contextId ?? undefined" class="flex min-w-0 items-center gap-1.5">
+      <!-- `contents`: the context parts stay direct flex items of the row, so the
+           label shrinks alongside the container name instead of absorbing every
+           pixel the pill needs and collapsing to nothing. -->
+      <span v-if="context" :id="contextId ?? undefined" class="contents">
         <ChevronRight class="size-3 shrink-0 text-muted-foreground" />
         <span
           class="truncate font-semibold"
