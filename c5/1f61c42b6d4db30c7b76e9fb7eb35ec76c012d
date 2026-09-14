@@ -1,21 +1,27 @@
 test/storyarn/ideation/round_contributions_test.exs
   s_02773c3f2b5565::t_eb6a7ba24b9f21 293-295
   s_02773c3f2b5565::t_9c652889f26778 276,278-279,280-292,296-298,301-323,325-329
+  s_02773c3f2b5565::t_e98e55a17a10b9 275,277,299-300,324
 lib/storyarn/ideation/ideas/rules/band.ex
   s_02773c3f2b5565::t_77f7b0bebf4a38 1-3,9
+  s_02773c3f2b5565::t_601d17d6f372bd 4-8
 assets/app/locales/es/ideation.json
   s_02773c3f2b5565::t_7a4eb842f699a2 120-122
   s_02773c3f2b5565::t_7cca652680a9f6 235-237
 assets/app/test/modules/ideation/roundBands.test.ts
   s_02773c3f2b5565::t_a413c341d00c18 25-28,268,274,275,280
   s_02773c3f2b5565::t_3b685acfbde5be 281
+  s_02773c3f2b5565::t_601d17d6f372bd 38-42,75-79,123,125,136,138-139,160-203,215-224,232,246,255-266,270-273,276
 assets/app/modules/ideation/components/BrainstormingCanvas.vue
   s_02773c3f2b5565::t_ed1f66929647cd 137,325-329,333,337-339,342,353-354,359,755,758,761,766,768,790,818,824,869-875,878-881,922-924,1400,1411,1414
   s_02773c3f2b5565::t_a413c341d00c18 348,440-441
+  s_02773c3f2b5565::t_0510684d412f30 343,346-347,350-352
+  s_02773c3f2b5565::t_4b41a337f93724 330-332,334-336,340-341,344-345,349,355-358
 lib/storyarn/ideation/ideas/commands/update_canvas.ex
   s_02773c3f2b5565::t_7a4eb842f699a2 8,48-49,51
   s_02773c3f2b5565::t_9f6998084a2ee5 41,46-47
   s_02773c3f2b5565::t_dcf8e1527f6200 53
+  s_02773c3f2b5565::t_601d17d6f372bd 50,52
 assets/app/locales/en/ideation.json
   s_02773c3f2b5565::t_7cca652680a9f6 235-237
   s_02773c3f2b5565::t_7a4eb842f699a2 120-122
@@ -33,13 +39,16 @@ test/storyarn_web/live/ideation_live/connection_board_test.exs
 lib/storyarn/ideation/ideas/execution/group_placement.ex
   s_02773c3f2b5565::t_7a4eb842f699a2 7,19,54-56,60-61
   s_02773c3f2b5565::t_9f6998084a2ee5 58-59,62-63
+  s_02773c3f2b5565::t_601d17d6f372bd 20,52-53,57
 assets/app/modules/ideation/components/RoundBar.vue
   s_02773c3f2b5565::t_eb6a7ba24b9f21 6,19,28-34,38-39,41,52,61-70,72
 lib/storyarn/ideation/ideas/commands/create.ex
   s_02773c3f2b5565::t_7a4eb842f699a2 12
   s_02773c3f2b5565::t_1f463d83cddbff 152
+  s_02773c3f2b5565::t_601d17d6f372bd 74,150-151
 assets/app/test/modules/ideation/roundStartedToast.test.ts
   s_02773c3f2b5565::t_a413c341d00c18 1-17,19-26
+  s_02773c3f2b5565::t_3c23ca5b1e3176 18
 ---
 {
   "schema_version": "authorship/3.0.0",
