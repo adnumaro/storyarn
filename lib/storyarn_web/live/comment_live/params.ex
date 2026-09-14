@@ -9,6 +9,8 @@ defmodule StoryarnWeb.CommentLive.Params do
     "tool" => "",
     "status" => "all",
     "personal" => "all",
+    "unread" => "",
+    "following" => "",
     "search" => ""
   }
 
@@ -22,6 +24,8 @@ defmodule StoryarnWeb.CommentLive.Params do
       "tool" => choice(params["tool"], ~w(flow sheet scene brainstorming), ""),
       "status" => choice(params["status"], ~w(all open resolved), "all"),
       "personal" => choice(params["personal"], ~w(all participated mentioned), "all"),
+      "unread" => toggle(params["unread"]),
+      "following" => toggle(params["following"]),
       "search" => search(params["search"])
     }
   end
@@ -31,7 +35,9 @@ defmodule StoryarnWeb.CommentLive.Params do
       status: filters["status"],
       search: filters["search"],
       participated: filters["personal"] == "participated",
-      mentioned: filters["personal"] == "mentioned"
+      mentioned: filters["personal"] == "mentioned",
+      unread: filters["unread"] == "1",
+      following: filters["following"] == "1"
     ]
     |> maybe_put(:workspace_id, positive(filters["workspace_id"]))
     |> maybe_put(:project_id, positive(filters["project_id"]))
@@ -50,6 +56,7 @@ defmodule StoryarnWeb.CommentLive.Params do
   def positive(_), do: nil
 
   defp id_filter(value), do: if(id = positive(value), do: to_string(id), else: "")
+  defp toggle(value), do: if(value in ["1", 1, true, "true"], do: "1", else: "")
   defp choice(value, choices, fallback), do: if(value in choices, do: value, else: fallback)
 
   defp search(value) when is_binary(value) and byte_size(value) <= 200 do

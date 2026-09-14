@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import CommentPin from "@components/comments/CommentPin.vue";
+import CommentPinPreview from "@components/comments/CommentPinPreview.vue";
 import { MessageCircle, Repeat2 } from "@lucide/vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import { useLive } from "@shared/composables/useLive";
 import { useSheetCanvasComments } from "../../composables/useSheetCanvasComments";
+import { sheetCommentUi } from "../../lib/sheetCommentUi";
 import type { SheetCommentsPanelState, SheetCommentThread } from "../../types/comments";
 import SheetCommentPopover from "../panels/SheetCommentPopover.vue";
 
@@ -14,12 +16,14 @@ const {
   commentPins,
   focusThreadId,
   draftStorageKey = null,
+  currentUserId = null,
 } = defineProps<{
   container: () => HTMLElement | null;
   state: SheetCommentsPanelState;
   commentPins: SheetCommentThread[];
   focusThreadId: number | null;
   draftStorageKey?: string | null;
+  currentUserId?: number | null;
 }>();
 const emit = defineEmits<{
   interactionChange: [active: boolean];
@@ -344,6 +348,8 @@ onUnmounted(() => {
       :key="pin.thread.id"
       :movable="state.canComment"
       :selected="state.thread?.id === pin.thread.id && popupOpen"
+      :unread="pin.thread.unread === true"
+      :count="Math.max(0, pin.thread.message_count - 1)"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('sheets.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
@@ -378,22 +384,18 @@ onUnmounted(() => {
       @keydown="movePinWithKeyboard($event, null)"
     />
 
-    <div
+    <CommentPinPreview
       v-if="hoveredPin && !(popupOpen && state.thread?.id === hoveredPin.thread.id)"
       id="sheet-comment-preview"
-      role="tooltip"
-      class="absolute rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl"
+      class="absolute"
+      :thread="hoveredPin.thread"
+      :ui="sheetCommentUi"
       :style="{
         left: `${previewPosition.x}px`,
         top: `${previewPosition.y}px`,
         width: `${previewSize.width}px`,
       }"
-    >
-      <p class="truncate text-xs font-semibold">{{ hoveredPin.thread.author.display_name }}</p>
-      <p class="mt-1.5 line-clamp-3 whitespace-pre-wrap break-words text-xs text-muted-foreground">
-        {{ hoveredPin.thread.preview }}
-      </p>
-    </div>
+    />
 
     <div
       v-if="contextMenuPoint"
@@ -439,7 +441,11 @@ onUnmounted(() => {
       @wheel.stop
       @contextmenu.stop
     >
-      <SheetCommentPopover :state="panelState" :draft-storage-key="draftStorageKey" />
+      <SheetCommentPopover
+        :state="panelState"
+        :draft-storage-key="draftStorageKey"
+        :current-user-id="currentUserId"
+      />
     </div>
   </div>
 </template>

@@ -41,7 +41,7 @@ function composer(
     props: {
       sourceId: null,
       position: { x: 400, y: 200 },
-      draftId: "draft-a",
+      storage: { draftId: "draft-a" },
       members: [],
       ui,
       ...overrides,

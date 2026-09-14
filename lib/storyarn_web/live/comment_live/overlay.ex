@@ -42,7 +42,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
      |> assign(:hub, %{
        threads: [],
        nextCursor: nil,
-       counts: %{all: 0, open: 0, resolved: 0},
+       counts: empty_counts(),
        filters: filters,
        workspaces: [],
        projects: [],
@@ -138,6 +138,15 @@ defmodule StoryarnWeb.CommentLive.Overlay do
     Authorize.with_authorization(
       socket,
       :edit_content,
+      &mutate(event, params, &1),
+      fn current, _reason -> failure(refresh_access(current), :not_found) end
+    )
+  end
+
+  def handle_event(event, params, socket) when event in ~w(comments_follow comments_read) do
+    Authorize.with_authorization(
+      socket,
+      :manage_comment_state,
       &mutate(event, params, &1),
       fn current, _reason -> failure(refresh_access(current), :not_found) end
     )
@@ -348,7 +357,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
         |> put_hub(%{
           threads: [],
           nextCursor: nil,
-          counts: %{all: 0, open: 0, resolved: 0},
+          counts: empty_counts(),
           error: gettext("Comments could not be loaded. Please try again.")
         })
     end
@@ -462,6 +471,12 @@ defmodule StoryarnWeb.CommentLive.Overlay do
     )
   end
 
+  defp mutation("comments_follow", scope, project_id, id, params),
+    do: Projects.set_ideation_comment_following(scope, project_id, id, params["following"])
+
+  defp mutation("comments_read", scope, project_id, id, params),
+    do: Projects.mark_ideation_comment_read(scope, project_id, id, Params.positive(params["message_id"]))
+
   defp mutation("comments_set_status", scope, project_id, id, params),
     do:
       Projects.set_comment_thread_status(
@@ -510,6 +525,19 @@ defmodule StoryarnWeb.CommentLive.Overlay do
       conversation: empty_conversation(),
       contextUrl: nil
     })
+  end
+
+  defp empty_counts do
+    %{
+      all: 0,
+      open: 0,
+      resolved: 0,
+      tools: %{"sheet" => 0, "flow" => 0, "scene" => 0, "brainstorming" => 0},
+      unread: 0,
+      mentioned: 0,
+      participated: 0,
+      following: 0
+    }
   end
 
   defp empty_conversation do

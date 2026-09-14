@@ -30,16 +30,16 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> fill_in("#brainstorming-comment-body", "New thread", with: "Should the ending stay open?")
       |> drag_pin("#brainstorming-comment-draft-pin", 120, 40)
       |> assert_has("#brainstorming-comment-body", value: "Should the ending stay open?")
-      |> click_button("Mention people")
-      |> click_button("Review partner")
-      |> click_button("Mention people")
+      |> click("button[aria-label='Mention people']")
+      |> click("li[role='option']:has-text('Review partner')")
+      |> assert_has("#brainstorming-comment-body", value: "Should the ending stay open? @Review partner ")
       |> click("#brainstorming-comment-send")
       |> assert_has("#brainstorming-comments-content", text: "Should the ending stay open?")
       |> fill_in("#brainstorming-comment-body", "Reply", with: "Yes, keep the mystery.")
       |> click("#brainstorming-comment-send")
       |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.")
       |> click("#brainstorming-comment-status")
-      |> assert_has("#brainstorming-comment-status", text: "Reopen")
+      |> assert_has("#brainstorming-comment-status[title='Reopen']")
 
     {:ok, %{threads: [thread]}} = Projects.list_ideation_comment_threads(ctx.author, project.id, ctx.session.id)
     assert [%{kind: "comment_mention"}] = Storyarn.NotificationInbox.list_notifications(ctx.peer)
@@ -51,7 +51,7 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> visit(path <> "?thread=#{thread.id}")
       |> assert_has("#brainstorming-comments-content", text: "Yes, keep the mystery.", timeout: 20_000)
       |> click("#brainstorming-comment-status")
-      |> assert_has("#brainstorming-comment-status", text: "Resolve")
+      |> assert_has("#brainstorming-comment-status[title='Resolve']")
       |> click("#brainstorming-comment-popover-close")
       |> drag_pin(pin, 40, 60)
       |> assert_has("#{pin}[aria-busy=false]")
@@ -161,14 +161,14 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
       |> visit(path <> "?thread=#{detail.thread.id}")
       |> assert_has("#brainstorming-comments-content", text: "Which ending fits the game?")
       |> refute_has("#brainstorming-comment-body")
-      |> assert_has("#brainstorming-comment-read")
-      |> click("#brainstorming-comment-follow")
-      |> assert_has("#brainstorming-comment-follow", text: "Unfollow")
-      |> click("#brainstorming-comment-read")
-      |> refute_has("#brainstorming-comment-read")
+      |> assert_has("#brainstorming-comment-read-toggle")
+      |> click("#brainstorming-comment-follow-toggle")
+      |> assert_has("#brainstorming-comment-follow-toggle", text: "Unfollow")
+      |> click("#brainstorming-comment-read-toggle")
+      |> refute_has("#brainstorming-comment-read-toggle")
       |> visit(path <> "?thread=#{detail.thread.id}")
-      |> assert_has("#brainstorming-comment-follow", text: "Unfollow", timeout: 20_000)
-      |> refute_has("#brainstorming-comment-read")
+      |> assert_has("#brainstorming-comment-follow-toggle", text: "Unfollow", timeout: 20_000)
+      |> refute_has("#brainstorming-comment-read-toggle")
 
     {:ok, _} =
       Projects.reply_to_comment_thread(ctx.author, project.id, detail.thread.id, %{
@@ -179,8 +179,8 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
 
     browser
     |> assert_has("#brainstorming-comments-content", text: "A new proposal")
-    |> assert_has("#brainstorming-comment-read")
-    |> click("#brainstorming-comment-follow")
-    |> assert_has("#brainstorming-comment-follow", text: "Follow")
+    |> assert_has("#brainstorming-comment-read-toggle")
+    |> click("#brainstorming-comment-follow-toggle")
+    |> assert_has("#brainstorming-comment-follow-toggle", text: "Follow")
   end
 end

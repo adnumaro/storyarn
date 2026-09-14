@@ -26,8 +26,15 @@ Search materializes the authorized, filtered candidates before evaluating source
 and context labels. Loaded pages share one count query per refresh; subsequent
 pages use `include_counts: false` and return `counts: nil`.
 
-The list supports workspace, project, source tool, status, participation, mentions
-and search filters. Selecting a conversation reauthorizes its project and source.
+The list supports workspace, project, source tool, status, participation, mentions,
+unread, following and search filters. Rows lead with the conversations the reader
+has not read or is mentioned in, then follow last activity; the activity cursor
+carries that priority (`prio`, `at`, `id`) so later pages stay stable. Each row
+also carries the latest message (`last_message`) beside the root preview. Counts
+are facets: status counts follow the selected tool, tool counts ignore it, and
+the personal counts (unread, mentioned, participated, following) ignore the
+personal toggles, so every chip says how many rows it would show if selected.
+Selecting a conversation reauthorizes its project and source.
 Replies, explicit parent replies, mentions and revision-checked resolve/reopen
 use the existing Projects comment APIs. The hub has no thread-creation event or
 composer without an accessible existing thread. A resolved thread must be
@@ -103,8 +110,14 @@ No private idea text or Drafts content is materialized by this adapter.
 
 ### Participation and notifications
 
-Following is explicit and opt-in. Creating, replying, opening a permalink and
-listing a thread do not subscribe or acknowledge it. Viewers may follow/unfollow
+Participation (following, the read watermark and the derived unread flag) is
+personal state on every readable thread, whichever editor owns its source: the
+Sheet, Flow and Scene popovers and the hub expose follow, unfollow and mark read
+through the same `set_ideation_comment_following/4` and
+`mark_ideation_comment_read/4` entry points the brainstorming adapter introduced,
+and followers of any thread receive `comment_followed` deliveries. Following is
+explicit and opt-in. Creating, replying, opening a permalink and listing a thread
+do not subscribe or acknowledge it. Viewers may follow/unfollow
 and mark accessible threads read, but cannot write messages. Read watermarks
 advance monotonically through an explicitly supplied message of that thread;
 the dialog sends the highest message ID actually returned to it. A delayed
@@ -224,6 +237,15 @@ project does not receive another project's review history. Existing database
 backups retain the review tables; downloadable content snapshots do not promise
 to recover them. Hard project deletion cascades the project's review tables.
 User deletion anonymizes authors; the body and conversation remain project data.
+
+## Context preview
+
+An available context also carries `preview: %{kind, value}` in its DTO: the kind
+of target (block type, `cover`, `header`, `title`, `row`, node type, `pin`,
+`zone`, `connection`, `annotation`) and, for Sheet blocks and dialogue nodes,
+its current value or speaker, read live from the target row and truncated to 120
+characters. Nothing is stored, so a preview can never go stale or outlive a
+deleted target; a removed context keeps its captured label and no preview.
 
 ## Spatial positions
 

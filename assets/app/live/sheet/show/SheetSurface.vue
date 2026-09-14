@@ -168,6 +168,7 @@ useSheetHighlight(
         :comment-pins="surface.content.commentPins ?? []"
         :focus-thread-id="surface.content.commentFocusThreadId ?? null"
         :draft-storage-key="commentDraftStorageKey"
+        :current-user-id="surface.content.currentUserId"
         @interaction-change="localCommentInteractionActive = $event"
       />
 

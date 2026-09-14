@@ -121,7 +121,7 @@ describe("Flow comment popover", () => {
       thread: { ...thread, source: { ...thread.source, type: "flow_canvas", id: 7 } },
       messages: [message],
     });
-    expect(wrapper.text()).toContain("Flow canvas");
+    expect(wrapper.text()).toContain("Dialogue #42");
     expect(wrapper.text()).toContain(message.body);
     expect(wrapper.text()).toContain(member.display_name);
     expect(wrapper.text()).not.toContain("All threads");
@@ -150,7 +150,7 @@ describe("Flow comment popover", () => {
     expect(wrapper.text()).toContain("This node is no longer available");
     expect(wrapper.text()).toContain(message.body);
     expect(wrapper.find("#flow-comment-status").exists()).toBe(false);
-    expect(wrapper.get("textarea").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("textarea").exists()).toBe(false);
   });
 
   it("preserves replies when only the optional context is unavailable", async () => {
@@ -166,9 +166,9 @@ describe("Flow comment popover", () => {
       },
     };
     const wrapper = panel({ thread: contextual, messages: [message] });
-    expect(wrapper.text()).toContain("Flow canvas");
+    expect(wrapper.text()).toContain("Dialogue #42");
     expect(wrapper.get("#flow-comment-context").text()).toContain("Guard dialogue");
-    expect(wrapper.get("#flow-comment-context").text()).toContain("Context unavailable");
+    expect(wrapper.get("#flow-comment-context").text()).toContain("Context removed");
     expect(wrapper.find("#flow-comment-status").exists()).toBe(true);
     expect(wrapper.get("textarea").attributes("disabled")).toBeUndefined();
     await wrapper.get("textarea").setValue("The discussion can continue.");
@@ -198,7 +198,8 @@ describe("Flow comment popover", () => {
 
   it("requires reopening a resolved discussion before replying", async () => {
     const wrapper = panel({ thread: { ...thread, status: "resolved" }, messages: [message] });
-    expect(wrapper.get("textarea").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("textarea").exists()).toBe(false);
+    expect(wrapper.text()).toContain("This thread is resolved");
     await wrapper.get("#flow-comment-status").trigger("click");
     expect(mockLive.pushEvent).toHaveBeenCalledWith(
       "comments_set_status",
@@ -380,43 +381,50 @@ describe("Flow comment composer delivery", () => {
   it("sends mentions as explicit member ids and rotates id after content changes", async () => {
     const wrapper = composer();
     await wrapper
-      .findAll("button")
-      .find((button) => button.text() === "Grace")!
+      .findAll("li[role='option']")
+      .find((option) => option.text().endsWith("Grace"))!
       .trigger("click");
-    await wrapper.get("textarea").setValue("Please review.");
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("@Grace ");
+    await wrapper.get("textarea").setValue("@Grace Please review.");
     await wrapper.get("form").trigger("submit");
     const first = vi.mocked(mockLive.pushEvent).mock.calls[0][1];
     expect(first?.mention_user_ids).toEqual([8]);
     lastReply()({ ok: false });
     await wrapper.vm.$nextTick();
-    await wrapper.get("textarea").setValue("Please review the ending.");
+    await wrapper.get("textarea").setValue("@Grace Please review the ending.");
     await wrapper.get("form").trigger("submit");
     expect(vi.mocked(mockLive.pushEvent).mock.calls[1][1]?.client_request_id).not.toBe(
       first?.client_request_id,
     );
   });
 
-  it("reuses the same request after a lost response and reordering the same mentions", async () => {
+  it("drops a mention when its name is edited out of the text", async () => {
+    const wrapper = composer();
+    await wrapper
+      .findAll("li[role='option']")
+      .find((option) => option.text().endsWith("Grace"))!
+      .trigger("click");
+    await wrapper.get("textarea").setValue("Please review.");
+    await wrapper.get("form").trigger("submit");
+    expect(vi.mocked(mockLive.pushEvent).mock.calls[0][1]?.mention_user_ids).toEqual([]);
+  });
+
+  it("reuses the same request after a lost response with the same mentions", async () => {
     const wrapper = composer();
     const thirdMember = { id: 20, display_name: "Lin", avatar_url: null };
     await wrapper.setProps({ members: [author, member, thirdMember] });
     for (const name of ["Ada", "Grace", "Lin"]) {
       await wrapper
-        .findAll("button[aria-pressed]")
-        .find((button) => button.text() === name)!
+        .findAll("li[role='option']")
+        .find((option) => option.text().endsWith(name))!
         .trigger("click");
     }
-    await wrapper.get("textarea").setValue("Please review this scene.");
+    await wrapper.get("textarea").setValue("@Lin @Grace @Ada Please review this scene.");
     await wrapper.get("form").trigger("submit");
     const originalRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
     originalRequest[3]!(new Error("Response lost after commit"));
     await wrapper.vm.$nextTick();
 
-    await wrapper.get('button[aria-label="Remove mention of Ada"]').trigger("click");
-    await wrapper
-      .findAll("button[aria-pressed]")
-      .find((button) => button.text() === "Ada")!
-      .trigger("click");
     await wrapper.get("form").trigger("submit");
     const retry = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
 

@@ -764,7 +764,7 @@ describe("Scene canvas comments", () => {
       body: "Keep this review",
     });
     const { wrapper } = setup();
-    await wrapper.setProps({ draftStorageKey: key });
+    await wrapper.setProps({ viewer: { draftStorageKey: key } });
     await nextTick();
     expect(live.pushEvent).toHaveBeenCalledWith(
       "comments_place",
@@ -810,7 +810,7 @@ describe("Scene canvas comments", () => {
       draftId: "active",
       draftPosition: { x: 10, y: 20 },
     });
-    await wrapper.setProps({ draftStorageKey: key });
+    await wrapper.setProps({ viewer: { draftStorageKey: key } });
     await nextTick();
     vi.mocked(live.pushEvent).mockClear();
     await wrapper.setProps({ state: { ...base }, backgroundSettled: false });
@@ -829,7 +829,7 @@ describe("Scene canvas comments", () => {
       body: "Old draft",
     });
     const { wrapper } = setup();
-    await wrapper.setProps({ draftStorageKey: key });
+    await wrapper.setProps({ viewer: { draftStorageKey: key } });
     await nextTick();
     const onReply = vi.mocked(live.pushEvent).mock.calls[0][2]!;
     await wrapper.setProps({

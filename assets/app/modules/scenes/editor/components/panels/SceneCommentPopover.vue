@@ -4,9 +4,14 @@ import CommentPopover from "@components/comments/CommentPopover.vue";
 import type { SceneCommentsPanelState } from "../../../types/comments";
 import { adaptSceneCommentsState, sceneCommentUi } from "../../lib/sceneCommentUi";
 
-const { state, draftStorageKey = null } = defineProps<{
+const {
+  state,
+  draftStorageKey = null,
+  currentUserId = null,
+} = defineProps<{
   state: SceneCommentsPanelState;
   draftStorageKey?: string | null;
+  currentUserId?: number | null;
 }>();
 
 const emit = defineEmits<{ close: [] }>();
@@ -18,6 +23,7 @@ const sharedState = computed(() => adaptSceneCommentsState(state));
     :state="sharedState"
     :ui="sceneCommentUi"
     :draft-storage-key="draftStorageKey"
+    :current-user-id="currentUserId"
     @close="emit('close')"
   />
 </template>

@@ -26,6 +26,12 @@ export interface CommentContextReference {
   offset?: CommentPosition | null;
 }
 
+/** Live description of the context target: what kind of thing it is and its current value. */
+export interface CommentContextPreview {
+  kind: string;
+  value: string | number | boolean | null;
+}
+
 /** Optional context within the owning surface; it never owns the conversation. */
 export interface CommentContext {
   type: string;
@@ -33,6 +39,14 @@ export interface CommentContext {
   label: string;
   status: "available" | "unavailable";
   offset: CommentPosition | null;
+  preview?: CommentContextPreview | null;
+}
+
+export interface CommentLastMessage {
+  id: number;
+  author: CommentMember;
+  body: string;
+  inserted_at: string;
 }
 
 export interface CommentThread<TSource extends CommentSource = CommentSource> {
@@ -45,6 +59,7 @@ export interface CommentThread<TSource extends CommentSource = CommentSource> {
   following?: boolean;
   unread?: boolean;
   last_message_id?: number;
+  last_message?: CommentLastMessage | null;
   resolved_at: string | null;
   resolved_by: CommentMember | null;
   source: TSource;

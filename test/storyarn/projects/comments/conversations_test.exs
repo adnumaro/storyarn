@@ -391,11 +391,12 @@ defmodule Storyarn.Projects.CommentConversationsTest do
     {counted, queries} = counted_page(ctx.peer, opts)
     {uncounted, fewer_queries} = counted_page(ctx.peer, Keyword.put(opts, :include_counts, false))
 
-    assert counted.counts == %{all: 3, open: 3, resolved: 0}
+    assert %{all: 3, open: 3, resolved: 0, tools: %{"sheet" => 3}, unread: 3} = counted.counts
     assert uncounted.counts == nil
     assert uncounted.threads == counted.threads
     assert uncounted.next_cursor == counted.next_cursor
-    assert fewer_queries == queries - 1
+    # Facet counts take two queries: one grouped by tool and status, one for the personal toggles.
+    assert fewer_queries == queries - 2
   end
 
   defp counted_page(scope, opts \\ []) do

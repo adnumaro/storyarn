@@ -15,6 +15,8 @@ const filters: HubFilters = {
   tool: "",
   status: "all",
   personal: "all",
+  unread: "",
+  following: "",
   search: "",
 };
 const author = { id: 3, display_name: "Ari", avatar_url: null };
@@ -162,9 +164,10 @@ describe("Comments hub", () => {
   it("debounces search and includes tool, status and participation", async () => {
     vi.useFakeTimers();
     const wrapper = hub();
-    await wrapper.get("#comments-hub-tool").setValue("flow");
-    await wrapper.get("#comments-hub-status").setValue("open");
-    await wrapper.get("#comments-hub-personal").setValue("mentioned");
+    await wrapper.get("#comments-hub-tool-flow").trigger("click");
+    await wrapper.get("#comments-hub-status-open").trigger("click");
+    await wrapper.get("#comments-hub-mentioned").trigger("click");
+    expect(wrapper.get("#comments-hub-tool-flow").attributes("aria-pressed")).toBe("true");
     vi.mocked(live.pushEvent).mockClear();
     await wrapper.get("#comments-hub-search").setValue("guard");
     await vi.advanceTimersByTimeAsync(249);
@@ -268,11 +271,11 @@ describe("Comments hub", () => {
 
   it("reports disconnected filtering and selection and permits retrying the same input", async () => {
     const wrapper = hub();
-    await wrapper.get("#comments-hub-status").setValue("open");
+    await wrapper.get("#comments-hub-status-open").trigger("click");
     vi.mocked(live.pushEvent).mock.calls.at(-1)![3]!(new Error("Disconnected"));
     await nextTick();
     expect(wrapper.get('[role="alert"]').text()).toContain("Could not update the search");
-    expect((wrapper.get("#comments-hub-status").element as HTMLSelectElement).value).toBe("open");
+    expect(wrapper.get("#comments-hub-status-open").attributes("aria-pressed")).toBe("true");
     expect(wrapper.get("#comments-hub-list").attributes("aria-busy")).toBe("false");
     await wrapper.get('form[role="search"]').trigger("submit");
     expect(vi.mocked(live.pushEvent).mock.calls.at(-1)![1]).toMatchObject({ status: "open" });
@@ -307,7 +310,8 @@ describe("Comments hub", () => {
     expect(wrapper.text()).toContain(first.preview);
     expect(wrapper.find("#comments-hub-context").exists()).toBe(false);
     expect(wrapper.find("#hub-comment-status").exists()).toBe(false);
-    expect(wrapper.get("#hub-comment-body").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("#hub-comment-body").exists()).toBe(false);
+    expect(wrapper.text()).toContain("no longer available");
   });
 
   it("isolates reply drafts by user, project, thread and parent and restores them on return", async () => {
@@ -433,7 +437,7 @@ describe("Comments hub", () => {
     setTestLocale("es");
     const wrapper = hub(hubState(first));
     expect(wrapper.get("h1").text()).toBe("Comentarios");
-    expect(wrapper.get("#comments-hub-context").text()).toBe("Ver en contexto");
+    expect(wrapper.get("#comments-hub-context").text()).toBe("Abrir en el editor");
     expect(wrapper.text()).not.toContain("comments_hub.");
   });
 });

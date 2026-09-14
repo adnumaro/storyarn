@@ -88,8 +88,8 @@ defmodule Storyarn.Projects.Comments do
   def list_ideation_conversations(_, _), do: {:error, :not_found}
 
   def list_comment_conversations(%{user: %{id: id}} = scope, opts) when is_integer(id) and id > 0 do
-    with {:ok, threads, cursor} <- Conversations.list(scope, opts) do
-      dtos = thread_dtos(threads, scope)
+    with {:ok, threads, cursor, priorities} <- Conversations.list(scope, opts) do
+      dtos = threads |> thread_dtos(scope) |> with_last_messages()
       destinations = destinations(scope, Enum.map(dtos, & &1.root_message_id))
       counts = if Keyword.get(opts, :include_counts, true), do: Conversations.counts(scope, opts)
       # Last read before serialization rechecks every page entry's membership
@@ -104,7 +104,12 @@ defmodule Storyarn.Projects.Comments do
         end
 
       # A source revoked during this read must not survive as a cursor identity.
-      cursor = if cursor && dtos != [], do: %{at: List.last(dtos).last_activity_at, id: List.last(dtos).id}
+      cursor =
+        if cursor && dtos != [] do
+          last = List.last(dtos)
+          %{prio: Map.get(priorities, last.id, 0), at: last.last_activity_at, id: last.id}
+        end
+
       {:ok, %{threads: dtos, next_cursor: cursor, counts: counts}}
     end
   end
@@ -171,7 +176,7 @@ defmodule Storyarn.Projects.Comments do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(flow_id) do
       {threads, next_cursor} = Queries.list_threads(project_id, :flow, flow_id, opts)
-      {:ok, %{threads: thread_dtos(threads), next_cursor: next_cursor}}
+      {:ok, %{threads: thread_dtos(threads, scope), next_cursor: next_cursor}}
     else
       _ -> {:error, :not_found}
     end
@@ -181,7 +186,7 @@ defmodule Storyarn.Projects.Comments do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(scene_id) do
       {threads, next_cursor} = Queries.list_threads(project_id, :scene, scene_id, opts)
-      {:ok, %{threads: thread_dtos(threads), next_cursor: next_cursor}}
+      {:ok, %{threads: thread_dtos(threads, scope), next_cursor: next_cursor}}
     else
       _ -> {:error, :not_found}
     end
@@ -191,7 +196,7 @@ defmodule Storyarn.Projects.Comments do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(sheet_id) do
       {threads, next_cursor} = Queries.list_threads(project_id, :sheet, sheet_id, opts)
-      {:ok, %{threads: thread_dtos(threads), next_cursor: next_cursor}}
+      {:ok, %{threads: thread_dtos(threads, scope), next_cursor: next_cursor}}
     else
       _ -> {:error, :not_found}
     end
@@ -234,10 +239,30 @@ defmodule Storyarn.Projects.Comments do
     end
   end
 
-  defp with_read_marker(dto, thread, messages) do
-    if Queries.ideation?(thread),
-      do: Map.put(dto, :last_message_id, Enum.max([0 | Enum.map(messages, & &1.id)])),
-      else: dto
+  defp with_read_marker(dto, _thread, messages),
+    do: Map.put(dto, :last_message_id, Enum.max([0 | Enum.map(messages, & &1.id)]))
+
+  # Hub rows lead with the latest voice in the conversation, not only the root.
+  defp with_last_messages([]), do: []
+
+  defp with_last_messages(dtos) do
+    latest = Queries.last_messages(Enum.map(dtos, & &1.id))
+    authors = latest |> Map.values() |> Enum.map(& &1.author_id) |> Queries.authors()
+
+    Enum.map(dtos, fn dto ->
+      case latest[dto.id] do
+        nil ->
+          Map.put(dto, :last_message, nil)
+
+        message ->
+          Map.put(dto, :last_message, %{
+            id: message.id,
+            author: DTO.member(authors[message.author_id]),
+            body: String.slice(message.body, 0, 160),
+            inserted_at: DateTime.to_iso8601(message.inserted_at)
+          })
+      end
+    end)
   end
 
   def create(scope, project_id, flow_id, node_id, attrs) do
@@ -333,7 +358,7 @@ defmodule Storyarn.Projects.Comments do
   def list_pins(scope, project_id, flow_id) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(flow_id) do
-      {:ok, project_id |> Queries.list_pins(:flow, flow_id) |> thread_dtos()}
+      {:ok, project_id |> Queries.list_pins(:flow, flow_id) |> thread_dtos(scope)}
     else
       _ -> {:error, :not_found}
     end
@@ -342,7 +367,7 @@ defmodule Storyarn.Projects.Comments do
   def list_scene_pins(scope, project_id, scene_id) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(scene_id) do
-      {:ok, project_id |> Queries.list_pins(:scene, scene_id) |> thread_dtos()}
+      {:ok, project_id |> Queries.list_pins(:scene, scene_id) |> thread_dtos(scope)}
     else
       _ -> {:error, :not_found}
     end
@@ -351,7 +376,7 @@ defmodule Storyarn.Projects.Comments do
   def list_sheet_pins(scope, project_id, sheet_id) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(sheet_id) do
-      {:ok, project_id |> Queries.list_pins(:sheet, sheet_id) |> thread_dtos()}
+      {:ok, project_id |> Queries.list_pins(:sheet, sheet_id) |> thread_dtos(scope)}
     else
       _ -> {:error, :not_found}
     end
@@ -451,7 +476,7 @@ defmodule Storyarn.Projects.Comments do
     end
   end
 
-  defp thread_dtos(threads, scope \\ nil) do
+  defp thread_dtos(threads, scope) do
     authors = Queries.authors(Enum.flat_map(threads, &[&1.author_id, &1.resolved_by_id]))
     previews = Queries.root_messages(Enum.map(threads, & &1.id))
     {ideation, canonical} = Enum.split_with(threads, &Queries.ideation?/1)

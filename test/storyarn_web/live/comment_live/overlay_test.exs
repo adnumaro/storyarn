@@ -29,7 +29,7 @@ defmodule StoryarnWeb.CommentLive.OverlayTest do
     assert [%{"id" => id, "project_name" => name}] = state(view)["threads"]
     assert id == thread.thread.id
     assert name == ctx.project.name
-    assert state(view)["counts"] == %{"all" => 1, "open" => 1, "resolved" => 0}
+    assert %{"all" => 1, "open" => 1, "resolved" => 0, "tools" => %{"sheet" => 1}} = state(view)["counts"]
     assert Enum.any?(state(view)["projects"], &(&1["id"] == ctx.project.id))
     assert state(view)["conversation"]["thread"] == nil
   end
@@ -75,7 +75,7 @@ defmodule StoryarnWeb.CommentLive.OverlayTest do
     assert state(view)["selectedThreadId"] == nil
     assert [%{"id" => id}] = state(view)["threads"]
     assert id == resolved.thread.id
-    assert state(view)["counts"] == %{"all" => 1, "open" => 0, "resolved" => 1}
+    assert %{"all" => 1, "open" => 0, "resolved" => 1} = state(view)["counts"]
   end
 
   test "reply and resolution reuse the selected conversation and reject cross-thread mutations", ctx do
@@ -590,7 +590,11 @@ defmodule StoryarnWeb.CommentLive.OverlayTest do
 
   defp count_query?(query), do: query.source == "comment_threads" and String.contains?(query.query, "GROUP BY")
 
-  defp message_page_query?(query), do: query.source == "comment_messages" and String.contains?(query.query, "ORDER BY")
+  # The batched "latest message per row" read of the list is not a message page.
+  defp message_page_query?(query),
+    do:
+      query.source == "comment_messages" and String.contains?(query.query, "ORDER BY") and
+        not String.contains?(query.query, "DISTINCT ON")
 
   defp project_options_query?(query),
     do: query.source == "projects" and String.contains?(query.query, ~s(LEFT OUTER JOIN "workspace_memberships"))
