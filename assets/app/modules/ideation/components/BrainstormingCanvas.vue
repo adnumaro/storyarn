@@ -31,7 +31,7 @@ import CanvasGroup from "./CanvasGroup.vue";
 import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups";
 import CanvasCursors from "./CanvasCursors.vue";
 import RoundBar from "./RoundBar.vue";
-import { bandOffsets, orderRounds, sameOffsets, type BandOffsets } from "../lib/bands";
+import { bandAt, bandOffsets, orderRounds, sameOffsets, type BandOffsets } from "../lib/bands";
 import { interactivePath, interactiveTarget } from "../lib/interactive";
 import { useCanvasViewport, type Point } from "../composables/useCanvasViewport";
 import { useCanvasMarquee } from "../composables/useCanvasMarquee";
@@ -364,6 +364,11 @@ function clampDelta(moving: Array<{ id: number; origin: Point }>, dy: number): n
 function clampPoint(point: Point, roundId: number | null): Point {
   const band = bandTop(roundId);
   return band ? { x: point.x, y: Math.max(point.y, band.top) } : point;
+}
+// Where a new note goes: the band under the point decides the round, and the
+// note starts under that round's header, never above it.
+function placed(point: Point): Point {
+  return clampPoint(point, bandAt(orderedRounds.value, bands.offsets, point.y));
 }
 function center(note: Idea) {
   const rect = noteBounds(note);
@@ -699,7 +704,7 @@ function selectBackground(event: PointerEvent) {
   emit("select", []);
   focus();
   if (tool.value === "note" && canCreate.value) {
-    emit("add", world(event.clientX, event.clientY));
+    emit("add", placed(world(event.clientX, event.clientY)));
     tool.value = "select";
   }
 }
@@ -840,7 +845,7 @@ function doubleClick(event: MouseEvent) {
   if (interactivePath(event) || historyState.busy) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   if (element) emit("edit", Number(element.dataset.noteId));
-  else if (canCreate.value) emit("add", world(event.clientX, event.clientY));
+  else if (canCreate.value) emit("add", placed(world(event.clientX, event.clientY)));
 }
 function nudgeBlocked() {
   const nothingSelected = !visibleSelection.value.length && selectedGroupId.value === null;
@@ -1098,11 +1103,11 @@ function historyShortcut(event: KeyboardEvent, key: string) {
   else emit("undo");
 }
 function pastePoint(): Point {
-  return (
+  return placed(
     ghost.value ?? {
       x: (view.width / 2 - view.x) / view.zoom,
       y: (view.height / 2 - view.y) / view.zoom,
-    }
+    },
   );
 }
 function clipboard(event: ClipboardEvent, operation: "copy" | "cut" | "paste") {
@@ -1125,10 +1130,13 @@ function shortcut(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
   if (key === "n" && canCreate.value && !historyState.busy) {
     event.preventDefault();
-    emit("add", {
-      x: (view.width / 2 - view.x) / view.zoom - 140,
-      y: (view.height / 2 - view.y) / view.zoom - 100,
-    });
+    emit(
+      "add",
+      placed({
+        x: (view.width / 2 - view.x) / view.zoom - 140,
+        y: (view.height / 2 - view.y) / view.zoom - 100,
+      }),
+    );
   }
   if (key === "v") chooseTool("select");
   if (key === "h") chooseTool("pan");
@@ -1397,7 +1405,7 @@ onUnmounted(() => {
             <div
               v-if="headerShown(round)"
               :id="`brainstorming-band-${round.id}`"
-              class="absolute left-0 right-0 z-10"
+              class="pointer-events-none absolute left-0 right-0 z-10"
               :style="{ top: `${headerTop(round)}px` }"
             >
               <RoundBar

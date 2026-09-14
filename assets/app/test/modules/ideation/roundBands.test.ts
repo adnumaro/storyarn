@@ -201,6 +201,26 @@ describe("round bands on the canvas", () => {
     expect(wrapper.emitted("move")?.[1]).toEqual([[{ id: 10, point: { x: 10, y: 46 } }]]);
   });
 
+  it("creates notes under the header of the band they land in, never above it", async () => {
+    const wrapper = canvas({
+      bands: { rounds: twoRounds(), offsets: measured(), canManage: true, pending: false },
+    });
+    await wrapper.trigger("dblclick", { clientX: 300, clientY: 10 });
+    await wrapper.trigger("dblclick", { clientX: 300, clientY: 330 });
+    await wrapper.trigger("dblclick", { clientX: 300, clientY: 500 });
+    expect(wrapper.emitted("add")).toEqual([
+      [{ x: 300, y: 44 }],
+      [{ x: 300, y: 364 }],
+      [{ x: 300, y: 500 }],
+    ]);
+    // The keyboard shortcut aims at the viewport centre, 100 px up: clamped the same way.
+    view.y = 240;
+    wrapper.element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "n", bubbles: true, cancelable: true }),
+    );
+    expect(wrapper.emitted("add")?.[3]).toEqual([{ x: 260, y: 44 }]);
+  });
+
   it("offers the facilitator round actions on the right rounds only", async () => {
     const wrapper = canvas();
     expect(wrapper.find("#brainstorming-round-close-20").exists()).toBe(false);

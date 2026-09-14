@@ -9,7 +9,9 @@ import type { Round } from "../types";
 
 // The header of a round band: number, question, status and, for the
 // facilitator, the round actions. The line under the content is the band
-// boundary; everything below it belongs to this round.
+// boundary; everything below it belongs to this round. The header is drawn
+// over the canvas but only its controls take the pointer: a note that ends up
+// under the header row stays reachable, and a drag can start across it.
 const {
   round,
   single = false,
@@ -73,7 +75,7 @@ const lineClass = computed(() => {
         v-model="draft"
         :placeholder="t('ideation.rounds.addQuestion')"
         :disabled="pending"
-        class="min-w-0 flex-initial truncate text-sm"
+        class="pointer-events-auto min-w-0 flex-initial truncate text-sm"
         display-class="text-sm"
         @save="emit('updatePrompt', round.id, $event)"
       />
@@ -104,6 +106,7 @@ const lineClass = computed(() => {
           <span aria-hidden="true" class="h-5 w-px bg-border" />
           <Button
             :id="`brainstorming-round-close-${round.id}`"
+            class="pointer-events-auto"
             variant="ghost"
             size="sm"
             :disabled="pending"
@@ -114,6 +117,7 @@ const lineClass = computed(() => {
         <Button
           v-if="active || last"
           :id="`brainstorming-round-new-${round.id}`"
+          class="pointer-events-auto"
           variant="outline"
           size="sm"
           :disabled="pending"
