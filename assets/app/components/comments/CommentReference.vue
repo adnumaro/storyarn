@@ -18,6 +18,7 @@ const {
   context = null,
   crumb = true,
   preview = false,
+  contextId = null,
   unavailableLabel,
   contextRemovedLabel,
 } = defineProps<{
@@ -27,6 +28,8 @@ const {
   context?: CommentContext | null;
   crumb?: boolean;
   preview?: boolean;
+  /** Stable DOM id for the context part of the crumb, present only when there is a context. */
+  contextId?: string | null;
   unavailableLabel: string;
   contextRemovedLabel: string;
 }>();
@@ -64,7 +67,7 @@ const kindLabel = computed(() => {
         :class="context ? 'text-muted-foreground' : 'font-semibold'"
         >{{ sourceLabel }}</span
       >
-      <template v-if="context">
+      <span v-if="context" :id="contextId ?? undefined" class="flex min-w-0 items-center gap-1.5">
         <ChevronRight class="size-3 shrink-0 text-muted-foreground" />
         <span
           class="truncate font-semibold"
@@ -74,7 +77,7 @@ const kindLabel = computed(() => {
         <CommentPill v-if="!contextAvailable" kind="context-removed">{{
           contextRemovedLabel
         }}</CommentPill>
-      </template>
+      </span>
       <CommentPill v-if="sourceStatus === 'unavailable'" kind="source-unavailable">{{
         unavailableLabel
       }}</CommentPill>

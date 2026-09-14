@@ -57,13 +57,14 @@ const showPreview = computed(
     "
   >
     <div class="flex min-h-6 items-center gap-1.5">
-      <div :id="domId('context')" class="min-w-0 flex-1">
+      <div class="min-w-0 flex-1">
         <CommentReference
           v-if="thread"
           :source-type="thread.source.type"
           :source-label="sourceLabel"
           :source-status="thread.source.status"
           :context="thread.context ?? null"
+          :context-id="domId('context')"
           :unavailable-label="$t(key('source_unavailable'))"
           :context-removed-label="$t(key('context_removed'))"
         />

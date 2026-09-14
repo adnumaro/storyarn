@@ -43,7 +43,7 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
     |> assert_has("#flow-comment-status[title='Resolve']")
     |> click("#flow-comment-status")
     |> assert_has("#flow-comment-status[title='Reopen']")
-    |> assert_has("#flow-comments-content", text: "This thread is resolved.")
+    |> assert_has("#flow-comment-reopen")
     |> visit(path)
     |> assert_has("[data-flow-comment-node='#{node.id}']", timeout: 20_000)
     |> refute_has("#flow-comments-toggle")

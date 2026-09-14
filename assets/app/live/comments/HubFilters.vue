@@ -169,12 +169,12 @@ defineExpose({ reset });
           class="pointer-events-none absolute right-2.5 top-2 size-3.5 text-muted-foreground"
         />
       </div>
-      <div class="hidden shrink-0 items-center gap-1 sm:ml-auto sm:flex">
+      <div class="flex shrink-0 items-center gap-1">
         <Button
           id="comments-hub-refresh"
           variant="ghost"
           size="icon-sm"
-          class="text-muted-foreground"
+          class="hidden text-muted-foreground sm:inline-flex"
           :disabled="refreshPending"
           :aria-label="$t('comments_hub.refresh')"
           @click="emit('refresh')"
@@ -182,6 +182,7 @@ defineExpose({ reset });
           <RefreshCw class="size-4" :class="{ 'animate-spin': refreshPending }" />
         </Button>
         <Button
+          id="comments-hub-close"
           variant="ghost"
           size="icon-sm"
           class="text-muted-foreground"
