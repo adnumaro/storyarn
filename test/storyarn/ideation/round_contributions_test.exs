@@ -1,6 +1,7 @@
 defmodule Storyarn.Ideation.RoundContributionsTest do
   use Storyarn.DataCase, async: true
 
+  import Storyarn.AccountsFixtures
   import Storyarn.IdeationFixtures
 
   alias Storyarn.Ideation
@@ -11,27 +12,25 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     ideation_fixture()
   end
 
-  test "contributions need no round and explicit nil stays unround while a round is active", ctx do
-    unround = idea_fixture(ctx)
-    assert unround.round_id == nil
-    refute unround.late_contribution
-
-    round = active_round(ctx)
+  test "every contribution belongs to a round: omitted takes the one in progress, explicit nil is rejected", ctx do
+    round = first_round(ctx)
     implicit = idea_fixture(ctx)
     explicit = idea_fixture(ctx, %{round_id: round.id})
-    outside = idea_fixture(ctx, %{round_id: nil, late_contribution: true})
     assert implicit.round_id == round.id
     assert explicit.round_id == round.id
     refute implicit.late_contribution
-    assert outside.round_id == nil
-    refute outside.late_contribution
+    refute explicit.late_contribution
+
+    assert {:error, :round_required} =
+             Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{round_id: nil}))
+
+    assert Repo.aggregate(Idea, :count) == 2
   end
 
   test "a first save after close retains its captured round and records lateness without moving existing ideas", ctx do
-    first = active_round(ctx)
+    first = first_round(ctx)
     early = idea_fixture(ctx, %{round_id: first.id})
-    close_round(ctx, first)
-    second = active_round(ctx)
+    {ctx, second} = new_round(ctx)
 
     late = idea_fixture(ctx, %{round_id: first.id, late_contribution: false})
     implicit = idea_fixture(ctx)
@@ -55,22 +54,12 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     assert Repo.get!(Idea, early.id).round_id == first.id
   end
 
-  test "planned, cancelled, foreign and malformed rounds cannot accept a contribution", ctx do
-    assert {:ok, _} = Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{})
-    assert {:ok, [planned]} = Ideation.list_rounds(ctx.author, ctx.project.id, ctx.session.id)
-
-    assert {:error, :round_not_started} =
-             Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{round_id: planned.id}))
-
-    assert {:ok, _} = Ideation.cancel_round(ctx.facilitator, ctx.project.id, ctx.session.id, planned.id, 2)
-
-    assert {:error, :round_cancelled} =
-             Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{round_id: planned.id}))
-
+  test "foreign and malformed rounds cannot accept a contribution", ctx do
+    round = first_round(ctx)
     assert {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})
 
     assert {:error, :round_not_found} =
-             Ideation.create_idea(ctx.author, ctx.project.id, other.id, idea_attrs(%{round_id: planned.id}))
+             Ideation.create_idea(ctx.author, ctx.project.id, other.id, idea_attrs(%{round_id: round.id}))
 
     for invalid <- [-1, 0, 1.5, "1", :active, %{}, 9_223_372_036_854_775_808] do
       assert {:error, :invalid_round} =
@@ -82,8 +71,10 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
   end
 
   test "creation replay freezes round assignment and preserves receipts from requests without a round field", ctx do
+    first = first_round(ctx)
     legacy_attrs = idea_attrs()
     assert {:ok, legacy} = Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, legacy_attrs)
+    assert legacy.round_id == first.id
     legacy_receipt = Repo.get_by!(Edit, idea_id: legacy.id, request_key: legacy_attrs.request_key)
 
     assert legacy_receipt.fingerprint ==
@@ -94,11 +85,9 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
                )
              )
 
-    first = active_round(ctx)
     attrs = idea_attrs(%{round_id: first.id})
     assert {:ok, created} = Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
-    close_round(ctx, first)
-    second = active_round(ctx)
+    {ctx, second} = new_round(ctx)
 
     assert {:ok, ^legacy} = Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, legacy_attrs)
     assert {:ok, ^created} = Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
@@ -114,12 +103,12 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
 
   test "closing a private round neither reveals drafts nor prevents later edits or saves", ctx do
     assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
-    round = active_round(ctx)
+    round = first_round(ctx)
     attrs = %{request_key: Ecto.UUID.generate(), round_id: round.id, body: "Private contribution"}
     assert {:ok, idea} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
-    closed = close_round(ctx, round)
-    assert closed.configuration.private_mode
-    assert closed.configuration_version == 2
+    ctx = close_round(ctx, round)
+    assert ctx.session.configuration.private_mode
+    assert ctx.session.configuration_version == 2
 
     assert {:ok, changed} =
              Ideation.update_canvas_idea(
@@ -149,14 +138,14 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
 
   test "late ideas never alter a frozen reveal manifest and remain private until another explicit reveal", ctx do
     ctx = configure_session(ctx, %{publication_policy: :facilitator_assisted})
-    round = active_round(ctx)
+    round = first_round(ctx)
     attrs = %{round_id: round.id, configuration_version: 2, publication_consent: :facilitator_assisted}
     early = idea_fixture(ctx, attrs)
 
     assert {:ok, operation} =
              Ideation.prepare_idea_reveal(ctx.facilitator, ctx.project.id, ctx.session.id, Ecto.UUID.generate())
 
-    close_round(ctx, round)
+    ctx = close_round(ctx, round)
     late = idea_fixture(ctx, attrs)
     assert late.late_contribution
     assert {:ok, completed} = Ideation.reveal_ideas(ctx.facilitator, ctx.project.id, ctx.session.id, operation.id)
@@ -173,16 +162,14 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
   end
 
   test "round filters and counts apply before pagination and never expose inaccessible drafts", ctx do
-    unround = idea_fixture(ctx, %{round_id: nil, visibility: :shared})
-    first = active_round(ctx)
+    first = first_round(ctx)
     early = idea_fixture(ctx, %{visibility: :shared})
     parked = idea_fixture(ctx, %{visibility: :shared, state: :parked})
-    close_round(ctx, first)
-    second = active_round(ctx)
+    {ctx, second} = new_round(ctx)
     idea_fixture(ctx, %{visibility: :shared})
     idea_fixture(ctx, %{round_id: first.id}, ctx.peer)
 
-    assert {:ok, [^unround]} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id, round_id: nil)
+    assert {:ok, []} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id, round_id: nil)
 
     assert {:ok, [^parked]} =
              Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id, round_id: first.id, state: :all, limit: 1)
@@ -198,10 +185,10 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     assert {:ok, %{active: 1, parked: 1, discarded: 0}} =
              Ideation.count_ideas(ctx.viewer, ctx.project.id, ctx.session.id, round_id: first.id)
 
-    assert {:ok, %{active: 1, parked: 0, discarded: 0}} =
+    assert {:ok, %{active: 0, parked: 0, discarded: 0}} =
              Ideation.count_ideas(ctx.viewer, ctx.project.id, ctx.session.id, round_id: nil)
 
-    assert {:ok, %{active: 3, parked: 1, discarded: 0}} =
+    assert {:ok, %{active: 2, parked: 1, discarded: 0}} =
              Ideation.count_ideas(ctx.viewer, ctx.project.id, ctx.session.id)
 
     assert {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})
@@ -210,11 +197,84 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     assert {:error, :invalid_options} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id, round_id: "1")
   end
 
+  test "parked counts for the session tree respect visibility and project boundaries", ctx do
+    idea_fixture(ctx, %{visibility: :shared, state: :parked})
+    idea_fixture(ctx, %{state: :parked})
+    idea_fixture(ctx, %{state: :parked}, ctx.peer)
+    idea_fixture(ctx, %{visibility: :shared})
+    assert {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})
+    other_ctx = %{ctx | session: other}
+    idea_fixture(other_ctx, %{visibility: :shared, state: :parked}, ctx.peer)
+    ids = [ctx.session.id, other.id]
+
+    assert {:ok, counts} = Ideation.count_parked_ideas(ctx.author, ctx.project.id, ids)
+    assert counts == %{ctx.session.id => 2, other.id => 1}
+    assert {:ok, counts} = Ideation.count_parked_ideas(ctx.viewer, ctx.project.id, ids)
+    assert counts == %{ctx.session.id => 1, other.id => 1}
+    assert {:ok, %{}} = Ideation.count_parked_ideas(ctx.viewer, ctx.project.id, [])
+
+    stranger = user_scope_fixture()
+    assert {:error, _} = Ideation.count_parked_ideas(stranger, ctx.project.id, ids)
+
+    for invalid <- [[-1], ["1"], Enum.to_list(1..201), %{}] do
+      assert {:error, :invalid_options} = Ideation.count_parked_ideas(ctx.viewer, ctx.project.id, invalid)
+    end
+
+    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    assert {:ok, counts} = Ideation.count_parked_ideas(ctx.viewer, ctx.project.id, ids)
+    assert counts == %{other.id => 1}
+  end
+
+  test "parking, unparking, deleting or restoring a parked note wakes the session tree", ctx do
+    idea = idea_fixture(ctx, %{visibility: :shared})
+    assert :ok = Ideation.subscribe_sessions(ctx.author, ctx.project.id)
+
+    assert {:ok, edited} =
+             Ideation.update_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea.id,
+               1,
+               edit_attrs(%{body: "Same state"})
+             )
+
+    refute_receive {:ideation_sessions_changed, _}
+
+    assert {:ok, parked} =
+             Ideation.update_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea.id,
+               edited.revision,
+               edit_attrs(%{state: :parked})
+             )
+
+    assert_receive {:ideation_sessions_changed, project_id}
+    assert project_id == ctx.project.id
+
+    assert {:ok, deleted} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, parked.revision)
+    assert_receive {:ideation_sessions_changed, _}
+
+    assert {:ok, _} =
+             Ideation.restore_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea.id,
+               deleted.revision,
+               deleted.deleted_at
+             )
+
+    assert_receive {:ideation_sessions_changed, _}
+    assert {:ok, counts} = Ideation.count_parked_ideas(ctx.viewer, ctx.project.id, [ctx.session.id])
+    assert counts == %{ctx.session.id => 1}
+  end
+
   test "connections and existing source provenance survive round changes without creating derived ideas", ctx do
-    first = active_round(ctx)
     original = idea_fixture(ctx)
-    close_round(ctx, first)
-    second = active_round(ctx)
+    {ctx, second} = new_round(ctx)
     later = idea_fixture(ctx)
     stored = Repo.get!(Idea, later.id)
     stored |> Ecto.Changeset.change(source_idea_id: original.id, source_revision: 1) |> Repo.update!()
@@ -226,19 +286,5 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
     assert connected.source_revision == 1
     assert connected.round_id == second.id
     assert Repo.aggregate(Idea, :count) == 2
-  end
-
-  defp active_round(ctx) do
-    {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, prepared} = Ideation.create_round(ctx.facilitator, ctx.project.id, current.id, current.revision, %{})
-    {:ok, [round]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, current.id, limit: 1)
-    {:ok, _started} = Ideation.start_round(ctx.facilitator, ctx.project.id, current.id, round.id, prepared.revision)
-    round
-  end
-
-  defp close_round(ctx, round) do
-    {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, closed} = Ideation.close_round(ctx.facilitator, ctx.project.id, current.id, round.id, current.revision)
-    closed
   end
 end

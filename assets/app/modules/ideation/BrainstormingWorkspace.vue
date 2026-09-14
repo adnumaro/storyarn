@@ -26,8 +26,6 @@ import { useCanvasGroups } from "./composables/useCanvasGroups";
 import SessionDialog from "./components/SessionDialog.vue";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
-import RoundFilter from "./components/RoundFilter.vue";
-import RoundContext from "./components/RoundContext.vue";
 import { useBoardConnection } from "./composables/useBoardConnection";
 import { useCanvasNotes, type RemovedNote } from "./composables/useCanvasNotes";
 import {
@@ -47,7 +45,7 @@ import type {
   CanvasPlacement,
   NoteShape,
   ConnectionChange,
-  RoundFilter as RoundSelection,
+  Round,
 } from "./types";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
 const { board, baseUrl, comments } = defineProps<{
@@ -64,17 +62,16 @@ const settings = ref(false),
 const failure = ref<string | null>(null),
   resetNotice = ref(false),
   starting = ref(false);
-const state = ref("active");
-const roundFilter = ref<RoundSelection>(board.round_filter);
-const filteringRound = ref(false);
-const requestedRoundBefore = ref<number | null | undefined>(undefined);
+// The list view keeps a creative-state filter; the canvas shows every note in place.
+const state = ref("all");
+const roundPending = ref(false);
 let oldestLoadedIdeaId: number | null = null;
-let filterGeneration = 0;
+let historyGeneration = 0;
 let cancelHistoryPreparation: (() => void) | undefined;
 const rounds = computed(() => {
   const entries = new Map(board.rounds.map((round) => [round.id, round]));
   if (board.active_round) entries.set(board.active_round.id, board.active_round);
-  return [...entries.values()].sort((a, b) => b.number - a.number);
+  return [...entries.values()].sort((a, b) => a.number - b.number);
 });
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
@@ -152,16 +149,14 @@ const draft = computed(() =>
   selected.value !== null ? notes.drafts.drafts.get(selected.value) : undefined,
 );
 const visible = computed(() =>
-  notes.notes.value
-    .filter(
-      (n) =>
-        (state.value === "all" || n.state === state.value) &&
-        (roundFilter.value === "all" || n.round_id === roundFilter.value),
-    )
-    .map((note) => ({
-      ...note,
-      round_number: rounds.value.find((round) => round.id === note.round_id)?.number,
-    })),
+  notes.notes.value.map((note) => ({
+    ...note,
+    key: notes.key(note.id),
+    round_number: rounds.value.find((round) => round.id === note.round_id)?.number,
+  })),
+);
+const listed = computed(() =>
+  visible.value.filter((note) => state.value === "all" || note.state === state.value),
 );
 const statuses = computed(() =>
   Object.fromEntries([...notes.drafts.drafts.values()].map((d) => [d.idea.id, d.status])),
@@ -241,9 +236,9 @@ function groupMembership(id: number, ids: number[], add: boolean) {
 async function revealGroup(id: number) {
   const group = groups.groups.value.find((group) => group.id === id);
   if (!group) return;
-  state.value = "all";
-  if (group.idea_ids.some((noteId) => !notes.find(noteId)) || roundFilter.value !== "all") {
-    await filterRound("all", true, Math.min(...group.idea_ids));
+  if (group.idea_ids.some((noteId) => !notes.find(noteId))) {
+    failure.value = null;
+    await request("browse_ideas", { before_id: Math.min(...group.idea_ids) });
   }
   await nextTick();
   canvas.value?.fitAll();
@@ -254,10 +249,8 @@ function reset(reason: string) {
   oldestLoadedIdeaId = null;
   rememberLoadedIdeas();
   cancelHistoryPreparation?.();
-  filterGeneration++;
-  filteringRound.value = false;
-  requestedRoundBefore.value = undefined;
-  roundFilter.value = board.round_filter;
+  historyGeneration++;
+  roundPending.value = false;
   notes.reset(reason !== "access_changed");
   groups.reset();
   connections.reset();
@@ -379,30 +372,6 @@ function contentCommand(
     redo: () => apply(before, after),
   };
 }
-async function filterRound(value: RoundSelection, keepLocalView = false, beforeId?: number | null) {
-  finish();
-  failure.value = null;
-  const started = ++filterGeneration;
-  roundFilter.value = value;
-  requestedRoundBefore.value = beforeId;
-  filteringRound.value = true;
-  const reply = await request("filter_round", {
-    round_id: value,
-    ...(beforeId === undefined ? {} : { before_id: beforeId }),
-  });
-  if (started !== filterGeneration) return;
-  if (reply.status !== "ok") {
-    filteringRound.value = false;
-    if (!keepLocalView) roundFilter.value = board.round_filter;
-    failure.value = reply.status === "error" ? reply.code : "unavailable";
-  } else if (roundFilterReady()) filteringRound.value = false;
-}
-function roundFilterReady() {
-  return (
-    board.round_filter === roundFilter.value &&
-    (requestedRoundBefore.value === undefined || board.idea_before === requestedRoundBefore.value)
-  );
-}
 function historyRangeLoaded() {
   if (oldestLoadedIdeaId === null || board.ideas_next === null) return true;
   if (board.idea_before !== null && board.idea_before <= oldestLoadedIdeaId) return true;
@@ -410,26 +379,14 @@ function historyRangeLoaded() {
 }
 function prepareHistory(targets: CanvasTarget[]): Promise<boolean> {
   if (connections.pending.value) return Promise.resolve(false);
-  const available = targets.every((target) => {
-    const note = notes.find(target.id);
-    if (!note && !target.restoring) return false;
-    const roundId = note ? note.round_id : target.restoring!.roundId;
-    return roundFilter.value === "all" || roundId === roundFilter.value;
-  });
   // Current targets can be used directly, even during a background refresh.
-  // A removed note retains enough local context to be restored in this view.
-  if (available && !filteringRound.value && roundFilter.value === board.round_filter)
-    return Promise.resolve(true);
-  if (
-    roundFilter.value === "all" &&
-    board.round_filter === "all" &&
-    !filteringRound.value &&
-    !board.loading &&
-    historyRangeLoaded()
-  )
-    return Promise.resolve(true);
+  // A removed note retains enough local context to be restored on this canvas.
+  const available = targets.every((target) => notes.find(target.id) || target.restoring);
+  if (available) return Promise.resolve(true);
+  if (!board.loading && historyRangeLoaded()) return Promise.resolve(true);
+  // The target left the loaded history range: page the board back to it first.
   const at = context();
-  const expected = filterGeneration + 1;
+  const expected = ++historyGeneration;
   return new Promise((resolve) => {
     const complete = (ready: boolean) => {
       stop();
@@ -439,19 +396,17 @@ function prepareHistory(targets: CanvasTarget[]): Promise<boolean> {
     const check = () => {
       const latest = context();
       const valid =
-        expected === filterGeneration &&
+        expected === historyGeneration &&
         at.epoch === latest.epoch &&
         at.session_id === latest.session_id;
       if (!valid || !online.value || failure.value || board.error) complete(false);
-      else if (roundFilterReady() && !board.loading && !filteringRound.value) complete(true);
+      else if (!board.loading && historyRangeLoaded()) complete(true);
     };
     const stop = watch(
       () => [
-        board.round_filter,
         board.idea_before,
         board.loading,
-        filteringRound.value,
-        roundFilter.value,
+        board.ideas,
         board.error,
         board.epoch,
         board.session?.id,
@@ -462,22 +417,79 @@ function prepareHistory(targets: CanvasTarget[]): Promise<boolean> {
       { flush: "post" },
     );
     cancelHistoryPreparation = () => complete(false);
-    void filterRound("all", true, oldestLoadedIdeaId);
+    void request("browse_ideas", { before_id: oldestLoadedIdeaId });
     check();
   });
 }
 function refresh() {
   failure.value = null;
-  if (roundFilter.value !== board.round_filter) void filterRound(roundFilter.value, true);
-  else sync();
+  sync();
 }
-function showNewContributions() {
-  if (roundFilter.value !== "all") void filterRound("all", true);
+// Bring a band's header to the top once the board knows the round. A round that
+// was just started arrives with the next refresh, so wait for it briefly.
+let focusStop: (() => void) | undefined;
+function focusRound(target: number | ((round: Round) => boolean)) {
+  focusStop?.();
+  const find = () =>
+    typeof target === "number"
+      ? rounds.value.find((round) => round.id === target)
+      : rounds.value.find(target);
+  const show = (round: Round) => {
+    list.value = false;
+    void nextTick(() => canvas.value?.scrollToRound(round));
+  };
+  const found = find();
+  if (found) {
+    show(found);
+    return;
+  }
+  const stop = watch(rounds, () => {
+    const round = find();
+    if (!round) return;
+    stop();
+    focusStop = undefined;
+    show(round);
+  });
+  const timer = setTimeout(() => {
+    stop();
+    focusStop = undefined;
+  }, 10_000);
+  focusStop = () => {
+    stop();
+    clearTimeout(timer);
+    focusStop = undefined;
+  };
+}
+async function newRound(offset: number) {
+  if (!board.can_manage || !board.session || roundPending.value) return;
+  finish();
+  failure.value = null;
+  roundPending.value = true;
+  // The board still shows the previous round when the reply lands; wait for the new one.
+  const previous = board.active_round?.id ?? null;
+  const reply = await request("new_round", {
+    revision: board.session.revision,
+    canvas_offset_y: Math.round(offset),
+  });
+  roundPending.value = false;
+  if (reply.status !== "ok") {
+    failure.value = reply.status === "error" ? reply.code : "unavailable";
+    return;
+  }
+  focusRound((round) => round.status === "active" && round.id !== previous);
+}
+async function closeRound(id: number) {
+  if (!board.can_manage || !board.session || roundPending.value) return;
+  finish();
+  failure.value = null;
+  roundPending.value = true;
+  const reply = await request("close_round", { revision: board.session.revision, round_id: id });
+  roundPending.value = false;
+  if (reply.status !== "ok") failure.value = reply.status === "error" ? reply.code : "unavailable";
 }
 function add(point: Point) {
   if (!canCreate.value || mutationBusy.value) return;
   finish();
-  showNewContributions();
   const id = notes.add(point, current.value?.canvas?.color);
   history.push(presenceCommand(id, true));
   selectedIds.value = [id];
@@ -673,7 +685,6 @@ async function addConnected(ids: number[], point: Point) {
       !canCreate.value
     )
       return;
-    showNewContributions();
     const id = notes.add(point, color, undefined, undefined, { source_ids: sourceIds });
     history.push(presenceCommand(id, true));
     selectedIds.value = [id];
@@ -715,7 +726,6 @@ async function insert(copies: NoteCopy[], point: Point) {
     return;
   }
   finish();
-  showNewContributions();
   const at = context();
   const valid = () => at.epoch === board.epoch && at.session_id === board.session?.id;
   const minX = Math.min(...copies.map((note) => note.canvas.x ?? 0));
@@ -821,11 +831,10 @@ watch(
   () => board.session?.id,
   () => {
     reset("navigation");
-    state.value = "active";
+    state.value = "all";
     list.value = false;
-    filterGeneration++;
-    roundFilter.value = board.round_filter;
-    filteringRound.value = false;
+    historyGeneration++;
+    focusStop?.();
   },
   { immediate: true },
 );
@@ -858,29 +867,40 @@ function rememberLoadedIdeas() {
   }
 }
 watch(() => board.ideas, rememberLoadedIdeas, { immediate: true });
-watch([() => board.round_filter, () => board.idea_before], ([value]) => {
-  if (!filteringRound.value || roundFilterReady()) {
-    roundFilter.value = value;
-    filteringRound.value = false;
-  }
-});
 watch(visible, (notes) => {
   const ids = new Set(notes.map((note) => note.id));
   const next = selectedIds.value.filter((id) => ids.has(id));
   if (next.length !== selectedIds.value.length) select(next);
 });
 const live = useLive();
+let focusEvent: number | undefined;
+let listEvent: number | undefined;
 onMounted(() => {
   headerEvent = live.handleEvent("board_action", (payload) => {
     if (payload.epoch !== board.epoch || payload.session_id !== board.session?.id) return;
     if (payload.action === "settings") settings.value = true;
   });
+  // Deep links from the session tree: a round to scroll to, or the parked list.
+  focusEvent = live.handleEvent("brainstorming_focus_round", (payload) => {
+    if (payload.epoch !== board.epoch) return;
+    const id = Number(payload.round_id);
+    if (Number.isInteger(id) && id > 0) focusRound(id);
+  });
+  listEvent = live.handleEvent("brainstorming_open_list", (payload) => {
+    if (payload.epoch !== board.epoch) return;
+    finish();
+    state.value = String(payload.state ?? "all");
+    list.value = true;
+  });
 });
 onUnmounted(() => {
   cancelHistoryPreparation?.();
+  focusStop?.();
   history.clear();
   connections.reset();
   if (headerEvent !== undefined) live.removeHandleEvent(headerEvent);
+  if (focusEvent !== undefined) live.removeHandleEvent(focusEvent);
+  if (listEvent !== undefined) live.removeHandleEvent(listEvent);
 });
 </script>
 <template>
@@ -962,7 +982,6 @@ onUnmounted(() => {
         ></template
       >
     </DashboardContent>
-    <RoundContext v-if="board.active_round?.prompt" :round="board.active_round" />
     <div v-if="board.session" class="relative min-h-0 flex-1">
       <BrainstormingCanvas
         v-show="!list"
@@ -975,7 +994,6 @@ onUnmounted(() => {
           save: groups.save,
           move: groups.move,
         }"
-        :note-key="notes.key"
         :selected-ids="selectedIds"
         :history-state="{
           canUndo: history.canUndo.value,
@@ -997,6 +1015,9 @@ onUnmounted(() => {
         }"
         :members="board.members"
         :statuses="statuses"
+        :bands="{ rounds, canManage: board.can_manage, pending: roundPending }"
+        @new-round="newRound"
+        @close-round="closeRound"
         @comment="createComment"
         @add="add"
         @select="select"
@@ -1032,21 +1053,6 @@ onUnmounted(() => {
             @click="useReferences(null)"
             ><Link2 class="size-4" />{{ t("brainstormingReferences.title") }}</Button
           >
-          <RoundFilter
-            v-if="rounds.length && !list"
-            :rounds="rounds"
-            :value="roundFilter"
-            :pending="filteringRound"
-            @change="filterRound"
-          />
-          <Popover
-            ><PopoverTrigger class="toolbar-btn gap-2">{{ t(`ideation.${state}`) }}</PopoverTrigger
-            ><PopoverContent class="w-56 p-3"
-              ><BoardSelect
-                v-model="state"
-                :label="t('ideation.state')"
-                :options="options(['active', 'parked', 'discarded', 'all'])" /></PopoverContent
-          ></Popover>
         </template>
         <template #selection="{ connectionTools }">
           <div
@@ -1207,12 +1213,6 @@ onUnmounted(() => {
               v-model="state"
               :label="t('ideation.state')"
               :options="options(['active', 'parked', 'discarded', 'all'])"
-            /><RoundFilter
-              v-if="rounds.length"
-              :rounds="rounds"
-              :value="roundFilter"
-              :pending="filteringRound"
-              @change="filterRound"
             /><Button
               v-if="canCreate"
               size="sm"
@@ -1225,7 +1225,8 @@ onUnmounted(() => {
           </div>
           <div class="divide-y rounded-lg border">
             <button
-              v-for="note in visible"
+              v-for="note in listed"
+              :id="`canvas-list-note-${note.id}`"
               :key="note.id"
               type="button"
               class="flex w-full items-start gap-3 p-4 text-left hover:bg-accent/30"

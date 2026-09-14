@@ -64,7 +64,7 @@ defmodule Storyarn.Ideation.GroupsTest do
     assert group.version == 1
     assert group.idea_ids == [ctx.first.id, ctx.second.id]
     assert Enum.all?(group.members, &(&1.source_revision == 1))
-    assert Enum.all?(group.members, &(Enum.sort(Map.keys(&1)) == [:canvas, :idea_id, :source_revision]))
+    assert Enum.all?(group.members, &(Enum.sort(Map.keys(&1)) == [:canvas, :idea_id, :round_id, :source_revision]))
     assert Repo.aggregate(Revision, :count) == 1
     assert %{actor_id: actor_id, sources: sources} = Repo.get_by!(Revision, group_id: group.id, number: 1)
     assert actor_id == ctx.author.user.id

@@ -101,6 +101,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
       {connected_from, connection_audiences} = Connections.connect_creation(sources, idea.id)
       idea = record_connections(idea, connected_from)
       audiences = if policy.shared?, do: [:shared | connection_audiences], else: [access.user_id | connection_audiences]
+      audiences = if idea.state == :parked, do: [:tree | audiences], else: audiences
       Transaction.success(creation_view(View.idea(idea, revision, access.user_id), idea), audiences)
     end
   end

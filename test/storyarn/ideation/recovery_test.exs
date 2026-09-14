@@ -246,7 +246,7 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
   test "authenticated capsules reject malformed timestamps before replacing current data", ctx do
     assert {:ok, session} =
-             Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{})
+             Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{})
 
     assert {:ok, _} =
              Ideation.start_timer(ctx.facilitator, ctx.project.id, session.id, session.revision, %{seconds: 60})

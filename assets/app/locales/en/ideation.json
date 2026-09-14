@@ -227,7 +227,10 @@
       "currentPrompt": "Current question",
       "noPrompt": "No question",
       "replacePrompt": "Use my question",
-      "loadingPrompt": "Loading the current question…"
+      "loadingPrompt": "Loading the current question…",
+      "newRound": "New round",
+      "addQuestion": "Add a question",
+      "bandsHelp": "Everything below a header belongs to that round."
     },
     "timer": {
       "title": "Timer",
@@ -284,6 +287,7 @@
       "latestText": "Latest saved text",
       "delete": "Delete group",
       "deleteHelp": "Delete this group and its synthesis. Source notes stay on the canvas."
-    }
+    },
+    "forLater": "For later"
   }
 }

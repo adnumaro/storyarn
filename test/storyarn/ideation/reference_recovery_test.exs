@@ -46,7 +46,7 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
              )
 
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 6, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 7, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["references"]) == 2
     assert length(rows["reference_revisions"]) == 3
     refute Jason.encode!(capsule) =~ "Original overview"
@@ -309,10 +309,11 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
       data
       |> Map.put("version", 4)
       |> update_in(["rows"], &Map.drop(&1, ~w(references reference_revisions decisions decision_revisions)))
+      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "canvas_offset_y") end))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 6
+    assert normalized["version"] == 7
     assert normalized["rows"]["references"] == []
     assert normalized["rows"]["reference_revisions"] == []
     maps = restore(ctx, capsule)

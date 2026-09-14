@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
-import { Plus, StickyNote, ArchiveRestore, Trash2, ChevronLeft, ChevronRight } from "@lucide/vue";
+import { onMounted, onUnmounted, reactive, ref } from "vue";
+import {
+  Plus,
+  StickyNote,
+  ArchiveRestore,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Bookmark,
+} from "@lucide/vue";
 import SidebarFrame from "@shell/SidebarFrame.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
@@ -12,9 +20,12 @@ import type { Board, Session } from "./types";
 const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
 const { t, error, options } = useBoardText();
 const currentPath = ref("");
+const currentQuery = ref(new URLSearchParams());
 const failure = ref<string | null>(null);
 const pending = ref(false);
 const purge = ref<Session | null>(null);
+// A manual collapse or expand wins over the automatic "open the current session".
+const toggled = reactive(new Map<number, boolean>());
 const { request, context } = useBoardConnection(
   () => board,
   () => {
@@ -24,6 +35,7 @@ const { request, context } = useBoardConnection(
 );
 function routeChanged() {
   currentPath.value = window.location.pathname;
+  currentQuery.value = new URLSearchParams(window.location.search);
 }
 onMounted(() => {
   routeChanged();
@@ -35,6 +47,31 @@ function closeMobile() {
     window.dispatchEvent(
       new CustomEvent("storyarn:main-sidebar-change", { detail: { open: false } }),
     );
+}
+function sessionPath(session: Session) {
+  return `${baseUrl}/${session.id}`;
+}
+function isCurrent(session: Session) {
+  return currentPath.value === sessionPath(session);
+}
+// A session with one round is a leaf: rounds only appear once there are two.
+function hasChildren(session: Session) {
+  return (session.rounds?.length ?? 0) > 1 || (session.parked_count ?? 0) > 0;
+}
+function isOpen(session: Session) {
+  return toggled.get(session.id) ?? isCurrent(session);
+}
+function toggle(session: Session) {
+  toggled.set(session.id, !isOpen(session));
+}
+function roundActive(session: Session, roundId: number) {
+  return isCurrent(session) && currentQuery.value.get("round") === String(roundId);
+}
+function laterActive(session: Session) {
+  return isCurrent(session) && currentQuery.value.get("view") === "later";
+}
+function sessionRowActive(session: Session) {
+  return isCurrent(session) && !currentQuery.value.has("round") && !currentQuery.value.has("view");
 }
 async function run(event: string, session?: Session) {
   if (pending.value) return;
@@ -91,22 +128,89 @@ function browse(status: string, before: number | null = null) {
     </p>
     <nav class="mt-3 space-y-0.5" :aria-label="t('ideation.sessions')">
       <div v-for="session in board.sessions" :key="session.id">
-        <LiveLink
-          v-if="!session.deleted_at"
-          :to="`${baseUrl}/${session.id}`"
-          mode="patch"
-          class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/50"
-          :class="
-            currentPath === `${baseUrl}/${session.id}`
-              ? 'bg-accent text-accent-foreground font-medium'
-              : 'text-muted-foreground'
-          "
-          :aria-current="currentPath === `${baseUrl}/${session.id}` ? 'page' : undefined"
-          @click="closeMobile"
-          ><StickyNote class="size-4 shrink-0" /><span class="truncate">{{
-            session.title
-          }}</span></LiveLink
-        >
+        <template v-if="!session.deleted_at">
+          <div
+            :id="`brainstorming-tree-session-${session.id}`"
+            class="group flex items-center gap-1 rounded-md pr-1 text-sm transition-colors"
+            :class="
+              sessionRowActive(session)
+                ? 'bg-accent text-accent-foreground font-medium'
+                : 'text-muted-foreground hover:bg-accent/50'
+            "
+          >
+            <button
+              v-if="hasChildren(session)"
+              type="button"
+              class="inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-accent"
+              :aria-expanded="isOpen(session)"
+              :aria-label="session.title"
+              @click.stop.prevent="toggle(session)"
+            >
+              <ChevronRight
+                :class="['size-3 transition-transform', isOpen(session) && 'rotate-90']"
+              />
+            </button>
+            <span v-else class="size-5 shrink-0" />
+            <LiveLink
+              :to="sessionPath(session)"
+              mode="patch"
+              class="flex min-w-0 flex-1 items-center gap-2 py-2 pr-1"
+              :aria-current="isCurrent(session) ? 'page' : undefined"
+              @click="closeMobile"
+              ><StickyNote class="size-4 shrink-0" /><span class="truncate">{{
+                session.title
+              }}</span></LiveLink
+            >
+          </div>
+          <div
+            v-if="hasChildren(session) && isOpen(session)"
+            :id="`brainstorming-tree-rounds-${session.id}`"
+            class="space-y-0.5"
+          >
+            <LiveLink
+              v-for="round in session.rounds ?? []"
+              :id="`brainstorming-tree-round-${round.id}`"
+              :key="round.id"
+              :to="`${sessionPath(session)}?round=${round.id}`"
+              mode="patch"
+              class="flex items-center gap-2 rounded-md py-1.5 pl-9 pr-2 text-[13px] transition-colors"
+              :class="
+                roundActive(session, round.id)
+                  ? 'bg-accent text-accent-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-accent/50'
+              "
+              :title="round.prompt ?? undefined"
+              :data-status="round.status"
+              @click="closeMobile"
+            >
+              <span
+                aria-hidden="true"
+                class="size-1.5 shrink-0 rounded-full"
+                :class="round.status === 'active' ? 'bg-primary' : 'bg-transparent'"
+              />
+              <span class="truncate">{{
+                t("ideation.rounds.number", { number: round.number })
+              }}</span>
+            </LiveLink>
+            <LiveLink
+              v-if="session.parked_count"
+              :id="`brainstorming-tree-later-${session.id}`"
+              :to="`${sessionPath(session)}?view=later`"
+              mode="patch"
+              class="flex items-center gap-2 rounded-md py-1.5 pl-9 pr-2 text-[13px] transition-colors"
+              :class="
+                laterActive(session)
+                  ? 'bg-accent text-accent-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-accent/50'
+              "
+              @click="closeMobile"
+            >
+              <Bookmark class="size-3.5 shrink-0" />
+              <span class="flex-1 truncate">{{ t("ideation.forLater") }}</span>
+              <span class="text-[11px] tabular-nums">{{ session.parked_count }}</span>
+            </LiveLink>
+          </div>
+        </template>
         <div v-else class="space-y-2 rounded-md px-2 py-2">
           <p class="truncate text-sm">{{ session.title }}</p>
           <div class="flex gap-1">

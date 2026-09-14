@@ -33,7 +33,7 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
 
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, third.id, third.revision)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 6, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 7, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["groups"]) == 1
     assert length(rows["group_memberships"]) == 3
     assert length(rows["group_revisions"]) == 2
@@ -159,10 +159,11 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
           ~w(groups group_memberships group_revisions references reference_revisions decisions decision_revisions)
         )
       )
+      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "canvas_offset_y") end))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 6
+    assert normalized["version"] == 7
     assert normalized["rows"]["groups"] == []
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]

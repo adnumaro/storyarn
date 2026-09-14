@@ -2,10 +2,10 @@
 import { Settings2, Eye, EyeOff } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive";
 import { ref } from "vue";
-import { useBoardText, RoundControls, TimerControls } from "@modules/ideation";
+import { useBoardText, TimerControls } from "@modules/ideation";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import type { Session, Round, SessionTimer } from "@modules/ideation";
+import type { Session, SessionTimer } from "@modules/ideation";
 import ExplorationContext from "./ExplorationContext.vue";
 import DecisionsButton from "./DecisionsButton.vue";
 import type { BrainstormingReference } from "./referenceTypes";
@@ -14,17 +14,11 @@ const {
   epoch,
   canManage,
   canEdit,
-  rounds,
-  roundsNext,
-  activeRound,
   timer,
   contextReference = null,
 } = defineProps<{
   session: Session;
   timer: SessionTimer | null;
-  rounds: Round[];
-  roundsNext: number | null;
-  activeRound: Round | null;
   epoch: string;
   canManage: boolean;
   canEdit: boolean;
@@ -106,15 +100,6 @@ function rename(title: string) {
       >
         <Settings2 class="size-3.5" /></button
     ></ToolbarTooltip>
-    <RoundControls
-      :session="session"
-      :epoch="epoch"
-      :rounds="rounds"
-      :rounds-next="roundsNext"
-      :active-round="activeRound"
-      :can-manage="canManage"
-      :can-edit="canEdit"
-    />
     <TimerControls
       :session="session"
       :epoch="epoch"

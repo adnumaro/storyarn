@@ -30,6 +30,7 @@ import CanvasNote from "./CanvasNote.vue";
 import CanvasGroup from "./CanvasGroup.vue";
 import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups";
 import CanvasCursors from "./CanvasCursors.vue";
+import RoundBar from "./RoundBar.vue";
 import { useCanvasViewport, type Point } from "../composables/useCanvasViewport";
 import { useCanvasMarquee } from "../composables/useCanvasMarquee";
 import { useBoardText } from "../composables/useBoardText";
@@ -53,6 +54,7 @@ import type {
   GroupVersions,
   ConnectionChange,
   LinkDirection,
+  Round,
 } from "../types";
 import BrainstormingCanvasComments from "../BrainstormingCanvasComments.vue";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "../commentTypes";
@@ -65,13 +67,13 @@ const {
   notes,
   groupState,
   selectedIds,
-  noteKey,
   editingId,
   permissions,
   collaboration,
   members,
   statuses,
   historyState,
+  bands = { rounds: [], canManage: false, pending: false },
 } = defineProps<{
   notes: CanvasIdea[];
   groupState?: {
@@ -81,7 +83,6 @@ const {
     move: (id: number, point: Point, expected?: GroupVersions) => Promise<void>;
   };
   selectedIds: number[];
-  noteKey: (id: number) => string;
   historyState: HistoryState;
   editingId: number | null;
   permissions: { edit: boolean; create: boolean; comment?: boolean; privateMode?: boolean };
@@ -93,6 +94,8 @@ const {
   };
   members: Member[];
   statuses: { [id: number]: string };
+  /** Round bands in canvas order; their headers are drawn in screen space. */
+  bands?: { rounds: Round[]; canManage: boolean; pending: boolean };
 }>();
 const groups = computed(() => groupState?.groups ?? []);
 const selectedGroupId = computed(() => groupState?.selectedId ?? null);
@@ -127,6 +130,8 @@ const emit = defineEmits<{
   cut: [event: ClipboardEvent, ids: number[]];
   paste: [event: ClipboardEvent, point: Point];
   list: [];
+  newRound: [offset: number];
+  closeRound: [id: number];
 }>();
 const commentTarget = ref<BrainstormingCommentTarget | null>(null);
 function prepareComment(event: MouseEvent) {
@@ -278,6 +283,32 @@ function bounds() {
 function fitAll() {
   fit([...bounds(), ...layouts.value.map((layout) => layout.bounds)]);
 }
+// Canvas units a new band keeps under the lowest note of the previous one.
+const BAND_GAP = 160;
+const EMPTY_BAND = 320;
+const orderedRounds = computed(() => [...bands.rounds].sort((a, b) => a.number - b.number));
+const multiRound = computed(() => orderedRounds.value.length > 1);
+const lastRound = computed(() => orderedRounds.value[orderedRounds.value.length - 1] ?? null);
+// Where the next header goes: below everything the last band holds.
+const nextRoundOffset = computed(() => {
+  const last = lastRound.value;
+  const bottoms = notes
+    .filter((note) => (last ? note.round_id === last.id : true))
+    .map((note) => {
+      const rect = noteBounds(note);
+      return rect.y + rect.height;
+    });
+  if (!bottoms.length) return last ? last.canvas_offset_y + EMPTY_BAND : 0;
+  return Math.round(Math.max(...bottoms) + BAND_GAP);
+});
+function headerTop(offset: number) {
+  return view.y + offset * view.zoom;
+}
+// Bring a band's header just under the floating chrome, keeping zoom and x.
+const HEADER_REST = 60;
+function scrollToRound(round: Round) {
+  view.y = HEADER_REST - round.canvas_offset_y * view.zoom;
+}
 function center(note: Idea) {
   const rect = noteBounds(note);
   view.x = view.width / 2 - (rect.x + rect.width / 2) * view.zoom;
@@ -315,7 +346,7 @@ async function focusEditing() {
   if (editor) editor.focus({ preventScroll: true });
   else focus();
 }
-defineExpose({ center, fitAll, focus, focusEditing, summaryAnchor, revealNote });
+defineExpose({ center, fitAll, focus, focusEditing, summaryAnchor, revealNote, scrollToRound });
 const visibleSelection = computed(() =>
   selectedIds.filter((id) => notes.some((note) => note.id === id)),
 );
@@ -1267,7 +1298,7 @@ onUnmounted(() => {
             </svg>
             <div
               v-for="note in notes"
-              :key="noteKey(note.id)"
+              :key="note.key ?? String(note.id)"
               :data-note-id="note.id"
               class="pointer-events-none absolute left-0 top-0"
               :class="selectedIds.includes(note.id) ? 'z-10' : ''"
@@ -1310,6 +1341,48 @@ onUnmounted(() => {
               v-if="tool === 'note' && ghost"
               class="pointer-events-none absolute h-12 w-40 rounded-md border border-dashed border-primary/70 bg-primary/5"
               :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
+            />
+          </div>
+          <template v-for="round in orderedRounds" :key="`round-${round.id}`">
+            <div
+              v-if="multiRound || round.prompt"
+              :id="`brainstorming-band-${round.id}`"
+              class="absolute left-0 right-0 z-10"
+              :style="{ top: `${headerTop(round.canvas_offset_y)}px` }"
+            >
+              <RoundBar
+                :round="round"
+                :single="!multiRound"
+                :last="round.id === lastRound?.id"
+                :can-manage="bands.canManage"
+                :pending="bands.pending"
+                @close="emit('closeRound', $event)"
+                @new-round="emit('newRound', nextRoundOffset)"
+              />
+            </div>
+          </template>
+          <div
+            v-if="bands.canManage && permissions.edit"
+            id="brainstorming-round-next"
+            data-canvas-chrome
+            class="absolute left-0 right-0 z-10 flex items-center gap-3 px-4"
+            :style="{ top: `${headerTop(nextRoundOffset)}px` }"
+          >
+            <span
+              aria-hidden="true"
+              class="h-px flex-1 border-t border-dashed border-muted-foreground/50"
+            />
+            <button
+              type="button"
+              class="toolbar-btn gap-1.5 text-muted-foreground"
+              :disabled="bands.pending"
+              @click="emit('newRound', nextRoundOffset)"
+            >
+              <Plus class="size-3.5" />{{ t("ideation.rounds.newRound") }}
+            </button>
+            <span
+              aria-hidden="true"
+              class="h-px flex-1 border-t border-dashed border-muted-foreground/50"
             />
           </div>
           <div

@@ -48,6 +48,27 @@ defmodule Storyarn.IdeationFixtures do
     result
   end
 
+  # Every session starts with its first round in progress.
+  def first_round(ctx) do
+    {:ok, [round]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
+    round
+  end
+
+  # Starts the next round (closing the one in progress) and returns it with the
+  # session at its new revision.
+  def new_round(ctx, attrs \\ %{}) do
+    {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, session} = Ideation.new_round(ctx.facilitator, ctx.project.id, current.id, current.revision, attrs)
+    {:ok, %{active_round: round}} = Ideation.get_round_context(ctx.facilitator, ctx.project.id, current.id)
+    {%{ctx | session: session}, round}
+  end
+
+  def close_round(ctx, round) do
+    {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, session} = Ideation.close_round(ctx.facilitator, ctx.project.id, current.id, round.id, current.revision)
+    %{ctx | session: session}
+  end
+
   def configure_session(ctx, changes) do
     {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
 

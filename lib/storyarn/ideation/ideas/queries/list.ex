@@ -1,7 +1,9 @@
 defmodule Storyarn.Ideation.Ideas.Queries.List do
   @moduledoc false
   import Ecto.Query
+  import Storyarn.Ideation.Ideas.Rules.Input, only: [valid_id: 1]
 
+  alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Queries.Access
   alias Storyarn.Ideation.Ideas.Queries.Visible
   alias Storyarn.Ideation.Ideas.Rules.Input
@@ -48,6 +50,35 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
       {:ok, Map.merge(%{active: 0, parked: 0, discarded: 0}, counts)}
     end
   end
+
+  # Parked notes of several sessions in one read, for the session tree. Others'
+  # notes count only when shared and outside private mode, as on the canvas.
+  def parked_counts(scope, project_id, session_ids) when is_list(session_ids) and length(session_ids) <= 200 do
+    with :ok <- Sessions.authorize_project_read(scope, project_id),
+         true <- Enum.all?(session_ids, &valid_id/1) do
+      actor_id = scope.user.id
+
+      counts =
+        Repo.all(
+          from i in Idea,
+            join: s in subquery(Sessions.canvas_settings_query()),
+            on: s.id == i.session_id,
+            where:
+              i.session_id in ^session_ids and s.project_id == ^project_id and is_nil(i.deleted_at) and
+                i.state == :parked and
+                (i.author_id == ^actor_id or (not s.private_mode and not is_nil(i.published_revision))),
+            group_by: i.session_id,
+            select: {i.session_id, count(i.id)}
+        )
+
+      {:ok, Map.new(counts)}
+    else
+      false -> {:error, :invalid_options}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def parked_counts(_scope, _project_id, _session_ids), do: {:error, :invalid_options}
 
   defp count_options(opts) when is_list(opts) do
     if Keyword.keyword?(opts), do: :ok, else: {:error, :invalid_options}

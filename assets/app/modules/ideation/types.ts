@@ -78,7 +78,12 @@ export interface IdeaGroup {
   version: number;
   canvas: { x: number; y: number; width: number; height: number };
   idea_ids: number[];
-  members: Array<{ idea_id: number; source_revision: number; canvas: CanvasPlacement }>;
+  members: Array<{
+    idea_id: number;
+    source_revision: number;
+    round_id?: number | null;
+    canvas: CanvasPlacement;
+  }>;
   deleted_at: string | null;
   inserted_at: string;
 }
@@ -93,6 +98,8 @@ export interface GroupText {
 }
 export interface CanvasIdea extends Idea {
   round_number?: number;
+  /** Stable render key across the local-to-server id swap of a new note. */
+  key?: string;
 }
 export interface EditReceipt {
   id: number;
@@ -125,6 +132,9 @@ export interface Session {
   inserted_at: string;
   configuration: SessionConfiguration;
   can_manage: boolean;
+  /** Session tree only: rounds in band order and the parked notes the viewer may see. */
+  rounds?: Round[];
+  parked_count?: number;
 }
 export interface SessionRevision {
   id: number;
@@ -144,7 +154,9 @@ export interface Round {
   session_id: number;
   number: number;
   prompt: string | null;
-  status: "planned" | "active" | "closed" | "cancelled";
+  status: "active" | "closed";
+  /** Canvas y of the round header; note positions in the band are relative to it. */
+  canvas_offset_y: number;
   started_at: string | null;
   closed_at: string | null;
   inserted_at: string;
@@ -167,7 +179,6 @@ export interface SessionTimer {
     | null;
   server_now: string;
 }
-export type RoundFilter = "all" | null | number;
 export interface Board {
   epoch: string;
   loading: boolean;
@@ -180,9 +191,7 @@ export interface Board {
   session_missing: boolean;
   timer: SessionTimer | null;
   rounds: Round[];
-  rounds_next: number | null;
   active_round: Round | null;
-  round_filter: RoundFilter;
   ideas: Idea[];
   groups: IdeaGroup[];
   ideas_next: number | null;

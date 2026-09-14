@@ -227,7 +227,10 @@
       "currentPrompt": "Pregunta actual",
       "noPrompt": "Sin pregunta",
       "replacePrompt": "Usar mi pregunta",
-      "loadingPrompt": "Cargando la pregunta actual…"
+      "loadingPrompt": "Cargando la pregunta actual…",
+      "newRound": "Nueva ronda",
+      "addQuestion": "Añade una pregunta",
+      "bandsHelp": "Todo lo que hay bajo un encabezado pertenece a esa ronda."
     },
     "timer": {
       "title": "Cronómetro",
@@ -284,6 +287,7 @@
       "latestText": "Último texto guardado",
       "delete": "Eliminar grupo",
       "deleteHelp": "Eliminar este grupo y su síntesis. Las notas originales se conservan en el lienzo."
-    }
+    },
+    "forLater": "Para después"
   }
 }

@@ -15,7 +15,7 @@ defmodule Storyarn.Ideation.Ideas.Queries.GroupSources do
         i.session_id == ^session_id and i.id in ^ids and is_nil(i.deleted_at) and
           not is_nil(i.published_revision) and not s.private_mode,
       order_by: i.id,
-      select: %{idea_id: i.id, source_revision: i.published_revision, canvas: i.canvas}
+      select: %{idea_id: i.id, source_revision: i.published_revision, round_id: i.round_id, canvas: i.canvas}
     )
     |> Repo.all()
     |> Enum.map(fn source -> %{source | canvas: Map.take(source.canvas, ~w(x y width color shape version))} end)

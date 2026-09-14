@@ -20,13 +20,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias StoryarnWeb.IdeationLive.Helpers.BoardData
   alias StoryarnWeb.IdeationLive.Helpers.Params
   alias StoryarnWeb.IdeationLive.Helpers.Replies
-  alias StoryarnWeb.IdeationLive.Helpers.RoundData
   alias StoryarnWeb.Live.Shared.CollaborationHelpers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
   @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas update_idea_connections prepare_reveal reveal_ideas)
-  @round_writes ~w(create_round update_round cancel_round start_round close_round)
+  @round_writes ~w(new_round update_round close_round)
   @timer_writes ~w(start_timer pause_timer resume_timer extend_timer cancel_timer set_contributions_open)
   @group_writes ~w(create_group update_group move_group delete_group restore_group)
 
@@ -67,9 +66,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
         can-manage={@board.can_manage}
         can-edit={@board.can_edit}
         epoch={@epoch}
-        rounds={@board.rounds}
-        rounds-next={@board.rounds_next}
-        active-round={@board.active_round}
         timer={@board.timer}
         context-reference={@exploration_reference}
       />
@@ -144,9 +140,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> assign(:filters, %{
        session_status: :open,
        session_before: nil,
-       idea_before: nil,
-       round_id: :all,
-       round_before: nil
+       idea_before: nil
      })
      |> assign(:refresh_timer, nil)
      |> assign(:refresh_running, nil)
@@ -166,11 +160,17 @@ defmodule StoryarnWeb.IdeationLive.Board do
           |> subscribe_session(id)
           |> assign(:session_id, id)
 
-        filters = %{socket.assigns.filters | idea_before: nil, round_id: :all, round_before: nil}
+        filters = %{socket.assigns.filters | idea_before: nil}
         socket = assign(socket, :filters, filters)
         # A route transition invalidates reads started for the previous session.
         socket = assign(socket, :refresh_running, nil)
-        {:noreply, socket |> load_now() |> CommentHandlers.linked(params) |> ExplorationContextHandlers.linked(params)}
+
+        {:noreply,
+         socket
+         |> load_now()
+         |> CommentHandlers.linked(params)
+         |> ExplorationContextHandlers.linked(params)
+         |> linked_focus(params)}
 
       {:error, _} ->
         {:noreply,
@@ -257,34 +257,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
     with :ok <- current_session(params, socket),
          {:ok, before_id} <- Params.optional_id(params["before_id"]) do
       filters = %{socket.assigns.filters | idea_before: before_id}
-      {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
-    else
-      {:error, reason} -> {:reply, Replies.error(reason), socket}
-    end
-  end
-
-  def handle_event("filter_round", params, socket) do
-    with :ok <- current_session(params, socket),
-         {:ok, round_id} <- Params.round_filter(params["round_id"]),
-         {:ok, before_id} <- Params.optional_id(params["before_id"]),
-         :ok <-
-           RoundData.validate_filter(
-             socket.assigns.current_scope,
-             socket.assigns.project.id,
-             socket.assigns.session_id,
-             round_id
-           ) do
-      filters = %{socket.assigns.filters | round_id: round_id, idea_before: before_id}
-      {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
-    else
-      {:error, reason} -> {:reply, Replies.error(reason), read_result_socket(socket, {:error, reason})}
-    end
-  end
-
-  def handle_event("browse_rounds", params, socket) do
-    with :ok <- current_session(params, socket),
-         {:ok, before_id} <- Params.optional_id(params["before_id"]) do
-      filters = %{socket.assigns.filters | round_before: before_id}
       {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
     else
       {:error, reason} -> {:reply, Replies.error(reason), socket}
@@ -455,7 +427,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       |> DecisionHandlers.init()
       |> canvas_subscription(nil)
       |> reset_epoch("project_restored")
-      |> assign(:filters, %{socket.assigns.filters | idea_before: nil, round_id: :all, round_before: nil})
+      |> assign(:filters, %{socket.assigns.filters | idea_before: nil})
       |> assign(:board, BoardData.empty())
       |> refresh()
 
@@ -589,6 +561,23 @@ defmodule StoryarnWeb.IdeationLive.Board do
   defp load_now(socket) do
     %{current_scope: scope, project: project, session_id: id, filters: filters} = socket.assigns
     accept_read(socket, {:ok, BoardData.load(scope, project.id, id, filters)})
+  end
+
+  # Deep links from the session tree: `?round=` scrolls the canvas to that band
+  # and `?view=later` opens the parked list. Both survive reloads.
+  defp linked_focus(socket, params) do
+    socket =
+      case Params.optional_id(params["round"]) do
+        {:ok, id} when is_integer(id) ->
+          push_event(socket, "brainstorming_focus_round", %{round_id: id, epoch: socket.assigns.epoch})
+
+        _ ->
+          socket
+      end
+
+    if params["view"] == "later",
+      do: push_event(socket, "brainstorming_open_list", %{state: "parked", epoch: socket.assigns.epoch}),
+      else: socket
   end
 
   defp reload_access(socket) do

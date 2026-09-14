@@ -33,7 +33,7 @@ defmodule Storyarn.Ideation.TimersTest do
     refute timer.reveal_on_expiry
     refute timer.close_contributions_on_expiry
     assert current(ctx).configuration == ctx.session.configuration
-    assert {:ok, []} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert {:ok, [%{status: :active}]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
     assert {:ok, %{outcome: :not_due}} = Ideation.expire_timer(timer.id, timer.version)
 
     assert {:error, :timer_already_running} =

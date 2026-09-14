@@ -7,6 +7,10 @@ defmodule Storyarn.Ideation.Sessions.Queries.CanvasSettings do
   def query do
     from s in Session,
       where: is_nil(s.deleted_at),
-      select: %{id: s.id, private_mode: fragment("COALESCE(?->>'private_mode', 'false') = 'true'", s.configuration)}
+      select: %{
+        id: s.id,
+        project_id: s.project_id,
+        private_mode: fragment("COALESCE(?->>'private_mode', 'false') = 'true'", s.configuration)
+      }
   end
 end

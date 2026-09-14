@@ -59,8 +59,27 @@ export function useCanvasGroups(
   settleNotes: (ids: number[]) => Promise<boolean>,
 ) {
   const selected = ref<number | null>(null);
+  const offsets = computed(
+    () => new Map(board().rounds.map((round) => [round.id, round.canvas_offset_y ?? 0])),
+  );
+  // Member positions arrive relative to their round header; the canvas is absolute.
   const groups = computed(() =>
-    board().session?.configuration.private_mode ? [] : (board().groups ?? []),
+    board().session?.configuration.private_mode
+      ? []
+      : (board().groups ?? []).map((group) => ({
+          ...group,
+          members: group.members.map((member) =>
+            typeof member.canvas?.y === "number" && member.round_id != null
+              ? {
+                  ...member,
+                  canvas: {
+                    ...member.canvas,
+                    y: member.canvas.y + (offsets.value.get(member.round_id) ?? 0),
+                  },
+                }
+              : member,
+          ),
+        })),
   );
   const allowed = computed(
     () =>

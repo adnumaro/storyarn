@@ -17,7 +17,7 @@ const reference: BrainstormingReference = {
 };
 
 describe("Board header with starting context", () => {
-  it("retains title, settings, rounds, timer and private controls together with return navigation", async () => {
+  it("retains title, settings, timer and private controls together with return navigation", async () => {
     const current = board();
     const pushEvent = vi.fn();
     const wrapper = mount(BoardHeader, {
@@ -26,9 +26,6 @@ describe("Board header with starting context", () => {
         epoch: current.epoch,
         canManage: true,
         canEdit: true,
-        rounds: [],
-        roundsNext: null,
-        activeRound: null,
         timer: null,
         contextReference: reference,
       },
@@ -44,7 +41,6 @@ describe("Board header with starting context", () => {
       },
     });
     expect(wrapper.get("#brainstorming-session-title").text()).toBe(current.session!.title);
-    expect(wrapper.find("#brainstorming-rounds-trigger").exists()).toBe(true);
     expect(wrapper.find("#brainstorming-timer-trigger").exists()).toBe(true);
     expect(wrapper.find('button[aria-label="Start private mode for everyone"]').exists()).toBe(
       true,
@@ -62,7 +58,6 @@ describe("Board header with starting context", () => {
       session_id: current.session!.id,
       reference_id: 4,
     });
-    expect(wrapper.find("#brainstorming-rounds-trigger").exists()).toBe(true);
     wrapper.unmount();
   });
 });

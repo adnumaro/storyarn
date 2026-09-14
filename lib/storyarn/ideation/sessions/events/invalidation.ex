@@ -20,6 +20,15 @@ defmodule Storyarn.Ideation.Sessions.Events.Invalidation do
 
   def notify(result, _project_id, _change), do: result
 
+  # The session tree shows per-session facts (parked notes) that change through
+  # idea writes. Those writers announce after their own commit.
+  def broadcast_tree(project_id) do
+    if !Repo.in_transaction?(),
+      do: PubSub.broadcast(Storyarn.PubSub, topic(project_id), {:ideation_sessions_changed, project_id})
+
+    :ok
+  end
+
   # Only compare persisted source facts captured under the session lock. Timer,
   # round, title and no-op mutations must not wake the notification inbox.
   def comment_change(before, after_session) do

@@ -10,7 +10,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"session_revisions", "ideation_session_revisions", :session_id,
      ~w(id recovery_identity session_id actor_id number action snapshot inserted_at)a},
     {"rounds", "ideation_rounds", :session_id,
-     ~w(id recovery_identity session_id number prompt status started_at closed_at inserted_at updated_at)a},
+     ~w(id recovery_identity session_id number prompt status canvas_offset_y started_at closed_at inserted_at updated_at)a},
     {"timers", "ideation_timers", :session_id,
      ~w(id recovery_identity session_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at reveal_on_expiry close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
     {"ideas", "ideation_ideas", :session_id,
@@ -110,7 +110,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3, 4, 5, 6] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3, 4, 5, 6, 7] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -151,12 +151,32 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     do: normalize(%{data | "version" => 5, "rows" => Enum.reduce(@reference_collections, rows, &Map.put(&2, &1, []))})
 
   def normalize(%{"version" => 5, "rows" => rows} = data),
-    do: %{data | "version" => 6, "rows" => Enum.reduce(@decision_collections, rows, &Map.put(&2, &1, []))}
+    do: normalize(%{data | "version" => 6, "rows" => Enum.reduce(@decision_collections, rows, &Map.put(&2, &1, []))})
+
+  # Rounds became canvas bands: prepared and cancelled rounds never held a note
+  # and disappear; every remaining round gets a header offset. Older captures
+  # keep absolute note positions, so their headers all start at 0.
+  def normalize(%{"version" => 6, "rows" => rows} = data) do
+    rounds =
+      rows["rounds"]
+      |> Enum.filter(&(&1["status"] in ["active", "closed"]))
+      |> Enum.map(&Map.put(&1, "canvas_offset_y", 0))
+
+    %{data | "version" => 7, "rows" => Map.put(rows, "rounds", rounds)}
+  end
 
   def normalize(data), do: data
 
-  defp tables_for(6), do: @tables
-  defp tables_for(5), do: Enum.reject(@tables, &(elem(&1, 0) in @decision_collections))
+  defp tables_for(7), do: @tables
+
+  defp tables_for(6) do
+    for {collection, table, parent, fields} <- tables_for(7) do
+      fields = if collection == "rounds", do: fields -- [:canvas_offset_y], else: fields
+      {collection, table, parent, fields}
+    end
+  end
+
+  defp tables_for(5), do: Enum.reject(tables_for(6), &(elem(&1, 0) in @decision_collections))
   defp tables_for(4), do: Enum.reject(tables_for(5), &(elem(&1, 0) in @reference_collections))
   defp tables_for(3), do: Enum.reject(tables_for(4), &(elem(&1, 0) in @group_collections))
 

@@ -69,8 +69,10 @@ defmodule Storyarn.Ideation.Ideas.Commands.Restore do
     end
   end
 
-  defp audiences(%{published_revision: nil}, actor_id), do: [actor_id]
-  defp audiences(_idea, actor_id), do: [:shared, :comment_sources, actor_id]
+  defp audiences(idea, actor_id) do
+    canvas = if idea.published_revision, do: [:shared, :comment_sources, actor_id], else: [actor_id]
+    if idea.state == :parked, do: [:tree | canvas], else: canvas
+  end
 
   defp result(idea, access, audiences) do
     with {:ok, view} <- Visible.get(idea.session_id, idea.id, access.user_id) do

@@ -1,5 +1,9 @@
 defmodule Storyarn.Ideation.Sessions.Round do
-  @moduledoc "An optional, session-owned creative round with an independent lifecycle."
+  @moduledoc """
+  A session-owned creative round. Rounds are horizontal bands of the session
+  canvas, stacked in chronological order; `canvas_offset_y` is the canvas y of
+  the round's header and note positions inside the band are relative to it.
+  """
   use Ecto.Schema
 
   import Ecto.Changeset
@@ -9,7 +13,8 @@ defmodule Storyarn.Ideation.Sessions.Round do
     field :session_id, :id
     field :number, :integer
     field :prompt, :string
-    field :status, Ecto.Enum, values: [:planned, :active, :closed, :cancelled], default: :planned
+    field :status, Ecto.Enum, values: [:active, :closed], default: :active
+    field :canvas_offset_y, :integer, default: 0
     field :started_at, :utc_datetime_usec
     field :closed_at, :utc_datetime_usec
     timestamps(type: :utc_datetime_usec)

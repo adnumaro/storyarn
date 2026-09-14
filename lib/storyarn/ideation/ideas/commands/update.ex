@@ -75,9 +75,12 @@ defmodule Storyarn.Ideation.Ideas.Commands.Update do
   end
 
   defp audiences(idea, updated, publish?, actor_id) do
-    if publish? or (idea.published_revision && idea.state != updated.state),
-      do: [:shared, actor_id],
-      else: [actor_id]
+    canvas =
+      if publish? or (idea.published_revision && idea.state != updated.state),
+        do: [:shared, actor_id],
+        else: [actor_id]
+
+    if idea.state == updated.state, do: canvas, else: [:tree | canvas]
   end
 
   # Preserve presence as well as value: an omitted field differs from clearing it.

@@ -339,12 +339,18 @@ describe("canvas acknowledged undo primitives", () => {
 });
 
 describe("round contribution provenance", () => {
-  it("keeps the round where writing began when the first save happens after another round starts", async () => {
+  const bands = () => [round(), round({ id: 21, number: 2, canvas_offset_y: 400 })];
+
+  it("keeps the round of the band where writing began when the first save happens after another round starts", async () => {
     const { result, app, current, request, replies } = setup();
-    current.value = { ...current.value, active_round: round() };
+    current.value = { ...current.value, rounds: [round()], active_round: round() };
     const local = result.add({ x: 10, y: 20 });
     result.change(local, "<p>Started in round one</p>");
-    current.value = { ...current.value, active_round: round({ id: 21, number: 2 }) };
+    current.value = {
+      ...current.value,
+      rounds: bands(),
+      active_round: round({ id: 21, number: 2, canvas_offset_y: 400 }),
+    };
     const saving = result.save(local);
     expect(request.mock.calls[0][1]).toMatchObject({ round_id: 20 });
     replies[0]({ status: "ok", value: idea({ id: 44, round_id: 20, late_contribution: true }) });
@@ -355,12 +361,16 @@ describe("round contribution provenance", () => {
 
   it("retries uncertain creation with the same round and content after the active round changes", async () => {
     const { result, app, current, request, replies } = setup();
-    current.value = { ...current.value, active_round: round() };
+    current.value = { ...current.value, rounds: [round()], active_round: round() };
     const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Initial</p>" });
     const saving = result.save(local);
     replies[0]({ status: "error", code: "offline" });
     await saving;
-    current.value = { ...current.value, active_round: round({ id: 21, number: 2 }) };
+    current.value = {
+      ...current.value,
+      rounds: bands(),
+      active_round: round({ id: 21, number: 2, canvas_offset_y: 400 }),
+    };
     result.change(local, "<p>More text</p>");
     const retry = result.save(local);
     expect(request.mock.calls[1]).toEqual(request.mock.calls[0]);
@@ -371,10 +381,26 @@ describe("round contribution provenance", () => {
     app.unmount();
   });
 
-  it("keeps notes begun without a round unassigned when a round starts before autosave", async () => {
+  it("places a note in the band under its point and sends the position relative to that header", async () => {
+    const { result, app, current, request, replies } = setup();
+    current.value = { ...current.value, rounds: bands(), active_round: round() };
+    const local = result.add({ x: 10, y: 460 }, "mint", { body: "<p>Second band</p>" });
+    expect(result.find(local)).toMatchObject({ round_id: 21, canvas: { y: 460 } });
+    const saving = result.save(local);
+    expect(request.mock.calls[0][1]).toMatchObject({ round_id: 21, canvas: { x: 10, y: 60 } });
+    replies[0]({
+      status: "ok",
+      value: idea({ id: 44, round_id: 21, canvas: { x: 10, y: 60, width: 280, color: "mint" } }),
+    });
+    await saving;
+    expect(result.find(local)?.canvas?.y).toBe(460);
+    app.unmount();
+  });
+
+  it("keeps notes of a session without rounds unassigned when a round starts before autosave", async () => {
     const { result, app, current, request, replies } = setup();
     const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Open exploration</p>" });
-    current.value = { ...current.value, active_round: round() };
+    current.value = { ...current.value, rounds: [round()], active_round: round() };
     const saving = result.save(local);
     expect(request.mock.calls[0][1]).toMatchObject({ round_id: null });
     replies[0]({ status: "ok", value: idea({ id: 44 }) });
@@ -382,32 +408,36 @@ describe("round contribution provenance", () => {
     app.unmount();
   });
 
-  it("restores a locally deleted note to its original round while a copy starts in the current round", async () => {
+  it("restores a locally deleted note to its original round while a copy lands in the band under it", async () => {
     const { result, app, current } = setup();
-    current.value = { ...current.value, active_round: round() };
+    current.value = { ...current.value, rounds: [round()], active_round: round() };
     const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>Keep provenance</p>" });
     const deletion = await result.remove(local);
-    current.value = { ...current.value, active_round: round({ id: 21, number: 2 }) };
+    current.value = {
+      ...current.value,
+      rounds: bands(),
+      active_round: round({ id: 21, number: 2, canvas_offset_y: 400 }),
+    };
     const restored = await result.restore(deletion!);
     expect(result.find(restored!)?.round_id).toBe(20);
-    const copy = result.add({ x: 40, y: 50 }, "mint", deletion!.idea);
+    const copy = result.add({ x: 40, y: 450 }, "mint", deletion!.idea);
     expect(result.find(copy)?.round_id).toBe(21);
     app.unmount();
   });
 
-  it("preserves unsaved text and unfinished notes while filtering through previous rounds", async () => {
+  it("preserves unsaved text and unfinished notes while the board reloads its history", async () => {
     const { result, app, current } = setup();
     result.open(result.find(10)!);
     result.change(10, "<p>Draft kept</p>");
     const local = result.add({ x: 40, y: 50 }, "mint", { body: "<p>Unsubmitted note</p>" });
-    current.value = { ...current.value, ideas: [], round_filter: 20, active_round: round() };
+    current.value = { ...current.value, ideas: [], active_round: round() };
     await nextTick();
     expect(result.drafts.drafts.get(10)?.content.body).toBe("<p>Draft kept</p>");
     expect(result.newNotes.get(local)?.idea).toMatchObject({
       body: "<p>Unsubmitted note</p>",
       round_id: null,
     });
-    current.value = { ...current.value, ideas: [idea()], round_filter: "all" };
+    current.value = { ...current.value, ideas: [idea()] };
     await nextTick();
     expect(result.find(10)?.body).toBe("<p>Draft kept</p>");
     app.unmount();

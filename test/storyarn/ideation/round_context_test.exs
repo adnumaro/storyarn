@@ -5,15 +5,15 @@ defmodule Storyarn.Ideation.RoundContextTest do
   import Storyarn.IdeationFixtures
 
   alias Storyarn.Ideation
-  alias Storyarn.Ideation.Sessions.Round
 
   setup do
     ideation_fixture()
   end
 
-  test "history, the current round and referenced context share one authorization", ctx do
-    active = active_round(ctx)
-    next = Repo.insert!(%Round{session_id: ctx.session.id, number: 2, prompt: "Next question"})
+  test "the canvas context lists every round in band order with the current one after one authorization", ctx do
+    first = first_round(ctx)
+    {ctx, second} = new_round(ctx, %{prompt: "Second question"})
+    {_ctx, third} = new_round(ctx, %{prompt: "Third question", canvas_offset_y: 900})
 
     {single_read, single_queries} =
       queries(fn -> Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id) end)
@@ -21,121 +21,72 @@ defmodule Storyarn.Ideation.RoundContextTest do
     {_, separate_queries} =
       queries(fn ->
         Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
-
-        Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id,
-          status: :active,
-          limit: 1
-        )
+        Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id, status: :active, limit: 1)
       end)
 
     {result, combined_queries} =
-      queries(fn ->
-        Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id,
-          round_ids: [active.id],
-          selected_id: next.id
-        )
-      end)
+      queries(fn -> Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id) end)
 
-    assert {:ok, [^next, ^active]} = single_read
-    assert {:ok, %{rounds: [^next, ^active], active_round: ^active, rounds_next: nil}} = result
+    assert {:ok, [_, _, _]} = single_read
+    assert {:ok, %{rounds: rounds, active_round: active}} = result
+    assert Enum.map(rounds, & &1.id) == [first.id, second.id, third.id]
+    assert Enum.map(rounds, & &1.canvas_offset_y) == [0, 320, 900]
+    assert active.id == third.id
+    refute result |> elem(1) |> Map.has_key?(:rounds_next)
     assert combined_queries == single_queries
     assert combined_queries < separate_queries
-  end
 
-  test "older active, referenced and selected rounds do not change the history cursor", ctx do
-    active = active_round(ctx)
-    old = Repo.insert!(%Round{session_id: ctx.session.id, number: 2, prompt: "Earlier context"})
-
-    selected =
-      Repo.insert!(%Round{session_id: ctx.session.id, number: 3, prompt: "Selected context"})
-
-    newest = Repo.insert!(%Round{session_id: ctx.session.id, number: 4})
-
-    assert {:ok, context} =
-             Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id,
-               limit: 1,
-               round_ids: [old.id, old.id],
-               selected_id: selected.id
-             )
-
-    assert context.rounds_next == newest.id
-    assert context.active_round == active
-
-    assert MapSet.new(context.rounds, & &1.id) ==
-             MapSet.new([active.id, old.id, selected.id, newest.id])
-
-    assert {:ok, expanded} =
-             Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id,
-               limit: 1,
-               through_id: selected.id
-             )
-
-    assert expanded.rounds_next == old.id
-    assert expanded.rounds == [newest, selected, old, active]
-  end
-
-  test "references from more than one page are loaded without truncating their context", ctx do
-    rounds =
-      for number <- 1..203, do: Repo.insert!(%Round{session_id: ctx.session.id, number: number})
-
-    ids = Enum.map(rounds, & &1.id)
-
-    assert {:ok, context} =
-             Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id,
-               limit: 1,
-               round_ids: ids
-             )
-
-    assert context.active_round == nil
-    assert context.rounds_next == List.last(rounds).id
-    assert MapSet.new(context.rounds, & &1.id) == MapSet.new(ids)
+    assert {:ok, %{timer: nil, rounds: ^rounds, active_round: ^active}} =
+             Ideation.get_canvas_context(ctx.viewer, ctx.project.id, ctx.session.id)
   end
 
   test "round metadata never crosses session or access boundaries", ctx do
-    active = active_round(ctx)
-
-    assert {:ok, other} =
-             Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})
-
+    first = first_round(ctx)
+    assert {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})
     stranger = user_scope_fixture()
 
-    assert {:ok, %{rounds: [], active_round: nil, rounds_next: nil}} =
-             Ideation.get_round_context(ctx.author, ctx.project.id, other.id, round_ids: [active.id])
+    assert {:ok, %{rounds: [own], active_round: own}} =
+             Ideation.get_round_context(ctx.author, ctx.project.id, other.id)
 
-    assert {:error, :round_not_found} =
-             Ideation.get_round_context(ctx.author, ctx.project.id, other.id, selected_id: active.id)
-
-    assert {:error, :not_found} =
-             Ideation.get_round_context(stranger, ctx.project.id, ctx.session.id, selected_id: active.id)
-
-    assert {:error, :not_found} =
-             Ideation.get_round_context(stranger, ctx.project.id, ctx.session.id, %{})
-
+    assert own.session_id == other.id
+    refute own.id == first.id
+    assert {:error, :not_found} = Ideation.get_round_context(stranger, ctx.project.id, ctx.session.id)
     assert {:error, :not_found} = Ideation.get_round_context(ctx.owner, ctx.project.id, -1)
+    assert {:error, :invalid_options} = Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id, %{})
+
+    assert {:error, :invalid_options} =
+             Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id, ["invalid"])
   end
 
-  test "round context validates typed options and id bounds", ctx do
-    for opts <- [
-          %{},
-          ["invalid"],
-          [limit: 0],
-          [limit: 201],
-          [through_id: "1"],
-          [through_id: 9_223_372_036_854_775_808],
-          [selected_id: -1],
-          [selected_id: 9_223_372_036_854_775_808],
-          [round_ids: nil],
-          [round_ids: [nil]],
-          [round_ids: [-1]],
-          [round_ids: [9_223_372_036_854_775_808]]
-        ] do
-      assert {:error, :invalid_options} =
-               Ideation.get_round_context(ctx.viewer, ctx.project.id, ctx.session.id, opts)
+  test "the session tree reads rounds of several sessions of one project in a single query", ctx do
+    first = first_round(ctx)
+    {ctx, second} = new_round(ctx)
+    assert {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other session"})
+    {:ok, [other_round]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, other.id)
+    foreign = ideation_fixture()
+
+    {result, count} =
+      queries(fn ->
+        Ideation.list_session_rounds(ctx.viewer, ctx.project.id, [ctx.session.id, other.id, foreign.session.id])
+      end)
+
+    assert {:ok, rounds} = result
+    assert Enum.map(rounds[ctx.session.id], & &1.id) == [first.id, second.id]
+    assert Enum.map(rounds[other.id], & &1.id) == [other_round.id]
+    refute Map.has_key?(rounds, foreign.session.id)
+    assert count <= 4
+
+    assert {:ok, %{}} = Ideation.list_session_rounds(ctx.viewer, ctx.project.id, [])
+    stranger = user_scope_fixture()
+    assert {:error, _} = Ideation.list_session_rounds(stranger, ctx.project.id, [ctx.session.id])
+
+    for invalid <- [[-1], ["1"], Enum.to_list(1..201), %{}] do
+      assert {:error, :invalid_options} = Ideation.list_session_rounds(ctx.viewer, ctx.project.id, invalid)
     end
   end
 
   test "idea counts validate their filter without depending on unused pagination options", ctx do
-    active = active_round(ctx)
+    active = first_round(ctx)
     idea_fixture(ctx, %{visibility: :shared})
     idea_fixture(ctx, %{}, ctx.peer)
 
@@ -150,21 +101,6 @@ defmodule Storyarn.Ideation.RoundContextTest do
       assert {:error, :invalid_options} =
                Ideation.count_ideas(ctx.viewer, ctx.project.id, ctx.session.id, opts)
     end
-  end
-
-  defp active_round(ctx) do
-    assert {:ok, _} =
-             Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{
-               prompt: "Question"
-             })
-
-    assert {:ok, [round]} = Ideation.list_rounds(ctx.owner, ctx.project.id, ctx.session.id)
-
-    assert {:ok, _} =
-             Ideation.start_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, 2)
-
-    assert {:ok, [active]} = Ideation.list_rounds(ctx.owner, ctx.project.id, ctx.session.id)
-    active
   end
 
   defp queries(fun) do

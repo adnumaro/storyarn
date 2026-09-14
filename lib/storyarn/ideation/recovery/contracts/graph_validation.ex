@@ -64,7 +64,10 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       contextual_snapshot?(row, index)
   end
 
-  defp valid_links?(row, "rounds", index), do: Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
+  defp valid_links?(row, "rounds", index) do
+    Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row) and
+      is_integer(row["canvas_offset_y"]) and abs(row["canvas_offset_y"]) <= 1_000_000
+  end
 
   defp valid_links?(row, "timers", index),
     do: Map.has_key?(index.sessions, row["session_id"]) and TimerState.valid?(row)
@@ -162,9 +165,6 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       (is_nil(row["prompt"]) or (is_binary(row["prompt"]) and length(String.to_charlist(row["prompt"])) <= 2000)) and
       round_timing?(row)
   end
-
-  defp round_timing?(%{"status" => status, "started_at" => nil, "closed_at" => nil})
-       when status in ["planned", "cancelled"], do: true
 
   defp round_timing?(%{"status" => "active", "started_at" => started, "closed_at" => nil}), do: valid_time?(started)
 

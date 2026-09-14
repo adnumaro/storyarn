@@ -39,6 +39,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Delete do
             do: [:shared, :comment_sources, access.user_id],
             else: [access.user_id]
 
+        audiences = if deleted.state == :parked, do: [:tree | audiences], else: audiences
+
         Transaction.success(%{id: deleted.id, revision: deleted.revision, deleted_at: deleted.deleted_at}, audiences)
     end
   end

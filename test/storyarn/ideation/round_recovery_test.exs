@@ -15,34 +15,31 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     ideation_fixture()
   end
 
-  test "snapshot restores round provenance, late notes and cross-round links after physical deletion", ctx do
-    unround = idea_fixture(ctx)
-    {ctx, closed} = add_round(ctx, "What drives the antagonist?")
-    ctx = start_round(ctx, closed)
-    ordinary = idea_fixture(ctx, %{round_id: closed.id})
-    ctx = close_round(ctx, closed)
-    late = idea_fixture(ctx, %{round_id: closed.id})
-    {ctx, active} = add_round(ctx, "What stands in their way?")
-    ctx = start_round(ctx, active)
+  test "snapshot restores round provenance, header offsets, late notes and cross-round links after physical deletion",
+       ctx do
+    first = first_round(ctx)
+    ordinary = idea_fixture(ctx, %{round_id: first.id})
+    {ctx, active} = new_round(ctx, %{prompt: "What stands in their way?", canvas_offset_y: 720})
+    late = idea_fixture(ctx, %{round_id: first.id})
     next = idea_fixture(ctx, %{round_id: active.id})
-    {ctx, planned} = add_round(ctx, "What could change?")
     assert {:ok, _} = Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, ordinary.id, next.id, true)
     capsule = capture(ctx)
 
-    assert {:ok, %{"version" => 6, "rows" => rows}} = Capsule.open(capsule)
-    assert length(rows["rounds"]) == 3
+    assert {:ok, %{"version" => 7, "rows" => rows}} = Capsule.open(capsule)
+    assert length(rows["rounds"]) == 2
+    assert Enum.map(rows["rounds"], & &1["canvas_offset_y"]) == [0, 720]
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
     assert {:ok, rounds} = Ideation.list_rounds(ctx.viewer, ctx.project.id, session_id)
-    assert Enum.map(rounds, & &1.status) == [:planned, :active, :closed]
-    assert Enum.map(rounds, & &1.id) == Enum.map([planned, active, closed], &maps["rounds"][&1.id])
-    assert Enum.map(rounds, & &1.prompt) == [planned.prompt, active.prompt, closed.prompt]
+    assert Enum.map(rounds, & &1.status) == [:active, :closed]
+    assert Enum.map(rounds, & &1.id) == Enum.map([active, first], &maps["rounds"][&1.id])
+    assert Enum.map(rounds, & &1.prompt) == [active.prompt, nil]
+    assert Enum.map(rounds, & &1.canvas_offset_y) == [720, 0]
 
     for {original, round_id, late?} <- [
-          {unround, nil, false},
-          {ordinary, maps["rounds"][closed.id], false},
-          {late, maps["rounds"][closed.id], true},
+          {ordinary, maps["rounds"][first.id], false},
+          {late, maps["rounds"][first.id], true},
           {next, maps["rounds"][active.id], false}
         ] do
       assert {:ok, idea} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][original.id])
@@ -60,7 +57,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     # Stable round identities participate in generation matching; restore cannot
     # multiply an unchanged round and all of its notes on each recovery.
     for _ <- 1..3, do: assert(restore(ctx, capsule) == maps)
-    assert Repo.aggregate(Round, :count) == 3
+    assert Repo.aggregate(Round, :count) == 2
   end
 
   test "legacy version-one capsules normalize round defaults and remain verifiable", ctx do
@@ -84,9 +81,9 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
+    assert normalized["version"] == 7
     assert normalized["rows"]["rounds"] == []
-    {ctx, round} = add_round(ctx, "Created after the old snapshot")
-    _ctx = start_round(ctx, round)
+    {ctx, _round} = new_round(ctx, %{prompt: "Created after the old snapshot"})
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
     assert {:ok, []} = Ideation.list_rounds(ctx.author, ctx.project.id, session_id)
@@ -97,58 +94,100 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert restore(ctx, capsule) == maps
   end
 
-  test "edited and cancelled planned rounds survive recovery with their audit and cannot accept notes", ctx do
-    {ctx, planned} = add_round(ctx, "Typo")
+  test "version-six capsules drop prepared and cancelled rounds and start every header at zero", ctx do
+    idea = idea_fixture(ctx)
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+    [round] = data["rows"]["rounds"]
+    now = round["started_at"]
+
+    legacy =
+      data
+      |> Map.put("version", 6)
+      |> put_in(["rows", "rounds"], [
+        Map.delete(round, "canvas_offset_y"),
+        round
+        |> Map.delete("canvas_offset_y")
+        |> Map.merge(%{"id" => round["id"] + 1, "number" => 2, "status" => "planned", "started_at" => nil}),
+        round
+        |> Map.delete("canvas_offset_y")
+        |> Map.merge(%{
+          "id" => round["id"] + 2,
+          "number" => 3,
+          "status" => "cancelled",
+          "started_at" => nil,
+          "recovery_identity" => Base.encode64(:crypto.strong_rand_bytes(16))
+        })
+      ])
+      |> put_in(["rows", "rounds", Access.at(1), "recovery_identity"], Base.encode64(:crypto.strong_rand_bytes(16)))
+      |> put_in(["rows", "rounds", Access.at(1), "closed_at"], nil)
+      |> put_in(["rows", "rounds", Access.at(2), "closed_at"], nil)
+
+    assert {:ok, capsule} = Capsule.seal(legacy)
+    assert {:ok, normalized} = Capsule.open(capsule)
+    assert normalized["version"] == 7
+    assert [%{"number" => 1, "status" => "active", "canvas_offset_y" => 0}] = normalized["rows"]["rounds"]
+    assert now
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    assert {:ok, [restored_round]} = Ideation.list_rounds(ctx.author, ctx.project.id, session_id)
+    assert restored_round.canvas_offset_y == 0
+    assert {:ok, restored} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][idea.id])
+    assert restored.round_id == restored_round.id
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+  end
+
+  test "the question of the round in progress and the band layout survive recovery with their audit", ctx do
+    first = first_round(ctx)
 
     assert {:ok, updated} =
-             Ideation.update_round(ctx.facilitator, ctx.project.id, ctx.session.id, planned.id, ctx.session.revision, %{
+             Ideation.update_round(ctx.facilitator, ctx.project.id, ctx.session.id, first.id, ctx.session.revision, %{
                prompt: "Corrected question"
              })
 
-    assert {:ok, cancelled} =
-             Ideation.cancel_round(ctx.owner, ctx.project.id, ctx.session.id, planned.id, updated.revision)
-
-    ctx = %{ctx | session: cancelled}
+    ctx = %{ctx | session: updated}
+    {ctx, second} = new_round(ctx, %{prompt: "Next", canvas_offset_y: 500})
     capsule = capture(ctx)
     assert {:ok, data} = Capsule.open(capsule)
-    assert data["version"] == 6
-    assert [saved] = data["rows"]["rounds"]
-    assert saved["status"] == "cancelled"
-    assert saved["started_at"] == nil
-    assert saved["closed_at"] == nil
+    assert data["version"] == 7
+    assert [saved_first, saved_second] = data["rows"]["rounds"]
+    assert saved_first["status"] == "closed"
+    assert saved_first["prompt"] == "Corrected question"
+    assert saved_second["canvas_offset_y"] == 500
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
-    assert {:ok, [round]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, session_id)
-    assert round.id == maps["rounds"][planned.id]
-    assert round.recovery_identity == planned.recovery_identity
-    assert round.status == :cancelled
-    assert round.prompt == "Corrected question"
-    assert round.started_at == nil
-    assert round.closed_at == nil
+    assert {:ok, [current, previous]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, session_id)
+    assert previous.id == maps["rounds"][first.id]
+    assert previous.recovery_identity == first.recovery_identity
+    assert previous.status == :closed
+    assert previous.prompt == "Corrected question"
+    assert current.id == maps["rounds"][second.id]
+    assert current.status == :active
+    assert current.canvas_offset_y == 500
 
-    assert {:ok, [cancel_revision, update_revision, _prepared, _original]} =
+    assert {:ok, [started_revision, update_revision, _original]} =
              Ideation.list_session_revisions(ctx.viewer, ctx.project.id, session_id)
 
-    assert cancel_revision.action == :round_cancelled
+    assert started_revision.action == :round_started
+    assert started_revision.snapshot["round"]["number"] == 2
     assert update_revision.action == :round_updated
     assert update_revision.snapshot["round"]["prompt"] == "Corrected question"
-
-    assert {:error, :round_cancelled} =
-             Ideation.create_idea(ctx.author, ctx.project.id, session_id, idea_attrs(%{round_id: round.id}))
 
     assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
     assert restore(ctx, capsule) == maps
 
     for mutation <- [
-          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], "2026-09-08T12:00:00.000000") end,
-          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "closed_at"], "2026-09-08T12:00:00.000000") end,
-          fn data -> put_in(data, ["rows", "session_revisions", Access.at(2), "snapshot", "round", "number"], -1) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(1), "started_at"], nil) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(1), "closed_at"], "2026-09-08T12:00:00.000000") end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "status"], "planned") end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "canvas_offset_y"], "0") end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(1), "canvas_offset_y"], 2_000_000) end,
+          fn data -> put_in(data, ["rows", "session_revisions", Access.at(1), "snapshot", "round", "number"], -1) end,
           fn data ->
             put_in(
               data,
-              ["rows", "session_revisions", Access.at(3), "snapshot", "round", "started_at"],
-              "2026-09-08T12:00:00.000000"
+              ["rows", "session_revisions", Access.at(2), "snapshot", "round", "started_at"],
+              "not-a-date"
             )
           end
         ] do
@@ -157,16 +196,14 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
   end
 
   test "authenticated invalid round graphs fail before changing the project", ctx do
-    {ctx, first} = add_round(ctx, "First")
-    ctx = start_round(ctx, first)
+    first = first_round(ctx)
     _idea = idea_fixture(ctx, %{round_id: first.id})
-    {ctx, _second} = add_round(ctx, "Second")
+    {ctx, _second} = new_round(ctx, %{prompt: "Second"})
     {:ok, data} = ctx |> capture() |> Capsule.open()
 
     mutations = [
       fn data -> put_in(data, ["rows", "ideas", Access.at(0), "round_id"], -1) end,
       fn data -> put_in(data, ["rows", "ideas", Access.at(0), "late_contribution"], "yes") end,
-      fn data -> put_in(data, ["rows", "ideas", Access.at(0), "late_contribution"], true) end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "session_id"], -1) end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], "not-a-date") end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(0), "started_at"], nil) end,
@@ -174,18 +211,17 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
         update_in(
           data,
           ["rows", "rounds", Access.at(0)],
-          &Map.merge(&1, %{"status" => "cancelled", "started_at" => nil})
+          &Map.merge(&1, %{"status" => "cancelled", "started_at" => nil, "closed_at" => nil})
         )
       end,
-      fn data -> put_in(data, ["rows", "rounds", Access.at(0), "prompt"], String.duplicate("é", 1500)) end,
+      fn data -> put_in(data, ["rows", "rounds", Access.at(0), "prompt"], String.duplicate("a", 2001)) end,
       fn data -> put_in(data, ["rows", "rounds", Access.at(1), "number"], first.number) end,
+      fn data -> put_in(data, ["rows", "rounds", Access.at(1), "canvas_offset_y"], nil) end,
       fn data ->
-        started = get_in(data, ["rows", "rounds", Access.at(0), "started_at"])
-
         update_in(
           data,
-          ["rows", "rounds", Access.at(1)],
-          &Map.merge(&1, %{"status" => "active", "started_at" => started})
+          ["rows", "rounds", Access.at(0)],
+          &Map.merge(&1, %{"status" => "active", "closed_at" => nil})
         )
       end
     ]
@@ -200,8 +236,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
   end
 
   test "a round belonging to another captured session is rejected", ctx do
-    {ctx, round} = add_round(ctx, "Original session")
-    ctx = start_round(ctx, round)
+    round = first_round(ctx)
     idea_fixture(ctx, %{round_id: round.id})
     {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Different session"})
     {:ok, data} = ctx |> capture() |> Capsule.open()
@@ -210,28 +245,6 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     assert {:error, :invalid_ideation_recovery} =
              restore_result(ctx, %{"version" => 1, "ciphertext" => Base.encode64(bytes)})
-  end
-
-  defp add_round(ctx, prompt) do
-    {:ok, session} =
-      Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{prompt: prompt})
-
-    {:ok, [round | _]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, session.id)
-    {%{ctx | session: session}, round}
-  end
-
-  defp start_round(ctx, round) do
-    {:ok, session} =
-      Ideation.start_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, ctx.session.revision)
-
-    %{ctx | session: session}
-  end
-
-  defp close_round(ctx, round) do
-    {:ok, session} =
-      Ideation.close_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, ctx.session.revision)
-
-    %{ctx | session: session}
   end
 
   defp capture(ctx) do

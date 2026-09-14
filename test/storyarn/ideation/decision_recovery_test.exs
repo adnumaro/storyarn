@@ -47,7 +47,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 6, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 7, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -187,10 +187,16 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
 
   test "version-five capsules retain their content and normalize empty decisions", ctx do
     {:ok, data} = ctx |> capture() |> Capsule.open()
-    legacy = data |> Map.put("version", 5) |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions)))
+
+    legacy =
+      data
+      |> Map.put("version", 5)
+      |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions)))
+      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "canvas_offset_y") end))
+
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 6
+    assert normalized["version"] == 7
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)
