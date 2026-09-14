@@ -30,11 +30,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
       Projects.subscribe_flow_comments(socket.assigns.current_scope, socket.assigns.project.id, socket.assigns.flow.id)
     end
 
-    socket = refresh(socket)
+    socket = socket |> subscribe_participation() |> refresh()
 
     case socket.assigns.pending_comment_thread_id do
       nil -> socket
       thread_id -> socket |> assign(:pending_comment_thread_id, nil) |> open_linked_thread(thread_id)
+    end
+  end
+
+  defp subscribe_participation(socket) do
+    if connected?(socket) and socket.assigns[:comment_participation_subscribed] != true do
+      Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
+      assign(socket, :comment_participation_subscribed, true)
+    else
+      socket
     end
   end
 

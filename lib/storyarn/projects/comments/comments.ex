@@ -44,6 +44,11 @@ defmodule Storyarn.Projects.Comments do
 
   def subscribe_participation(_), do: {:error, :not_found}
 
+  def unsubscribe_participation(%{user: %{id: id}}) when is_integer(id) and id > 0,
+    do: PubSub.unsubscribe(Storyarn.PubSub, participation_topic(id))
+
+  def unsubscribe_participation(_), do: {:error, :not_found}
+
   defp subscribe_topic(topic) do
     # The Hub may share a LiveView with the notification hook. Phoenix PubSub
     # permits duplicate registrations, so compose subscriptions idempotently.

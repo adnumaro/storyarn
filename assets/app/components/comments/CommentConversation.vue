@@ -219,7 +219,8 @@ function selectReply(message: CommentMessage | null) {
     </div>
 
     <div
-      v-if="state.canComment && composerEnabled"
+      v-if="state.canComment && sourceAvailable"
+      v-show="composerEnabled"
       class="shrink-0 px-3.5 py-2.5"
       :class="{ 'border-t border-border': thread }"
     >
@@ -243,7 +244,7 @@ function selectReply(message: CommentMessage | null) {
       />
     </div>
     <div
-      v-else-if="thread?.status === 'resolved' && sourceAvailable"
+      v-if="thread?.status === 'resolved' && sourceAvailable"
       class="flex shrink-0 items-center gap-2 border-t border-border py-2 pl-3.5 pr-2 text-xs"
     >
       <CheckCheck class="size-3.5 shrink-0 text-[hsl(150_45%_55%)]" />

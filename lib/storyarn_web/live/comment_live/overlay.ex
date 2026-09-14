@@ -75,11 +75,13 @@ defmodule StoryarnWeb.CommentLive.Overlay do
 
   def handle_event("hub_open", _params, socket) do
     Projects.subscribe_comment_conversations(socket.assigns.current_scope)
+    Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
     {:reply, %{ok: true}, socket |> assign(:open, true) |> schedule_refresh() |> refresh_access()}
   end
 
   def handle_event("hub_close", _params, socket) do
     Projects.unsubscribe_comment_conversations(socket.assigns.current_scope)
+    Projects.unsubscribe_ideation_comment_participation(socket.assigns.current_scope)
     if timer = socket.assigns.refresh_timer, do: Process.cancel_timer(timer)
 
     {:reply, %{ok: true},
@@ -161,6 +163,9 @@ defmodule StoryarnWeb.CommentLive.Overlay do
   def handle_info({event, _payload}, socket) when event in @access_events, do: {:noreply, refresh_access(socket)}
 
   def handle_info({:comment_conversations_changed, project_id}, socket),
+    do: {:noreply, schedule_comment_refresh(socket, project_id)}
+
+  def handle_info({:ideation_comment_participation_changed, project_id, _container_id, _thread_id}, socket),
     do: {:noreply, schedule_comment_refresh(socket, project_id)}
 
   def handle_info({:dashboard_invalidate, _source}, socket) do

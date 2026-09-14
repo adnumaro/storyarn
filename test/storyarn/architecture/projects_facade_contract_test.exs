@@ -300,6 +300,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     subscribe_ideation_conversations: 1,
     subscribe_ideation_comment_source_changes: 1,
     subscribe_ideation_comment_participation: 1,
+    unsubscribe_ideation_comment_participation: 1,
     invalidate_ideation_comment_sources: 1,
     invalidate_ideation_comment_activity: 1,
     set_ideation_comment_following: 4,

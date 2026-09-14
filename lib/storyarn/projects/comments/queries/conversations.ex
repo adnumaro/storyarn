@@ -38,6 +38,43 @@ defmodule Storyarn.Projects.Comments.Conversations do
     end
   end
 
+  # Facet predicates over the same joins; a gate is open unless its toggle is active.
+  defmacrop unread_expr(participation, others) do
+    quote do
+      fragment("COALESCE(?, 0) > COALESCE(?, 0)", unquote(others).max_id, unquote(participation).last_read_message_id)
+    end
+  end
+
+  defmacrop following_expr(participation),
+    do: quote(do: fragment("COALESCE(?, false)", unquote(participation).following))
+
+  defmacrop hit_expr(binding), do: quote(do: fragment("COALESCE(?, 0) > 0", unquote(binding).hit))
+
+  defmacrop gate(active, predicate),
+    do: quote(do: fragment("(NOT ?::boolean OR ?)", ^unquote(active), unquote(predicate)))
+
+  defmacrop facet(predicate, first_gate, second_gate) do
+    quote do
+      count(
+        fragment("CASE WHEN ? AND ? AND ? THEN 1 END", unquote(predicate), unquote(first_gate), unquote(second_gate))
+      )
+    end
+  end
+
+  defmacrop facet(predicate, first_gate, second_gate, third_gate) do
+    quote do
+      count(
+        fragment(
+          "CASE WHEN ? AND ? AND ? AND ? THEN 1 END",
+          unquote(predicate),
+          unquote(first_gate),
+          unquote(second_gate),
+          unquote(third_gate)
+        )
+      )
+    end
+  end
+
   # Canonical conversations survive a vanished surface or context. Restricted
   # brainstorming sources enter through their current audience query instead.
   # Membership and source visibility precede search, counts and pagination.
@@ -107,12 +144,15 @@ defmodule Storyarn.Projects.Comments.Conversations do
     end
   end
 
-  # Facet counts describe the same authorized search. Tool and status counts
-  # ignore the tool and status tabs; personal counts ignore the personal toggles,
-  # so every chip says how many rows it would show if it were the one selected.
+  # Every chip counts the rows it would show if it were the one selected with
+  # the other filters kept; each group ignores only its own selection.
   def counts(scope, opts) do
     user_id = scope.user.id
     scoped = scoped_query(scope, opts)
+    unread_on = opts[:unread] == true
+    following_on = opts[:following] == true
+    participated_on = opts[:participated] == true
+    mentioned_on = opts[:mentioned] == true
 
     by_tool_status =
       scoped
@@ -128,31 +168,45 @@ defmodule Storyarn.Projects.Comments.Conversations do
       |> filter_status(opts[:status])
       |> search(scope, opts[:search])
       |> with_personal_state(user_id)
-      |> select([thread: t, participation: p, others: o, mentioned: mt, authored: a], %{
+      |> select([participation: p, others: o, mentioned: mt, authored: a], %{
         unread:
-          count(fragment("CASE WHEN COALESCE(?, 0) > COALESCE(?, 0) THEN 1 END", o.max_id, p.last_read_message_id)),
-        mentioned: count(fragment("CASE WHEN COALESCE(?, 0) > 0 THEN 1 END", mt.hit)),
-        participated: count(fragment("CASE WHEN COALESCE(?, 0) > 0 THEN 1 END", a.hit)),
-        following: count(fragment("CASE WHEN ? THEN 1 END", p.following))
+          facet(
+            unread_expr(p, o),
+            gate(following_on, following_expr(p)),
+            gate(participated_on, hit_expr(a)),
+            gate(mentioned_on, hit_expr(mt))
+          ),
+        following:
+          facet(
+            following_expr(p),
+            gate(unread_on, unread_expr(p, o)),
+            gate(participated_on, hit_expr(a)),
+            gate(mentioned_on, hit_expr(mt))
+          ),
+        participated: facet(hit_expr(a), gate(unread_on, unread_expr(p, o)), gate(following_on, following_expr(p))),
+        mentioned: facet(hit_expr(mt), gate(unread_on, unread_expr(p, o)), gate(following_on, following_expr(p)))
       })
       |> Repo.one()
 
-    # Status counts follow the selected tool; tool counts ignore it.
     selected_types = if opts[:tool], do: Map.fetch!(@tools, opts[:tool]), else: Map.keys(@tool_of)
-    in_tool = Enum.filter(by_tool_status, &(elem(&1, 0) in selected_types))
-    open = in_tool |> Enum.filter(&(elem(&1, 1) == "open")) |> Enum.map(&elem(&1, 2)) |> Enum.sum()
-    resolved = in_tool |> Enum.filter(&(elem(&1, 1) == "resolved")) |> Enum.map(&elem(&1, 2)) |> Enum.sum()
+    selected_statuses = if opts[:status] in ~w(open resolved), do: [opts[:status]], else: ~w(open resolved)
+    open = sum_counts(by_tool_status, &(elem(&1, 0) in selected_types and elem(&1, 1) == "open"))
+    resolved = sum_counts(by_tool_status, &(elem(&1, 0) in selected_types and elem(&1, 1) == "resolved"))
 
     tools =
-      Enum.reduce(by_tool_status, Map.new(Map.keys(@tools), &{&1, 0}), fn {type, _status, count}, acc ->
+      by_tool_status
+      |> Enum.filter(&(elem(&1, 1) in selected_statuses))
+      |> Enum.reduce(Map.new(Map.keys(@tools), &{&1, 0}), fn {type, _status, count}, acc ->
         Map.update(acc, @tool_of[type], count, &(&1 + count))
       end)
 
     Map.merge(
-      %{all: open + resolved, open: open, resolved: resolved, tools: tools},
+      %{all: tools |> Map.values() |> Enum.sum(), open: open, resolved: resolved, tools: tools},
       personal || %{unread: 0, mentioned: 0, participated: 0, following: 0}
     )
   end
+
+  defp sum_counts(rows, keep?), do: rows |> Enum.filter(keep?) |> Enum.map(&elem(&1, 2)) |> Enum.sum()
 
   def metadata(_scope, []), do: %{}
 

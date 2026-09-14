@@ -188,7 +188,7 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1978
+#: lib/storyarn_web/live/flow_live/show.ex:1988
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -464,17 +464,17 @@ msgstr ""
 msgid "Node #%{n} (%{type}) — terminal target"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:550
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:559
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:537
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:546
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:546
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:555
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""
@@ -489,12 +489,12 @@ msgstr ""
 msgid "This composition or one of its descendants still depends on that source, layer, or audio track. Reassign or revert those local changes first."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:540
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:549
 #, elixir-autogen, elixir-format
 msgid "The comment context is no longer available. Review the pin's position and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:543
+#: lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex:552
 #, elixir-autogen, elixir-format
 msgid "The selected comment context is invalid. Move the pin and try again."
 msgstr ""

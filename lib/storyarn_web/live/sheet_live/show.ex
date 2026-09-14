@@ -941,6 +941,16 @@ defmodule StoryarnWeb.SheetLive.Show do
     end
   end
 
+  def handle_info({:ideation_comment_participation_changed, project_id, sheet_id, _thread_id}, socket) do
+    %{project: project, sheet: sheet, compact: compact} = socket.assigns
+
+    if project.id == project_id && sheet && sheet.id == sheet_id && !compact do
+      {:noreply, CommentHandlers.refresh(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:entities_deleted, :sheet, ids}, socket) do
     if socket.assigns.sheet.id in ids do
       {:noreply,

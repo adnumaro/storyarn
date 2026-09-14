@@ -30,7 +30,16 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
       )
     end
 
-    refresh(socket)
+    socket |> subscribe_participation() |> refresh()
+  end
+
+  defp subscribe_participation(socket) do
+    if connected?(socket) and socket.assigns[:comment_participation_subscribed] != true do
+      Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
+      assign(socket, :comment_participation_subscribed, true)
+    else
+      socket
+    end
   end
 
   def unload(socket) do

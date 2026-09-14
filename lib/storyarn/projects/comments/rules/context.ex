@@ -269,8 +269,8 @@ defmodule Storyarn.Projects.Comments.Context do
   end
 
   defp node_preview_value(%{type: "dialogue", data: data}) when is_map(data) do
-    case data["speaker"] do
-      speaker when is_binary(speaker) -> present(HtmlUtils.strip_and_truncate(speaker, 120))
+    case data["text"] do
+      text when is_binary(text) -> present(HtmlUtils.strip_and_truncate(text, 120))
       _ -> nil
     end
   end

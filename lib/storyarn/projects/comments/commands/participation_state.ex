@@ -21,8 +21,7 @@ defmodule Storyarn.Projects.Comments.ParticipationState do
     with true <- Payload.valid_id?(thread_id),
          {:ok, _, _} <- Access.authorize_locked(scope, project_id, :view),
          thread when not is_nil(thread) <- Queries.thread(project_id, thread_id),
-         true <- Queries.readable?(thread, scope),
-         source when not is_nil(source) <- Queries.available_source(thread, scope: scope, lock: :share) do
+         true <- Queries.readable?(thread, scope) do
       thread = Queries.thread(project_id, thread_id, lock: :update) || Repo.rollback(:not_found)
       write(thread, scope.user.id, action)
       thread

@@ -198,7 +198,7 @@ describe("Flow comment popover", () => {
 
   it("requires reopening a resolved discussion before replying", async () => {
     const wrapper = panel({ thread: { ...thread, status: "resolved" }, messages: [message] });
-    expect(wrapper.find("textarea").exists()).toBe(false);
+    expect(wrapper.find("textarea").isVisible()).toBe(false);
     expect(wrapper.text()).toContain("This thread is resolved");
     await wrapper.get("#flow-comment-status").trigger("click");
     expect(mockLive.pushEvent).toHaveBeenCalledWith(

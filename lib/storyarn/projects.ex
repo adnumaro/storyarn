@@ -1117,6 +1117,7 @@ defmodule Storyarn.Projects do
   defdelegate subscribe_ideation_conversations(scope), to: Comments, as: :subscribe_conversations
   defdelegate subscribe_ideation_comment_source_changes(scope), to: Comments, as: :subscribe_source_changes
   defdelegate subscribe_ideation_comment_participation(scope), to: Comments, as: :subscribe_participation
+  defdelegate unsubscribe_ideation_comment_participation(scope), to: Comments, as: :unsubscribe_participation
   defdelegate invalidate_ideation_comment_sources(project_id), to: Comments, as: :invalidate_ideation_sources
   defdelegate invalidate_ideation_comment_activity(project_id), to: Comments, as: :invalidate_ideation_activity
 
