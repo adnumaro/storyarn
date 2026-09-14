@@ -12,8 +12,9 @@ import type { Session, SessionTimer } from "../types";
 import TimerStartForm from "./TimerStartForm.vue";
 
 // The timer zone of the round in progress: big digits everyone reads, the
-// facilitator's pause/resume/+1 min beside them, and "Start timer" while idle.
-// The line under the header fills as time passes; this reports the fraction.
+// facilitator's pause/resume/+1 min/cancel beside them, and "Start timer"
+// while idle or once time is up. Reaching 0:00 is the whole message; the line
+// under the header fills as time passes and this reports the fraction.
 const { session, epoch, timer, canManage, canEdit } = defineProps<{
   session: Session;
   epoch: string;
@@ -69,21 +70,14 @@ function start(options: TimerStart) {
 </script>
 <template>
   <div class="pointer-events-auto flex shrink-0 items-center gap-2">
-    <template v-if="elapsed">
-      <span
-        id="brainstorming-round-timer"
-        class="text-[22px] font-semibold leading-none tabular-nums text-muted-foreground"
-        :aria-label="`${t('ideation.timer.title')}: ${t('ideation.timer.elapsed')}`"
-        >0:00</span
-      >
-      <Badge
-        id="brainstorming-round-timer-elapsed"
-        role="status"
-        variant="outline"
-        class="font-medium text-primary"
-        >{{ t("ideation.timer.elapsed") }}</Badge
-      >
-    </template>
+    <span
+      v-if="elapsed"
+      id="brainstorming-round-timer"
+      role="status"
+      class="text-[22px] font-semibold leading-none tabular-nums text-muted-foreground"
+      :aria-label="`${t('ideation.timer.title')}: ${t('ideation.timer.elapsed')}`"
+      >0:00</span
+    >
     <template v-else-if="active">
       <span
         id="brainstorming-round-timer"

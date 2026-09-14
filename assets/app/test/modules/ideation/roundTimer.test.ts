@@ -118,7 +118,7 @@ describe("timer on the round header", () => {
     bar(timer({ status: "elapsed", remaining_seconds: 0 }), { canManage: false, single: true });
     await nextTick();
     expect(wrapper.get("#brainstorming-round-timer").text()).toBe("0:00");
-    expect(wrapper.get("#brainstorming-round-timer-elapsed").text()).toBe("Time’s up");
+    expect(wrapper.text()).not.toContain("Time’s up");
     expect(wrapper.find("#brainstorming-round-timer-start").exists()).toBe(false);
     expect(wrapper.get("#brainstorming-round-progress-21").attributes("style")).toContain(
       "width: 100%",
@@ -143,7 +143,7 @@ describe("timer on the round header", () => {
       },
     });
     await flushPromises();
-    expect(wrapper.get("#brainstorming-round-timer-elapsed").text()).toBe("Time’s up");
+    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("0:00");
     await wrapper.get("#brainstorming-round-timer-start").trigger("click");
     await wrapper.get("form").trigger("submit");
     expect(send).toHaveBeenLastCalledWith("start_timer", expect.objectContaining({ seconds: 300 }));
