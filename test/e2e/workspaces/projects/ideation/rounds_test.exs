@@ -43,6 +43,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> assert_has("#brainstorming-tree-round-#{second.id}[data-status=active]", text: "Round 2")
       |> press("#brainstorming-canvas", "n")
       |> assert_has("[data-note-id^='-'] [contenteditable=true]:focus")
+      |> settled()
       |> type("[data-note-id^='-'] [contenteditable=true]", "The antagonist wants to return a stolen memory.")
       |> assert_has("[data-note-id] [contenteditable=true]", text: "The antagonist wants to return a stolen memory.")
       |> assert_has("[data-note-id]:not([data-note-id^='-'])", text: "The antagonist wants to return a stolen memory.")
@@ -92,6 +93,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> refute_has("#brainstorming-round-next")
       |> press("#brainstorming-canvas", "n")
       |> assert_has("[data-note-id^='-'] [contenteditable=true]:focus")
+      |> settled()
       |> type("[data-note-id^='-'] [contenteditable=true]", "A secret promise could change the river.")
       |> assert_has("[data-note-id] [contenteditable=true]", text: "A secret promise could change the river.")
       |> assert_has("[data-note-id]:not([data-note-id^='-'])", text: "A secret promise could change the river.")
@@ -172,6 +174,14 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     |> refute_has("#brainstorming-round-next")
     |> refute_has("#brainstorming-round-new-#{round.id}")
     |> refute_has("#brainstorming-round-close-#{round.id}")
+  end
+
+  # A person types after the editor has settled. On the CI runner, typing in the
+  # same instant the draft editor receives focus loses the text (it does not in a
+  # browser at hand); the pause keeps the flow honest without hiding the assertion.
+  defp settled(browser) do
+    Process.sleep(1_000)
+    browser
   end
 
   defp persisted(browser, count) do
