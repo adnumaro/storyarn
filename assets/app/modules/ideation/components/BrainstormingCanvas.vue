@@ -57,6 +57,7 @@ import type {
   ConnectionChange,
   LinkDirection,
   Round,
+  RoundTimerContext,
 } from "../types";
 import BrainstormingCanvasComments from "../BrainstormingCanvasComments.vue";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "../commentTypes";
@@ -75,7 +76,7 @@ const {
   members,
   statuses,
   historyState,
-  bands = { rounds: [], offsets: new Map(), canManage: false, pending: false },
+  bands = { rounds: [], offsets: new Map(), canManage: false, pending: false, timer: null },
 } = defineProps<{
   notes: CanvasIdea[];
   groupState?: {
@@ -97,7 +98,13 @@ const {
   members: Member[];
   statuses: { [id: number]: string };
   /** Round bands in canvas order; their headers are drawn in screen space. */
-  bands?: { rounds: Round[]; offsets: BandOffsets; canManage: boolean; pending: boolean };
+  bands?: {
+    rounds: Round[];
+    offsets: BandOffsets;
+    canManage: boolean;
+    pending: boolean;
+    timer?: RoundTimerContext | null;
+  };
 }>();
 const groups = computed(() => groupState?.groups ?? []);
 const selectedGroupId = computed(() => groupState?.selectedId ?? null);
@@ -1415,6 +1422,7 @@ onUnmounted(() => {
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
                 :contact="contact.has(round.id)"
+                :timer="round.status === 'active' ? (bands.timer ?? null) : null"
                 @close="emit('closeRound', $event)"
                 @new-round="emit('newRound')"
                 @update-prompt="(id, prompt) => emit('updatePrompt', id, prompt)"

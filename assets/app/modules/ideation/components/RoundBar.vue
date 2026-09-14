@@ -5,7 +5,8 @@ import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import EditableText from "@components/forms/EditableText.vue";
 import { useBoardText } from "../composables/useBoardText";
-import type { Round } from "../types";
+import type { Round, RoundTimerContext } from "../types";
+import RoundTimer from "./RoundTimer.vue";
 
 // The header of a round band: number, question, status and, for the
 // facilitator, the round actions. The line under the content is the band
@@ -19,6 +20,7 @@ const {
   canManage = false,
   pending = false,
   contact = false,
+  timer = null,
 } = defineProps<{
   round: Round;
   /** The session has a single round: the header stays quiet about rounds. */
@@ -29,6 +31,8 @@ const {
   pending?: boolean;
   /** A dragged note is pressing against this header's line. */
   contact?: boolean;
+  /** The session timer, shown on the round in progress only. */
+  timer?: RoundTimerContext | null;
 }>();
 const emit = defineEmits<{
   close: [id: number];
@@ -48,10 +52,19 @@ watch(
     draft.value = prompt ?? "";
   },
 );
+// The line is the band boundary; with a timer running it also fills as time passes.
+const progress = ref(0);
+const timerState = computed(() => (active.value ? (timer?.timer?.status ?? null) : null));
 const lineClass = computed(() => {
   if (contact) return "h-0.5 bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]";
-  if (single) return "h-0 bg-transparent";
+  if (single && !timerState.value) return "h-0 bg-transparent";
   return active.value ? "h-0.5 bg-foreground/20" : "h-px bg-border";
+});
+const fillClass = computed(() => {
+  if (timerState.value === "paused") return "bg-muted-foreground/60";
+  if (timerState.value === "running" || timerState.value === "elapsed")
+    return "bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]";
+  return null;
 });
 </script>
 <template>
@@ -101,6 +114,15 @@ const lineClass = computed(() => {
         }}</span>
       </Badge>
       <span class="flex-1" />
+      <RoundTimer
+        v-if="active && timer"
+        :session="timer.session"
+        :epoch="timer.epoch"
+        :timer="timer.timer"
+        :can-manage="canManage"
+        :can-edit="timer.canEdit"
+        @progress="progress = $event"
+      />
       <template v-if="canManage && !single">
         <template v-if="active">
           <span aria-hidden="true" class="h-5 w-px bg-border" />
@@ -126,6 +148,14 @@ const lineClass = computed(() => {
         >
       </template>
     </div>
-    <div :class="lineClass" />
+    <div class="relative" :class="lineClass">
+      <div
+        v-if="fillClass"
+        :id="`brainstorming-round-progress-${round.id}`"
+        class="absolute inset-y-0 left-0 transition-[width] duration-300"
+        :class="fillClass"
+        :style="{ width: `${Math.round(progress * 1000) / 10}%` }"
+      />
+    </div>
   </div>
 </template>

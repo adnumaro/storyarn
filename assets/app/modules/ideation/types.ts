@@ -161,6 +161,13 @@ export interface Round {
   inserted_at: string;
   updated_at: string;
 }
+/** The session timer as the round in progress shows it on its header. */
+export interface RoundTimerContext {
+  session: Session;
+  epoch: string;
+  timer: SessionTimer | null;
+  canEdit: boolean;
+}
 export interface SessionTimer {
   id: number;
   version: number;

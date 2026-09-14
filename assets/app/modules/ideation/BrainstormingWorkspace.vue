@@ -1077,6 +1077,14 @@ onUnmounted(() => {
           offsets: bandOffsets,
           canManage: board.can_manage,
           pending: roundPending,
+          timer: board.session
+            ? {
+                session: board.session,
+                epoch: board.epoch,
+                timer: board.timer,
+                canEdit: board.can_edit,
+              }
+            : null,
         }"
         @bands="measuredBands = $event"
         @new-round="newRound"
