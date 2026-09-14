@@ -1,0 +1,23 @@
+assets/app/test/modules/ideation/roundTimer.test.ts
+  s_02773c3f2b5565::t_d237c5589437c1 120-122,128-144,146-148
+  s_02773c3f2b5565::t_08e5051a1db358 145,149
+  s_02773c3f2b5565::t_9eab3c027a835c 150
+assets/app/modules/ideation/components/RoundTimer.vue
+  s_02773c3f2b5565::t_d237c5589437c1 3,72-86,120-130,132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3d37aa894f195ab5b14e95be27d754a88d6d2fb",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
