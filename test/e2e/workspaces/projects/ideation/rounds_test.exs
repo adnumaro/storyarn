@@ -42,6 +42,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> assert_has("#brainstorming-tree-round-#{second.id}[data-status=active]", text: "Round 2")
       |> press("#brainstorming-canvas", "n")
       |> assert_has("[data-note-id^='-'] [contenteditable=true]")
+      |> dump_notes("after n")
       |> type("[data-note-id^='-'] [contenteditable=true]", "The antagonist wants to return a stolen memory.")
       |> dump_notes("after typing")
       |> assert_has("[data-note-id] [contenteditable=true]", text: "The antagonist wants to return a stolen memory.")
@@ -180,6 +181,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
 
     {:ok, dump} =
       PlaywrightEx.Frame.evaluate(browser.frame_id,
+        timeout: 10_000,
         expression: """
         JSON.stringify({
           active: document.activeElement && (document.activeElement.tagName + '#' + document.activeElement.id + '.' + document.activeElement.className),
