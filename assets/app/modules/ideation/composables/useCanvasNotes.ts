@@ -37,6 +37,8 @@ export interface RemovedNote {
   revision: number;
   deleted_at: string | null;
   idea: Idea;
+  /** An unsaved note keeps its placement in its round while it is removed. */
+  relativeCanvas?: CanvasPlacement;
   connection?: NoteConnection;
 }
 function connectionVersion(canvas?: CanvasPlacement): number {
@@ -52,9 +54,9 @@ export function useCanvasNotes(
 ) {
   const activeRoundId = computed(() => board().active_round?.id ?? null);
   // Round headers sit at a canvas y the canvas derives from each band's content;
-  // the server stores note y relative to that header. Everything local works in
-  // absolute canvas units, so the conversion happens exactly where notes enter
-  // from and leave for the server.
+  // notes and pending writes keep y relative to that header, like the server.
+  // Only the public canvas projection uses absolute units, so a layout change
+  // cannot move a draft within its round or change an idempotent request.
   function offsetFor(roundId: number | null | undefined): number {
     return roundId == null ? 0 : (offsets().get(roundId) ?? 0);
   }
@@ -62,7 +64,7 @@ export function useCanvasNotes(
     if (typeof idea.canvas?.y !== "number") return idea;
     return { ...idea, canvas: { ...idea.canvas, y: idea.canvas.y + offsetFor(idea.round_id) } };
   }
-  function relative(canvas: CanvasPlacement, roundId: number | null | undefined): CanvasPlacement {
+  function relative<T extends CanvasPlacement>(canvas: T, roundId: number | null | undefined): T {
     return typeof canvas.y === "number" ? { ...canvas, y: canvas.y - offsetFor(roundId) } : canvas;
   }
   function roundAt(y: number | undefined): number | null {
@@ -88,7 +90,7 @@ export function useCanvasNotes(
   let nextId = -1,
     generation = 0;
   const notes = computed(() => {
-    const merged = new Map(board().ideas.map((idea) => [idea.id, absolute(idea)]));
+    const merged = new Map(board().ideas.map((idea) => [idea.id, idea]));
     for (const [id, idea] of created) if (!merged.has(id)) merged.set(id, idea);
     for (const [id, draft] of drafts.drafts)
       if (merged.has(id))
@@ -96,10 +98,7 @@ export function useCanvasNotes(
     for (const [id, entry] of newNotes) merged.set(id, entry.idea);
     return [...merged.values()]
       .filter((idea) => !removed.has(idea.id) && !idea.deleted_at)
-      .map((idea) => ({
-        ...idea,
-        canvas: projectedCanvas(idea),
-      }));
+      .map((idea) => absolute({ ...idea, canvas: projectedCanvas(idea) }));
   });
   function projectedCanvas(idea: Idea): CanvasPlacement {
     const placement = placements.get(idea.id);
@@ -203,7 +202,13 @@ export function useCanvasNotes(
   ): number {
     const id = nextId--;
     const round = roundId === undefined ? roundAt(point.y) : roundId;
-    const idea = blankIdea(id, point, color, seed ?? { title: null, body: "<p></p>" }, round);
+    const idea = blankIdea(
+      id,
+      relative(point, round),
+      color,
+      seed ?? { title: null, body: "<p></p>" },
+      round,
+    );
     keys.set(id, crypto.randomUUID());
     newNotes.set(id, {
       idea,
@@ -265,7 +270,7 @@ export function useCanvasNotes(
     acceptCreation(id, entry, snapshot, reply);
   }
   function creationPayload(entry: NewNote, snapshot: Idea): Record<string, unknown> {
-    const canvas = snapshot.canvas ? relative(snapshot.canvas, snapshot.round_id) : undefined;
+    const canvas = snapshot.canvas;
     if (entry.source) return { request_key: entry.key, idea_id: entry.source, canvas };
     return {
       request_key: entry.key,
@@ -290,8 +295,7 @@ export function useCanvasNotes(
     }
   }
   function acceptCreated(id: number, entry: NewNote, snapshot: Idea, reply: CreatedIdea) {
-    const { connected_from, ...received } = reply;
-    const idea = absolute(received);
+    const { connected_from, ...idea } = reply;
     keys.set(idea.id, key(id));
     aliases.set(id, idea.id);
     created.set(idea.id, idea);
@@ -313,7 +317,7 @@ export function useCanvasNotes(
       });
     }
     if (JSON.stringify(latestCanvas) !== JSON.stringify(snapshot.canvas))
-      move(idea.id, latestCanvas);
+      move(idea.id, absolute({ round_id: idea.round_id, canvas: latestCanvas }).canvas!);
     replaceSelection(id, idea.id);
     onCreated(reply);
     if (deleteRequests.has(idea.id)) void flushDelete(idea.id);
@@ -418,7 +422,8 @@ export function useCanvasNotes(
       id,
       revision: 0,
       deleted_at: null,
-      idea: { ...entry.idea },
+      idea: absolute({ ...entry.idea }),
+      relativeCanvas: { ...entry.idea.canvas },
       connection: entry.connection,
     };
     newNotes.delete(id);
@@ -467,7 +472,7 @@ export function useCanvasNotes(
       errors.set(deletion.id, reply.status === "error" ? reply.code : "unavailable");
       return null;
     }
-    const restored = absolute(reply.value);
+    const restored = reply.value;
     removed.delete(restored.id);
     deletions.delete(restored.id);
     errors.delete(restored.id);
@@ -476,7 +481,9 @@ export function useCanvasNotes(
     return restored.id;
   }
   function restoreLocal(deletion: RemovedNote): number {
-    const previous = deletion.idea;
+    const previous = deletion.relativeCanvas
+      ? absolute({ ...deletion.idea, canvas: deletion.relativeCanvas })
+      : deletion.idea;
     const id = add(
       { x: previous.canvas?.x ?? 0, y: previous.canvas?.y ?? 0, ...previous.canvas },
       previous.canvas?.color,
@@ -491,10 +498,12 @@ export function useCanvasNotes(
     id = resolveId(id);
     const entry = newNotes.get(id);
     if (entry) {
-      entry.idea.canvas = { ...entry.idea.canvas, ...canvas };
+      entry.idea.canvas = { ...entry.idea.canvas, ...relative(canvas, entry.idea.round_id) };
       return;
     }
-    placements.set(id, { ...notes.value.find((n) => n.id === id)?.canvas, ...canvas });
+    const note = find(id);
+    if (!note) return;
+    placements.set(id, relative({ ...note.canvas, ...canvas }, note.round_id));
     void flushMove(id);
   }
   async function flushMove(id: number) {
@@ -515,18 +524,13 @@ export function useCanvasNotes(
       idea_id: id,
       request_key: attempt.key,
       version: attempt.version,
-      ...relative(attempt.canvas, note.round_id),
+      ...attempt.canvas,
     });
     if (started !== generation) return;
     moving.delete(id);
-    acceptPlacement(id, attempt, reply, note.round_id);
+    acceptPlacement(id, attempt, reply);
   }
-  function acceptPlacement(
-    id: number,
-    attempt: PlacementAttempt,
-    reply: Reply<CanvasPlacement>,
-    roundId: number | null,
-  ) {
+  function acceptPlacement(id: number, attempt: PlacementAttempt, reply: Reply<CanvasPlacement>) {
     if (reply.status === "ok") {
       attempts.delete(id);
       errors.delete(id);
@@ -534,10 +538,10 @@ export function useCanvasNotes(
       if (latest && JSON.stringify(latest) !== JSON.stringify(attempt.canvas)) {
         placements.set(id, { ...latest, version: reply.value.version });
         void flushMove(id);
-      } else placements.set(id, absolute({ round_id: roundId, canvas: reply.value }).canvas!);
+      } else placements.set(id, reply.value);
     } else {
       errors.set(id, reply.status === "error" ? reply.code : "unavailable");
-      if (reply.status === "error" && reply.code !== "offline") {
+      if (reply.status === "error" && !["offline", "unavailable"].includes(reply.code)) {
         attempts.delete(id);
         placements.delete(id);
       }

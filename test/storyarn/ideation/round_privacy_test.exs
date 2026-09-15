@@ -100,10 +100,20 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
     secret = canvas_note(ctx, ctx.peer, 20)
     assert {:error, :not_found} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, secret.id)
 
-    {ctx, _second} = new_round(ctx)
+    {ctx, second} = new_round(ctx)
+
+    assert {:ok, _} =
+             Ideation.set_round_privacy(ctx.facilitator, ctx.project.id, ctx.session.id, second.id, revision(ctx), %{
+               private: true,
+               reveal_on_expiry: true
+             })
+
+    second_secret = canvas_note(ctx, ctx.peer, 40)
+    draft = idea_fixture(ctx)
+
     # The clock reaches 0:00.
     Repo.update_all(from(t in "ideation_timers", where: t.id == ^timer.id),
-      set: [deadline_at: DateTime.shift(DateTime.utc_now(), second: -1)]
+      set: [deadline_at: DateTime.shift(Storyarn.Platform.Shared.TimeHelpers.now(), second: -1)]
     )
 
     assert {:ok, %{outcome: :completed, revealed: true}} = Ideation.expire_timer(timer.id, timer.version)
@@ -114,6 +124,14 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
     refute revealed.private
     assert revealed.revealed_at
     assert {:ok, _} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, secret.id)
+
+    active = Enum.find(rounds, &(&1.id == second.id))
+    assert active.status == :active
+    refute active.private
+    assert active.revealed_at
+    assert {:ok, _} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, second_secret.id)
+    assert {:error, :not_found} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, draft.id)
+    assert {:ok, %{status: :elapsed}} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
   end
 
   test "archiving ends a round's mask for good: reopened, it cannot hide again", ctx do

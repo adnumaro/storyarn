@@ -5,6 +5,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
   import Storyarn.IdeationFixtures
 
   alias Storyarn.Ideation
+  alias Storyarn.Ideation.Groups.Group
   alias Storyarn.Ideation.Recovery.Capsule
   alias Storyarn.Ideation.Sessions.Round
   alias Storyarn.Ideation.Sessions.Session
@@ -134,6 +135,70 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     refute Enum.any?(normalized["rows"]["sessions"], &Map.has_key?(&1["configuration"], "private_mode"))
     refute Enum.any?(normalized["rows"]["timers"], &Map.has_key?(&1, "reveal_on_expiry"))
+  end
+
+  test "legacy separated synthesis keeps its source round and privacy through repeated recovery", ctx do
+    {ctx, source_round} = new_round(ctx, %{prompt: "The source round"})
+    group = separated_group(ctx)
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+    legacy = legacy_private_groups(data, 7)
+    {:ok, capsule} = Capsule.seal(legacy)
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    round_id = maps["rounds"][source_round.id]
+    restored = Repo.get!(Group, maps["groups"][group.id])
+
+    assert restored.round_id == round_id
+    assert restored.synthesis == group.synthesis
+    assert {:ok, []} = Ideation.list_groups(ctx.viewer, ctx.project.id, session_id)
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+    assert restore(ctx, capsule) == maps
+
+    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, session_id)
+    assert {:ok, _} = Ideation.reveal_round(ctx.facilitator, ctx.project.id, session_id, round_id, session.revision)
+    assert {:ok, [visible]} = Ideation.list_groups(ctx.viewer, ctx.project.id, session_id)
+    assert visible.synthesis == group.synthesis
+    assert visible.idea_ids == []
+  end
+
+  test "legacy separated synthesis without rounds joins the restored private first round", ctx do
+    group = separated_group(ctx)
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+
+    legacy =
+      data
+      |> legacy_private_groups(6)
+      |> put_in(["rows", "rounds"], [])
+      |> update_in(["rows", "ideas"], fn rows -> Enum.map(rows, &Map.put(&1, "round_id", nil)) end)
+
+    {:ok, capsule} = Capsule.seal(legacy)
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    assert {:ok, [%{id: round_id, private: true}]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, session_id)
+    assert Repo.get!(Group, maps["groups"][group.id]).round_id == round_id
+    assert {:ok, []} = Ideation.list_groups(ctx.viewer, ctx.project.id, session_id)
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+    assert restore(ctx, capsule) == maps
+  end
+
+  test "legacy synthesis falls back to the first round when its retained sources have no round", ctx do
+    group = separated_group(ctx)
+    first = first_round(ctx)
+    {ctx, _second} = new_round(ctx)
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+
+    legacy =
+      data
+      |> legacy_private_groups(7)
+      |> update_in(["rows", "ideas"], fn rows -> Enum.map(rows, &Map.put(&1, "round_id", nil)) end)
+
+    {:ok, capsule} = Capsule.seal(legacy)
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    assert Repo.get!(Group, maps["groups"][group.id]).round_id == maps["rounds"][first.id]
+    assert {:ok, []} = Ideation.list_groups(ctx.viewer, ctx.project.id, session_id)
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+    assert restore(ctx, capsule) == maps
   end
 
   test "legacy version-one capsules normalize round defaults and remain verifiable", ctx do
@@ -331,6 +396,47 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     assert {:error, :invalid_ideation_recovery} =
              restore_result(ctx, %{"version" => 1, "ciphertext" => Base.encode64(bytes)})
+  end
+
+  defp separated_group(ctx) do
+    attrs = %{visibility: :shared, canvas: %{"x" => 0, "y" => 100, "width" => 280, "color" => "mint"}}
+    first = idea_fixture(ctx, attrs)
+    second = idea_fixture(ctx, attrs, ctx.peer)
+
+    {:ok, group} =
+      Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, %{
+        request_key: Ecto.UUID.generate(),
+        title: "Private strategy",
+        synthesis: "A conclusion awaiting reveal",
+        idea_ids: [first.id, second.id],
+        canvas: %{x: 0, y: 80, width: 650, height: 450}
+      })
+
+    {:ok, separated} =
+      Ideation.update_group(
+        ctx.author,
+        ctx.project.id,
+        ctx.session.id,
+        group.id,
+        group.version,
+        edit_attrs(%{idea_ids: []})
+      )
+
+    separated
+  end
+
+  defp legacy_private_groups(data, version) do
+    data
+    |> Map.put("version", version)
+    |> update_in(
+      ["rows", "rounds"],
+      &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+    )
+    |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+    |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+    |> update_in(["rows", "sessions"], fn rows ->
+      Enum.map(rows, &put_in(&1, ["configuration", "private_mode"], true))
+    end)
   end
 
   defp capture(ctx) do

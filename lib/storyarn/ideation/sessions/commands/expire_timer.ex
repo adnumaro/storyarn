@@ -124,12 +124,11 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
           order_by: r.number
       )
 
-    access = ContributionAccess.from_session(session, access)
-
     Enum.reduce_while(rounds, {:ok, false}, fn round, _ ->
-      revision = Repo.one!(from s in Session, where: s.id == ^session.id, select: s.revision)
+      current = Repo.get!(Session, session.id)
+      current_access = ContributionAccess.from_session(current, access)
 
-      case Ideas.reveal_round_locked(access, revision, round.id) do
+      case Ideas.reveal_round_locked(current_access, current.revision, round.id) do
         {:ok, _} -> {:cont, {:ok, true}}
         error -> {:halt, error}
       end

@@ -627,9 +627,17 @@ function placementCommand(
   before: CanvasPlacement,
   after: CanvasPlacement,
 ): CanvasCommand {
+  const roundId = notes.find(id)?.round_id ?? null;
+  const offset = () => (roundId === null ? 0 : (bandOffsets.value.get(roundId) ?? 0));
+  const shifted = (canvas: CanvasPlacement, by: number): CanvasPlacement =>
+    typeof canvas.y === "number" ? { ...canvas, y: canvas.y + by } : canvas;
+  // History describes a placement within its round, independent of the space
+  // occupied by earlier rounds when the action is undone or redone.
+  const previous = shifted(before, -offset());
+  const next = shifted(after, -offset());
   function matches(canvas: CanvasPlacement | undefined, expected: CanvasPlacement) {
     const placement = {
-      ...canvas,
+      ...shifted(canvas ?? {}, -offset()),
       shape: canvas?.shape ?? "rectangle",
       width: canvas?.width ?? 280,
     };
@@ -640,16 +648,16 @@ function placementCommand(
   async function apply(expected: CanvasPlacement, value: CanvasPlacement) {
     if (!(await notes.settle(id))) return false;
     const note = notes.find(id);
-    if (!note || !matches(note.canvas, expected)) return false;
-    notes.move(note.id, value);
+    if (!note || note.round_id !== roundId || !matches(note.canvas, expected)) return false;
+    notes.move(note.id, shifted(value, offset()));
     if (!(await notes.settle(note.id))) return false;
     const saved = notes.find(note.id)?.canvas;
     return matches(saved, value);
   }
   return {
     targets: () => [{ id: notes.resolveId(id) }],
-    undo: () => apply(after, before),
-    redo: () => apply(before, after),
+    undo: () => apply(next, previous),
+    redo: () => apply(previous, next),
   };
 }
 function group(commands: CanvasCommand[]): CanvasCommand {

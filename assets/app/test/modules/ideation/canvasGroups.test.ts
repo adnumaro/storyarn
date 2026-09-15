@@ -477,28 +477,125 @@ describe("groups in a later band", () => {
       ],
       ...extra,
     });
-  it("moves a group of the second band and undoes the move in that band's units", async () => {
-    const { source, groups, history, requests } = setup({ groups: [inBand2()], rounds }, offsets);
+  it("undoes and redoes a move after earlier bands grow, including while waiting for its reply", async () => {
+    const layout = ref(offsets());
+    const { source, groups, history, requests } = setup(
+      { groups: [inBand2()], rounds },
+      () => layout.value,
+    );
     expect(groups.groups.value[0].canvas.y).toBe(496);
     const moved = groups.move(40, { x: -18, y: 596 });
     await flushPromises();
     expect(requests[0].payload).toMatchObject({ group_id: 40, version: 1, x: -18, y: 96 });
-    const movedGroup = inBand2({ version: 2, canvas: { x: -18, y: 96, width: 726, height: 382 } });
+    layout.value = new Map([[21, 600]]);
+    const movedGroup = inBand2({
+      version: 2,
+      canvas: { x: -18, y: 96, width: 726, height: 382 },
+      members: inBand2().members.map((member) => ({
+        ...member,
+        canvas: { ...member.canvas, y: member.canvas.y! + 100, version: 2 },
+      })),
+    });
     requests[0].resolve({ status: "ok", value: movedGroup });
     source.value = { ...source.value, groups: [movedGroup] };
     await flushPromises();
     await moved;
+    expect(groups.groups.value[0].canvas.y).toBe(696);
     expect(history.canUndo.value).toBe(true);
+    layout.value = new Map([[21, 750]]);
     const undo = history.undo();
     await flushPromises();
     expect(requests[1].payload).toMatchObject({ group_id: 40, version: 2, x: -18, y: -4 });
-    const restored = inBand2({ version: 3 });
+    const restored = inBand2({
+      version: 3,
+      members: inBand2().members.map((member) => ({
+        ...member,
+        canvas: { ...member.canvas, version: 3 },
+      })),
+    });
     requests[1].resolve({ status: "ok", value: restored });
     source.value = { ...source.value, groups: [restored] };
     await flushPromises();
     await undo;
-    expect(groups.groups.value[0].canvas.y).toBe(496);
+    expect(groups.groups.value[0].canvas.y).toBe(746);
     expect(history.canRedo.value).toBe(true);
+    layout.value = new Map([[21, 900]]);
+    const redo = history.redo();
+    await flushPromises();
+    expect(requests[2].payload).toMatchObject({ group_id: 40, version: 3, x: -18, y: 96 });
+    const redone = { ...movedGroup, version: 4 };
+    requests[2].resolve({ status: "ok", value: redone });
+    source.value = { ...source.value, groups: [redone] };
+    await redo;
+    expect(groups.groups.value[0].canvas.y).toBe(996);
+    expect(groups.groups.value[0].members[0].canvas.y).toBe(1060);
+  });
+  it("restores and detaches a synthesis in its own round after earlier bands grow", async () => {
+    const layout = ref(offsets());
+    const original = inBand2({ synthesis: "Keep this insight" });
+    const { source, groups, history, requests } = setup(
+      { groups: [original], rounds },
+      () => layout.value,
+    );
+    const separating = groups.separate(40, { x: 680, y: 800 });
+    await flushPromises();
+    expect(requests[0].payload).toMatchObject({ idea_ids: [], canvas: { x: 680, y: 300 } });
+    const standalone = {
+      ...original,
+      version: 2,
+      idea_ids: [],
+      members: [],
+      canvas: { ...original.canvas, x: 680, y: 300 },
+    };
+    requests[0].resolve({ status: "ok", value: standalone });
+    source.value = { ...source.value, groups: [standalone] };
+    await separating;
+    layout.value = new Map([[21, 700]]);
+    const undo = history.undo();
+    await flushPromises();
+    expect(requests[1].payload).toMatchObject({
+      idea_ids: [10, 11],
+      version: 2,
+      canvas: { x: -18, y: -4 },
+    });
+    const restored = { ...original, version: 3 };
+    requests[1].resolve({ status: "ok", value: restored });
+    source.value = { ...source.value, groups: [restored] };
+    await undo;
+    expect(groups.groups.value[0].canvas.y).toBe(696);
+    layout.value = new Map([[21, 900]]);
+    const redo = history.redo();
+    await flushPromises();
+    expect(requests[2].payload).toMatchObject({
+      idea_ids: [],
+      version: 3,
+      canvas: { x: 680, y: 300 },
+    });
+    const redone = { ...standalone, version: 4 };
+    requests[2].resolve({ status: "ok", value: redone });
+    source.value = { ...source.value, groups: [redone] };
+    await redo;
+    expect(groups.groups.value[0].canvas.y).toBe(1200);
+    expect(groups.groups.value[0].synthesis).toBe("Keep this insight");
+  });
+  it("still refuses to undo a group move when a collaborator moves a member", async () => {
+    const layout = ref(offsets());
+    const { source, groups, history, requests, error } = setup(
+      { groups: [inBand2()], rounds },
+      () => layout.value,
+    );
+    const moved = groups.move(40, { x: -18, y: 596 });
+    await flushPromises();
+    const movedGroup = inBand2({ version: 2, canvas: { x: -18, y: 96, width: 726, height: 382 } });
+    requests[0].resolve({ status: "ok", value: movedGroup });
+    source.value = { ...source.value, groups: [movedGroup] };
+    await moved;
+    layout.value = new Map([[21, 700]]);
+    source.value.groups[0].members[0].canvas.y! += 30;
+    source.value.groups[0].members[0].canvas.version = 2;
+    await history.undo();
+    expect(requests).toHaveLength(1);
+    expect(error).toHaveBeenLastCalledWith();
   });
   it("draws a synthesis left on its own in the second band where its notes were", () => {
     const alone = ideaGroup({

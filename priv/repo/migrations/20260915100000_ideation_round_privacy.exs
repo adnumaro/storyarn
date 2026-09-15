@@ -49,16 +49,22 @@ defmodule Storyarn.Repo.Migrations.IdeationRoundPrivacy do
       )
     """)
 
+    # Match recovery normalization: a separated synthesis retains its last
+    # source round, and one without recoverable sources joins the first round.
     execute("""
-    UPDATE ideation_groups g SET round_id = sub.round_id
-    FROM (
-      SELECT m.group_id, MIN(i.round_id) AS round_id
-      FROM ideation_group_memberships m
-      JOIN ideation_ideas i ON i.id = m.idea_id
-      WHERE m.removed_at IS NULL
-      GROUP BY m.group_id
-    ) sub
-    WHERE g.id = sub.group_id
+    UPDATE ideation_groups g SET round_id = COALESCE(
+      (SELECT MIN(i.round_id)
+       FROM ideation_group_memberships m
+       JOIN ideation_ideas i ON i.id = m.idea_id
+       WHERE m.group_id = g.id AND m.removed_at IS NULL),
+      (SELECT i.round_id
+       FROM ideation_group_memberships m
+       JOIN ideation_ideas i ON i.id = m.idea_id
+       WHERE m.group_id = g.id AND i.round_id IS NOT NULL
+       ORDER BY m.id DESC LIMIT 1),
+      (SELECT r.id FROM ideation_rounds r
+       WHERE r.session_id = g.session_id ORDER BY r.number LIMIT 1)
+    )
     """)
   end
 

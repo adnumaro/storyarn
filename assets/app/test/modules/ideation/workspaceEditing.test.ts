@@ -3,7 +3,7 @@ import { shallowMount, flushPromises, type VueWrapper } from "@vue/test-utils";
 import { defineComponent, h, nextTick } from "vue";
 import BrainstormingWorkspace from "@modules/ideation/BrainstormingWorkspace.vue";
 import { createMockLive } from "../../setup";
-import { board, idea } from "./fixtures";
+import { board, idea, round } from "./fixtures";
 import type { Board, Idea } from "@modules/ideation/types";
 
 const Canvas = defineComponent({
@@ -49,6 +49,86 @@ afterEach(() => {
 });
 
 describe("workspace editing transitions", () => {
+  function movingNoteInSecondBand() {
+    const active = round({ id: 21, number: 2 });
+    const state = workspace((body) => body, {
+      rounds: [round({ id: 20, number: 1, status: "closed" }), active],
+      active_round: active,
+      ideas: [idea({ id: 10, round_id: 21, canvas: { x: 40, y: 60, version: 1 } })],
+    });
+    const moves = vi.fn();
+    vi.mocked(state.live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (event !== "move_idea") return;
+      moves(payload);
+      callback?.({
+        status: "ok",
+        value: { x: payload!.x, y: payload!.y, version: Number(payload!.version) + 1 },
+      });
+    });
+    return { ...state, moves };
+  }
+
+  it("undoes and redoes a note move within its round after earlier bands grow", async () => {
+    const { canvas, moves } = movingNoteInSecondBand();
+    canvas.vm.$emit("move", [{ id: 10, point: { x: 80, y: 420 } }]);
+    await flushPromises();
+    expect(moves).toHaveBeenLastCalledWith(expect.objectContaining({ x: 80, y: 100 }));
+    canvas.vm.$emit(
+      "bands",
+      new Map([
+        [20, 0],
+        [21, 420],
+      ]),
+    );
+    await nextTick();
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(moves).toHaveBeenCalledTimes(2);
+    expect(moves).toHaveBeenLastCalledWith(expect.objectContaining({ x: 40, y: 60 }));
+    expect(canvas.props("notes")[0].canvas.y).toBe(480);
+    expect(canvas.props("historyState").canRedo).toBe(true);
+    canvas.vm.$emit(
+      "bands",
+      new Map([
+        [20, 0],
+        [21, 520],
+      ]),
+    );
+    await nextTick();
+    canvas.vm.$emit("redo");
+    await flushPromises();
+    expect(moves).toHaveBeenCalledTimes(3);
+    expect(moves).toHaveBeenLastCalledWith(expect.objectContaining({ x: 80, y: 100 }));
+    expect(canvas.props("notes")[0].canvas.y).toBe(620);
+    expect(canvas.props("historyState").canUndo).toBe(true);
+  });
+
+  it("does not undo a peer's actual move when an earlier band also changed height", async () => {
+    const { current, canvas, moves } = movingNoteInSecondBand();
+    canvas.vm.$emit("move", [{ id: 10, point: { x: 80, y: 420 } }]);
+    await flushPromises();
+    await wrapper.setProps({
+      board: {
+        ...current,
+        ideas: [idea({ id: 10, round_id: 21, canvas: { x: 80, y: 160, version: 3 } })],
+      },
+    });
+    canvas.vm.$emit(
+      "bands",
+      new Map([
+        [20, 0],
+        [21, 420],
+      ]),
+    );
+    await nextTick();
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(moves).toHaveBeenCalledTimes(1);
+    expect(canvas.props("notes")[0].canvas.y).toBe(580);
+    expect(canvas.props("historyState").canUndo).toBe(false);
+    expect(canvas.props("historyState").canRedo).toBe(false);
+  });
+
   it("does not promise editing to viewers or show the contributions banner on archived sessions", async () => {
     const session = { ...board().session!, contributions_open: false };
     workspace((body) => body, { session, can_edit: false });

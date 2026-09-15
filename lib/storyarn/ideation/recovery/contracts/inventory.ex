@@ -192,17 +192,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
         Map.update(session, "configuration", %{}, &Map.delete(&1 || %{}, "private_mode"))
       end)
 
-    # A group belongs to the round of its notes.
-    idea_rounds = Map.new(rows["ideas"], &{&1["id"], &1["round_id"]})
-
-    group_rounds =
-      rows
-      |> Map.get("group_memberships", [])
-      |> Enum.reject(& &1["removed_at"])
-      |> Enum.group_by(& &1["group_id"], &idea_rounds[&1["idea_id"]])
-      |> Map.new(fn {group_id, round_ids} -> {group_id, round_ids |> Enum.reject(&is_nil/1) |> List.first()} end)
-
-    groups = Enum.map(rows["groups"], &Map.put(&1, "round_id", group_rounds[&1["id"]]))
+    groups = attach_legacy_groups(rows, rounds)
 
     # The clock no longer decides the reveal, so its flag leaves the rows and the audit snapshots.
     rows =
@@ -217,6 +207,42 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def normalize(data), do: data
+
+  # Separating a synthesis removes its memberships, not the privacy of the work
+  # it came from. Prefer current sources, then the last retained source, with the
+  # session's first round as a stable home when no source round is recoverable.
+  defp attach_legacy_groups(rows, rounds) do
+    idea_rounds = Map.new(rows["ideas"], &{&1["id"], &1["round_id"]})
+    memberships = Enum.group_by(rows["group_memberships"], & &1["group_id"])
+
+    first_rounds =
+      rounds
+      |> Enum.group_by(& &1["session_id"])
+      |> Map.new(fn {session_id, entries} -> {session_id, Enum.min_by(entries, & &1["number"])["id"]} end)
+
+    Enum.map(rows["groups"], fn group ->
+      round_id =
+        legacy_group_round(Map.get(memberships, group["id"], []), idea_rounds) || first_rounds[group["session_id"]]
+
+      Map.put(group, "round_id", round_id)
+    end)
+  end
+
+  defp legacy_group_round(memberships, idea_rounds) do
+    current =
+      memberships
+      |> Enum.reject(& &1["removed_at"])
+      |> Enum.map(&idea_rounds[&1["idea_id"]])
+      |> Enum.reject(&is_nil/1)
+      |> Enum.min(fn -> nil end)
+
+    historical =
+      memberships
+      |> Enum.sort_by(& &1["id"], :desc)
+      |> Enum.find_value(&idea_rounds[&1["idea_id"]])
+
+    current || historical
+  end
 
   # Every session has a round: one that had none is born its Round 1, in
   # progress unless the session is archived. Notes without a round join the

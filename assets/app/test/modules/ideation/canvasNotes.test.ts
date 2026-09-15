@@ -544,6 +544,129 @@ describe("round contribution provenance", () => {
   });
 });
 
+describe("notes in bands whose layout changes", () => {
+  function inSecondBand() {
+    const offsets = ref(
+      new Map([
+        [20, 0],
+        [21, 320],
+      ]),
+    );
+    const state = setup(() => offsets.value);
+    const active = round({ id: 21, number: 2 });
+    state.current.value = board({
+      rounds: [round({ id: 20, number: 1, status: "closed" }), active],
+      active_round: active,
+      ideas: [idea({ id: 10, round_id: 21, canvas: { x: 40, y: 60, version: 1 } })],
+    });
+    const grow = (top = 420) => {
+      offsets.value = new Map([
+        [20, 0],
+        [21, top],
+      ]);
+    };
+    return { ...state, grow };
+  }
+
+  it("keeps an unsaved draft within its round before the first autosave and while its board projection is delayed", async () => {
+    const { result, request, replies, grow, app } = inSecondBand();
+    const id = result.add({ x: 40, y: 380 }, "mint", { body: "<p>New note</p>" });
+    grow();
+    expect(result.find(id)?.canvas?.y).toBe(480);
+    const saving = result.save(id);
+    expect(request.mock.calls[0][1]).toMatchObject({ round_id: 21, canvas: { x: 40, y: 60 } });
+    replies[0]({ status: "ok", value: idea({ id: 12, round_id: 21, canvas: { x: 40, y: 60 } }) });
+    await saving;
+    grow(520);
+    expect(result.find(id)?.canvas?.y).toBe(580);
+    expect(request).toHaveBeenCalledTimes(1);
+    app.unmount();
+  });
+
+  it("replays an uncertain creation before saving a later drag in the resized band", async () => {
+    const { result, request, replies, grow, app } = inSecondBand();
+    const id = result.add({ x: 40, y: 380 }, "mint", { body: "<p>New note</p>" });
+    const saving = result.save(id);
+    replies[0]({ status: "error", code: "offline" });
+    await saving;
+    grow();
+    result.move(id, { x: 55, y: 500 });
+    const retry = result.save(id);
+    expect(request.mock.calls[1]).toEqual(request.mock.calls[0]);
+    replies[1]({
+      status: "ok",
+      value: idea({ id: 12, round_id: 21, canvas: { x: 40, y: 60, version: 1 } }),
+    });
+    await retry;
+    expect(request.mock.calls[2]).toEqual([
+      "move_idea",
+      expect.objectContaining({ idea_id: 12, x: 55, y: 80, version: 1 }),
+    ]);
+    replies[2]({ status: "ok", value: { x: 55, y: 80, version: 2 } });
+    await flush();
+    expect(result.find(id)?.canvas?.y).toBe(500);
+    grow(520);
+    expect(result.find(id)?.canvas?.y).toBe(600);
+    expect(request).toHaveBeenCalledTimes(3);
+    app.unmount();
+  });
+
+  it.each(["offline", "unavailable"])(
+    "retries a %s move unchanged and preserves a newer local placement after the band grows",
+    async (code) => {
+      const { result, request, replies, grow, app } = inSecondBand();
+      result.move(10, { x: 40, y: 400 });
+      result.move(10, { x: 80, y: 450 });
+      replies[0]({ status: "error", code });
+      await flush();
+      grow();
+      expect(result.find(10)?.canvas).toMatchObject({ x: 80, y: 550 });
+      result.retry(10);
+      expect(request.mock.calls[1]).toEqual(request.mock.calls[0]);
+      replies[1]({ status: "ok", value: { x: 40, y: 80, version: 2 } });
+      await flush();
+      expect(request.mock.calls[2][1]).toMatchObject({ x: 80, y: 130, version: 2 });
+      expect(request.mock.calls[2][1].request_key).not.toBe(request.mock.calls[0][1].request_key);
+      replies[2]({ status: "ok", value: { x: 80, y: 130, version: 3 } });
+      await flush();
+      grow(520);
+      expect(result.find(10)?.canvas).toMatchObject({ x: 80, y: 650, version: 3 });
+      expect(request).toHaveBeenCalledTimes(3);
+      app.unmount();
+    },
+  );
+
+  it("restores a removed local draft at the same place within its round after the layout grows", async () => {
+    const { result, request, replies, grow, app } = inSecondBand();
+    const id = result.add({ x: 40, y: 380 }, "mint", { body: "<p>Keep this draft</p>" });
+    const removed = await result.remove(id);
+    grow();
+    const restored = await result.restore(removed!);
+    expect(result.find(restored!)?.canvas?.y).toBe(480);
+    const saving = result.save(restored!);
+    expect(request.mock.calls[0][1]).toMatchObject({ round_id: 21, canvas: { x: 40, y: 60 } });
+    replies[0]({ status: "ok", value: idea({ id: 12, round_id: 21, canvas: { x: 40, y: 60 } }) });
+    await saving;
+    app.unmount();
+  });
+
+  it("projects a restored server note with the current band layout while waiting for its board props", async () => {
+    const { result, current, replies, grow, app } = inSecondBand();
+    const removing = result.remove(10);
+    await flush();
+    replies[0]({ status: "ok", value: deletion });
+    const removed = await removing;
+    current.value = { ...current.value, ideas: [] };
+    const restoring = result.restore(removed!);
+    grow();
+    replies[1]({ status: "ok", value: idea({ id: 10, round_id: 21, canvas: { x: 40, y: 60 } }) });
+    await restoring;
+    grow(520);
+    expect(result.find(10)?.canvas?.y).toBe(580);
+    app.unmount();
+  });
+});
+
 describe("closed contributions and pending drafts", () => {
   it("resolves an uncertain creation using its original request after contributions close", async () => {
     const { result, app, current, request, replies } = setup();
