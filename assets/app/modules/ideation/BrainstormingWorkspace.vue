@@ -11,6 +11,7 @@ import {
   Unplug,
   Link2,
   ListChecks,
+  Ban,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -51,6 +52,7 @@ import type {
   RoundPrivacy,
 } from "./types";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
+import { NOTE_COLOR_IDS, noteColor, noteSwatch } from "./lib/noteColors";
 const { board, baseUrl, comments } = defineProps<{
   board: Board;
   baseUrl: string;
@@ -224,14 +226,6 @@ const listed = computed(() =>
 const statuses = computed(() =>
   Object.fromEntries([...notes.drafts.drafts.values()].map((d) => [d.idea.id, d.status])),
 );
-const colors = [
-  { id: "yellow", value: "#f5e6a8" },
-  { id: "coral", value: "#f8cbbd" },
-  { id: "mint", value: "#cbe8d5" },
-  { id: "blue", value: "#c9e2f5" },
-  { id: "violet", value: "#e2d5f4" },
-  { id: "paper", value: "#f4f1e9" },
-];
 const history = useCanvasHistory(
   () => {
     if (failure.value !== "unavailable")
@@ -684,7 +678,7 @@ function move(moves: Array<{ id: number; point: Point }>) {
 }
 function color(value: string) {
   if (!current.value || mutationBusy.value) return;
-  const before = current.value.canvas?.color ?? "yellow";
+  const before = noteColor(current.value.canvas?.color);
   if (before === value) return;
   const id = current.value.id;
   notes.move(id, { color: value });
@@ -1249,25 +1243,36 @@ onUnmounted(() => {
                       class="toolbar-btn"
                       :aria-label="t('ideation.canvas.color')"
                     >
-                      <span
+                      <Ban
+                        v-if="noteColor(current.canvas?.color) === 'none'"
+                        class="size-4 text-muted-foreground"
+                      /><span
+                        v-else
                         class="size-4 rounded-full border border-foreground/10"
                         :style="{
-                          background: colors.find(
-                            (c) => c.id === (current?.canvas?.color ?? 'yellow'),
-                          )?.value,
+                          background: noteSwatch(current.canvas?.color, current.canvas?.shape),
                         }"
                       /></button></PopoverTrigger
                 ></ToolbarTooltip>
                 <PopoverContent :reference="colorTrigger" class="flex w-auto gap-2 p-2"
                   ><button
-                    v-for="item in colors"
-                    :key="item.id"
+                    v-for="id in NOTE_COLOR_IDS"
+                    :key="id"
                     type="button"
-                    class="size-6 rounded-full border border-black/10 ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-                    :style="{ background: item.value }"
-                    :aria-label="t(`ideation.canvas.colors.${item.id}`)"
-                    :aria-pressed="current.canvas?.color === item.id"
-                    @click="color(item.id)" /></PopoverContent></Popover
+                    class="flex size-6 items-center justify-center rounded-full border border-black/10 ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring aria-pressed:ring-2 aria-pressed:ring-ring"
+                    :style="
+                      id === 'none'
+                        ? undefined
+                        : { background: noteSwatch(id, current.canvas?.shape) }
+                    "
+                    :aria-label="t(`ideation.canvas.colors.${id}`)"
+                    :aria-pressed="noteColor(current.canvas?.color) === id"
+                    @click="color(id)"
+                  >
+                    <Ban
+                      v-if="id === 'none'"
+                      class="size-3.5 text-muted-foreground"
+                    /></button></PopoverContent></Popover
             ></template>
             <Popover v-if="current.canvas?.links?.length"
               ><ToolbarTooltip :label="t('ideation.canvas.connections')"

@@ -34,8 +34,11 @@ excludes the note from ordinary authorized reads and writes. `discarded` remains
 a recoverable state. Geometry has an independent version and filtered connection
 endpoints; it does not create text revisions. Connecting notes preserves the last
 placement version and request receipt, so a delayed move can still be retried.
-Position writes default omitted width/color to the canvas defaults (280/yellow)
-so notes created before canvas placement existed can be moved.
+Position writes default omitted width/color to the canvas defaults (280/none)
+so notes created before canvas placement existed can be moved. `canvas.color`
+accepts `none` or one of `yellow`, `coral`, `mint`, `blue`, `violet`, `paper`:
+a card wears the colour on its surface, a text-only (`plain`) note on its words,
+and `none` keeps the default look of either.
 Optional `canvas.shape` accepts `plain`, `rectangle`, `ellipse` or `diamond`. Absence means
 rectangle; an existing note's shape is preserved when a placement request omits it.
 Shape changes use the placement version and receipt, participate in local undo/redo,

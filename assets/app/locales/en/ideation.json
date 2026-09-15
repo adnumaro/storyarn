@@ -153,6 +153,7 @@
       "back": "Back to canvas",
       "more": "Show more ideas",
       "colors": {
+        "none": "No colour",
         "yellow": "Yellow",
         "coral": "Coral",
         "mint": "Mint",

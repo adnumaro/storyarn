@@ -130,7 +130,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
     # Connections may precede the first explicit positioning of legacy notes.
     Enum.all?(["x", "y"], &optional_range?(canvas[&1], -1_000_000, 1_000_000)) and
       optional_range?(canvas["width"], 180, 800) and
-      (is_nil(canvas["color"]) or canvas["color"] in ~w(yellow coral mint blue violet paper)) and
+      (is_nil(canvas["color"]) or canvas["color"] in ~w(none yellow coral mint blue violet paper)) and
       (not Map.has_key?(canvas, "shape") or canvas["shape"] in ~w(plain rectangle ellipse diamond)) and
       valid_canvas_version?(canvas["version"]) and valid_canvas_version?(canvas["links_version"])
   end
