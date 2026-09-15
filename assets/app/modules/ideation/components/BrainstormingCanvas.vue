@@ -16,6 +16,9 @@ import {
   ArrowRight,
   ArrowLeft,
   ArrowLeftRight,
+  Bookmark,
+  CircleX,
+  RotateCcw,
 } from "@lucide/vue";
 import {
   ContextMenu,
@@ -60,6 +63,7 @@ import type {
   RoundTimerContext,
   RoundPrivacy,
   MaskedIdea,
+  IdeaState,
 } from "../types";
 import BrainstormingCanvasComments from "../BrainstormingCanvasComments.vue";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "../commentTypes";
@@ -104,6 +108,8 @@ const {
     cursors: boolean;
     comments?: BrainstormingCommentsState;
     baseUrl?: string;
+    /** Whose notes the context menu may change state for. */
+    userId?: number | null;
   };
   members: Member[];
   statuses: { [id: number]: string };
@@ -157,12 +163,17 @@ const emit = defineEmits<{
   reveal: [id: number];
   closeRound: [id: number];
   updatePrompt: [id: number, prompt: string];
+  changeState: [id: number, state: IdeaState];
 }>();
 const commentTarget = ref<BrainstormingCommentTarget | null>(null);
+// The author's own note under the pointer: its states are one right-click away.
+const noteTarget = ref<{ id: number; state: IdeaState } | null>(null);
 const canStartRound = computed(() => bands.canManage && permissions.edit);
-// The context menu serves comments and, for the facilitator, the next round.
+// The context menu serves comments, a note's states for its author and, for
+// the facilitator, the next round.
 function prepareComment(event: MouseEvent) {
   commentTarget.value = null;
+  noteTarget.value = null;
   const target = event.target instanceof Element ? event.target : null;
   if (
     !target ||
@@ -175,7 +186,14 @@ function prepareComment(event: MouseEvent) {
   commentTarget.value = source
     ? { ...source, position: world(event.clientX, event.clientY) }
     : null;
-  if (!commentTarget.value && !canStartRound.value) event.stopPropagation();
+  noteTarget.value = resolveNoteTarget(target);
+  if (!commentTarget.value && !noteTarget.value && !canStartRound.value) event.stopPropagation();
+}
+function resolveNoteTarget(target: Element) {
+  const id = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
+  const note = notes.find((candidate) => candidate.id === id);
+  if (!note || id <= 0 || !permissions.edit || note.author_id !== collaboration.userId) return null;
+  return { id, state: note.state };
 }
 function resolveCommentTarget(target: Element) {
   const noteId = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
@@ -378,8 +396,18 @@ function openView() {
 const HEADER_STRIP = 44;
 // Placeholders share one height: what hides in a private round has no measured card.
 const MASKED_HEIGHT = 96;
+// A single, unnamed round has no header to show, except while its facilitator
+// works in it or its clock runs: participants consult the countdown there.
+const clockShown = computed(() => {
+  const status = bands.timer?.timer?.status;
+  return status === "running" || status === "paused" || status === "elapsed";
+});
 function headerShown(round: Round) {
-  return multiRound.value || !!round.prompt || (bands.canManage && round.status === "active");
+  return (
+    multiRound.value ||
+    !!round.prompt ||
+    (round.status === "active" && (bands.canManage || clockShown.value))
+  );
 }
 // Where a note of this round may start: under its header. Bands grow with
 // their content, so nothing bounds them below.
@@ -1296,7 +1324,10 @@ onUnmounted(() => {
     "
   >
     <ContextMenu>
-      <ContextMenuTrigger as-child :disabled="!permissions.comment && !canStartRound">
+      <ContextMenuTrigger
+        as-child
+        :disabled="!permissions.comment && !permissions.edit && !canStartRound"
+      >
         <div class="absolute inset-0">
           <div class="absolute left-0 top-0 origin-top-left" :style="{ transform }">
             <CanvasGroup
@@ -1405,7 +1436,9 @@ onUnmounted(() => {
               :key="note.key ?? String(note.id)"
               :data-note-id="note.id"
               class="pointer-events-none absolute left-0 top-0"
-              :class="selectedIds.includes(note.id) ? 'z-10' : ''"
+              :class="
+                selectedIds.includes(note.id) ? 'z-10' : note.state === 'discarded' ? '-z-[1]' : ''
+              "
               :style="{
                 transform: `translate(${position(note).x}px, ${position(note).y}px)`,
                 width: `${note.canvas?.width ?? 280}px`,
@@ -1714,7 +1747,7 @@ onUnmounted(() => {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent
-        v-if="commentTarget || canStartRound"
+        v-if="commentTarget || noteTarget || canStartRound"
         @close-auto-focus.prevent="root?.focus({ preventScroll: true })"
       >
         <ContextMenuItem
@@ -1724,6 +1757,29 @@ onUnmounted(() => {
         >
           <MessageSquarePlus class="size-4" />{{ t("brainstormingComments.add_comment") }}
         </ContextMenuItem>
+        <template v-if="noteTarget">
+          <ContextMenuItem
+            v-if="noteTarget.state !== 'parked'"
+            id="brainstorming-note-context-park"
+            @select="emit('changeState', noteTarget.id, 'parked')"
+          >
+            <Bookmark class="size-4" />{{ t("ideation.parked") }}
+          </ContextMenuItem>
+          <ContextMenuItem
+            v-if="noteTarget.state !== 'active'"
+            id="brainstorming-note-context-restore"
+            @select="emit('changeState', noteTarget.id, 'active')"
+          >
+            <RotateCcw class="size-4" />{{ t("ideation.bringBack") }}
+          </ContextMenuItem>
+          <ContextMenuItem
+            v-if="noteTarget.state !== 'discarded'"
+            id="brainstorming-note-context-discard"
+            @select="emit('changeState', noteTarget.id, 'discarded')"
+          >
+            <CircleX class="size-4" />{{ t("ideation.canvas.discard") }}
+          </ContextMenuItem>
+        </template>
         <ContextMenuItem
           v-if="canStartRound"
           id="brainstorming-round-context-new"

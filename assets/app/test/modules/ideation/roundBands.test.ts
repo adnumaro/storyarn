@@ -3,7 +3,8 @@ import { defineComponent, h, nextTick, reactive, ref } from "vue";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import BrainstormingCanvas from "@modules/ideation/components/BrainstormingCanvas.vue";
 import { bandAt, bandOffsets } from "@modules/ideation/lib/bands";
-import { idea, round } from "./fixtures";
+import { board, idea, round, timer } from "./fixtures";
+import type { SessionTimer } from "@modules/ideation/types";
 
 const view = reactive({ x: 0, y: 0, zoom: 1, width: 800, height: 600 });
 vi.mock("@modules/ideation/composables/useCanvasViewport", () => ({
@@ -383,7 +384,7 @@ describe("round bands on the canvas", () => {
   });
 
   it("stays quiet with a single round and only shows its question, or the facilitator's placeholder", () => {
-    const single = (prompt: string | null, canManage: boolean) =>
+    const single = (prompt: string | null, canManage: boolean, clock: SessionTimer | null = null) =>
       canvas({
         notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
         bands: {
@@ -391,6 +392,12 @@ describe("round bands on the canvas", () => {
           offsets: new Map([[20, 0]]),
           canManage,
           pending: false,
+          timer: clock && {
+            session: board().session!,
+            epoch: "a",
+            timer: clock,
+            canEdit: canManage,
+          },
         },
       });
     const quiet = single(null, false);
@@ -407,6 +414,13 @@ describe("round bands on the canvas", () => {
     const header = asked.get("#brainstorming-band-20");
     expect(header.text()).toContain("Where does Mara go?");
     expect(header.text()).not.toContain("Round 1");
+
+    // A participant consults the clock in the same header once it runs.
+    const clocked = single(null, false, timer({ status: "paused" }));
+    expect(clocked.get("#brainstorming-band-20 #brainstorming-round-timer").text()).toBe("05:00");
+    expect(clocked.get("#brainstorming-band-20").text()).not.toContain("Round 1");
+    const stopped = single(null, false, timer({ status: "cancelled" }));
+    expect(stopped.find("#brainstorming-band-20").exists()).toBe(false);
   });
 
   it("opens on the round in progress and fits everything when there is one round", async () => {

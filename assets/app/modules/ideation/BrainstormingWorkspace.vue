@@ -712,10 +712,10 @@ async function remove(ids: number[]) {
     select([]);
   }
 }
-function changeState(value: "active" | "parked" | "discarded") {
-  if (!current.value || !own.value || mutationBusy.value) return;
+function changeState(value: "active" | "parked" | "discarded", id = current.value?.id) {
+  const note = id === undefined ? null : notes.find(id);
+  if (!note || note.author_id !== board.current_user_id || mutationBusy.value) return;
   finish();
-  const note = current.value;
   notes.open(note);
   notes.drafts.change(note.id, { state: value });
   void notes.save(note.id);
@@ -1107,6 +1107,7 @@ onUnmounted(() => {
           cursors: !activeRoundPrivate,
           comments,
           baseUrl,
+          userId: board.current_user_id,
         }"
         :members="board.members"
         :statuses="statuses"
@@ -1143,6 +1144,7 @@ onUnmounted(() => {
         @propose-group-decision="proposeDecision"
         @edit="edit"
         @change="notes.change"
+        @change-state="(id, state) => changeState(state, id)"
         @finish="finish"
         @move="move"
         @connect="connect"
@@ -1293,12 +1295,12 @@ onUnmounted(() => {
             >
             <template v-if="own && writable && current.id > 0"
               ><ToolbarTooltip
-                :label="t(current.state === 'active' ? 'ideation.parked' : 'ideation.active')"
+                :label="t(current.state === 'active' ? 'ideation.parked' : 'ideation.bringBack')"
                 ><button
                   type="button"
                   class="toolbar-btn"
                   :aria-label="
-                    t(current.state === 'active' ? 'ideation.parked' : 'ideation.active')
+                    t(current.state === 'active' ? 'ideation.parked' : 'ideation.bringBack')
                   "
                   @click="changeState(current.state === 'active' ? 'parked' : 'active')"
                 >

@@ -225,9 +225,13 @@ author, against the matching revision and deletion marker; an old undo cannot
 restore a later deletion. A snapshot before deletion can recover that earlier
 state; a snapshot after deletion preserves the deletion.
 
-**Mark as discarded** is a separate creative-state action. Discarded and parked
-ideas remain inspectable through the state filter and can be returned to active.
-These states do not change the round's privacy.
+**For later** and **Mark as discarded** are creative-state actions the author
+takes from the note toolbar or the note's context menu; **Bring back** returns a
+note to active. Both states stay on the canvas in place: a note kept for later
+wears a "For later" tab over its top edge and a dashed outline that follows its
+shape, and a discarded note fades behind the others in grey with its text struck
+through, back to full strength while it is being edited. The list keeps its
+state filter. These states do not change the round's privacy.
 
 ## Persistence and collaboration
 
