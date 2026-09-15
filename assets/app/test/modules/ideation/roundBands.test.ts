@@ -391,7 +391,7 @@ describe("round bands on the canvas", () => {
     };
     const wrapper = canvas();
     const item = await bring(wrapper, 10);
-    expect(item?.textContent).toContain("Bring to this round");
+    expect(item?.textContent).toContain("Bring to the active round");
     item!.click();
     await flushPromises();
     // Note 11 ends at 560 + 96 in round 2, whose header sits at 500: the copy goes under it.

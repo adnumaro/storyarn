@@ -87,7 +87,7 @@ Existing request fingerprints without a round field remain compatible. The
 recovery compartment remaps round references, while receipt fingerprints retain
 the original request identity.
 
-A note never changes round. **Bring to this round** (`bring_idea_forward/5`) is
+A note never changes round. **Bring to the active round** (`bring_idea_forward/5`) is
 the only way an idea crosses rounds: a new note of the actor's own under the
 header in progress, copying the title, body and look of the revision the actor
 can read, linked to it through `source_idea_id`/`source_revision`. The original

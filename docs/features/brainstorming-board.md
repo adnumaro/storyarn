@@ -205,7 +205,7 @@ preserves their provenance, and undoing an unsaved deletion restores the origina
 round. Switching filters retains drafts and local undo state. Existing connections
 can relate readable notes across rounds.
 
-A note never moves to another round. **Bring to this round**, in the context menu
+A note never moves to another round. **Bring to the active round**, in the context menu
 of any readable note of an earlier round and in the For later list, makes a copy
 of it in the note's own look under the lowest content of the round in progress,
 linked to the original, which stays where it was.
@@ -238,7 +238,7 @@ shape, both in the primary colour; a discarded note wears the same tab and
 outline in grey and fades behind the others with its text struck through, back
 to full strength while it is being edited. The list keeps its state filter; its
 For later view lists only parked notes without a copy brought ahead, each with
-**Bring to this round**, and the session tree counts them the same way. These
+**Bring to the active round**, and the session tree counts them the same way. These
 states do not change the round's privacy.
 
 ## Persistence and collaboration

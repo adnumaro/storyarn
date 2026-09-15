@@ -171,7 +171,7 @@ Discarding does not erase content or withdraw a prior publication. Returning an
 idea to active is another authored revision. On shared ideas the current creative
 state is visible even while the author has unpublished text changes.
 
-**Bring to this round** is the derivation API: `bring_idea_forward/5` creates
+**Bring to the active round** is the derivation API: `bring_idea_forward/5` creates
 the actor's own copy of a readable note under the round in progress, linked
 through `source_idea_id` and `source_revision` (see the
 [round contract](brainstorming-rounds-contract.md)). The link is visible to the
