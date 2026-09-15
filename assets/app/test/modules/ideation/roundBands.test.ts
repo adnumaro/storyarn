@@ -150,7 +150,8 @@ describe("round bands on the canvas", () => {
   it("draws one header per round at its offset in screen space and reports the layout it measures", async () => {
     const wrapper = canvas();
     const first = wrapper.get("#brainstorming-band-20");
-    expect(first.attributes("style")).toContain("top: 0px");
+    // At the top of the canvas the first header already rests at its pin line.
+    expect(first.attributes("style")).toContain("top: 60px");
     expect(wrapper.get("#brainstorming-band-21").attributes("style")).toContain("top: 500px");
     expect(first.text()).toContain("Round 1");
     expect(first.text()).toContain("First?");
@@ -429,6 +430,32 @@ describe("round bands on the canvas", () => {
     expect(view.y).toBe(0);
     // The single band already sits at 0: nothing to report, everything fitted.
     expect(single.emitted("bands")).toBeUndefined();
+  });
+
+  it("pins a band's header under the chrome while the viewport is inside it, until the next header pushes it out", async () => {
+    const wrapper = canvas();
+    const style = (id: number) => wrapper.get(`#brainstorming-band-${id}`).attributes("style");
+    const pinned = (id: number) =>
+      wrapper.get(`#brainstorming-band-${id}`).attributes("data-pinned");
+    // The rest line is 60px, where a jump to a round also leaves its header.
+    view.y = -100;
+    await nextTick();
+    expect(style(20)).toContain("top: 60px");
+    expect(pinned(20)).toBe("true");
+    expect(style(21)).toContain("top: 400px");
+    expect(pinned(21)).toBeUndefined();
+    view.y = -480;
+    await nextTick();
+    expect(style(20)).toContain("top: -22px");
+    view.y = -600;
+    await nextTick();
+    expect(style(21)).toContain("top: 60px");
+    expect(pinned(21)).toBe("true");
+    view.zoom = 0.5;
+    view.y = -100;
+    await nextTick();
+    expect(style(20)).toContain("top: 60px");
+    expect(style(21)).toContain("top: 150px");
   });
 
   it("scrolls a band's header to the top at any zoom", () => {

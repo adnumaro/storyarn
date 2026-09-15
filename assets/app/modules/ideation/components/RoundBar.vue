@@ -28,6 +28,7 @@ const {
   contact = false,
   timer = null,
   count = 0,
+  sticky = false,
 } = defineProps<{
   round: Round;
   /** The session has a single round: the header stays quiet about rounds. */
@@ -42,6 +43,8 @@ const {
   timer?: RoundTimerContext | null;
   /** Notes in the band, hidden ones included. */
   count?: number;
+  /** Pinned under the app chrome while the viewport is inside the band: frosted, no shadow. */
+  sticky?: boolean;
 }>();
 const emit = defineEmits<{
   close: [id: number];
@@ -90,7 +93,7 @@ const fillClass = computed(() => {
     :data-status="round.status"
     data-canvas-chrome
     class="relative select-none"
-    :class="contact ? 'bg-primary/5' : ''"
+    :class="contact ? 'bg-primary/5' : sticky ? 'bg-background/[0.86] backdrop-blur-[12px]' : ''"
   >
     <div class="flex min-h-10 items-center gap-3 px-4">
       <span

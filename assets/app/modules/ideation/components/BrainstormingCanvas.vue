@@ -337,12 +337,34 @@ watch(
   },
   { immediate: true },
 );
-function headerTop(round: Round) {
+// Where a header rests on screen: just under the floating chrome. Jumping to a
+// round brings its header here, and scrolling past it pins the header here.
+const HEADER_REST = 60;
+// The header row in screen pixels: the bar's min height plus its line.
+const HEADER_HEIGHT = 42;
+function canvasHeaderTop(round: Round) {
   return view.y + offsetOf(round.id) * view.zoom;
 }
-// Bring a band's header just under the floating chrome, keeping zoom and x.
-// The freshly measured layout already knows a round the props have not yet.
-const HEADER_REST = 60;
+// While the viewport is inside a band, its header stays pinned at the rest
+// line; the next band's header pushes it out as it arrives.
+function headerTop(round: Round) {
+  const own = canvasHeaderTop(round);
+  if (own >= HEADER_REST) return own;
+  return Math.min(HEADER_REST, nextHeaderTop(round) - HEADER_HEIGHT);
+}
+function headerPinned(round: Round) {
+  return canvasHeaderTop(round) < HEADER_REST;
+}
+function nextHeaderTop(round: Round) {
+  const rounds = orderedRounds.value;
+  const index = rounds.findIndex((candidate) => candidate.id === round.id);
+  for (const candidate of rounds.slice(index + 1)) {
+    if (headerShown(candidate)) return canvasHeaderTop(candidate);
+  }
+  return Infinity;
+}
+// Bring a band's header to its rest line, keeping zoom and x. The freshly
+// measured layout already knows a round the props have not yet.
 function scrollToRound(round: Round) {
   view.y = HEADER_REST - (bandLayout.value.get(round.id) ?? offsetOf(round.id)) * view.zoom;
 }
@@ -1443,12 +1465,15 @@ onUnmounted(() => {
             <div
               v-if="headerShown(round)"
               :id="`brainstorming-band-${round.id}`"
-              class="pointer-events-none absolute left-0 right-0 z-10"
+              class="absolute left-0 right-0 z-10"
+              :class="headerPinned(round) ? 'pointer-events-auto' : 'pointer-events-none'"
+              :data-pinned="headerPinned(round) || undefined"
               :style="{ top: `${headerTop(round)}px` }"
             >
               <RoundBar
                 :round="round"
                 :single="!multiRound"
+                :sticky="headerPinned(round)"
                 :last="round.id === lastRound?.id"
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
