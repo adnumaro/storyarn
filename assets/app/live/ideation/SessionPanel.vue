@@ -109,7 +109,7 @@ function close() {
 </script>
 
 <template>
-  <Sidebar side="right" :open="open" @close="close">
+  <Sidebar id="brainstorming-session-panel" side="right" :open="open" @close="close">
     <template #header>
       <div class="flex items-center justify-between gap-2 py-2.5">
         <div class="flex min-w-0 items-center gap-2 text-sm font-medium">

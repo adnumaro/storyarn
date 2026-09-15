@@ -167,7 +167,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     |> click("#brainstorming-tree-later-#{ctx.session.id}")
     |> assert_path(board_path(ctx), query_params: %{"view" => "later"})
     |> assert_has("button", text: "Back to canvas")
-    |> assert_has("#canvas-list-note-#{parked.id}", text: "Parked")
+    |> assert_has("#canvas-list-note-#{parked.id}", text: "For later")
   end
 
   test "viewers can consult the round headers without starting or closing rounds", %{conn: conn} do

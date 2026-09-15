@@ -61,7 +61,7 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
       |> assert_has("#brainstorming-session-form")
       |> refute_has("#brainstorming-contributions-toggle")
       |> click("#brainstorming-session-close")
-      |> refute_has("#brainstorming-session-form")
+      |> assert_has("#brainstorming-session-panel[inert]")
 
     manager =
       manager
