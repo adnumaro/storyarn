@@ -272,6 +272,7 @@ const groups = useCanvasGroups(
     for (const id of ids) if (!(await notes.settle(id))) return false;
     return true;
   },
+  () => bandOffsets.value,
 );
 function groupingProblem(ids: number[], sources: ReturnType<typeof selectedNotes>) {
   if (sources.some((note) => groups.groups.value.some((group) => group.idea_ids.includes(note.id))))

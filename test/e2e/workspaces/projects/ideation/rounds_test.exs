@@ -41,6 +41,8 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     browser =
       browser
       |> assert_has("#brainstorming-tree-round-#{second.id}[data-status=active]", text: "Round 2")
+      # The canvas jumps to the new band; write once its header rests under the app bar.
+      |> assert_has("#brainstorming-band-#{second.id}[data-pinned=true]")
       |> press("#brainstorming-canvas", "n")
       |> assert_has("[data-note-id^='-'] [contenteditable=true]:focus")
       |> settled()

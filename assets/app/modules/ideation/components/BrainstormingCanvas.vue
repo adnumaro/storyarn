@@ -33,7 +33,7 @@ import { Input } from "@components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import CanvasNote from "./CanvasNote.vue";
 import CanvasGroup from "./CanvasGroup.vue";
-import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups";
+import { groupBounds, groupVisibility, type MemberGeometry, groupRound } from "../lib/groups";
 import CanvasCursors from "./CanvasCursors.vue";
 import RoundBar from "./RoundBar.vue";
 import { bandAt, bandOffsets, orderRounds, sameOffsets, type BandOffsets } from "../lib/bands";
@@ -376,7 +376,7 @@ function contentBottom(roundId: number): number | null {
     .filter((note) => note.round_id === roundId)
     .map((note) => position(note).y + (noteHeights.value.get(note.id) ?? 96) - top);
   for (const layout of layouts.value) {
-    if (layout.group.members[0]?.round_id !== roundId) continue;
+    if (groupRound(layout.group) !== roundId) continue;
     bottoms.push(layout.bounds.y + layout.bounds.height - top);
   }
   for (const item of bands.masked ?? []) {

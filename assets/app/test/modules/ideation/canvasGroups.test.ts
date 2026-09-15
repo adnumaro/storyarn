@@ -6,7 +6,7 @@ import { useCanvasHistory } from "@modules/ideation/composables/useCanvasHistory
 import CanvasGroup from "@modules/ideation/components/CanvasGroup.vue";
 import { groupBounds } from "@modules/ideation/lib/groups";
 import type { IdeaGroup, Reply, Request } from "@modules/ideation/types";
-import { board, ideaGroup } from "./fixtures";
+import { board, ideaGroup, round } from "./fixtures";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {
@@ -14,8 +14,11 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
-function setup() {
-  const source = ref(board({ groups: [ideaGroup()] }));
+function setup(
+  overrides: Parameters<typeof board>[0] = {},
+  offsets: () => Map<number, number> = () => new Map(),
+) {
+  const source = ref(board({ groups: [ideaGroup()], ...overrides }));
   const current = source.value;
   const requests: Array<{
     event: string;
@@ -40,6 +43,7 @@ function setup() {
       error,
       vi.fn(),
       async () => true,
+      offsets,
     );
     return { history, groups };
   })!;
@@ -440,5 +444,70 @@ describe("group text editing", () => {
       expect(event.defaultPrevented).toBe(false);
     }
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe("groups in a later band", () => {
+  const offsets = () =>
+    new Map([
+      [20, 0],
+      [21, 500],
+    ]);
+  const rounds = [
+    round({ id: 20, number: 1, status: "closed" }),
+    round({ id: 21, number: 2, status: "active", prompt: null }),
+  ];
+  const inBand2 = (extra: Partial<IdeaGroup> = {}) =>
+    ideaGroup({
+      round_id: 21,
+      canvas: { x: -18, y: -4, width: 726, height: 382 },
+      members: [
+        {
+          idea_id: 10,
+          source_revision: 1,
+          round_id: 21,
+          canvas: { x: 10, y: 60, width: 280, version: 1 },
+        },
+        {
+          idea_id: 11,
+          source_revision: 1,
+          round_id: 21,
+          canvas: { x: 400, y: 90, width: 280, version: 1 },
+        },
+      ],
+      ...extra,
+    });
+  it("moves a group of the second band and undoes the move in that band's units", async () => {
+    const { source, groups, history, requests } = setup({ groups: [inBand2()], rounds }, offsets);
+    expect(groups.groups.value[0].canvas.y).toBe(496);
+    const moved = groups.move(40, { x: -18, y: 596 });
+    await flushPromises();
+    expect(requests[0].payload).toMatchObject({ group_id: 40, version: 1, x: -18, y: 96 });
+    const movedGroup = inBand2({ version: 2, canvas: { x: -18, y: 96, width: 726, height: 382 } });
+    requests[0].resolve({ status: "ok", value: movedGroup });
+    source.value = { ...source.value, groups: [movedGroup] };
+    await flushPromises();
+    await moved;
+    expect(history.canUndo.value).toBe(true);
+    const undo = history.undo();
+    await flushPromises();
+    expect(requests[1].payload).toMatchObject({ group_id: 40, version: 2, x: -18, y: -4 });
+    const restored = inBand2({ version: 3 });
+    requests[1].resolve({ status: "ok", value: restored });
+    source.value = { ...source.value, groups: [restored] };
+    await flushPromises();
+    await undo;
+    expect(groups.groups.value[0].canvas.y).toBe(496);
+    expect(history.canRedo.value).toBe(true);
+  });
+  it("draws a synthesis left on its own in the second band where its notes were", () => {
+    const alone = ideaGroup({
+      round_id: 21,
+      idea_ids: [],
+      members: [],
+      canvas: { x: -18, y: 100, width: 300, height: 120 },
+    });
+    const { groups } = setup({ groups: [alone], rounds }, offsets);
+    expect(groups.groups.value[0].canvas.y).toBe(600);
   });
 });

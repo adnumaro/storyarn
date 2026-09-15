@@ -173,6 +173,36 @@ defmodule Storyarn.Ideation.GroupsTest do
              Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs(ctx))
   end
 
+  test "a creation replayed after its round went private is refused like any other read of it", ctx do
+    attrs = attrs(ctx)
+    assert {:ok, group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs)
+    assert group.round_id == first_round(ctx).id
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
+
+    assert {:error, :private_round} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs)
+  end
+
+  test "a group stays in its round: members cannot carry it to another band and a lone synthesis keeps it", ctx do
+    group = create_group_fixture(ctx)
+    first = first_round(ctx)
+    assert group.round_id == first.id
+    {ctx, _second} = new_round(ctx)
+    later = shared(ctx, 700, ctx.author)
+
+    assert {:error, :mixed_rounds} = edit_group(ctx, group, %{idea_ids: [later.id]})
+    assert {:ok, alone} = edit_group(ctx, group, %{idea_ids: []})
+    assert alone.idea_ids == []
+    assert alone.round_id == first.id
+  end
+
   test "UUID receipts remain durable through later edits and cannot be reused for different intent", ctx do
     request = attrs(ctx)
     assert {:ok, group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, request)

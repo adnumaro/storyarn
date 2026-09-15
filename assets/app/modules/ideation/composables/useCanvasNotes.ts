@@ -22,6 +22,8 @@ interface NewNote {
   pending: boolean;
   error: string | null;
   attempt?: Idea;
+  /** The request as first sent, so a retry repeats it whatever the bands did since. */
+  payload?: Record<string, unknown>;
   connection?: NoteConnection;
   source?: number;
 }
@@ -252,9 +254,10 @@ export function useCanvasNotes(
     const started = generation;
     const snapshot = entry.attempt ?? { ...entry.idea, canvas: { ...entry.idea.canvas } };
     entry.attempt = snapshot;
+    entry.payload ??= creationPayload(entry, snapshot);
     const reply = await request<CreatedIdea>(
       entry.source ? "bring_idea_forward" : "create_idea",
-      creationPayload(entry, snapshot),
+      entry.payload,
       entry.context,
     );
     if (started !== generation) return;
@@ -280,7 +283,10 @@ export function useCanvasNotes(
     } else {
       entry.error = reply.status === "error" ? reply.code : "unavailable";
       errors.set(id, entry.error);
-      if (!["offline", "unavailable"].includes(entry.error)) entry.attempt = undefined;
+      if (!["offline", "unavailable"].includes(entry.error)) {
+        entry.attempt = undefined;
+        entry.payload = undefined;
+      }
     }
   }
   function acceptCreated(id: number, entry: NewNote, snapshot: Idea, reply: CreatedIdea) {

@@ -59,6 +59,41 @@ describe("canvas persistence", () => {
     ]);
     app.unmount();
   });
+  it("retries a creation with the request it first sent, whatever the bands did since", async () => {
+    const offsets = ref(
+      new Map([
+        [20, 0],
+        [21, 500],
+      ]),
+    );
+    const { result, app, current, request, replies } = setup(() => offsets.value);
+    const active = round({ id: 21, number: 2, status: "active", prompt: null });
+    current.value = board({
+      ideas: [],
+      rounds: [round({ id: 20, number: 1, status: "closed" }), active],
+      active_round: active,
+    });
+    await nextTick();
+    const id = result.add({ x: 40, y: 600 }, "yellow", { title: null, body: "<p>Later</p>" }, 21);
+    result.change(id, "<p>Later</p>");
+    const first = result.save(id);
+    await flush();
+    expect(request.mock.calls[0]?.[1]).toMatchObject({ round_id: 21, canvas: { x: 40, y: 100 } });
+    replies[0]({ status: "error", code: "offline" });
+    await first;
+    // Band 1 grew meanwhile: the same request key must travel with the same placement.
+    offsets.value = new Map([
+      [20, 0],
+      [21, 560],
+    ]);
+    await nextTick();
+    const retry = result.save(id);
+    await flush();
+    expect(request.mock.calls[1]?.[1]).toEqual(request.mock.calls[0]?.[1]);
+    replies[1]({ status: "ok", value: idea({ id: 12, round_id: 21, canvas: { x: 40, y: 100 } }) });
+    await retry;
+    app.unmount();
+  });
   it("brings a note forward as the actor's own copy under the round in progress", async () => {
     const { result, app, current, request, replies } = setup(
       () =>

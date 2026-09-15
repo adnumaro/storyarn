@@ -14,6 +14,13 @@ export interface MemberGeometry {
   canvas?: CanvasPlacement;
   height?: number;
 }
+/** The band a group lives in: what the server says, else what its first member says. */
+export function groupRound(group: {
+  round_id?: number | null;
+  members: Array<{ round_id?: number | null }>;
+}): number | null {
+  return group.round_id ?? group.members[0]?.round_id ?? null;
+}
 export const GROUP_PADDING = 28;
 export const GROUP_HEADER = 64;
 export const SYNTHESIS_WIDTH = 304;

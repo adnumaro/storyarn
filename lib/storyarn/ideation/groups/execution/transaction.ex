@@ -51,7 +51,9 @@ defmodule Storyarn.Ideation.Groups.Execution.Transaction do
       %{fingerprint: ^fingerprint} ->
         group = Repo.get!(Group, receipt.group_id)
 
-        with :ok <- replay_current(group, receipt, attrs) do
+        # A creation replayed after its round went private answers like any other read of it.
+        with :ok <- round_open(access.session_id, group.id),
+             :ok <- replay_current(group, receipt, attrs) do
           {:ok, {project(group), false}}
         end
 

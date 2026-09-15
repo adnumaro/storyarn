@@ -78,6 +78,8 @@ export interface Idea extends IdeaContent {
 export interface IdeaGroup {
   id: number;
   session_id: number;
+  /** The round whose band holds the group; its frame and members are stored relative to that header. */
+  round_id?: number | null;
   title: string | null;
   synthesis: string | null;
   author_id: number | null;

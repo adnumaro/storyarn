@@ -1,6 +1,7 @@
 import { computed, onScopeDispose, ref, watch } from "vue";
 import type { Board, GroupText, GroupVersions, IdeaGroup, Request } from "../types";
 import type { BandOffsets } from "../lib/bands";
+import { groupRound } from "../lib/groups";
 import type { Point } from "./useCanvasViewport";
 import type { useCanvasHistory, CanvasCommand } from "./useCanvasHistory";
 
@@ -65,7 +66,7 @@ export function useCanvasGroups(
   // relative to that round's header; the canvas works in absolute units.
   const offsetFor = (roundId: number | null | undefined) =>
     roundId == null ? 0 : (offsets().get(roundId) ?? 0);
-  const roundOfGroup = (group: IdeaGroup) => group.members[0]?.round_id ?? null;
+  const roundOfGroup = groupRound;
   const roundOfIdeas = (ids: number[]) =>
     board().ideas.find((idea) => ids.includes(idea.id))?.round_id ?? null;
   const shifted = <T extends { y: number }>(point: T, by: number): T =>
@@ -74,20 +75,21 @@ export function useCanvasGroups(
     changes.canvas && group
       ? { ...changes, canvas: shifted(changes.canvas, -offsetFor(roundOfGroup(group))) }
       : changes;
-  const groups = computed(() =>
-    (board().groups ?? []).map((group) => ({
-      ...group,
-      canvas: shifted(group.canvas, offsetFor(roundOfGroup(group))),
-      members: group.members.map((member) =>
-        typeof member.canvas?.y === "number" && member.round_id != null
-          ? {
-              ...member,
-              canvas: { ...member.canvas, y: member.canvas.y + offsetFor(member.round_id) },
-            }
-          : member,
-      ),
-    })),
-  );
+  // Everything the composable holds or hands out is absolute; a group coming
+  // from the server (board props or a reply) converts here, once.
+  const absolute = (group: IdeaGroup): IdeaGroup => ({
+    ...group,
+    canvas: shifted(group.canvas, offsetFor(roundOfGroup(group))),
+    members: group.members.map((member) =>
+      typeof member.canvas?.y === "number" && member.round_id != null
+        ? {
+            ...member,
+            canvas: { ...member.canvas, y: member.canvas.y + offsetFor(member.round_id) },
+          }
+        : member,
+    ),
+  });
+  const groups = computed(() => (board().groups ?? []).map(absolute));
   const allowed = computed(() => board().can_edit && board().session?.status === "open");
   const retryKeys = new Map<string, string>();
   const pending = new Set<() => void>();
@@ -160,7 +162,7 @@ export function useCanvasGroups(
     if (acknowledged === "cancelled") return null;
     retryKeys.delete(fingerprint);
     if (acknowledged === "applied") notify(null);
-    return snapshot(reply.value);
+    return snapshot(absolute(reply.value));
   }
   function updateCommand(
     before: IdeaGroup,
