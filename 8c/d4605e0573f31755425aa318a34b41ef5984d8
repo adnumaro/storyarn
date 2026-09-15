@@ -1,0 +1,55 @@
+lib/storyarn/ideation/ideas/queries/list.ex
+  s_02773c3f2b5565::t_e298b69e3c4432 68-69,71-78,143-144
+assets/app/modules/ideation/components/RoundTimer.vue
+  s_02773c3f2b5565::t_452a558eeafb3f 99,103-105
+lib/storyarn/ideation/ideas/commands/bring_forward.ex
+  s_02773c3f2b5565::t_e298b69e3c4432 97,100
+assets/app/live/ideation/SessionPanel.vue
+  s_02773c3f2b5565::t_0f75176a4df611 38-47,51-54
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_0f75176a4df611 124-129
+test/storyarn/ideation/bring_forward_test.exs
+  s_02773c3f2b5565::t_bf7454bdea3cbd 71,74-77
+  s_02773c3f2b5565::t_e298b69e3c4432 87-91,108-116
+  s_02773c3f2b5565::t_095ab5f052b33a 70
+  s_02773c3f2b5565::t_7ff4001b19e470 78
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_02773c3f2b5565::t_cf0d48e0e71b08 2-10,259-276,435,476-477,508-509,1353-1363,1388,1611-1612,1729
+  s_02773c3f2b5565::t_0f75176a4df611 486-494,499,1627
+assets/app/test/live/ideation/SessionPanel.test.ts
+  s_02773c3f2b5565::t_bf7454bdea3cbd 67-87
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_9c928630cdf807 464-469
+  s_02773c3f2b5565::t_bf7454bdea3cbd 450-463,470-475
+  s_02773c3f2b5565::t_08743018322a99 438-439,444
+lib/storyarn_web/live/ideation_live/board.ex
+  s_02773c3f2b5565::t_e298b69e3c4432 326,328,660-662
+assets/app/test/modules/ideation/workspaceLater.test.ts
+  s_02773c3f2b5565::t_bf7454bdea3cbd 58-73
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_02773c3f2b5565::t_bf7454bdea3cbd 607,610,1405
+  s_02773c3f2b5565::t_0f75176a4df611 278-279,733-743,748,1401
+test/storyarn_web/live/ideation_live/board_test.exs
+  s_02773c3f2b5565::t_e298b69e3c4432 173-181
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_0f75176a4df611 124-129
+assets/app/modules/ideation/components/RoundBar.vue
+  s_02773c3f2b5565::t_452a558eeafb3f 180-183,229-232,244-247
+  s_02773c3f2b5565::t_cf0d48e0e71b08 67-68,83,105,108,110-123,125-161,163-171,173-174,179,185-228,233-243,248-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8cd4605e0573f31755425aa318a34b41ef5984d8",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
