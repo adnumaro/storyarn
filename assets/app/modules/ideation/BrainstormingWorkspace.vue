@@ -81,6 +81,9 @@ const privateRounds = computed(
 );
 const activeRoundPrivate = computed(() => !!board.active_round?.private);
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
+// Popovers under a tooltip anchor to their button explicitly, as the pickers do.
+const colorTrigger = ref<HTMLButtonElement>();
+const linksTrigger = ref<HTMLButtonElement>();
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
 async function createComment(target: BrainstormingCommentTarget) {
   const reply = await request("comments_open", {
@@ -1239,16 +1242,23 @@ onUnmounted(() => {
             <template v-if="writable"
               ><Popover
                 ><ToolbarTooltip :label="t('ideation.canvas.color')"
-                  ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"
-                    ><span
-                      class="size-4 rounded-full border border-foreground/10"
-                      :style="{
-                        background: colors.find(
-                          (c) => c.id === (current?.canvas?.color ?? 'yellow'),
-                        )?.value,
-                      }" /></PopoverTrigger
+                  ><PopoverTrigger as-child
+                    ><button
+                      ref="colorTrigger"
+                      type="button"
+                      class="toolbar-btn"
+                      :aria-label="t('ideation.canvas.color')"
+                    >
+                      <span
+                        class="size-4 rounded-full border border-foreground/10"
+                        :style="{
+                          background: colors.find(
+                            (c) => c.id === (current?.canvas?.color ?? 'yellow'),
+                          )?.value,
+                        }"
+                      /></button></PopoverTrigger
                 ></ToolbarTooltip>
-                <PopoverContent class="flex w-auto gap-2 p-2"
+                <PopoverContent :reference="colorTrigger" class="flex w-auto gap-2 p-2"
                   ><button
                     v-for="item in colors"
                     :key="item.id"
@@ -1261,10 +1271,16 @@ onUnmounted(() => {
             ></template>
             <Popover v-if="current.canvas?.links?.length"
               ><ToolbarTooltip :label="t('ideation.canvas.connections')"
-                ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.connections')"
-                  ><Unplug class="size-3.5" /></PopoverTrigger
+                ><PopoverTrigger as-child
+                  ><button
+                    ref="linksTrigger"
+                    type="button"
+                    class="toolbar-btn"
+                    :aria-label="t('ideation.canvas.connections')"
+                  >
+                    <Unplug class="size-3.5" /></button></PopoverTrigger
               ></ToolbarTooltip>
-              <PopoverContent class="w-64 space-y-1"
+              <PopoverContent :reference="linksTrigger" class="w-64 space-y-1"
                 ><button
                   v-for="id in current.canvas.links"
                   :key="id"
