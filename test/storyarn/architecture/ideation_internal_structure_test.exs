@@ -125,13 +125,12 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       archive_session: 4,
       assign_session_responsibilities: 5,
       create_session: 3,
-      create_round: 5,
+      new_round: 5,
       update_round: 6,
-      cancel_round: 5,
-      start_round: 5,
       close_round: 5,
       list_rounds: 3,
       list_rounds: 4,
+      list_session_rounds: 3,
       get_round_context: 3,
       get_round_context: 4,
       get_session: 3,
@@ -149,11 +148,13 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
     idea_operations = [
       create_canvas_idea: 4,
       update_canvas_idea: 6,
-      set_private_mode: 5,
+      set_round_privacy: 6,
+      list_masked_ideas: 3,
       delete_idea: 5,
       restore_idea: 6,
       count_ideas: 3,
       count_ideas: 4,
+      count_parked_ideas: 3,
       create_idea: 4,
       get_idea: 4,
       get_idea_reveal: 4,
@@ -191,6 +192,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                  group_operations ++
                  idea_operations ++
                  [
+                   bring_idea_forward: 5,
+                   reveal_round: 5,
                    comment_source: 4,
                    comment_source: 5,
                    comment_sources_query: 1,
@@ -237,9 +240,10 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
              Enum.sort(
                idea_operations ++
                  [
+                   bring_idea_forward: 5,
                    comment_source: 5,
                    comment_sources_query: 0,
-                   set_private_mode_locked: 3,
+                   reveal_round_locked: 3,
                    notify_timer_reveal: 2,
                    group_sources: 2,
                    decision_sources: 2,
@@ -263,8 +267,13 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    contextual_link_receipts_query: 0,
                    receipt_generations_query: 0,
                    record_contextual_link_receipt: 4,
-                   set_canvas_mode_locked: 3,
-                   notify_canvas_mode: 2,
+                   set_round_privacy_locked: 4,
+                   active_private_round: 1,
+                   round_private?: 1,
+                   round_mask_query: 0,
+                   notify_round_privacy: 2,
+                   notify_tree_changed: 1,
+                   authorize_project_read: 2,
                    canvas_settings_query: 0,
                    select_contribution_round: 2,
                    validate_round_filter: 2

@@ -1,6 +1,7 @@
 defmodule Storyarn.Ideation.Ideas.Events.Invalidation do
   @moduledoc false
   alias Phoenix.PubSub
+  alias Storyarn.Ideation.Sessions
 
   def subscribe(project_id, session_id, actor_id) do
     with :ok <- PubSub.subscribe(Storyarn.PubSub, topic(project_id, session_id, :shared)) do
@@ -12,6 +13,10 @@ defmodule Storyarn.Ideation.Ideas.Events.Invalidation do
   # signal. Ordinary shared canvas activity must not invalidate inboxes.
   def broadcast(project_id, _session_id, :comment_sources),
     do: Storyarn.Projects.invalidate_ideation_comment_sources(project_id)
+
+  # Parking, unparking, deleting or restoring a parked note changes the count
+  # the session tree shows for every member, outside any canvas topic.
+  def broadcast(project_id, _session_id, :tree), do: Sessions.notify_tree_changed(project_id)
 
   def broadcast(project_id, session_id, audience) do
     PubSub.broadcast(Storyarn.PubSub, topic(project_id, session_id, audience), {:ideation_changed, session_id})

@@ -124,11 +124,15 @@ defmodule Storyarn.Ideation do
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Sessions
   defdelegate get_session(scope, project_id, session_id), to: Sessions
 
-  @doc "Lists optional rounds from a readable session, newest first, with bounded cursor pagination."
+  @doc "Lists rounds from a readable session, newest first, with bounded cursor pagination."
   @spec list_rounds(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
   defdelegate list_rounds(scope, project_id, session_id, opts \\ []), to: Sessions
 
-  @doc "Reads a round history range and its active and referenced context after one access check."
+  @doc "Reads the rounds of several sessions of one project in a single read, keyed by session."
+  @spec list_session_rounds(map(), pos_integer(), [pos_integer()]) :: {:ok, map()} | {:error, term()}
+  defdelegate list_session_rounds(scope, project_id, session_ids), to: Sessions
+
+  @doc "Reads every round of a session in band order plus the round in progress after one access check."
   @spec get_round_context(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, map()} | {:error, term()}
   defdelegate get_round_context(scope, project_id, session_id, opts \\ []), to: Sessions
 
@@ -177,24 +181,17 @@ defmodule Storyarn.Ideation do
   @spec timer_runtime_child_specs() :: [Supervisor.child_spec()]
   defdelegate timer_runtime_child_specs(), to: Sessions
 
-  @doc "Prepares an optional round without starting a timer or changing session visibility."
-  @spec create_round(map(), pos_integer(), pos_integer(), pos_integer(), map()) :: {:ok, struct()} | {:error, term()}
-  defdelegate create_round(scope, project_id, session_id, revision, attrs), to: Sessions
+  @doc """
+  Starts the next round in one step: the round in progress closes, the new one
+  starts below it with an optional question and header offset.
+  """
+  @spec new_round(map(), pos_integer(), pos_integer(), pos_integer(), map()) :: {:ok, struct()} | {:error, term()}
+  defdelegate new_round(scope, project_id, session_id, revision, attrs), to: Sessions
 
-  @doc "Edits a prepared round's question after checking current facilitator authority and session revision."
+  @doc "Edits the question of the round in progress after checking facilitator authority and session revision."
   @spec update_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), map()) ::
           {:ok, struct()} | {:error, term()}
   defdelegate update_round(scope, project_id, session_id, round_id, revision, attrs), to: Sessions
-
-  @doc "Cancels a prepared round while retaining its session record and recovery provenance."
-  @spec cancel_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
-          {:ok, struct()} | {:error, term()}
-  defdelegate cancel_round(scope, project_id, session_id, round_id, revision), to: Sessions
-
-  @doc "Starts a prepared round after checking facilitator authority and the current session revision."
-  @spec start_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
-          {:ok, struct()} | {:error, term()}
-  defdelegate start_round(scope, project_id, session_id, round_id, revision), to: Sessions
 
   @doc "Closes the active round without publishing ideas or restricting further contribution and editing."
   @spec close_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
@@ -235,6 +232,10 @@ defmodule Storyarn.Ideation do
   defdelegate get_idea(scope, project_id, session_id, idea_id), to: Ideas
   defdelegate list_ideas(scope, project_id, session_id, opts \\ []), to: Ideas
   defdelegate count_ideas(scope, project_id, session_id, opts \\ []), to: Ideas
+
+  @doc "Counts the parked notes the actor may see in several sessions of one project, keyed by session."
+  @spec count_parked_ideas(map(), pos_integer(), [pos_integer()]) :: {:ok, map()} | {:error, term()}
+  defdelegate count_parked_ideas(scope, project_id, session_ids), to: Ideas
   defdelegate prepare_idea_reveal(scope, project_id, session_id, key, selection \\ :eligible), to: Ideas
   defdelegate reveal_ideas(scope, project_id, session_id, operation_id), to: Ideas
   defdelegate get_idea_reveal(scope, project_id, session_id, operation_id), to: Ideas
@@ -276,10 +277,22 @@ defmodule Storyarn.Ideation do
   @doc "Creates a canvas contribution under the current session visibility mode."
   @spec create_canvas_idea(map(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
   defdelegate create_canvas_idea(scope, project_id, session_id, attrs), to: Ideas
+  @doc "Brings a readable note into the round in progress as the actor's own copy, linked to the revision it copied."
+  @spec bring_idea_forward(map(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate bring_idea_forward(scope, project_id, session_id, idea_id, attrs), to: Ideas
   @doc "Saves a canvas note and publishes that revision atomically in shared mode."
   @spec update_canvas_idea(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
   defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
-  @doc "Lets the facilitator change private mode for everyone; ending it reveals current contributions atomically."
-  @spec set_private_mode(map(), integer(), integer(), integer(), boolean()) :: {:ok, map()} | {:error, term()}
-  defdelegate set_private_mode(scope, project_id, session_id, revision, enabled), to: Ideas
+
+  @doc "Makes the round in progress private or shared; ending its private mask reveals that round's contributions atomically."
+  @spec set_round_privacy(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate set_round_privacy(scope, project_id, session_id, round_id, revision, attrs), to: Ideas
+  @doc "Reveals a private round: publishes its consenting contributions and keeps it shared for good."
+  @spec reveal_round(map(), integer(), integer(), integer(), integer()) :: {:ok, map()} | {:error, term()}
+  def reveal_round(scope, project_id, session_id, round_id, revision),
+    do: Ideas.set_round_privacy(scope, project_id, session_id, round_id, revision, %{"private" => false})
+
+  @doc "Other people's notes in private rounds as placeholders: position and size only."
+  @spec list_masked_ideas(map(), integer(), integer()) :: {:ok, [map()]} | {:error, term()}
+  defdelegate list_masked_ideas(scope, project_id, session_id), to: Ideas
 end

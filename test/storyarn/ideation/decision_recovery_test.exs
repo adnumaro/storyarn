@@ -47,7 +47,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 6, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 8, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -171,7 +171,16 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
   test "private-mode import retains agreement history without exposing it or granting access", ctx do
     assert {:ok, _} = accept(ctx, ctx.decision.id, 1, Ecto.UUID.generate())
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, session.id, session.revision, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               session.id,
+               session.revision,
+               true
+             )
+
     capsule = capture(ctx)
     destination = project_fixture(ctx.owner.user)
     target = %{ctx | project: destination}
@@ -180,17 +189,28 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     decision_id = maps["decisions"][ctx.decision.id]
     assert Repo.get!(Decision, decision_id).accepted_version == 2
     assert Enum.at(revisions(decision_id), 1).operation == "accept"
-    assert {:error, :private_mode} = Ideation.get_decision(ctx.owner, destination.id, session_id, decision_id)
+    assert {:ok, _} = Ideation.get_decision(ctx.owner, destination.id, session_id, decision_id)
     assert {:error, :not_found} = Ideation.get_decision(ctx.author, destination.id, session_id, decision_id)
     assert restore(target, capsule) == maps
   end
 
   test "version-five capsules retain their content and normalize empty decisions", ctx do
     {:ok, data} = ctx |> capture() |> Capsule.open()
-    legacy = data |> Map.put("version", 5) |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions)))
+
+    legacy =
+      data
+      |> Map.put("version", 5)
+      |> update_in(
+        ["rows", "rounds"],
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+      )
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+      |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions)))
+
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 6
+    assert normalized["version"] == 8
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)

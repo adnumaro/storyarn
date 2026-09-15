@@ -44,9 +44,6 @@ defmodule Storyarn.Ideation.Sessions.Execution.TimerMutation do
     if DateTime.before?(current, timer.started_at), do: timer.started_at, else: current
   end
 
-  def reveal_allowed(%{configuration: %{private_mode: false}}, true), do: {:error, :timer_reveal_requires_private}
-  def reveal_allowed(_, _), do: :ok
-
   def save(session, access, timer, attrs, action) do
     with {:ok, saved} <- timer |> change(attrs) |> Repo.insert_or_update(),
          :ok <- schedule(saved) do
@@ -71,7 +68,6 @@ defmodule Storyarn.Ideation.Sessions.Execution.TimerMutation do
       "status" => Atom.to_string(timer.status),
       "duration_seconds" => timer.duration_seconds,
       "remaining_seconds" => timer.remaining_seconds,
-      "reveal_on_expiry" => timer.reveal_on_expiry,
       "close_contributions_on_expiry" => timer.close_contributions_on_expiry,
       "expiry_outcome" => if(timer.expiry_outcome, do: Atom.to_string(timer.expiry_outcome))
     }

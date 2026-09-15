@@ -17,6 +17,7 @@ defmodule Storyarn.Ideation.Groups.Execution.Mutation do
          {:ok, sources} <- Memberships.validate(access.session_id, 0, attrs.idea_ids) do
       group =
         Repo.insert!(%Group{
+          round_id: List.first(sources).round_id,
           session_id: access.session_id,
           author_id: access.user_id,
           title: attrs.title,
@@ -35,8 +36,12 @@ defmodule Storyarn.Ideation.Groups.Execution.Mutation do
   def update(access, id, expected, attrs, key, fingerprint) do
     with {:ok, group} <- current(access, id, expected),
          {:ok, canvas} <- update_canvas(group, attrs),
-         {:ok, members} <- update_members(group, access.user_id, attrs) do
-      changes = attrs |> Map.take([:title, :synthesis]) |> Map.merge(%{canvas: canvas, version: group.version + 1})
+         {:ok, members, round_id} <- update_members(group, access.user_id, attrs) do
+      changes =
+        attrs
+        |> Map.take([:title, :synthesis])
+        |> Map.merge(%{canvas: canvas, round_id: round_id, version: group.version + 1})
+
       updated = group |> change(changes) |> Repo.update!()
       record(updated, access.user_id, "update", key, fingerprint, members)
     end
@@ -114,10 +119,22 @@ defmodule Storyarn.Ideation.Groups.Execution.Mutation do
 
   defp update_members(group, actor_id, %{idea_ids: ids}) do
     with {:ok, sources} <- Memberships.validate(group.session_id, group.id, ids),
-         do: {:ok, Memberships.replace(group, actor_id, sources, retain_hidden: ids != [])}
+         :ok <- same_band(group, sources) do
+      {:ok, Memberships.replace(group, actor_id, sources, retain_hidden: ids != []), round_of(group, sources)}
+    end
   end
 
-  defp update_members(group, _, _), do: {:ok, Memberships.current(group.id)}
+  defp update_members(group, _, _), do: {:ok, Memberships.current(group.id), group.round_id}
+
+  # A group holds notes of one round; its members cannot carry it to another band,
+  # and a synthesis left on its own stays where its notes were.
+  defp same_band(%{round_id: nil}, _sources), do: :ok
+  defp same_band(_group, []), do: :ok
+  defp same_band(%{round_id: round_id}, [%{round_id: round_id} | _]), do: :ok
+  defp same_band(_group, _sources), do: {:error, :mixed_rounds}
+
+  defp round_of(group, []), do: group.round_id
+  defp round_of(_group, [%{round_id: round_id} | _]), do: round_id
 
   defp record(group, actor_id, operation, key, fingerprint, members) do
     Repo.insert!(%Revision{

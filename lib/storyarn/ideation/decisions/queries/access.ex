@@ -6,8 +6,7 @@ defmodule Storyarn.Ideation.Decisions.Queries.Access do
 
   def read(scope, project_id, session_id) do
     with {:ok, project, membership} <- Projects.authorize(scope, project_id, :view),
-         {:ok, session} <- Sessions.get_session(scope, project_id, session_id),
-         false <- session.configuration.private_mode do
+         {:ok, session} <- Sessions.get_session(scope, project_id, session_id) do
       {:ok,
        %{
          session_id: session.id,
@@ -16,9 +15,6 @@ defmodule Storyarn.Ideation.Decisions.Queries.Access do
          editor?: Projects.can?(membership.role, :edit_content),
          owner?: project.owner_id == scope.user.id
        }}
-    else
-      true -> {:error, :private_mode}
-      {:error, _} = error -> error
     end
   end
 end

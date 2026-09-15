@@ -5,8 +5,10 @@ import { DOMParser } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useI18n } from "vue-i18n";
+import { Bookmark, CircleX } from "@lucide/vue";
 import { pasteContent } from "../lib/paste";
 import type { Idea } from "../types";
+import { noteFill, noteInk } from "../lib/noteColors";
 const {
   note,
   body,
@@ -94,17 +96,13 @@ watch(
 );
 onMounted(focus);
 const shape = computed(() => note.canvas?.shape ?? "rectangle");
-const color = computed(
-  () =>
-    ({
-      yellow: "#f5e6a8",
-      coral: "#f8cbbd",
-      mint: "#cbe8d5",
-      blue: "#c9e2f5",
-      violet: "#e2d5f4",
-      paper: "#f4f1e9",
-    })[note.canvas?.color ?? "yellow"] ?? "#f5e6a8",
-);
+// A note kept for later wears a tab and a dashed edge; a discarded one fades
+// behind the others, struck through, and comes back to full strength while
+// it is being edited.
+const parked = computed(() => note.state === "parked");
+const discarded = computed(() => note.state === "discarded");
+const fill = computed(() => noteFill(note.canvas?.color));
+const ink = computed(() => noteInk(note.canvas?.color) ?? undefined);
 </script>
 <template>
   <article
@@ -116,15 +114,36 @@ const color = computed(
     :data-round-id="note.round_id"
     :data-late-contribution="note.late_contribution"
     :data-note-shape="shape"
+    :data-note-state="note.state"
     class="canvas-note relative grid text-foreground outline-none"
     :class="[
       `canvas-note--${shape}`,
-      { 'canvas-note--selected': selected, 'canvas-note--editing': editing },
+      {
+        'canvas-note--selected': selected,
+        'canvas-note--editing': editing,
+        'canvas-note--parked': parked,
+        'canvas-note--discarded': discarded,
+      },
     ]"
-    :style="{ '--note-color': color }"
+    :style="{ '--note-color': fill, '--note-ink': ink }"
   >
     <span aria-hidden="true" class="note-outline" />
     <span aria-hidden="true" class="note-surface" />
+    <svg
+      v-if="parked || discarded"
+      aria-hidden="true"
+      class="note-dash pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+    >
+      <ellipse v-if="shape === 'ellipse'" cx="50" cy="50" rx="50" ry="50" />
+      <polygon v-else-if="shape === 'diamond'" points="50,0 100,50 50,100 0,50" />
+      <rect v-else x="0" y="0" width="100" height="100" rx="2" />
+    </svg>
+    <span v-if="parked || discarded" aria-hidden="true" class="note-tab">
+      <Bookmark v-if="parked" class="size-2.5" /><CircleX v-else class="size-2.5" />
+      {{ t(parked ? "ideation.forLater" : "ideation.discarded") }}
+    </span>
     <div class="note-content relative z-10 min-w-0">
       <p v-if="note.title" class="mb-1.5 text-[15px] font-semibold leading-snug">
         {{ note.title }}
@@ -224,8 +243,74 @@ const color = computed(
   background: var(--note-fill);
   clip-path: var(--note-outline);
 }
+/* For later: the edge turns dashed and a tab sits over the top edge. */
+.canvas-note--parked .note-surface {
+  background: transparent;
+}
+/* Each state colours its own frame and tab, so a note kept for later and a
+   discarded one read apart at a glance whatever the note's colour. */
+.canvas-note--parked {
+  --note-state: hsl(var(--primary));
+}
+.canvas-note--discarded {
+  --note-state: hsl(var(--muted-foreground));
+}
+.note-dash {
+  fill: none;
+  stroke: var(--note-state);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+.note-dash > * {
+  vector-effect: non-scaling-stroke;
+}
+.note-tab {
+  position: absolute;
+  top: 1px;
+  left: 10px;
+  z-index: 11;
+  display: inline-flex;
+  height: 18px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 7px 0 6px;
+  transform: translateY(-100%);
+  border: 1.5px dashed var(--note-state);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--note-state) 12%, hsl(var(--background)));
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--note-state);
+}
+.canvas-note--ellipse .note-tab,
+.canvas-note--diamond .note-tab {
+  left: 50%;
+  transform: translate(-50%, -100%);
+}
+/* Discarded: the same frame and tab in grey, faded behind the others and
+   struck through, back to full strength while it is being edited. */
+.canvas-note--discarded {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+.canvas-note--discarded.canvas-note--editing {
+  opacity: 1;
+}
+.canvas-note--discarded:not(.canvas-note--editing) .note-content p,
+.canvas-note--discarded:not(.canvas-note--editing) .note-text :deep(p) {
+  text-decoration: line-through 1.5px;
+}
 .canvas-note--plain .note-surface {
   background: transparent;
+}
+/* A text-only note wears its colour on the words, leaning on the theme's ink
+   so it reads on both grounds. */
+.canvas-note--plain .note-content {
+  color: color-mix(in srgb, var(--note-ink, hsl(var(--foreground))) 80%, hsl(var(--foreground)));
 }
 .canvas-note--plain .note-surface::before {
   background: transparent;

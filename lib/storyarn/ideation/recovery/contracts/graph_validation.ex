@@ -64,7 +64,9 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       contextual_snapshot?(row, index)
   end
 
-  defp valid_links?(row, "rounds", index), do: Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
+  defp valid_links?(row, "rounds", index) do
+    Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
+  end
 
   defp valid_links?(row, "timers", index),
     do: Map.has_key?(index.sessions, row["session_id"]) and TimerState.valid?(row)
@@ -128,7 +130,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
     # Connections may precede the first explicit positioning of legacy notes.
     Enum.all?(["x", "y"], &optional_range?(canvas[&1], -1_000_000, 1_000_000)) and
       optional_range?(canvas["width"], 180, 800) and
-      (is_nil(canvas["color"]) or canvas["color"] in ~w(yellow coral mint blue violet paper)) and
+      (is_nil(canvas["color"]) or canvas["color"] in ~w(none yellow coral mint blue violet paper)) and
       (not Map.has_key?(canvas, "shape") or canvas["shape"] in ~w(plain rectangle ellipse diamond)) and
       valid_canvas_version?(canvas["version"]) and valid_canvas_version?(canvas["links_version"])
   end
@@ -158,13 +160,18 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   end
 
   defp round_metadata?(row) do
-    positive?(row["number"]) and
-      (is_nil(row["prompt"]) or (is_binary(row["prompt"]) and length(String.to_charlist(row["prompt"])) <= 2000)) and
-      round_timing?(row)
+    positive?(row["number"]) and round_privacy?(row) and round_prompt?(row["prompt"]) and round_timing?(row)
   end
 
-  defp round_timing?(%{"status" => status, "started_at" => nil, "closed_at" => nil})
-       when status in ["planned", "cancelled"], do: true
+  defp round_prompt?(prompt), do: is_nil(prompt) or (is_binary(prompt) and length(String.to_charlist(prompt)) <= 2000)
+
+  # Snapshots of round audit rows carry no privacy fields; stored rounds do.
+  defp round_privacy?(row) when not is_map_key(row, "private"), do: true
+
+  defp round_privacy?(row) do
+    is_boolean(row["private"]) and is_boolean(row["reveal_on_expiry"]) and
+      (is_nil(row["revealed_at"]) or valid_time?(row["revealed_at"]))
+  end
 
   defp round_timing?(%{"status" => "active", "started_at" => started, "closed_at" => nil}), do: valid_time?(started)
 
@@ -187,17 +194,27 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
     length(sessions) == MapSet.size(MapSet.new(sessions))
   end
 
+  # Audit snapshots keep the history as it was: a round prepared or cancelled
+  # before bands existed still validates, and no longer has to exist.
   defp round_snapshot?(%{"action" => action, "snapshot" => snapshot} = row, index)
        when action in ~w(round_created round_updated round_cancelled round_started round_closed) do
     round = snapshot["round"]
 
-    is_map(round) and round_metadata?(round) and
-      Enum.any?(index.rounds, fn {_, current} ->
-        current["session_id"] == row["session_id"] and current["number"] == round["number"]
-      end)
+    is_map(round) and positive?(round["number"]) and round_privacy?(round) and round_prompt?(round["prompt"]) and
+      (historical_round?(round) or
+         (round_timing?(round) and round_exists?(index, row["session_id"], round["number"])))
   end
 
   defp round_snapshot?(_, _), do: true
+
+  defp historical_round?(%{"status" => status}) when status in ~w(planned cancelled), do: true
+  defp historical_round?(_), do: false
+
+  defp round_exists?(index, session_id, number) do
+    Enum.any?(index.rounds, fn {_, current} ->
+      current["session_id"] == session_id and current["number"] == number
+    end)
+  end
 
   defp contextual_snapshot?(%{"action" => "context_linked", "snapshot" => snapshot} = row, index) do
     request = snapshot["contextual_request"]
@@ -240,6 +257,14 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
   defp valid_selection?(%{"selection" => %{"mode" => "selected", "targets" => targets}} = row, index),
     do: valid_targets?(targets, row["session_id"], index)
+
+  # Revealing a round publishes its notes; the round belongs to the same session.
+  defp valid_selection?(%{"selection" => %{"mode" => "round", "round_id" => round_id}} = row, index) do
+    case index.rounds[round_id] do
+      %{"session_id" => session_id} -> session_id == row["session_id"]
+      _ -> false
+    end
+  end
 
   defp valid_selection?(_, _), do: false
 

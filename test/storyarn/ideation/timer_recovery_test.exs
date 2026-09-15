@@ -17,11 +17,19 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
   end
 
   test "running timers restore paused with preserved settings, actor and a fenced deadline", ctx do
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+    {:ok, _} =
+      Storyarn.IdeationFixtures.set_private_mode(
+        ctx.facilitator,
+        ctx.project.id,
+        ctx.session.id,
+        ctx.session.revision,
+        true
+      )
+
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
     ctx = %{ctx | session: session}
     idea = idea_fixture(ctx, %{configuration_version: ctx.session.configuration_version})
-    {ctx, timer} = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+    {ctx, timer} = start(ctx, %{close_contributions_on_expiry: true})
     capsule = capture(ctx)
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
@@ -36,12 +44,11 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     assert restored.version == timer.version + 1
     assert restored.deadline_at == nil
     assert restored.remaining_seconds == timer.remaining_seconds
-    assert restored.reveal_on_expiry
     assert restored.close_contributions_on_expiry
     assert {:ok, %{outcome: :not_found}} = Ideation.expire_timer(timer.id, timer.version)
     assert {:ok, %{outcome: :stale}} = Ideation.expire_timer(restored.id, timer.version)
     assert {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, session_id)
-    assert session.configuration.private_mode
+    assert Storyarn.IdeationFixtures.private_round?(ctx.viewer, ctx.project.id, session_id)
     assert session.contributions_open
     assert {:error, :not_found} = Ideation.get_idea(ctx.owner, ctx.project.id, session_id, maps["ideas"][idea.id])
 
@@ -74,12 +81,18 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     @tag timer_status: status
     test "recovering and reopening a replaced session cancels its #{status} timer", ctx do
       {:ok, _} =
-        Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+        Storyarn.IdeationFixtures.set_private_mode(
+          ctx.facilitator,
+          ctx.project.id,
+          ctx.session.id,
+          ctx.session.revision,
+          true
+        )
 
       {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
       ctx = %{ctx | session: session}
       idea = idea_fixture(ctx, %{configuration_version: session.configuration_version})
-      {ctx, timer} = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+      {ctx, timer} = start(ctx, %{close_contributions_on_expiry: true})
 
       if ctx.timer_status == :paused do
         assert {:ok, _} =
@@ -120,7 +133,7 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
 
       assert {:ok, current} = Ideation.get_session(ctx.owner, ctx.project.id, reopened.id)
       assert current.contributions_open
-      assert current.configuration.private_mode
+      assert Storyarn.IdeationFixtures.private_round?(ctx.owner, ctx.project.id, current.id)
       assert {:error, :not_found} = Ideation.get_idea(ctx.owner, ctx.project.id, reopened.id, idea.id)
       assert {:ok, _} = Ideation.get_idea(ctx.author, ctx.project.id, reopened.id, idea.id)
     end
@@ -131,7 +144,7 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     assert {:ok, first} = Repo.transact(fn -> Records.capture(ctx.project.id) end)
     assert {:ok, second} = Repo.transact(fn -> Records.capture(ctx.project.id) end)
     assert first == second
-    assert first["version"] == 6
+    assert first["version"] == 8
     assert capture(ctx) == capture(ctx)
   end
 
@@ -198,6 +211,12 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
       data
       |> Map.put("version", 2)
       |> update_in(
+        ["rows", "rounds"],
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+      )
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+      |> update_in(
         ["rows"],
         &Map.drop(
           &1,
@@ -228,7 +247,7 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
       fn data -> put_in(data, ["rows", "timers", Access.at(0), "remaining_seconds"], 0) end,
       fn data -> put_in(data, ["rows", "timers", Access.at(0), "duration_seconds"], 86_401) end,
       fn data -> put_in(data, ["rows", "timers", Access.at(0), "version"], 0) end,
-      fn data -> put_in(data, ["rows", "timers", Access.at(0), "reveal_on_expiry"], "yes") end,
+      fn data -> put_in(data, ["rows", "timers", Access.at(0), "close_contributions_on_expiry"], "yes") end,
       fn data -> put_in(data, ["rows", "sessions", Access.at(0), "contributions_open"], nil) end,
       fn data -> update_in(data, ["rows", "timers"], fn [row] -> [row, %{row | "id" => row["id"] + 1}] end) end,
       fn data -> put_in(data, ["rows", "session_revisions", Access.at(1), "snapshot", "timer", "status"], "unknown") end

@@ -17,7 +17,7 @@ const reference: BrainstormingReference = {
 };
 
 describe("Board header with starting context", () => {
-  it("retains title, settings, rounds, timer and private controls together with return navigation", async () => {
+  it("retains title and settings together with return navigation", async () => {
     const current = board();
     const pushEvent = vi.fn();
     const wrapper = mount(BoardHeader, {
@@ -25,11 +25,6 @@ describe("Board header with starting context", () => {
         session: current.session!,
         epoch: current.epoch,
         canManage: true,
-        canEdit: true,
-        rounds: [],
-        roundsNext: null,
-        activeRound: null,
-        timer: null,
         contextReference: reference,
       },
       global: {
@@ -44,11 +39,8 @@ describe("Board header with starting context", () => {
       },
     });
     expect(wrapper.get("#brainstorming-session-title").text()).toBe(current.session!.title);
-    expect(wrapper.find("#brainstorming-rounds-trigger").exists()).toBe(true);
-    expect(wrapper.find("#brainstorming-timer-trigger").exists()).toBe(true);
-    expect(wrapper.find('button[aria-label="Start private mode for everyone"]').exists()).toBe(
-      true,
-    );
+    expect(wrapper.find("#brainstorming-timer-trigger").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-session-settings").exists()).toBe(true);
     await wrapper.get('button[aria-label="Session details and settings"]').trigger("click");
     expect(pushEvent.mock.calls[0][0]).toBe("board_action");
     const back = wrapper.get("#brainstorming-origin-return-4");
@@ -62,7 +54,25 @@ describe("Board header with starting context", () => {
       session_id: current.session!.id,
       reference_id: 4,
     });
-    expect(wrapper.find("#brainstorming-rounds-trigger").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("stays mounted and empty until a session is open", () => {
+    const wrapper = mount(BoardHeader, {
+      props: { session: null, epoch: "epoch-0", canManage: false },
+      global: {
+        provide: {
+          _live_vue: {
+            pushEvent: vi.fn(),
+            handleEvent: vi.fn(),
+            removeHandleEvent: vi.fn(),
+            upload: vi.fn(),
+          },
+        },
+      },
+    });
+    expect(wrapper.find("#brainstorming-session-title").exists()).toBe(false);
+    expect(wrapper.text()).toBe("");
     wrapper.unmount();
   });
 });

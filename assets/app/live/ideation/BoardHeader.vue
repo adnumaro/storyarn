@@ -1,65 +1,37 @@
 <script setup lang="ts">
-import { Settings2, Eye, EyeOff } from "@lucide/vue";
+import { Settings2 } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive";
 import { ref } from "vue";
-import { useBoardText, RoundControls, TimerControls } from "@modules/ideation";
+import { useBoardText } from "@modules/ideation";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import type { Session, Round, SessionTimer } from "@modules/ideation";
+import type { Session } from "@modules/ideation";
 import ExplorationContext from "./ExplorationContext.vue";
 import DecisionsButton from "./DecisionsButton.vue";
 import type { BrainstormingReference } from "./referenceTypes";
+
+// Injected into the navbar from the first render and empty until a session
+// is open: the navbar only picks up injectors that exist when it mounts.
 const {
-  session,
+  session = null,
   epoch,
   canManage,
-  canEdit,
-  rounds,
-  roundsNext,
-  activeRound,
-  timer,
   contextReference = null,
 } = defineProps<{
-  session: Session;
-  timer: SessionTimer | null;
-  rounds: Round[];
-  roundsNext: number | null;
-  activeRound: Round | null;
+  session?: Session | null;
   epoch: string;
   canManage: boolean;
-  canEdit: boolean;
   contextReference?: BrainstormingReference | null;
 }>();
 const { t, error } = useBoardText();
 const failure = ref<string | null>(null);
 const live = useLive();
-const pending = ref(false);
-function setMode() {
-  if (pending.value || !canManage) return;
-  pending.value = true;
-  failure.value = null;
-  live.pushEvent(
-    "set_private_mode",
-    {
-      epoch,
-      session_id: session.id,
-      revision: session.revision,
-      enabled: !session.configuration.private_mode,
-    },
-    (reply) => {
-      pending.value = false;
-      if (reply?.status !== "ok") failure.value = String(reply?.code ?? "unavailable");
-    },
-    () => {
-      pending.value = false;
-      failure.value = "offline";
-    },
-  );
-}
 function action(action: string) {
+  if (!session) return;
   live.pushEvent("board_action", { action, epoch, session_id: session.id });
 }
 function rename(title: string) {
+  if (!session) return;
   failure.value = null;
   live.pushEvent(
     "update_session",
@@ -74,7 +46,7 @@ function rename(title: string) {
 }
 </script>
 <template>
-  <div class="@container relative flex h-8 min-w-0 flex-1 items-center gap-1">
+  <div v-if="session" class="@container relative flex h-8 min-w-0 flex-1 items-center gap-1">
     <ExplorationContext
       v-if="contextReference"
       :reference="contextReference"
@@ -99,6 +71,7 @@ function rename(title: string) {
     <DecisionsButton :session-id="session.id" :epoch="epoch" />
     <ToolbarTooltip :label="t('ideation.sessionSettings')" side="bottom"
       ><button
+        id="brainstorming-session-settings"
         type="button"
         class="toolbar-btn"
         :aria-label="t('ideation.sessionSettings')"
@@ -106,57 +79,5 @@ function rename(title: string) {
       >
         <Settings2 class="size-3.5" /></button
     ></ToolbarTooltip>
-    <RoundControls
-      :session="session"
-      :epoch="epoch"
-      :rounds="rounds"
-      :rounds-next="roundsNext"
-      :active-round="activeRound"
-      :can-manage="canManage"
-      :can-edit="canEdit"
-    />
-    <TimerControls
-      :session="session"
-      :epoch="epoch"
-      :timer="timer"
-      :can-manage="canManage"
-      :can-edit="canEdit"
-    />
-    <ToolbarTooltip
-      :label="
-        t(
-          session.configuration.private_mode
-            ? 'ideation.canvas.privateModeHelp'
-            : 'ideation.canvas.sharedModeHelp',
-        )
-      "
-      side="bottom"
-    >
-      <button
-        type="button"
-        class="toolbar-btn gap-1.5"
-        :class="session.configuration.private_mode ? 'text-primary' : ''"
-        :disabled="!canManage || !canEdit || session.status !== 'open' || pending"
-        :aria-label="
-          t(
-            session.configuration.private_mode
-              ? 'ideation.canvas.endPrivate'
-              : 'ideation.canvas.startPrivate',
-          )
-        "
-        @click="setMode"
-      >
-        <EyeOff v-if="session.configuration.private_mode" class="size-3.5" /><Eye
-          v-else
-          class="size-3.5"
-        /><span class="hidden @min-[30rem]:inline">{{
-          t(
-            session.configuration.private_mode
-              ? "ideation.canvas.privateMode"
-              : "ideation.canvas.sharedMode",
-          )
-        }}</span>
-      </button>
-    </ToolbarTooltip>
   </div>
 </template>

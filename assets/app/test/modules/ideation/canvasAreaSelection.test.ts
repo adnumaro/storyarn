@@ -111,7 +111,6 @@ async function canvas(options: Options = {}) {
       groupState: state,
       editingId: options.editingId ?? null,
       permissions: { edit: options.edit ?? true, create: options.edit ?? true },
-      noteKey: (id: number) => String(id),
       historyState: { canUndo: true, canRedo: true, busy: false },
       members: [],
       statuses: {},
@@ -212,7 +211,6 @@ describe("canvas area selection", () => {
             historyState: { canUndo: true, canRedo: false, busy: false },
             editingId: null,
             permissions: { edit: true, create: true },
-            noteKey: (id: number) => String(id),
             members: [],
             statuses: {},
             collaboration: { context: { epoch: "parent-session", session_id: 1 }, cursors: false },
@@ -353,6 +351,20 @@ describe("canvas area selection", () => {
     expect(wrapper.find("#brainstorming-selection-area").exists()).toBe(false);
   });
 
+  it("lets the view rise as far as a group frame above the first header", async () => {
+    const member = {
+      idea_id: 10,
+      source_revision: 1,
+      canvas: { x: 100, y: 60, width: 100, version: 1 },
+    };
+    const { wrapper } = await canvas({
+      notes: [idea({ id: 10, canvas: { x: 100, y: 60, width: 100 } })],
+      groups: [ideaGroup({ id: 5, idea_ids: [10], members: [member] })],
+    });
+    // The frame rises 64px above its member at 60: the canvas may show 4px above the header.
+    expect(viewport(wrapper).y).toBe(4);
+  });
+
   it.each(["Space", "hand", "middle"])(
     "retains the existing selection when panning with %s",
     async (method) => {
@@ -364,11 +376,12 @@ describe("canvas area selection", () => {
       await pointer(wrapper.element, "pointerdown", origin, {
         button: method === "middle" ? 1 : 0,
       });
-      await pointer(wrapper.element, "pointermove", { x: origin.x + 160, y: origin.y + 60 });
+      // Upwards: the canvas never scrolls above the first header, so a downward pan is held.
+      await pointer(wrapper.element, "pointermove", { x: origin.x + 160, y: origin.y - 60 });
       expect(viewport(wrapper).x).toBe(initial.x + 160);
-      expect(viewport(wrapper).y).toBe(initial.y + 60);
+      expect(viewport(wrapper).y).toBe(initial.y - 60);
       expect(wrapper.find("#brainstorming-selection-area").exists()).toBe(false);
-      await pointer(wrapper.element, "pointerup", { x: origin.x + 160, y: origin.y + 60 });
+      await pointer(wrapper.element, "pointerup", { x: origin.x + 160, y: origin.y - 60 });
       expect(selected).toEqual([12]);
       expect(wrapper.emitted("move")).toBeUndefined();
     },

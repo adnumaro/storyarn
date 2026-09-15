@@ -11,6 +11,13 @@ defmodule StoryarnWeb.IdeationLive.Handlers.IdeaHandlers do
     end
   end
 
+  def run("bring_idea_forward", scope, project_id, session_id, params) do
+    with {:ok, id} <- Params.positive(params["idea_id"]),
+         {:ok, attrs} <- Params.bring(params) do
+      scope |> Ideation.bring_idea_forward(project_id, session_id, id, attrs) |> idea_result()
+    end
+  end
+
   def run("delete_idea", scope, project_id, session_id, params) do
     with {:ok, id} <- Params.positive(params["idea_id"]),
          {:ok, revision} <- Params.positive(params["revision"]) do

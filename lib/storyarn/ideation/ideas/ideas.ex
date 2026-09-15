@@ -26,9 +26,14 @@ defmodule Storyarn.Ideation.Ideas do
     to: Storyarn.Ideation.Ideas.Execution.GroupPlacement,
     as: :move
 
-  defdelegate set_private_mode_locked(access, revision, enabled),
-    to: Storyarn.Ideation.Ideas.Execution.PrivateMode,
-    as: :set_locked
+  def reveal_round_locked(access, revision, round_id),
+    do: Storyarn.Ideation.Ideas.Execution.RoundPrivacy.set_locked(access, revision, round_id, %{"private" => false})
+
+  defdelegate set_round_privacy(scope, project_id, session_id, round_id, revision, attrs),
+    to: Commands.SetRoundPrivacy,
+    as: :run
+
+  defdelegate list_masked_ideas(scope, project_id, session_id), to: Queries.List, as: :masked
 
   def notify_timer_reveal(project_id, session_id), do: Invalidation.broadcast(project_id, session_id, :shared)
 
@@ -54,6 +59,7 @@ defmodule Storyarn.Ideation.Ideas do
   defdelegate get_idea(scope, project_id, session_id, idea_id), to: Queries.Get, as: :run
   defdelegate list_ideas(scope, project_id, session_id, opts \\ []), to: Queries.List, as: :run
   defdelegate count_ideas(scope, project_id, session_id, opts \\ []), to: Queries.List, as: :counts
+  defdelegate count_parked_ideas(scope, project_id, session_ids), to: Queries.List, as: :parked_counts
 
   defdelegate prepare_idea_reveal(scope, project_id, session_id, key, selection \\ :eligible),
     to: Commands.PrepareReveal,
@@ -73,9 +79,11 @@ defmodule Storyarn.Ideation.Ideas do
 
   defdelegate create_canvas_idea(scope, project_id, session_id, attrs), to: Commands.Create, as: :run_canvas
 
+  defdelegate bring_idea_forward(scope, project_id, session_id, idea_id, attrs),
+    to: Commands.BringForward,
+    as: :run
+
   defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs),
     to: Commands.Update,
     as: :run_canvas
-
-  defdelegate set_private_mode(scope, project_id, session_id, revision, enabled), to: Commands.SetPrivateMode, as: :run
 end

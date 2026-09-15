@@ -79,7 +79,7 @@ defmodule Storyarn.Ideation.CanvasDeleteRestoreTest do
   end
 
   test "undo respects current private mode and archived sessions", ctx do
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    {:ok, _} = Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
     {:ok, note} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs())
     {:ok, deleted} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, note.id, 1)
     {:ok, restored} = restore(ctx, deleted)

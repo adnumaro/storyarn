@@ -1,5 +1,7 @@
 import { computed, onScopeDispose, ref, watch } from "vue";
 import type { Board, GroupText, GroupVersions, IdeaGroup, Request } from "../types";
+import type { BandOffsets } from "../lib/bands";
+import { groupRound } from "../lib/groups";
 import type { Point } from "./useCanvasViewport";
 import type { useCanvasHistory, CanvasCommand } from "./useCanvasHistory";
 
@@ -57,20 +59,41 @@ export function useCanvasGroups(
   notify: (code: string | null, replacing?: string) => void,
   select: (id: number | null) => void,
   settleNotes: (ids: number[]) => Promise<boolean>,
+  offsets: () => BandOffsets = () => new Map(),
 ) {
   const selected = ref<number | null>(null);
-  const groups = computed(() =>
-    board().session?.configuration.private_mode ? [] : (board().groups ?? []),
-  );
-  const allowed = computed(
-    () =>
-      board().can_edit &&
-      board().session?.status === "open" &&
-      !board().session?.configuration.private_mode,
-  );
+  // A group holds notes of one round. Its frame and its members are stored
+  // relative to that round's header; the canvas works in absolute units.
+  const offsetFor = (roundId: number | null | undefined) =>
+    roundId == null ? 0 : (offsets().get(roundId) ?? 0);
+  const roundOfGroup = groupRound;
+  const roundOfIdeas = (ids: number[]) =>
+    board().ideas.find((idea) => ids.includes(idea.id))?.round_id ?? null;
+  const shifted = <T extends { y: number }>(point: T, by: number): T =>
+    by === 0 ? point : { ...point, y: point.y + by };
+  const outgoing = (group: IdeaGroup | undefined, changes: GroupChanges): GroupChanges =>
+    changes.canvas && group
+      ? { ...changes, canvas: shifted(changes.canvas, -offsetFor(roundOfGroup(group))) }
+      : changes;
+  // Board data, writes and history keep round-relative coordinates. Only the
+  // canvas projection follows the current layout of the bands.
+  const absolute = (group: IdeaGroup): IdeaGroup => ({
+    ...group,
+    canvas: shifted(group.canvas, offsetFor(roundOfGroup(group))),
+    members: group.members.map((member) =>
+      typeof member.canvas?.y === "number" && member.round_id != null
+        ? {
+            ...member,
+            canvas: { ...member.canvas, y: member.canvas.y + offsetFor(member.round_id) },
+          }
+        : member,
+    ),
+  });
+  const groups = computed(() => (board().groups ?? []).map(absolute));
+  const allowed = computed(() => board().can_edit && board().session?.status === "open");
   const retryKeys = new Map<string, string>();
   const pending = new Set<() => void>();
-  const find = (id: number) => groups.value.find((group) => group.id === id);
+  const find = (id: number) => board().groups?.find((group) => group.id === id);
   function choose(id: number | null) {
     selected.value = id;
     select(id);
@@ -174,14 +197,19 @@ export function useCanvasGroups(
       notify("stale_group");
       return false;
     }
-    const previous = previousChanges(before, changes);
-    if (JSON.stringify(previous) === JSON.stringify(changes)) return true;
+    const next = outgoing(before, changes);
+    const previous = previousChanges(before, next);
+    if (JSON.stringify(previous) === JSON.stringify(next)) return true;
     const initial = snapshot(before);
     const result = await history.run(() =>
-      mutate("update_group", { group_id: id, version: initial.version, ...changes }),
+      mutate("update_group", {
+        group_id: id,
+        version: initial.version,
+        ...next,
+      }),
     );
     if (!result) return false;
-    history.push(updateCommand(initial, result, previous, previousChanges(result, changes)));
+    history.push(updateCommand(initial, result, previous, previousChanges(result, next)));
     return true;
   }
   function presenceCommand(
@@ -232,7 +260,12 @@ export function useCanvasGroups(
     if (!allowed.value || history.busy.value || ids.length < 2) return;
     const result = await history.run(async () => {
       if (!(await settleNotes(ids))) return null;
-      return mutate("create_group", { idea_ids: ids, title: "", synthesis: "", canvas });
+      return mutate("create_group", {
+        idea_ids: ids,
+        title: "",
+        synthesis: "",
+        canvas: shifted(canvas, -offsetFor(roundOfIdeas(ids))),
+      });
     });
     if (!result) return;
     history.push(presenceCommand(result, true));
@@ -263,11 +296,12 @@ export function useCanvasGroups(
     const initial = find(id);
     if (!initial) return;
     const before = snapshot(initial);
+    const destination = shifted(point, -offsetFor(roundOfGroup(before)));
     if (expectedVersions && !matchesVersions(before, expectedVersions)) {
       notify("stale_group");
       return;
     }
-    if (before.canvas.x === point.x && before.canvas.y === point.y) return;
+    if (samePoint(before.canvas, destination)) return;
     const result = await history.run(async () => {
       if (!(await settleNotes(before.idea_ids))) return null;
       const current = find(id);
@@ -275,7 +309,7 @@ export function useCanvasGroups(
         notify("stale_group");
         return null;
       }
-      return moveTo(current, point);
+      return moveTo(current, destination);
     });
     if (!result) return;
     let expected = result;
@@ -291,7 +325,7 @@ export function useCanvasGroups(
     history.push({
       targets: () => before.idea_ids.map((id) => ({ id })),
       undo: () => apply(before.canvas),
-      redo: () => apply(point),
+      redo: () => apply(destination),
     });
   }
   function moveTo(group: IdeaGroup, point: Point) {

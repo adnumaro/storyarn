@@ -21,9 +21,11 @@ defmodule Storyarn.Ideation.Ideas.Queries.DecisionSources do
     from i in Idea,
       join: r in Revision,
       on: r.idea_id == i.id and r.number == i.published_revision,
-      join: s in subquery(Sessions.canvas_settings_query()),
-      on: s.id == i.session_id,
-      where: i.session_id == ^session_id and is_nil(i.deleted_at) and not s.private_mode,
+      left_join: mask in subquery(Sessions.round_mask_query()),
+      on: mask.id == i.round_id,
+      where:
+        i.session_id == ^session_id and is_nil(i.deleted_at) and
+          not fragment("COALESCE(?, false)", mask.private),
       select: %{
         type: "idea",
         id: i.id,

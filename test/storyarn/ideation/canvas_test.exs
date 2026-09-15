@@ -102,7 +102,7 @@ defmodule Storyarn.Ideation.CanvasTest do
     attrs = %{"x" => 30, "y" => 50, "request_key" => Ecto.UUID.generate()}
 
     for _ <- 1..2 do
-      assert {:ok, %{"x" => 30, "y" => 50, "width" => 280, "color" => "yellow", "version" => 1}} =
+      assert {:ok, %{"x" => 30, "y" => 50, "width" => 280, "color" => "none", "version" => 1}} =
                Ideation.update_idea_canvas(ctx.author, ctx.project.id, ctx.session.id, idea.id, 0, attrs)
     end
 
@@ -115,7 +115,7 @@ defmodule Storyarn.Ideation.CanvasTest do
              )
 
     assert note.canvas["width"] == 320
-    assert note.canvas["color"] == "yellow"
+    assert note.canvas["color"] == "none"
   end
 
   test "connections never expose private endpoints, including after source publication", ctx do

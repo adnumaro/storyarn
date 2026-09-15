@@ -5,6 +5,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.UpdateRound do
   alias Storyarn.Ideation.Sessions.Round
   alias Storyarn.Repo
 
+  # The question of the round in progress stays editable; closed rounds are history.
   def run(scope, project_id, session_id, round_id, revision, attrs) when is_map(attrs) do
     RoundMutation.run(scope, project_id, session_id, revision, fn session, access ->
       with {:ok, round} <- RoundMutation.get(session.id, round_id) do
@@ -15,7 +16,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.UpdateRound do
 
   def run(_scope, _project_id, _session_id, _round_id, _revision, _attrs), do: {:error, :invalid_round}
 
-  defp update(session, access, %{status: :planned} = round, attrs) do
+  defp update(session, access, %{status: :active} = round, attrs) do
     changeset = Round.changeset(round, attrs)
 
     cond do
@@ -25,7 +26,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.UpdateRound do
     end
   end
 
-  defp update(_session, _access, _round, _attrs), do: {:error, :round_not_planned}
+  defp update(_session, _access, _round, _attrs), do: {:error, :round_not_active}
 
   defp persist(session, access, changeset) do
     with {:ok, updated} <- Repo.update(changeset) do

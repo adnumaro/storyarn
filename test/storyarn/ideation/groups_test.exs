@@ -64,7 +64,7 @@ defmodule Storyarn.Ideation.GroupsTest do
     assert group.version == 1
     assert group.idea_ids == [ctx.first.id, ctx.second.id]
     assert Enum.all?(group.members, &(&1.source_revision == 1))
-    assert Enum.all?(group.members, &(Enum.sort(Map.keys(&1)) == [:canvas, :idea_id, :source_revision]))
+    assert Enum.all?(group.members, &(Enum.sort(Map.keys(&1)) == [:canvas, :idea_id, :round_id, :source_revision]))
     assert Repo.aggregate(Revision, :count) == 1
     assert %{actor_id: actor_id, sources: sources} = Repo.get_by!(Revision, group_id: group.id, number: 1)
     assert actor_id == ctx.author.user.id
@@ -155,14 +155,52 @@ defmodule Storyarn.Ideation.GroupsTest do
     group = create_group_fixture(ctx)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     for actor <- [ctx.author, ctx.peer, ctx.facilitator, ctx.viewer] do
       assert {:ok, []} = Ideation.list_groups(actor, ctx.project.id, ctx.session.id)
     end
 
-    assert {:error, :private_mode} = edit_group(ctx, group, %{title: "Hidden"})
-    assert {:error, :private_mode} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs(ctx))
+    assert {:error, :private_round} = edit_group(ctx, group, %{title: "Hidden"})
+
+    assert {:error, :invalid_group_members} =
+             Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs(ctx))
+  end
+
+  test "a creation replayed after its round went private is refused like any other read of it", ctx do
+    attrs = attrs(ctx)
+    assert {:ok, group} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs)
+    assert group.round_id == first_round(ctx).id
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
+
+    assert {:error, :private_round} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs)
+  end
+
+  test "a group stays in its round: members cannot carry it to another band and a lone synthesis keeps it", ctx do
+    group = create_group_fixture(ctx)
+    first = first_round(ctx)
+    assert group.round_id == first.id
+    {ctx, _second} = new_round(ctx)
+    later = shared(ctx, 700, ctx.author)
+
+    assert {:error, :mixed_rounds} = edit_group(ctx, group, %{idea_ids: [later.id]})
+    assert {:ok, alone} = edit_group(ctx, group, %{idea_ids: []})
+    assert alone.idea_ids == []
+    assert alone.round_id == first.id
   end
 
   test "UUID receipts remain durable through later edits and cannot be reused for different intent", ctx do

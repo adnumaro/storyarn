@@ -22,6 +22,7 @@ defmodule Storyarn.Ideation.Groups.Execution.Memberships do
     cond do
       Enum.map(sources, & &1.idea_id) != ids -> {:error, :invalid_group_members}
       occupied? -> {:error, :already_grouped}
+      length(Enum.uniq(Enum.map(sources, & &1.round_id))) > 1 -> {:error, :mixed_rounds}
       true -> {:ok, sources}
     end
   end

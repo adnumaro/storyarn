@@ -31,7 +31,6 @@ function canvas(props = {}) {
       selectedIds: [10],
       editingId: null,
       permissions: { edit: true, create: true },
-      noteKey: (id: number) => String(id),
       historyState: { canUndo: true, canRedo: true, busy: false },
       members: [],
       statuses: {},
@@ -512,7 +511,7 @@ describe("contextual comments", () => {
         save: vi.fn(),
         move: vi.fn(),
       },
-      permissions: { edit: true, create: true, comment: true, privateMode: false },
+      permissions: { edit: true, create: true, comment: true },
     });
     const target = wrapper.get(selector);
     // A right click on the blank canvas hits the context trigger's full-size surface.
@@ -535,10 +534,39 @@ describe("contextual comments", () => {
       [{ ideaId, groupId, position: { x: expect.any(Number), y: expect.any(Number) } }],
     ]);
   });
+  it("offers a note's states to its author from the context menu, and to nobody else", async () => {
+    const own = { context: { epoch: "a", session_id: 1 }, cursors: false, userId: 1 };
+    const menu = async (wrapper: VueWrapper, id: number) => {
+      await wrapper.get(`[data-note-id="${id}"]`).trigger("contextmenu", { button: 2 });
+      await flushPromises();
+      return (item: string) =>
+        document.querySelector<HTMLElement>(`#brainstorming-note-context-${item}`);
+    };
+    const active = canvas({ notes: [idea({ author_id: 1 })], collaboration: own });
+    let item = await menu(active, 10);
+    expect(item("restore")).toBeNull();
+    await new DOMWrapper(item("park")!).trigger("click");
+    expect(active.emitted("changeState")).toEqual([[10, "parked"]]);
+    active.unmount();
+    mounted.splice(mounted.indexOf(active), 1);
+
+    const parked = canvas({ notes: [idea({ author_id: 1, state: "parked" })], collaboration: own });
+    item = await menu(parked, 10);
+    expect(item("park")).toBeNull();
+    await new DOMWrapper(item("restore")!).trigger("click");
+    expect(parked.emitted("changeState")).toEqual([[10, "active"]]);
+    parked.unmount();
+    mounted.splice(mounted.indexOf(parked), 1);
+
+    const theirs = canvas({ notes: [idea({ author_id: 2 })], collaboration: own });
+    item = await menu(theirs, 10);
+    expect(item("park")).toBeNull();
+    expect(item("discard")).toBeNull();
+    expect(theirs.emitted("changeState")).toBeUndefined();
+  });
   it.each([
-    { comment: false, privateMode: false, visibility: "shared" as const, published_revision: 1 },
-    { comment: true, privateMode: true, visibility: "shared" as const, published_revision: 1 },
-    { comment: true, privateMode: false, visibility: "private" as const, published_revision: null },
+    { comment: false, visibility: "shared" as const, published_revision: 1 },
+    { comment: true, visibility: "private" as const, published_revision: null },
   ])("keeps unavailable sources out of comment creation: %o", async (config) => {
     const wrapper = canvas({
       notes: [idea(config)],

@@ -3,6 +3,7 @@ defmodule Storyarn.Ideation.Sessions do
 
   alias Storyarn.Ideation.Sessions.Commands
   alias Storyarn.Ideation.Sessions.Events.Invalidation
+  alias Storyarn.Ideation.Sessions.Execution.RoundPrivacy
   alias Storyarn.Ideation.Sessions.Queries
 
   defdelegate comment_sources_query(), to: Storyarn.Ideation.Sessions.Queries.CommentSources, as: :query
@@ -38,13 +39,13 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Queries.List, as: :run
   defdelegate get_session(scope, project_id, session_id), to: Queries.Get, as: :run
   defdelegate list_rounds(scope, project_id, session_id, opts \\ []), to: Queries.Rounds, as: :run
+  defdelegate list_session_rounds(scope, project_id, session_ids), to: Queries.SessionRounds, as: :run
   defdelegate get_round_context(scope, project_id, session_id, opts \\ []), to: Queries.RoundContext, as: :run
   defdelegate get_canvas_context(scope, project_id, session_id, opts \\ []), to: Queries.CanvasContext, as: :run
-  defdelegate create_round(scope, project_id, session_id, revision, attrs), to: Commands.CreateRound, as: :run
+  defdelegate new_round(scope, project_id, session_id, revision, attrs), to: Commands.NewRound, as: :run
   defdelegate update_round(scope, project_id, session_id, round_id, revision, attrs), to: Commands.UpdateRound, as: :run
-  defdelegate cancel_round(scope, project_id, session_id, round_id, revision), to: Commands.CancelRound, as: :run
-  defdelegate start_round(scope, project_id, session_id, round_id, revision), to: Commands.StartRound, as: :run
   defdelegate close_round(scope, project_id, session_id, round_id, revision), to: Commands.CloseRound, as: :run
+  defdelegate authorize_project_read(scope, project_id), to: Queries.ProjectAccess, as: :authorize
 
   defdelegate validate_round_filter(session_id, round_id), to: Queries.Rounds, as: :validate_filter
 
@@ -68,11 +69,16 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate recover_session(scope, project_id, session_id, revision), to: Commands.Recover, as: :run
   defdelegate purge_replaced_session(scope, project_id, session_id, revision), to: Commands.PurgeReplaced, as: :run
 
-  defdelegate set_canvas_mode_locked(access, revision, enabled),
-    to: Storyarn.Ideation.Sessions.Execution.CanvasMode,
+  defdelegate set_round_privacy_locked(access, revision, round_id, attrs),
+    to: RoundPrivacy,
     as: :set
 
-  defdelegate notify_canvas_mode(result, project_id), to: Invalidation, as: :notify
+  defdelegate active_private_round(session_id), to: RoundPrivacy
+  defdelegate round_private?(round_id), to: RoundPrivacy, as: :private?
+  defdelegate round_mask_query(), to: Queries.RoundMask, as: :query
+
+  defdelegate notify_round_privacy(result, project_id), to: Invalidation, as: :notify
+  defdelegate notify_tree_changed(project_id), to: Invalidation, as: :broadcast_tree
 
   defdelegate canvas_settings_query(), to: Queries.CanvasSettings, as: :query
 

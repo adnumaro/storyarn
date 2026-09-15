@@ -234,21 +234,19 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
     end)
   end
 
-  test "competing round starts commit one active round and one session revision", ctx do
+  test "competing new rounds commit one round and one session revision", ctx do
     Sandbox.unboxed_run(Repo, fn ->
-      {:ok, _} = Ideation.create_round(ctx.scope, ctx.project.id, ctx.session.id, 1, %{})
-      {:ok, session} = Ideation.create_round(ctx.scope, ctx.project.id, ctx.session.id, 2, %{})
-      {:ok, rounds} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id)
+      {:ok, session} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
       parent = self()
 
       tasks =
-        for round <- rounds do
+        for _ <- 1..2 do
           Task.async(fn ->
             Sandbox.unboxed_run(Repo, fn ->
               send(parent, {:round_ready, self()})
 
               receive do
-                :start -> Ideation.start_round(ctx.scope, ctx.project.id, ctx.session.id, round.id, session.revision)
+                :start -> Ideation.new_round(ctx.scope, ctx.project.id, ctx.session.id, session.revision, %{})
               after
                 @timeout -> flunk("round start was not released")
               end
@@ -262,8 +260,9 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
         results = Task.await_many(tasks, @timeout)
         assert Enum.count(results, &match?({:ok, _}, &1)) == 1
         assert Enum.count(results, &(&1 == {:error, :stale_revision})) == 1
-        assert {:ok, [_one]} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id, status: :active)
-        assert {:ok, %{revision: 4}} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
+        assert {:ok, [%{number: 2}]} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id, status: :active)
+        assert {:ok, [_, _]} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id)
+        assert {:ok, %{revision: 2}} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
       after
         Enum.each(tasks, &Task.shutdown(&1, :brutal_kill))
       end
@@ -272,16 +271,14 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
 
   test "a contribution waiting for a committed round close is saved against that round as late", ctx do
     Sandbox.unboxed_run(Repo, fn ->
-      {:ok, _} = Ideation.create_round(ctx.scope, ctx.project.id, ctx.session.id, 1, %{})
       {:ok, [round]} = Ideation.list_rounds(ctx.scope, ctx.project.id, ctx.session.id)
-      {:ok, _} = Ideation.start_round(ctx.scope, ctx.project.id, ctx.session.id, round.id, 2)
       parent = self()
 
       closer =
         Task.async(fn ->
           Sandbox.unboxed_run(Repo, fn ->
             Repo.transact(fn ->
-              {:ok, session} = Ideation.close_round(ctx.scope, ctx.project.id, ctx.session.id, round.id, 3)
+              {:ok, session} = Ideation.close_round(ctx.scope, ctx.project.id, ctx.session.id, round.id, 1)
               send(parent, :round_closed_uncommitted)
 
               receive do
@@ -330,7 +327,10 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
 
   test "competing timer expirations publish and close contributions exactly once", ctx do
     Sandbox.unboxed_run(Repo, fn ->
-      {:ok, _} = Ideation.set_private_mode(ctx.scope, ctx.project.id, ctx.session.id, 1, true)
+      {:ok, _} =
+        Storyarn.IdeationFixtures.set_private_mode(ctx.scope, ctx.project.id, ctx.session.id, 1, true,
+          reveal_on_expiry: true
+        )
 
       {:ok, idea} =
         Ideation.create_canvas_idea(ctx.scope, ctx.project.id, ctx.session.id, %{
@@ -341,7 +341,6 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
       {:ok, _} =
         Ideation.start_timer(ctx.scope, ctx.project.id, ctx.session.id, 2, %{
           seconds: 60,
-          reveal_on_expiry: true,
           close_contributions_on_expiry: true
         })
 
@@ -373,7 +372,7 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
         assert Enum.count(results, &match?({:ok, %{outcome: :stale}}, &1)) == 1
         assert {:ok, session} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
         assert session.revision == 5
-        refute session.configuration.private_mode
+        refute Storyarn.IdeationFixtures.private_round?(ctx.scope, ctx.project.id, ctx.session.id)
         refute session.contributions_open
         assert {:ok, published} = Ideation.get_idea(ctx.owner_scope, ctx.project.id, ctx.session.id, idea.id)
         assert published.published_revision == 1

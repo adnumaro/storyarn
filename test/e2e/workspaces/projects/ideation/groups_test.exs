@@ -23,8 +23,10 @@ defmodule StoryarnWeb.E2E.IdeationGroupsTest do
   test "organize and synthesize shared notes directly on the canvas, with collaboration and undo",
        %{conn: conn} = context do
     ctx = ideation_fixture()
-    first = note(ctx, ctx.author, "She protects the city because she once abandoned her sister.", 0, 0, "yellow")
-    second = note(ctx, ctx.peer, "Her rival knows the truth about the evacuation.", 340, 0, "blue")
+    # Low enough for the group frame, which rises 64 px above its members, to
+    # clear the band header resting on the chrome row.
+    first = note(ctx, ctx.author, "She protects the city because she once abandoned her sister.", 0, 120, "yellow")
+    second = note(ctx, ctx.peer, "Her rival knows the truth about the evacuation.", 340, 120, "blue")
 
     browser = conn |> authenticate(ctx.author.user) |> visit(path(ctx)) |> assert_has("#brainstorming-canvas")
 
@@ -44,8 +46,6 @@ defmodule StoryarnWeb.E2E.IdeationGroupsTest do
     browser =
       browser
       |> assert_has("[data-note-id]", count: 2)
-      |> refute_has("#brainstorming-undo")
-      |> refute_has("#brainstorming-redo")
       |> press("#brainstorming-canvas", "1")
       |> click("button[aria-label='Zoom out']")
       |> pan_canvas()
@@ -188,7 +188,9 @@ defmodule StoryarnWeb.E2E.IdeationGroupsTest do
         timeout: 10_000
       )
 
-    mouse_drag(browser, {left, top}, {right, bottom}, true)
+    # The first header rests on the chrome row and takes the pointer there, so
+    # the drag starts on the empty canvas below the notes and ends above them.
+    mouse_drag(browser, {right, bottom}, {left, top}, true)
   end
 
   defp mouse_drag(browser, {start_x, start_y}, {end_x, end_y}, verify_selection? \\ false) do

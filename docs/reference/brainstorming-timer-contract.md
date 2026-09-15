@@ -2,49 +2,66 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-08
+> Last reviewed: 2026-09-15
 >
 > Scope: ENG-137
 
 ## Product behavior
 
 A session can have one shared countdown. It is independent of optional rounds and
-private mode: starting, pausing, extending or cancelling the clock never creates,
-starts or closes a round. A round never starts or stops a clock. Session archive
+round privacy: starting, pausing, extending or cancelling the clock never creates,
+starts, closes or reveals a round on its own. A round never starts or stops a clock. Session archive
 cancels a running or paused timer; reopening does not restart it.
 Recovering a session replaced by a snapshot also cancels its old timer before
 archiving it. Reopening that generation cannot reactivate an old expiry job.
 
-The existing board header shows the same deadline to all participants, including
-viewers. A facilitator or project owner with current edit permission can start,
-pause, resume, extend or cancel it. Durations range from 15 seconds to 24 hours;
-extensions keep the accumulated duration within 24 hours. A paused clock may
-have fewer than 15 seconds remaining and can resume that exact remainder.
+The header of the round in progress shows the same digits to all participants,
+including viewers.
+A facilitator or project owner with current edit permission types a duration into
+the digits (two fields, minutes and seconds, up to 99:59; the second digit of the minutes moves on to the seconds) and presses play or Enter, then can
+pause, resume, add one minute or cancel beside them. Durations range from 1
+second to 24 hours; extensions keep the accumulated duration within 24 hours. A
+paused clock resumes its exact remainder. Cancelling is available at any moment
+while the round is in progress, so a running clock is reset by cancelling and
+starting again. Reaching 0:00 is the whole signal in the round header: the
+digits stay at 0:00, muted, without a message, and become editable again for
+the facilitator.
 
-The default expiry only marks the clock finished. Two independent options are
-off by default:
+Expiry marks the clock finished and then applies what was asked of it:
 
-- End private mode when the clock expires, using the existing session reveal
-  policy. This option requires private mode when starting or resuming the clock.
-- Close new contributions when the clock expires.
+- If the round in progress is private and its own **Reveal when time is up**
+  setting is on, expiry reveals that round with the same publication policy as
+  the manual reveal. This is a round setting from the round header's settings
+  menu, not a timer option.
+- If the timer was started with `close_contributions_on_expiry`, expiry closes
+  new contributions. The current UI does not offer this option.
 
-Ending private mode uses current eligible heads, including notes created during
-the countdown. Discarded notes, missing authors and legacy author-only consent
-remain excluded from assisted publication. It does not republish an old prepared
-reveal or bypass publication consent.
+`start_timer` accepts `seconds` (1–86,400) and the optional boolean
+`close_contributions_on_expiry`, `false` when omitted and rejected when not
+boolean. The timer row carries no reveal flag of its own: the reveal follows the
+round's setting. Recovery inventory version 8 drops the old timer flag from
+timer rows and from the timer snapshots of session revisions. The UI always
+sends `close_contributions_on_expiry` as `false`.
+
+Revealing the round publishes the current heads of its consenting contributions,
+including notes created during the countdown. Discarded notes, missing authors
+and legacy author-only consent remain excluded from assisted publication. It
+does not republish an old prepared reveal or bypass publication consent, and a
+revealed round cannot become private again.
 
 Closing contributions blocks new notes, duplication and pasting new cards. It
 preserves editing, moving, deleting and undoing a matching deletion of existing
 notes. Replaying an already committed creation still returns its original
-receipt. A manager can reopen contributions explicitly without starting a timer.
-It does not archive the session or change a round's state.
+receipt. Closing and reopening contributions is a session action offered from
+the session settings panel; a manager can use it without starting a timer. It does not
+archive the session or change a round's state.
 
 ## Persisted state and execution
 
 Sessions owns `ideation_timers` and `sessions.contributions_open`. The timer row
 has a stable identity, monotonically increasing version, status, UTC deadline,
 last saved remaining duration, original duration plus extensions, initiating
-actor, configuration version and independent expiry options. A new start after
+actor, configuration version and the two persisted expiry flags. A new start after
 completion reuses the timer row and increments its version. Terminal outcomes
 are completed, skipped authorization, skipped configuration or skipped session.
 
@@ -62,8 +79,8 @@ extending and completing remain valid for persistence and snapshot capture.
 Expiry rechecks the persisted version and deadline under the session lifecycle
 lock, then current actor access, managerial responsibility and configuration.
 If authority or configuration changed, it records a skipped outcome and performs
-neither optional action. Reveal, contribution closure, timer completion and the
-session audit commit in one transaction. Concurrent deliveries cannot publish
+neither the round reveal nor the contribution closure. Reveal, contribution
+closure, timer completion and the session audit commit in one transaction. Concurrent deliveries cannot publish
 or apply either action twice. Repeated and stale deliveries are harmless.
 
 The actorless expiry port is sealed to its worker; Web code uses only authorized
@@ -97,9 +114,10 @@ Oban polling or keep an otherwise idle database awake with timer polls.
 
 ## Snapshots
 
-The inner recovery inventory is version 3. It includes the timer, options,
-outcome, contribution gate and session audit. Version 1 and 2 inventories remain
-accepted, normalizing to no timer and open contributions.
+The inner recovery inventory is version 8; timers joined it in version 3. It
+includes the timer, its persisted flags, outcome, contribution gate and session
+audit. Version 1 and 2 inventories remain accepted, normalizing to no timer and
+open contributions. Timer validation accepts durations from 1 to 86,400 seconds.
 
 Capture uses persisted values only. It does not rewrite remaining duration from
 the wall clock, which would make an unchanged project's canonical digest vary

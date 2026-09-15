@@ -20,13 +20,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias StoryarnWeb.IdeationLive.Helpers.BoardData
   alias StoryarnWeb.IdeationLive.Helpers.Params
   alias StoryarnWeb.IdeationLive.Helpers.Replies
-  alias StoryarnWeb.IdeationLive.Helpers.RoundData
   alias StoryarnWeb.Live.Shared.CollaborationHelpers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
-  @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas update_idea_connections prepare_reveal reveal_ideas)
-  @round_writes ~w(create_round update_round cancel_round start_round close_round)
+  @idea_writes ~w(create_idea bring_idea_forward save_idea delete_idea restore_idea move_idea connect_ideas update_idea_connections prepare_reveal reveal_ideas)
+  @round_writes ~w(new_round update_round close_round set_round_privacy reveal_round)
   @timer_writes ~w(start_timer pause_timer resume_timer extend_timer cancel_timer set_contributions_open)
   @group_writes ~w(create_group update_group move_group delete_group restore_group)
 
@@ -56,8 +55,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
         }
       }
     >
+      <%!-- The navbar and the dock only pick up injectors that exist when they
+           mount, so both stay rendered and empty until a session is open. --%>
       <.vue
-        :if={@board.session}
         v-component="live/ideation/BoardHeader"
         v-socket={@socket}
         v-diff={true}
@@ -65,12 +65,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         id="brainstorming-header"
         session={@board.session}
         can-manage={@board.can_manage}
-        can-edit={@board.can_edit}
         epoch={@epoch}
-        rounds={@board.rounds}
-        rounds-next={@board.rounds_next}
-        active-round={@board.active_round}
-        timer={@board.timer}
         context-reference={@exploration_reference}
       />
 
@@ -88,11 +83,11 @@ defmodule StoryarnWeb.IdeationLive.Board do
             error: @board_error
           })
         }
+        linked={@linked}
         base-url={@urls.tools["brainstorming"]}
         comments={@comments}
       />
       <.vue
-        :if={@board.session}
         v-component="live/ideation/BoardPanels"
         v-socket={@socket}
         v-inject:panels="project-layout"
@@ -100,7 +95,11 @@ defmodule StoryarnWeb.IdeationLive.Board do
         references={@references}
         decisions={@decisions}
         epoch={@epoch}
-        session-id={@session_id}
+        session-id={@board.session && @session_id}
+        session={@board.session}
+        members={@board.members}
+        can-manage={@board.can_manage}
+        session-panel={@session_panel}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -137,6 +136,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> assign(:board_error, nil)
      |> assign(:epoch, Ecto.UUID.generate())
      |> assign(:session_id, nil)
+     |> assign(:session_panel, false)
+     |> assign(:linked, %{round_id: nil, view: nil, seq: 0})
      |> assign(:subscribed_session, nil)
      |> assign(:canvas_scope, nil)
      |> assign(:canvas_ready, false)
@@ -144,9 +145,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> assign(:filters, %{
        session_status: :open,
        session_before: nil,
-       idea_before: nil,
-       round_id: :all,
-       round_before: nil
+       idea_before: nil
      })
      |> assign(:refresh_timer, nil)
      |> assign(:refresh_running, nil)
@@ -164,13 +163,19 @@ defmodule StoryarnWeb.IdeationLive.Board do
           |> ReferenceHandlers.init()
           |> DecisionHandlers.init()
           |> subscribe_session(id)
-          |> assign(:session_id, id)
+          |> assign(session_id: id, session_panel: false)
 
-        filters = %{socket.assigns.filters | idea_before: nil, round_id: :all, round_before: nil}
+        filters = %{socket.assigns.filters | idea_before: nil}
         socket = assign(socket, :filters, filters)
         # A route transition invalidates reads started for the previous session.
         socket = assign(socket, :refresh_running, nil)
-        {:noreply, socket |> load_now() |> CommentHandlers.linked(params) |> ExplorationContextHandlers.linked(params)}
+
+        {:noreply,
+         socket
+         |> load_now()
+         |> CommentHandlers.linked(params)
+         |> ExplorationContextHandlers.linked(params)
+         |> linked_focus(params)}
 
       {:error, _} ->
         {:noreply,
@@ -180,7 +185,13 @@ defmodule StoryarnWeb.IdeationLive.Board do
          |> DecisionHandlers.init()
          |> subscribe_session(nil)
          |> canvas_subscription(nil)
-         |> assign(session_id: nil, refresh_running: nil, board: BoardData.empty(), board_error: "not_found")}
+         |> assign(
+           session_id: nil,
+           session_panel: false,
+           refresh_running: nil,
+           board: BoardData.empty(),
+           board_error: "not_found"
+         )}
     end
   end
 
@@ -263,34 +274,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
     end
   end
 
-  def handle_event("filter_round", params, socket) do
-    with :ok <- current_session(params, socket),
-         {:ok, round_id} <- Params.round_filter(params["round_id"]),
-         {:ok, before_id} <- Params.optional_id(params["before_id"]),
-         :ok <-
-           RoundData.validate_filter(
-             socket.assigns.current_scope,
-             socket.assigns.project.id,
-             socket.assigns.session_id,
-             round_id
-           ) do
-      filters = %{socket.assigns.filters | round_id: round_id, idea_before: before_id}
-      {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
-    else
-      {:error, reason} -> {:reply, Replies.error(reason), read_result_socket(socket, {:error, reason})}
-    end
-  end
-
-  def handle_event("browse_rounds", params, socket) do
-    with :ok <- current_session(params, socket),
-         {:ok, before_id} <- Params.optional_id(params["before_id"]) do
-      filters = %{socket.assigns.filters | round_before: before_id}
-      {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
-    else
-      {:error, reason} -> {:reply, Replies.error(reason), socket}
-    end
-  end
-
   def handle_event("open_session", params, socket) do
     with :ok <- current_epoch(params, socket),
          {:ok, id} <- Params.positive(params["id"]),
@@ -303,31 +286,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
     else
       {:error, reason} -> {:reply, Replies.error(reason), socket}
     end
-  end
-
-  def handle_event("set_private_mode", params, socket) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      fn socket ->
-        with :ok <- current_session(params, socket),
-             {:ok, revision} <- Params.positive(params["revision"]) do
-          result =
-            Ideation.set_private_mode(
-              socket.assigns.current_scope,
-              socket.assigns.project.id,
-              socket.assigns.session_id,
-              revision,
-              params["enabled"]
-            )
-
-          {:reply, Replies.result(result), refresh(socket)}
-        else
-          {:error, reason} -> {:reply, Replies.error(reason), socket}
-        end
-      end,
-      fn socket, reason -> {:reply, Replies.error(reason), reload_access(socket)} end
-    )
   end
 
   def handle_event("canvas_cursor", %{"x" => x, "y" => y} = params, socket)
@@ -357,18 +315,18 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   def handle_event("canvas_cursor", _, socket), do: {:noreply, socket}
 
-  def handle_event("board_action", %{"action" => action} = params, socket) when action in ~w(settings reveal) do
+  # The session's details and settings open in the dock, like decisions.
+  def handle_event("board_action", %{"action" => "settings"} = params, socket) do
     case current_session(params, socket) do
-      :ok ->
-        {:noreply,
-         push_event(socket, "board_action", %{
-           action: action,
-           epoch: socket.assigns.epoch,
-           session_id: socket.assigns.session_id
-         })}
+      :ok -> {:noreply, assign(socket, :session_panel, true)}
+      _ -> {:noreply, socket}
+    end
+  end
 
-      _ ->
-        {:noreply, socket}
+  def handle_event("session_panel", %{"open" => open} = params, socket) when is_boolean(open) do
+    case current_session(params, socket) do
+      :ok -> {:noreply, assign(socket, :session_panel, open)}
+      _ -> {:noreply, socket}
     end
   end
 
@@ -455,7 +413,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       |> DecisionHandlers.init()
       |> canvas_subscription(nil)
       |> reset_epoch("project_restored")
-      |> assign(:filters, %{socket.assigns.filters | idea_before: nil, round_id: :all, round_before: nil})
+      |> assign(:filters, %{socket.assigns.filters | idea_before: nil})
       |> assign(:board, BoardData.empty())
       |> refresh()
 
@@ -591,6 +549,22 @@ defmodule StoryarnWeb.IdeationLive.Board do
     accept_read(socket, {:ok, BoardData.load(scope, project.id, id, filters)})
   end
 
+  # Deep links from the session tree: `?round=` scrolls the canvas to that band
+  # and `?view=later` opens the parked list. They travel as a prop, which the
+  # first render already carries (an event pushed while mounting is lost);
+  # `seq` grows with every link so the same target applies again.
+  defp linked_focus(socket, params) do
+    round_id =
+      case Params.optional_id(params["round"]) do
+        {:ok, id} when is_integer(id) -> id
+        _ -> nil
+      end
+
+    view = if params["view"] == "later", do: "later"
+    seq = socket.assigns.linked.seq + 1
+    assign(socket, :linked, %{round_id: round_id, view: view, seq: seq})
+  end
+
   defp reload_access(socket) do
     # Losing edit permission does not imply losing read permission. Reload the
     # authorized projection before deciding whether the client must drop drafts.
@@ -614,6 +588,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         }
 
         socket
+        |> fence_privacy_change(data)
         |> canvas_subscription(if(data.session, do: data.session.id))
         |> assign(board: data, board_error: nil, membership: membership, can_edit: can_edit, canvas_ready: true)
         |> CommentHandlers.refresh()
@@ -645,15 +620,47 @@ defmodule StoryarnWeb.IdeationLive.Board do
     |> DecisionHandlers.init()
     |> canvas_subscription(nil)
     |> reset_epoch("access_changed")
-    |> assign(board: BoardData.empty(), board_error: "unauthorized", canvas_ready: false)
+    |> assign(board: BoardData.empty(), board_error: "unauthorized", canvas_ready: false, session_panel: false)
   end
 
   defp cursors_enabled?(%{assigns: %{canvas_ready: true, board_error: nil, board: %{session: session}}} = socket)
        when not is_nil(session) do
-    socket.assigns.canvas_scope == {:ideation, session.id} and session.configuration.private_mode != true
+    socket.assigns.canvas_scope == {:ideation, session.id} and
+      not private_round?(Map.get(socket.assigns.board, :active_round))
   end
 
   defp cursors_enabled?(_socket), do: false
+
+  # Cursors would give away where people write while the round in progress is private.
+  defp private_round?(%{private: true}), do: true
+  defp private_round?(_round), do: false
+
+  # A round going private or being revealed changes what everyone may see. Open
+  # discussions, references and decision previews were built on the old view
+  # and start over; their fresh contexts fence whatever was in flight for the
+  # old ones. The canvas keeps its epoch: selection, drafts and open editors
+  # stay under the writer's hands, and every read re-checks visibility anyway.
+  defp fence_privacy_change(
+         %{assigns: %{board: %{session: %{id: id}} = previous}} = socket,
+         %{session: %{id: id}} = next
+       ) do
+    if privacy(previous) == privacy(next) do
+      socket
+    else
+      socket
+      |> ExplorationContextHandlers.init()
+      |> CommentHandlers.init()
+      |> ReferenceHandlers.init()
+      |> DecisionHandlers.init()
+    end
+  end
+
+  defp fence_privacy_change(socket, _next), do: socket
+
+  # Only the set of hidden rounds matters: a new public round changes nothing
+  # for the panels, and re-initialising them would drop a decision being written.
+  defp privacy(%{rounds: rounds}) when is_list(rounds), do: for(round <- rounds, round.private, do: round.id)
+  defp privacy(_board), do: []
 
   defp reset_epoch(socket, reason) do
     epoch = Ecto.UUID.generate()

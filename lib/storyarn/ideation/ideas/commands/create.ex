@@ -9,6 +9,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
   alias Storyarn.Ideation.Ideas.Execution.Transaction
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Revision
+  alias Storyarn.Ideation.Ideas.Rules.Band
   alias Storyarn.Ideation.Ideas.Rules.Canvas
   alias Storyarn.Ideation.Ideas.Rules.Connections, as: ConnectionRules
   alias Storyarn.Ideation.Ideas.Rules.Input
@@ -66,10 +67,11 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
 
   defp insert(access, key, fingerprint, attrs) do
     with :ok <- contributions_open(access),
-         {:ok, policy} <- Policy.contribution_policy(access, attrs),
          {:ok, selected_round} <- selected_round(attrs),
          {:ok, round} <- Sessions.select_contribution_round(access, selected_round),
+         {:ok, policy} <- Policy.contribution_policy(access, attrs, round.private),
          {:ok, canvas} <- initial_canvas(Input.get(attrs, :canvas)),
+         :ok <- within_band(round.round_id, canvas),
          {:ok, source_ids} <- ConnectionRules.creation(Input.get(attrs, :connection)),
          {:ok, sources} <- Connections.creation_sources(access, source_ids),
          changeset = Revision.changeset(%Revision{}, Input.content_attrs(attrs)),
@@ -100,7 +102,13 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
       idea = if policy.shared?, do: Publication.publish_creation(idea, access.user_id), else: idea
       {connected_from, connection_audiences} = Connections.connect_creation(sources, idea.id)
       idea = record_connections(idea, connected_from)
-      audiences = if policy.shared?, do: [:shared | connection_audiences], else: [access.user_id | connection_audiences]
+
+      audiences =
+        if policy.shared? or round.private,
+          do: [:shared | connection_audiences],
+          else: [access.user_id | connection_audiences]
+
+      audiences = if idea.state == :parked, do: [:tree | audiences], else: audiences
       Transaction.success(creation_view(View.idea(idea, revision, access.user_id), idea), audiences)
     end
   end
@@ -143,6 +151,9 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
 
   defp initial_canvas(nil), do: {:ok, %{}}
   defp initial_canvas(attrs), do: Canvas.normalize(attrs)
+
+  defp within_band(nil, _canvas), do: :ok
+  defp within_band(_round_id, canvas), do: Band.check(canvas)
 
   defp selected_round(attrs) do
     if Map.has_key?(attrs, :round_id) or Map.has_key?(attrs, "round_id") do

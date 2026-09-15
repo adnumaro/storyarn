@@ -10,6 +10,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Restore do
   alias Storyarn.Ideation.Ideas.Queries.Visible
   alias Storyarn.Ideation.Ideas.Revision
   alias Storyarn.Ideation.Ideas.Rules.Policy
+  alias Storyarn.Ideation.Sessions
   alias Storyarn.Repo
 
   def run(scope, project_id, session_id, idea_id, revision, deleted_at)
@@ -61,7 +62,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Restore do
         Revisions.insert(restored, content, access.user_id)
 
         restored =
-          if access.configuration.private_mode,
+          if Sessions.round_private?(restored.round_id),
             do: restored,
             else: Publication.publish_creation(restored, access.user_id)
 
@@ -69,8 +70,16 @@ defmodule Storyarn.Ideation.Ideas.Commands.Restore do
     end
   end
 
-  defp audiences(%{published_revision: nil}, actor_id), do: [actor_id]
-  defp audiences(_idea, actor_id), do: [:shared, :comment_sources, actor_id]
+  defp audiences(idea, actor_id) do
+    canvas =
+      cond do
+        idea.published_revision -> [:shared, :comment_sources, actor_id]
+        Sessions.round_private?(idea.round_id) -> [:shared, actor_id]
+        true -> [actor_id]
+      end
+
+    if idea.state == :parked, do: [:tree | canvas], else: canvas
+  end
 
   defp result(idea, access, audiences) do
     with {:ok, view} <- Visible.get(idea.session_id, idea.id, access.user_id) do

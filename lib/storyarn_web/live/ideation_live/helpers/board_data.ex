@@ -44,15 +44,14 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       session: nil,
       session_missing: false,
       ideas: [],
+      masked_ideas: [],
       groups: [],
       ideas_next: nil,
       idea_before: nil,
       counts: @empty_counts,
       rounds: [],
-      rounds_next: nil,
       active_round: nil,
       timer: nil,
-      round_filter: :all,
       can_edit: false,
       can_manage: false,
       is_owner: false,
@@ -77,7 +76,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       :deleted_at,
       :inserted_at
     ])
-    |> Map.put(:configuration, Map.take(value.configuration, [:default_visibility, :publication_policy, :private_mode]))
+    |> Map.put(:configuration, Map.take(value.configuration, [:default_visibility, :publication_policy]))
     |> Map.put(:can_manage, can_edit and (owner? or value.facilitator_id == actor_id))
   end
 
@@ -100,25 +99,45 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
   end
 
   defp read_ideas(scope, project_id, current, filters) do
-    round_id = Map.get(filters, :round_id, :all)
-    through = Map.get(filters, :round_before)
-    opts = [round_id: round_id, state: :all, limit: @page_size]
+    opts = [state: :all, limit: @page_size]
 
     with {:ok, ideas, next} <- read_idea_pages(scope, project_id, current.id, filters.idea_before, opts, []),
          {:ok, groups} <- Ideation.list_groups(scope, project_id, current.id),
-         {:ok, counts} <- Ideation.count_ideas(scope, project_id, current.id, round_id: round_id),
-         {:ok, rounds} <- RoundData.load(scope, project_id, current.id, through, ideas, round_id) do
+         {:ok, masked} <- Ideation.list_masked_ideas(scope, project_id, current.id),
+         {:ok, counts} <- Ideation.count_ideas(scope, project_id, current.id),
+         {:ok, rounds} <- RoundData.load(scope, project_id, current.id) do
       {:ok,
        Map.merge(rounds, %{
          session: session(current, scope.user.id, false, false),
          session_missing: false,
          ideas: Enum.map(ideas, &idea/1),
+         masked_ideas: masked,
          groups: groups,
          ideas_next: next,
          idea_before: filters.idea_before,
-         round_filter: round_id,
          counts: counts
        })}
+    end
+  end
+
+  # The session tree needs each session's rounds and its parked count. Two bulk
+  # reads over the listed page keep the sidebar independent of the board load.
+  def with_outlines(%{sessions: sessions} = data, scope, project_id) do
+    ids = for session <- sessions, is_nil(session.deleted_at), do: session.id
+
+    with {:ok, rounds} <- Ideation.list_session_rounds(scope, project_id, ids),
+         {:ok, parked} <- Ideation.count_parked_ideas(scope, project_id, ids) do
+      %{
+        data
+        | sessions:
+            Enum.map(sessions, fn session ->
+              session
+              |> Map.put(:rounds, rounds |> Map.get(session.id, []) |> Enum.map(&RoundData.round_view/1))
+              |> Map.put(:parked_count, Map.get(parked, session.id, 0))
+            end)
+      }
+    else
+      _ -> data
     end
   end
 
@@ -143,15 +162,14 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       :session,
       :session_missing,
       :ideas,
+      :masked_ideas,
       :groups,
       :ideas_next,
       :idea_before,
       :counts,
       :rounds,
-      :rounds_next,
       :active_round,
-      :timer,
-      :round_filter
+      :timer
     ]
 
   defp next_cursor(rows) when length(rows) == @page_size, do: List.last(rows).id

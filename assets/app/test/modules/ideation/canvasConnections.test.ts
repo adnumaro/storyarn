@@ -40,7 +40,6 @@ function canvas(props = {}) {
       selectedIds: [10, 11, 12],
       editingId: null,
       permissions: { edit: true, create: true },
-      noteKey: (id: number) => String(id),
       historyState: { canUndo: true, canRedo: true, busy: false },
       members: [],
       statuses: {},

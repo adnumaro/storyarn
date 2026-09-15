@@ -24,7 +24,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Reveal do
         Transaction.success(View.reveal(operation))
 
       operation ->
-        if(access.configuration.private_mode, do: {:error, :session_private}, else: execute(operation, access))
+        execute(operation, access)
     end
   end
 

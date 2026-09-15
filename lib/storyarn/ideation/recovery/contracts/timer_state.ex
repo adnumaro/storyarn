@@ -17,14 +17,14 @@ defmodule Storyarn.Ideation.Recovery.TimerState do
 
   def snapshot_valid?(row) when is_map(row) do
     positive?(row["version"]) and row["version"] < 9_223_372_036_854_775_807 and
-      is_boolean(row["reveal_on_expiry"]) and is_boolean(row["close_contributions_on_expiry"]) and
+      is_boolean(row["close_contributions_on_expiry"]) and
       duration_valid?(row) and status_valid?(row)
   end
 
   def snapshot_valid?(_), do: false
 
   defp duration_valid?(row) do
-    is_integer(row["duration_seconds"]) and row["duration_seconds"] in 15..86_400 and
+    is_integer(row["duration_seconds"]) and row["duration_seconds"] in 1..86_400 and
       is_integer(row["remaining_seconds"]) and row["remaining_seconds"] >= 0 and
       row["remaining_seconds"] <= row["duration_seconds"]
   end

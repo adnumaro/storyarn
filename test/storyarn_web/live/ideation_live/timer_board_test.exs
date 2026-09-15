@@ -24,7 +24,6 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
       payload(manager, %{
         revision: "1",
         seconds: "600",
-        reveal_on_expiry: false,
         close_contributions_on_expiry: false,
         actor_id: ctx.viewer.user.id,
         recovery_identity: Ecto.UUID.generate()
@@ -39,11 +38,10 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
 
     assert Enum.sort(Map.keys(timer)) ==
              Enum.sort(
-               ~w(id version status deadline_at remaining_seconds duration_seconds reveal_on_expiry close_contributions_on_expiry outcome server_now)
+               ~w(id version status deadline_at remaining_seconds duration_seconds close_contributions_on_expiry outcome server_now)
              )
 
     assert timer["duration_seconds"] == 600
-    refute timer["reveal_on_expiry"]
     refute timer["close_contributions_on_expiry"]
     assert timer["outcome"] == nil
     assert {:ok, deadline, 0} = DateTime.from_iso8601(timer["deadline_at"])
@@ -53,7 +51,7 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
     {:ok, fresh_viewer, _} = live(log_in_user(build_conn(), ctx.viewer.user), board_path(ctx))
     assert_board_eventually(fresh_viewer, fn board -> assert board["timer"]["status"] == "running" end)
     header = LiveVue.Test.get_vue(fresh_viewer, name: "live/ideation/BoardHeader")
-    assert Map.delete(header.props["timer"], "server_now") == Map.delete(timer, "server_now")
+    assert Map.delete(data(fresh_viewer)["timer"], "server_now") == Map.delete(timer, "server_now")
     refute header.props["can-manage"]
     assert {:ok, stored} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert stored.actor_id == ctx.facilitator.user.id
@@ -90,7 +88,6 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
 
     assert data(peer)["timer"]["duration_seconds"] == 660
     assert data(peer)["session"]["contributions_open"]
-    assert data(peer)["session"]["configuration"]["private_mode"] == ctx.session.configuration.private_mode
     assert data(peer)["session"]["status"] == "open"
     assert data(peer)["can_edit"]
   end
@@ -136,15 +133,18 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
       assert_reply(manager, %{status: "error", code: "invalid_parameters"})
     end
 
-    for invalid <- [14, 86_401] do
+    for invalid <- [86_401] do
       render_hook(manager, "start_timer", payload(manager, %{revision: 1, seconds: invalid}))
       assert_reply(manager, %{status: "error", code: "invalid_timer_duration"})
     end
 
-    render_hook(manager, "start_timer", payload(manager, %{revision: 1, seconds: 60, reveal_on_expiry: "true"}))
+    render_hook(
+      manager,
+      "start_timer",
+      payload(manager, %{revision: 1, seconds: 60, close_contributions_on_expiry: "true"})
+    )
+
     assert_reply(manager, %{status: "error", code: "invalid_timer_options"})
-    render_hook(manager, "start_timer", payload(manager, %{revision: 1, seconds: 60, reveal_on_expiry: true}))
-    assert_reply(manager, %{status: "error", code: "timer_reveal_requires_private"})
     render_hook(manager, "set_contributions_open", payload(manager, %{revision: 1, open: "false"}))
     assert_reply(manager, %{status: "error", code: "invalid_parameters"})
     render_hook(manager, "pause_timer", payload(manager, %{revision: "1", timer_version: "1x"}))

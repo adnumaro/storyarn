@@ -136,6 +136,7 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
   defp load(socket) do
     case BoardData.load(socket.assigns.current_scope, socket.assigns.project_id, nil, socket.assigns.filters) do
       {:ok, data} ->
+        data = BoardData.with_outlines(data, socket.assigns.current_scope, socket.assigns.project_id)
         assign(socket, board: data, error: nil)
 
       {:error, reason} when reason in [:unauthorized, :not_found] ->

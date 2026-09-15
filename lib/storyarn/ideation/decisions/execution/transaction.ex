@@ -23,7 +23,6 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
 
   defp locked(scope, project_id, session_id, command) do
     with {:ok, access} <- Sessions.lock_for_contribution(scope, project_id, session_id),
-         false <- access.configuration.private_mode,
          {:ok, receipt} <- receipt(access, command.key),
          {:ok, decision} <- locate(access, command.id, receipt) do
       identity = if decision, do: decision.recovery_identity
@@ -32,9 +31,6 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
         Input.fingerprint(command.operation, access.session_identity, identity, command.version, command.attrs)
 
       execute(scope, project_id, access, decision, receipt, command, fingerprint)
-    else
-      true -> {:error, :private_mode}
-      {:error, _} = error -> error
     end
   end
 

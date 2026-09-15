@@ -11,7 +11,7 @@ defmodule Storyarn.Ideation.Groups.Execution.CommentSource do
   def get(%{user: %{id: _}} = scope, project_id, session_id, group_id, opts)
       when valid_id?(project_id) and valid_id?(session_id) and valid_id?(group_id) do
     case Sessions.comment_source(scope, project_id, session_id, opts) do
-      {:ok, %{private_mode: false}} ->
+      {:ok, _session} ->
         source(session_id, group_id, opts)
 
       _ ->
@@ -21,9 +21,18 @@ defmodule Storyarn.Ideation.Groups.Execution.CommentSource do
 
   def get(_, _, _, _, _), do: {:error, :not_found}
 
+  # A group of a private round is hidden with its notes, comment thread included.
   defp source(session_id, group_id, opts) do
-    query = from(g in Group, where: g.id == ^group_id and g.session_id == ^session_id and is_nil(g.deleted_at))
-    query = if opts[:lock] == :share, do: lock(query, "FOR SHARE"), else: query
+    query =
+      from(g in Group,
+        left_join: mask in subquery(Sessions.round_mask_query()),
+        on: mask.id == g.round_id,
+        where:
+          g.id == ^group_id and g.session_id == ^session_id and is_nil(g.deleted_at) and
+            not fragment("COALESCE(?, false)", mask.private)
+      )
+
+    query = if opts[:lock] == :share, do: from(g in query, lock: fragment("FOR SHARE OF ?", g)), else: query
 
     case Repo.one(query) do
       nil ->

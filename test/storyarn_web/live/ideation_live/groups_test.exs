@@ -70,10 +70,18 @@ defmodule StoryarnWeb.IdeationLive.GroupsTest do
     assert length(data(viewer)["groups"]) == 1
 
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, session.id, session.revision, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               session.id,
+               session.revision,
+               true
+             )
 
     eventually(viewer, fn board ->
-      assert board["session"]["configuration"]["private_mode"]
+      assert board["active_round"]["private"]
       assert board["groups"] == []
       refute Jason.encode!(board) =~ "What drives the character?"
     end)

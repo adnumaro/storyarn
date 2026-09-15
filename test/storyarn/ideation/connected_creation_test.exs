@@ -87,15 +87,18 @@ defmodule Storyarn.Ideation.ConnectedCreationTest do
   end
 
   test "connected creation uses the current privacy and round rules", ctx do
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
-    {:ok, private_session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {ctx, round} = new_round(ctx, %{prompt: "Why?"})
 
     {:ok, _} =
-      Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, private_session.revision, %{prompt: "Why?"})
+      Storyarn.IdeationFixtures.set_private_mode(
+        ctx.facilitator,
+        ctx.project.id,
+        ctx.session.id,
+        ctx.session.revision,
+        true
+      )
 
-    {:ok, [round]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, current_session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, _} = Ideation.start_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, current_session.revision)
+    {:ok, private_session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
     source = idea_fixture(ctx, %{configuration_version: private_session.configuration_version})
     assert {:ok, note} = create_connected(ctx, attributes([source]))
     assert note.visibility == :private

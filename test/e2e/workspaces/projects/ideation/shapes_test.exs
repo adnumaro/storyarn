@@ -32,7 +32,7 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
         <p></p>
         """,
         0,
-        0
+        60
       )
 
     selector = "#canvas-note-#{source.id}"
@@ -96,7 +96,8 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
   test "one shape change and one undo affect the selection, collaboration and connection boundaries",
        %{conn: conn} = context do
     ctx = ideation_fixture()
-    first = note(ctx, ctx.author, "<p>A promise to keep.</p>", 0, 0)
+    # Notes start under the header strip, as the canvas places them.
+    first = note(ctx, ctx.author, "<p>A promise to keep.</p>", 0, 60)
     second = note(ctx, ctx.peer, "<p>A reason to break it.</p>", 850, 550)
     {:ok, _} = Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, first.id, second.id, true)
     edge = "[data-connection-source='#{first.id}'][data-connection-target='#{second.id}']"

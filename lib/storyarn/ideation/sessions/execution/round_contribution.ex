@@ -6,6 +6,8 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundContribution do
   alias Storyarn.Repo
 
   # The Ideas command holds the current session lock for the whole creation.
+  # Every note belongs to a round: the active one when the caller names none, or
+  # the explicit round its band points at. A closed band takes late contributions.
   def resolve(access, selection) do
     if Repo.in_transaction?(),
       do: select_round(access.session_id, selection),
@@ -18,7 +20,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundContribution do
     |> contribution()
   end
 
-  defp select_round(_session_id, nil), do: contribution(nil)
+  defp select_round(_session_id, nil), do: {:error, :round_required}
 
   defp select_round(session_id, round_id)
        when is_integer(round_id) and round_id > 0 and round_id <= 9_223_372_036_854_775_807 do
@@ -33,9 +35,8 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundContribution do
   defp active_round(session_id),
     do: Repo.one(from r in Round, where: r.session_id == ^session_id and r.status == :active)
 
-  defp contribution(nil), do: {:ok, %{round_id: nil, late_contribution: false}}
-  defp contribution(%{status: :planned}), do: {:error, :round_not_started}
-  defp contribution(%{status: :cancelled}), do: {:error, :round_cancelled}
+  defp contribution(nil), do: {:error, :round_required}
 
-  defp contribution(round), do: {:ok, %{round_id: round.id, late_contribution: round.status == :closed}}
+  defp contribution(round),
+    do: {:ok, %{round_id: round.id, late_contribution: round.status == :closed, private: round.private}}
 end

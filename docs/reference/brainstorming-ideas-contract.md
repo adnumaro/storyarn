@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-07
+> Last reviewed: 2026-09-15
 >
 > Source of truth: `Storyarn.Ideation`, its Ideas capability, and `test/storyarn/ideation/`
 
@@ -16,24 +16,29 @@ no navigation, route, upload, AI execution or shared export entry point.
 
 The [canvas contract](../features/brainstorming-board.md) supersedes the earlier
 proposal of individual publication controls in the UI. `create_canvas_idea`
-and `update_canvas_idea` apply the facilitator's current
-session mode, with publication atomic with shared-mode saves. `set_private_mode`
-is the manager-only operation that hides contributions or ends private work and
-reveals the saved heads of consenting, non-discarded contributions. Canvas notes
-record facilitator-assisted consent at creation; ending private work never broadens
-legacy author-only consent. Discarded notes require an explicit publication selection.
-Deleted notes and orphaned authors are also excluded from new session reveals.
-Existing explicit-publication ports and stored receipts
-remain for compatibility; these ports cannot reveal individual notes during
-private mode.
+and `update_canvas_idea` apply the privacy of the note's round: a save in a
+shared round publishes its exact revision atomically, a save in a private round
+does not. `set_round_privacy/6` is the manager-only operation that makes the
+round in progress private or ends its private work; `reveal_round/5` is that
+ending, and reveals the saved heads of the round's consenting, non-discarded
+contributions in the same transaction. Canvas notes record facilitator-assisted
+consent at creation; revealing a round never broadens legacy author-only consent.
+Discarded notes require an explicit publication selection. Deleted notes and
+orphaned authors are also excluded from round reveals. Existing
+explicit-publication ports and stored receipts remain for compatibility; notes
+of a private round are excluded from their eligible set and rejected in explicit
+selections until the round is revealed.
 
 `delete_idea` is distinct from creative state: it preserves internal recovery data and
 excludes the note from ordinary authorized reads and writes. `discarded` remains
 a recoverable state. Geometry has an independent version and filtered connection
 endpoints; it does not create text revisions. Connecting notes preserves the last
 placement version and request receipt, so a delayed move can still be retried.
-Position writes default omitted width/color to the canvas defaults (280/yellow)
-so notes created before canvas placement existed can be moved.
+Position writes default omitted width/color to the canvas defaults (280/none)
+so notes created before canvas placement existed can be moved. `canvas.color`
+accepts `none` or one of `yellow`, `coral`, `mint`, `blue`, `violet`, `paper`:
+a card wears the colour on its surface, a text-only (`plain`) note on its words,
+and `none` keeps the default look of either.
 Optional `canvas.shape` accepts `plain`, `rectangle`, `ellipse` or `diamond`. Absence means
 rectangle; an existing note's shape is preserved when a placement request omits it.
 Shape changes use the placement version and receipt, participate in local undo/redo,
@@ -46,7 +51,7 @@ idea with an incremented revision. It does not accept replacement text or an
 arbitrary historical state. Stale revisions or deletion markers are rejected.
 
 The canvas exposes Duplicate and native clipboard operations. They create new
-authored notes under the current session mode, copy content and appearance, and
+authored notes under the privacy of the round they land in, copy content and appearance, and
 remap connections within the copied selection. They do not clone publication
 metadata or represent a new derived-idea workflow. `derive_idea` and
 `derive_canvas_idea` are no longer public APIs.
@@ -154,9 +159,10 @@ later AI integration delivery; this API cannot impersonate AI or another user.
 
 An idea has two distinct revision pointers: its current author head and the last
 published revision. An author reads the current head; other participants read the
-published revision only when the session permits them to see the note. The SQL
-read chooses the authorized revision before decrypting any content. Shared-mode
-canvas saves advance publication atomically; private-mode saves do not. Revisions
+published revision only when the note's round permits them to see it. The SQL
+read chooses the authorized revision before decrypting any content. Canvas saves
+in a shared round advance publication atomically; saves in a private round do
+not. Revisions
 remain internal records for those pointers and for recovery, without an API for
 browsing or restoring historical note content.
 
@@ -165,12 +171,14 @@ Discarding does not erase content or withdraw a prior publication. Returning an
 idea to active is another authored revision. On shared ideas the current creative
 state is visible even while the author has unpublished text changes.
 
-New contributions do not have a derivation API or a **Develop this idea** action.
-Existing source identities and revisions remain in compatible recovery capsules;
-restoration retains and remaps that provenance without granting access to private
-source content. Cross-tool links and materialization remain separate work.
-[ENG-164](https://linear.app/sunset/issue/ENG-164/spike-definir-el-valor-y-la-experiencia-de-desarrollar-una-idea)
-evaluates whether a future development workflow adds value beyond duplication.
+**Bring to the active round** is the derivation API: `bring_idea_forward/5` creates
+the actor's own copy of a readable note under the round in progress, linked
+through `source_idea_id` and `source_revision` (see the
+[round contract](brainstorming-rounds-contract.md)). The link is visible to the
+copy's author, and to everyone once the source is published. Existing source
+identities and revisions remain in compatible recovery capsules; restoration
+retains and remaps that provenance without granting access to private source
+content. Cross-tool links and materialization remain separate work.
 
 ## Effective permission matrix
 
@@ -191,16 +199,19 @@ Direct project roles override inherited workspace roles.
 Facilitation and ownership never grant a draft-reading permission. A manager may
 receive opaque identities/revision numbers of contributions that authorized
 assisted publication, solely to prepare a reveal. Ordinary lists, counts and
-current read surfaces still exclude those private drafts. The publication rows
-in the matrix describe the retained explicit-publication ports below, not
-individual canvas controls.
+current read surfaces still exclude those private drafts. During a private round,
+`list_masked_ideas/3` gives every reader, the facilitator included, other
+people's notes of that round as content-free placeholders: identity, round and
+canvas position/width. The publication rows in the matrix describe the retained
+explicit-publication ports below, not individual canvas controls.
 
 ## Save and retry contract
 
 Creation requires a UUID `request_key` and content. The retained explicit-
 publication ports additionally require the `configuration_version` shown to the
-contributor and capture publication consent. Canvas creation follows the current
-session mode under the contribution lock instead of an individual consent choice.
+contributor and capture publication consent. Canvas creation follows the privacy
+of the selected round under the contribution lock instead of an individual
+consent choice.
 Updates require the revision read by the author and a new UUID request key.
 Atom/string parameter keys are accepted; identity is supplied by authorization.
 
@@ -222,7 +233,7 @@ locally and must not apply a late save acknowledgement over a newer local edit.
 
 The following rules describe existing domain ports and their stored receipts.
 They are not per-card publication controls in the canvas. Canvas contributions
-use the session-wide mode described above.
+use the round privacy described above.
 
 By default a new contribution is private and author-controlled. A session may
 default new contributions to shared, but the creator must submit the current
@@ -254,8 +265,8 @@ facilitator cannot execute a pending manifest on somebody else's drafts.
 Completion records each published revision once and advances public pointers in
 the same transaction. Concurrent retries return the same receipt; overlapping
 operations never duplicate a publication. An operation belongs to its requesting
-actor and cannot be executed by guessing another actor's operation ID. Switching
-back to private work never promises to make published information secret again.
+actor and cannot be executed by guessing another actor's operation ID. A revealed
+round cannot become private again; nothing makes published information secret.
 
 ## Read surfaces, events and recovery
 
@@ -278,8 +289,9 @@ from Ecto inspection. This does not make operators or database/key recovery an
 ordinary project-owner permission. Private attachments remain disabled.
 
 Archive preserves ideas, internal revisions and receipts while blocking mutations.
-It disables private mode atomically with the archive so prior publications can be
-read, but does not publish any new draft. Reopening retains those publication
+It ends the visibility mask of every private round atomically with the archive so
+prior publications can be read, but does not reveal or publish any draft.
+Reopening retains those publication
 pointers; discarded and author-only drafts remain private. Project
 soft deletion denies access; physical project deletion cascades all these rows.
 Loss of access does not erase a draft or reassign it. Physical account deletion

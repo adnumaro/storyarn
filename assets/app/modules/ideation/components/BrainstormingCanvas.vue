@@ -1,21 +1,33 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  type ComponentPublicInstance,
+} from "vue";
 import { useElementSize } from "@vueuse/core";
 import {
-  MessageSquarePlus,
-  MousePointer2,
-  Hand,
-  StickyNote,
-  Cable,
-  Minus,
-  Plus,
-  Maximize,
-  List,
-  Search,
-  X,
-  ArrowRight,
+  ArrowDownToLine,
   ArrowLeft,
   ArrowLeftRight,
+  ArrowRight,
+  Bookmark,
+  Cable,
+  CircleX,
+  Hand,
+  List,
+  Maximize,
+  MessageSquarePlus,
+  Minus,
+  MousePointer2,
+  Plus,
+  RotateCcw,
+  Search,
+  StickyNote,
+  X,
 } from "@lucide/vue";
 import {
   ContextMenu,
@@ -26,10 +38,14 @@ import {
 import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Input } from "@components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import CanvasNote from "./CanvasNote.vue";
 import CanvasGroup from "./CanvasGroup.vue";
-import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups";
+import { groupBounds, groupVisibility, type MemberGeometry, groupRound } from "../lib/groups";
 import CanvasCursors from "./CanvasCursors.vue";
+import RoundBar from "./RoundBar.vue";
+import { bandAt, bandOffsets, orderRounds, sameOffsets, type BandOffsets } from "../lib/bands";
+import { interactivePath, interactiveTarget } from "../lib/interactive";
 import { useCanvasViewport, type Point } from "../composables/useCanvasViewport";
 import { useCanvasMarquee } from "../composables/useCanvasMarquee";
 import { useBoardText } from "../composables/useBoardText";
@@ -53,6 +69,11 @@ import type {
   GroupVersions,
   ConnectionChange,
   LinkDirection,
+  Round,
+  RoundTimerContext,
+  RoundPrivacy,
+  MaskedIdea,
+  IdeaState,
 } from "../types";
 import BrainstormingCanvasComments from "../BrainstormingCanvasComments.vue";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "../commentTypes";
@@ -65,13 +86,21 @@ const {
   notes,
   groupState,
   selectedIds,
-  noteKey,
   editingId,
   permissions,
   collaboration,
   members,
   statuses,
   historyState,
+  bands = {
+    rounds: [],
+    offsets: new Map(),
+    canManage: false,
+    pending: false,
+    timer: null,
+    counts: new Map(),
+    masked: [],
+  },
 } = defineProps<{
   notes: CanvasIdea[];
   groupState?: {
@@ -81,18 +110,29 @@ const {
     move: (id: number, point: Point, expected?: GroupVersions) => Promise<void>;
   };
   selectedIds: number[];
-  noteKey: (id: number) => string;
   historyState: HistoryState;
   editingId: number | null;
-  permissions: { edit: boolean; create: boolean; comment?: boolean; privateMode?: boolean };
+  permissions: { edit: boolean; create: boolean; comment?: boolean };
   collaboration: {
     context: BoardContext;
     cursors: boolean;
     comments?: BrainstormingCommentsState;
     baseUrl?: string;
+    /** Whose notes the context menu may change state for. */
+    userId?: number | null;
   };
   members: Member[];
   statuses: { [id: number]: string };
+  /** Round bands in canvas order; their headers are drawn in screen space. */
+  bands?: {
+    rounds: Round[];
+    offsets: BandOffsets;
+    canManage: boolean;
+    pending: boolean;
+    timer?: RoundTimerContext | null;
+    counts?: Map<number, number>;
+    masked?: MaskedIdea[];
+  };
 }>();
 const groups = computed(() => groupState?.groups ?? []);
 const selectedGroupId = computed(() => groupState?.selectedId ?? null);
@@ -127,45 +167,119 @@ const emit = defineEmits<{
   cut: [event: ClipboardEvent, ids: number[]];
   paste: [event: ClipboardEvent, point: Point];
   list: [];
+  newRound: [];
+  bands: [offsets: BandOffsets];
+  updatePrivacy: [id: number, attrs: RoundPrivacy];
+  reveal: [id: number];
+  closeRound: [id: number];
+  updatePrompt: [id: number, prompt: string];
+  changeState: [id: number, state: IdeaState];
+  bringForward: [id: number, point: Point];
 }>();
 const commentTarget = ref<BrainstormingCommentTarget | null>(null);
+// The author's own note under the pointer: its states are one right-click away.
+const noteTarget = ref<{ id: number; state: IdeaState } | null>(null);
+// Any readable note of another round, to bring into the one in progress.
+const bringTarget = ref<{ id: number; point: Point } | null>(null);
+const canStartRound = computed(() => bands.canManage && permissions.edit);
+// The context menu serves comments, a note's states for its author and, for
+// the facilitator, the next round.
 function prepareComment(event: MouseEvent) {
   commentTarget.value = null;
+  noteTarget.value = null;
+  bringTarget.value = null;
   const target = event.target instanceof Element ? event.target : null;
   if (
     !target ||
-    !permissions.comment ||
     target.closest('input, textarea, select, [contenteditable="true"], [data-canvas-chrome]')
   ) {
     event.stopPropagation();
     return;
   }
-  const source = resolveCommentTarget(target);
+  const source = permissions.comment ? resolveCommentTarget(target) : null;
   commentTarget.value = source
     ? { ...source, position: world(event.clientX, event.clientY) }
     : null;
-  if (!commentTarget.value) event.stopPropagation();
+  noteTarget.value = resolveNoteTarget(target);
+  bringTarget.value = resolveBringTarget(target);
+  if (!commentTarget.value && !noteTarget.value && !bringTarget.value && !canStartRound.value)
+    event.stopPropagation();
+}
+function resolveNoteTarget(target: Element) {
+  const id = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
+  const note = notes.find((candidate) => candidate.id === id);
+  if (!note || id <= 0 || !permissions.edit || note.author_id !== collaboration.userId) return null;
+  return { id, state: note.state };
+}
+// The copy lands under the lowest content of the band in progress, at the
+// original's x, so it never covers what is already there.
+function resolveBringTarget(target: Element) {
+  const id = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
+  const note = notes.find((candidate) => candidate.id === id);
+  const active = bands.rounds.find((round) => round.status === "active");
+  if (!note || id <= 0 || !canCreate.value || !active || note.round_id === active.id) return null;
+  const top = bandTop(active.id)?.top ?? offsetOf(active.id);
+  const bottom = contentBottom(active.id);
+  const y = (bottom === null ? top : Math.max(top, offsetOf(active.id) + bottom)) + 24;
+  return { id, point: { x: position(note).x, y } };
 }
 function resolveCommentTarget(target: Element) {
   const noteId = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
   const groupId = Number(target.closest<HTMLElement>("[data-group-id]")?.dataset.groupId);
   if (noteId) return ideaCommentTarget(noteId);
   if (groupId) {
-    return !permissions.privateMode && groups.value.some((group) => group.id === groupId)
-      ? { ideaId: null, groupId }
-      : null;
+    return groups.value.some((group) => group.id === groupId) ? { ideaId: null, groupId } : null;
   }
   return { ideaId: null, groupId: null };
 }
 function ideaCommentTarget(noteId: number) {
   const note = notes.find((note) => note.id === noteId);
-  return !permissions.privateMode && note?.visibility === "shared" && note.published_revision
+  return note?.visibility === "shared" && note.published_revision
     ? { ideaId: noteId, groupId: null }
     : null;
 }
 
 const root = ref<HTMLElement | null>(null);
-const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(root);
+// A header rests flush under the app bar: jumping to a round brings its header
+// here, scrolling past it pins the header here, and the viewport never scrolls
+// above the first header. The search and references controls share that row;
+// while a header is anywhere in the chrome's zone it makes room for them.
+const HEADER_REST = 0;
+const CHROME_ZONE = 60;
+// The header row in screen pixels: the bar's min height plus its line.
+const HEADER_HEIGHT = 42;
+// A group frame rises above its members; over the first band that is above the
+// canvas top, and the view may go that far up so its header stays reachable.
+const overhang = ref(0);
+const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(root, {
+  rest: ({ zoom }) => HEADER_REST + overhang.value * zoom,
+});
+const chromePanel = ref<HTMLElement | null>(null);
+const chromeWidth = ref(0);
+// Under 1000 px of canvas the pinned header keeps its whole row: the chrome
+// leaves it and comes back once no header sits under the chrome zone.
+const chromeHidden = computed(() => !chromeFramed.value && view.width < 1000);
+const chromeInset = computed(() =>
+  chromeWidth.value && !chromeHidden.value ? 12 + chromeWidth.value + 12 : 0,
+);
+// Headers are as tall as their question and controls take; each is measured,
+// and the pin and band maths follow the measure.
+const headerHeights = ref(new Map<number, number>());
+const headerElements = new Map<number, HTMLElement>();
+let headerObserver: ResizeObserver | undefined;
+function watchHeader(roundId: number, el: Element | ComponentPublicInstance | null) {
+  const previous = headerElements.get(roundId);
+  if (previous === el) return;
+  if (previous) headerObserver?.unobserve(previous);
+  if (el instanceof HTMLElement) {
+    headerElements.set(roundId, el);
+    headerObserver?.observe(el);
+  } else headerElements.delete(roundId);
+}
+function headerHeight(round: Round) {
+  return headerHeights.value.get(round.id) ?? HEADER_HEIGHT;
+}
+let chromeObserver: ResizeObserver | undefined;
 const { t, member } = useBoardText();
 const tool = ref("select"),
   query = ref("");
@@ -278,6 +392,154 @@ function bounds() {
 function fitAll() {
   fit([...bounds(), ...layouts.value.map((layout) => layout.bounds)]);
 }
+const orderedRounds = computed(() => orderRounds(bands.rounds));
+const multiRound = computed(() => orderedRounds.value.length > 1);
+const lastRound = computed(() => orderedRounds.value[orderedRounds.value.length - 1] ?? null);
+function offsetOf(roundId: number | null | undefined): number {
+  return roundId == null ? 0 : (bands.offsets.get(roundId) ?? 0);
+}
+// A band is as tall as what it holds. Its lowest note or frame is measured on
+// live positions, so a drag past the bottom grows the band as it goes.
+function contentBottom(roundId: number): number | null {
+  const top = offsetOf(roundId);
+  const bottoms = notes
+    .filter((note) => note.round_id === roundId)
+    .map((note) => position(note).y + (noteHeights.value.get(note.id) ?? 96) - top);
+  for (const layout of layouts.value) {
+    if (groupRound(layout.group) !== roundId) continue;
+    bottoms.push(layout.bounds.y + layout.bounds.height - top);
+  }
+  for (const item of bands.masked ?? []) {
+    if (item.round_id === roundId) bottoms.push((item.canvas.y ?? 0) + MASKED_HEIGHT - top);
+  }
+  return bottoms.length ? Math.max(...bottoms) : null;
+}
+watch(
+  layouts,
+  (list) => {
+    overhang.value = Math.max(0, ...list.map((layout) => -layout.bounds.y));
+  },
+  { immediate: true },
+);
+const bandLayout = computed(() => bandOffsets(bands.rounds, contentBottom));
+watch(
+  bandLayout,
+  (next) => {
+    if (!sameOffsets(next, bands.offsets)) emit("bands", next);
+  },
+  { immediate: true },
+);
+function canvasHeaderTop(round: Round) {
+  return view.y + offsetOf(round.id) * view.zoom;
+}
+// While the viewport is inside a band, its header stays pinned at the rest
+// line; the next band's header pushes it out as it arrives.
+function headerTop(round: Round) {
+  const own = canvasHeaderTop(round);
+  if (own >= HEADER_REST) return own;
+  return Math.min(HEADER_REST, nextHeaderTop(round) - headerHeight(round));
+}
+function headerPinned(round: Round) {
+  return canvasHeaderTop(round) < HEADER_REST;
+}
+function headerUnderChrome(round: Round) {
+  return canvasHeaderTop(round) < CHROME_ZONE;
+}
+// With a header on the chrome row, the search and references sit in that row
+// as plain controls; the panel keeps its own frame only over bare canvas.
+const chromeFramed = computed(
+  () => !orderedRounds.value.some((round) => headerShown(round) && headerUnderChrome(round)),
+);
+function nextHeaderTop(round: Round) {
+  const rounds = orderedRounds.value;
+  const index = rounds.findIndex((candidate) => candidate.id === round.id);
+  for (const candidate of rounds.slice(index + 1)) {
+    if (headerShown(candidate)) return canvasHeaderTop(candidate);
+  }
+  return Infinity;
+}
+// Bring a band's header to its rest line, keeping zoom and x. The freshly
+// measured layout already knows a round the props have not yet.
+let jumped = false;
+function scrollToRound(round: Round) {
+  jumped = true;
+  const land = () => {
+    view.y = HEADER_REST - (bandLayout.value.get(round.id) ?? offsetOf(round.id)) * view.zoom;
+  };
+  land();
+  // Notes are measured after they paint; land again once the layout knows their heights.
+  requestAnimationFrame(() => requestAnimationFrame(land));
+}
+// A session with several rounds opens on the one in progress; the rest fit everything.
+function openView() {
+  // A deep link may already have asked for a round; the default view yields to it.
+  if (jumped) return;
+  const active = orderedRounds.value.find((round) => round.status === "active");
+  if (multiRound.value && active) scrollToRound(active);
+  else fitAll();
+}
+// The row a band keeps free under its offset for its header, in canvas units.
+const HEADER_GAP = 2;
+// Placeholders share one height: what hides in a private round has no measured card.
+const MASKED_HEIGHT = 96;
+// A single, unnamed round has no header to show, except while its facilitator
+// works in it or its clock runs: participants consult the countdown there.
+const clockShown = computed(() => {
+  const status = bands.timer?.timer?.status;
+  return status === "running" || status === "paused" || status === "elapsed";
+});
+// The clock lives on the header of the round in progress; closed without a
+// successor, the session's last band keeps it in reach.
+function clockRound(round: Round) {
+  return (
+    round.status === "active" ||
+    (!orderedRounds.value.some((candidate) => candidate.status === "active") &&
+      round.id === lastRound.value?.id)
+  );
+}
+function headerShown(round: Round) {
+  return (
+    multiRound.value ||
+    !!round.prompt ||
+    (clockRound(round) && ((round.status === "active" && bands.canManage) || clockShown.value))
+  );
+}
+// Where a note of this round may start: under its header. Bands grow with
+// their content, so nothing bounds them below.
+function bandTop(roundId: number | null): { round: Round; top: number } | null {
+  if (roundId == null) return null;
+  const round = orderedRounds.value.find((candidate) => candidate.id === roundId);
+  if (!round) return null;
+  const strip = headerShown(round) ? headerHeight(round) + HEADER_GAP : 0;
+  return { round, top: offsetOf(round.id) + strip };
+}
+// Which header lines a dragged note is pressing against.
+const contact = ref(new Set<number>());
+// Notes never rise above their header. A multi-selection stops as a whole when
+// any of its notes touches its line; the delta comes back clamped in canvas units.
+function clampDelta(moving: Array<{ id: number; origin: Point }>, dy: number): number {
+  const reaches = moving.flatMap((entry) => {
+    const note = notes.find((candidate) => candidate.id === entry.id);
+    const band = note ? bandTop(note.round_id) : null;
+    return band ? [{ min: band.top - entry.origin.y, roundId: band.round.id }] : [];
+  });
+  const low = Math.max(-Infinity, ...reaches.map((reach) => reach.min));
+  const clamped = Math.max(dy, low);
+  // Only the header that actually stops the movement lights up.
+  const blocking = reaches.filter((reach) => reach.min === low).map((reach) => reach.roundId);
+  contact.value = clamped === dy ? new Set() : new Set(blocking);
+  return clamped;
+}
+// Keep a point under the header of the round it belongs to.
+function clampPoint(point: Point, roundId: number | null): Point {
+  const band = bandTop(roundId);
+  return band ? { x: point.x, y: Math.max(point.y, band.top) } : point;
+}
+// Where a new note goes: the band under the point decides the round, and the
+// note starts under that round's header, never above it.
+function placed(point: Point): Point {
+  return clampPoint(point, bandAt(orderedRounds.value, bands.offsets, point.y));
+}
 function center(note: Idea) {
   const rect = noteBounds(note);
   view.x = view.width / 2 - (rect.x + rect.width / 2) * view.zoom;
@@ -299,6 +561,14 @@ async function revealNote(note: Idea) {
 function focus() {
   root.value?.focus({ preventScroll: true });
 }
+// The menu hands focus back to the canvas as it closes, unless a note or a
+// question is being written by then: a menu closing late must not take the caret.
+function focusAfterMenu() {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && active.matches("[contenteditable=true], input, textarea"))
+    return;
+  focus();
+}
 function summaryAnchor(id: number): Point | undefined {
   const frame = layouts.value.find((layout) => layout.group.id === id)?.bounds;
   return frame
@@ -315,7 +585,7 @@ async function focusEditing() {
   if (editor) editor.focus({ preventScroll: true });
   else focus();
 }
-defineExpose({ center, fitAll, focus, focusEditing, summaryAnchor, revealNote });
+defineExpose({ center, fitAll, focus, focusEditing, summaryAnchor, revealNote, scrollToRound });
 const visibleSelection = computed(() =>
   selectedIds.filter((id) => notes.some((note) => note.id === id)),
 );
@@ -358,7 +628,8 @@ function addConnected(direction: ConnectionDirection) {
   if (connectionWriteBlocked() || !canCreate.value || !visibleSelection.value.length) return;
   const selected = notes.filter((note) => visibleSelection.value.includes(note.id));
   const obstacles = [...notes.map(noteBounds), ...layouts.value.map((layout) => layout.bounds)];
-  const point = connectedPlacement(selected.map(noteBounds), obstacles, direction);
+  const placed = connectedPlacement(selected.map(noteBounds), obstacles, direction);
+  const point = placed ? clampPoint(placed, selected[0]?.round_id ?? null) : placed;
   if (!point) return;
   emit("finish");
   tool.value = "select";
@@ -492,16 +763,6 @@ function selectNote(id: number, shift: boolean): number[] {
   emit("select", ids);
   return ids;
 }
-function interactiveTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element &&
-    Boolean(
-      target.closest(
-        'input, textarea, select, button, a, [contenteditable="true"], [role="textbox"], [data-canvas-chrome]',
-      ),
-    )
-  );
-}
 function pointerDown(event: PointerEvent) {
   if (ignorePointer(event)) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
@@ -621,7 +882,7 @@ function selectBackground(event: PointerEvent) {
   emit("select", []);
   focus();
   if (tool.value === "note" && canCreate.value) {
-    emit("add", world(event.clientX, event.clientY));
+    emit("add", placed(world(event.clientX, event.clientY)));
     tool.value = "select";
   }
 }
@@ -672,24 +933,20 @@ function pointerMove(event: PointerEvent) {
   if (!drag.moved) return;
   updateDropTarget(drag, ghost.value);
   if (drag.groupId !== undefined) {
+    const delta = clampDelta(drag.notes, dy / view.zoom);
     groupAnchors.value.set(drag.groupId, {
       x: drag.origin.x + dx / view.zoom,
-      y: drag.origin.y + dy / view.zoom,
+      y: drag.origin.y + delta,
     });
     for (const note of drag.notes)
-      positions.value.set(note.id, {
-        x: note.origin.x + dx / view.zoom,
-        y: note.origin.y + dy / view.zoom,
-      });
+      positions.value.set(note.id, { x: note.origin.x + dx / view.zoom, y: note.origin.y + delta });
   } else if (drag.id === null) {
     view.x = drag.origin.x + dx;
     view.y = drag.origin.y + dy;
   } else {
+    const delta = clampDelta(drag.notes, dy / view.zoom);
     for (const note of drag.notes)
-      positions.value.set(note.id, {
-        x: note.origin.x + dx / view.zoom,
-        y: note.origin.y + dy / view.zoom,
-      });
+      positions.value.set(note.id, { x: note.origin.x + dx / view.zoom, y: note.origin.y + delta });
   }
 }
 function updateToolTarget(point: Point) {
@@ -711,6 +968,7 @@ function finishNoteDrag(current: CanvasDrag) {
     );
   }
   for (const note of current.notes) positions.value.delete(note.id);
+  contact.value = new Set();
 }
 async function pointerUp(event: PointerEvent) {
   if (marquee.finish(event)) return;
@@ -738,11 +996,13 @@ async function finishGroupDrag(event: PointerEvent, finished: CanvasDrag) {
     );
   for (const note of finished.notes) positions.value.delete(note.id);
   groupAnchors.value.delete(finished.groupId!);
+  contact.value = new Set();
 }
 function cancelDrag(event: PointerEvent) {
   marquee.cancel(event);
   connectionTarget.value = null;
   dragConnectionSource.value = null;
+  contact.value = new Set();
   if (!drag || drag.pointer !== event.pointerId) return;
   if (drag?.groupId !== undefined) groupAnchors.value.delete(drag.groupId);
   for (const note of drag?.notes ?? []) positions.value.delete(note.id);
@@ -760,10 +1020,10 @@ function cancelActiveDrag() {
     current.capture.releasePointerCapture(current.pointer);
 }
 function doubleClick(event: MouseEvent) {
-  if (interactiveTarget(event.target) || historyState.busy) return;
+  if (interactivePath(event) || historyState.busy) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   if (element) emit("edit", Number(element.dataset.noteId));
-  else if (canCreate.value) emit("add", world(event.clientX, event.clientY));
+  else if (canCreate.value) emit("add", placed(world(event.clientX, event.clientY)));
 }
 function nudgeBlocked() {
   const nothingSelected = !visibleSelection.value.length && selectedGroupId.value === null;
@@ -787,17 +1047,19 @@ function nudge(event: KeyboardEvent) {
     if (group && !groupVisibility(group, visibleIds).partial) nudgeGroup(group, direction, step);
     return;
   }
+  const selection = notes.filter((note) => visibleSelection.value.includes(note.id));
+  const delta = clampDelta(
+    selection.map((note) => ({ id: note.id, origin: position(note) })),
+    direction.y * step,
+  );
+  contact.value = new Set();
+  if (direction.y !== 0 && delta === 0) return;
   emit(
     "move",
-    notes
-      .filter((note) => visibleSelection.value.includes(note.id))
-      .map((note) => {
-        const point = position(note);
-        return {
-          id: note.id,
-          point: { x: point.x + direction.x * step, y: point.y + direction.y * step },
-        };
-      }),
+    selection.map((note) => {
+      const point = position(note);
+      return { id: note.id, point: { x: point.x + direction.x * step, y: point.y + delta } };
+    }),
   );
 }
 interface GroupNudge {
@@ -838,7 +1100,9 @@ function nudgeGroup(group: IdeaGroup, direction: Point, step: number) {
   };
   const nudge = groupNudge;
   clearTimeout(nudge.timer);
-  nudge.delta = { x: nudge.delta.x + direction.x * step, y: nudge.delta.y + direction.y * step };
+  const dy = clampDelta(nudge.notes, nudge.delta.y + direction.y * step);
+  contact.value = new Set();
+  nudge.delta = { x: nudge.delta.x + direction.x * step, y: dy };
   groupAnchors.value.set(nudge.id, {
     x: nudge.origin.x + nudge.delta.x,
     y: nudge.origin.y + nudge.delta.y,
@@ -1017,11 +1281,11 @@ function historyShortcut(event: KeyboardEvent, key: string) {
   else emit("undo");
 }
 function pastePoint(): Point {
-  return (
+  return placed(
     ghost.value ?? {
       x: (view.width / 2 - view.x) / view.zoom,
       y: (view.height / 2 - view.y) / view.zoom,
-    }
+    },
   );
 }
 function clipboard(event: ClipboardEvent, operation: "copy" | "cut" | "paste") {
@@ -1044,10 +1308,13 @@ function shortcut(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
   if (key === "n" && canCreate.value && !historyState.busy) {
     event.preventDefault();
-    emit("add", {
-      x: (view.width / 2 - view.x) / view.zoom - 140,
-      y: (view.height / 2 - view.y) / view.zoom - 100,
-    });
+    emit(
+      "add",
+      placed({
+        x: (view.width / 2 - view.x) / view.zoom - 140,
+        y: (view.height / 2 - view.y) / view.zoom - 100,
+      }),
+    );
   }
   if (key === "v") chooseTool("select");
   if (key === "h") chooseTool("pan");
@@ -1090,6 +1357,23 @@ function canvasWheel(event: WheelEvent) {
   else wheel(event);
 }
 onMounted(async () => {
+  if (typeof ResizeObserver !== "undefined" && chromePanel.value) {
+    chromeObserver = new ResizeObserver(([entry]) => {
+      chromeWidth.value = entry!.contentRect.width;
+    });
+    chromeObserver.observe(chromePanel.value);
+  }
+  if (typeof ResizeObserver !== "undefined") {
+    headerObserver = new ResizeObserver((entries) => {
+      const next = new Map(headerHeights.value);
+      for (const entry of entries) {
+        const id = Number((entry.target as HTMLElement).dataset.roundHeader);
+        next.set(id, (entry.target as HTMLElement).offsetHeight);
+      }
+      headerHeights.value = next;
+    });
+    for (const el of headerElements.values()) headerObserver.observe(el);
+  }
   if (typeof ResizeObserver !== "undefined")
     noteObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -1103,7 +1387,7 @@ onMounted(async () => {
     });
   await nextTick();
   measureNotes();
-  fitAll();
+  openView();
 });
 watch(
   () => notes.map((note) => note.id),
@@ -1113,6 +1397,8 @@ watch(
   },
 );
 onUnmounted(() => {
+  chromeObserver?.disconnect();
+  headerObserver?.disconnect();
   noteObserver?.disconnect();
   const nudge = groupNudge;
   groupNudge = null;
@@ -1161,7 +1447,10 @@ onUnmounted(() => {
     "
   >
     <ContextMenu>
-      <ContextMenuTrigger as-child :disabled="!permissions.comment">
+      <ContextMenuTrigger
+        as-child
+        :disabled="!permissions.comment && !permissions.edit && !canStartRound"
+      >
         <div class="absolute inset-0">
           <div class="absolute left-0 top-0 origin-top-left" :style="{ transform }">
             <CanvasGroup
@@ -1267,10 +1556,12 @@ onUnmounted(() => {
             </svg>
             <div
               v-for="note in notes"
-              :key="noteKey(note.id)"
+              :key="note.key ?? String(note.id)"
               :data-note-id="note.id"
               class="pointer-events-none absolute left-0 top-0"
-              :class="selectedIds.includes(note.id) ? 'z-10' : ''"
+              :class="
+                selectedIds.includes(note.id) ? 'z-10' : note.state === 'discarded' ? '-z-[1]' : ''
+              "
               :style="{
                 transform: `translate(${position(note).x}px, ${position(note).y}px)`,
                 width: `${note.canvas?.width ?? 280}px`,
@@ -1307,11 +1598,55 @@ onUnmounted(() => {
               />
             </div>
             <div
+              v-for="item in bands.masked ?? []"
+              :key="`masked-${item.id}`"
+              :id="`canvas-masked-${item.id}`"
+              data-masked-note
+              role="img"
+              :aria-label="t('ideation.rounds.hiddenNote')"
+              class="pointer-events-none absolute left-0 top-0 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/60"
+              :style="{
+                transform: `translate(${item.canvas.x ?? 0}px, ${item.canvas.y ?? 0}px)`,
+                width: `${item.canvas.width ?? 280}px`,
+                height: `${MASKED_HEIGHT}px`,
+              }"
+            />
+            <div
               v-if="tool === 'note' && ghost"
               class="pointer-events-none absolute h-12 w-40 rounded-md border border-dashed border-primary/70 bg-primary/5"
               :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
             />
           </div>
+          <template v-for="round in orderedRounds" :key="`round-${round.id}`">
+            <div
+              v-if="headerShown(round)"
+              :id="`brainstorming-band-${round.id}`"
+              :ref="(el) => watchHeader(round.id, el as Element | null)"
+              :data-round-header="round.id"
+              class="absolute left-0 right-0 z-10"
+              :class="headerPinned(round) ? 'pointer-events-auto' : 'pointer-events-none'"
+              :data-pinned="headerPinned(round) || undefined"
+              :style="{ top: `${headerTop(round)}px` }"
+            >
+              <RoundBar
+                :round="round"
+                :single="!multiRound"
+                :sticky="headerUnderChrome(round)"
+                :inset="headerUnderChrome(round) ? chromeInset : 0"
+                :last="round.id === lastRound?.id"
+                :can-manage="bands.canManage"
+                :pending="bands.pending"
+                :contact="contact.has(round.id)"
+                :timer="clockRound(round) ? (bands.timer ?? null) : null"
+                :count="bands.counts?.get(round.id) ?? 0"
+                @close="emit('closeRound', $event)"
+                @update-privacy="(id, attrs) => emit('updatePrivacy', id, attrs)"
+                @reveal="emit('reveal', $event)"
+                @new-round="emit('newRound')"
+                @update-prompt="(id, prompt) => emit('updatePrompt', id, prompt)"
+              />
+            </div>
+          </template>
           <div
             v-if="selectedId !== null && !selectionArea"
             id="brainstorming-note-toolbar"
@@ -1402,39 +1737,50 @@ onUnmounted(() => {
               }}
             </p>
           </div>
-          <div data-canvas-chrome class="absolute left-3 top-3 z-20">
-            <div class="surface-panel flex items-center p-1">
-              <button
-                type="button"
-                class="toolbar-btn"
-                :aria-label="t('ideation.search')"
-                @click="searchOpen = !searchOpen"
-              >
-                <Search class="size-4" /></button
-              ><slot name="session" />
-            </div>
-            <div v-if="searchOpen" class="surface-panel mt-2 w-72 p-3">
-              <Input
-                v-model="query"
-                :placeholder="t('ideation.search')"
-                :aria-label="t('ideation.search')"
-              />
-              <div class="mt-2 max-h-64 overflow-auto">
-                <button
-                  v-for="note in matches"
-                  :key="note.id"
-                  type="button"
-                  class="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
-                  @click="
-                    center(note);
-                    emit('selectGroup', null);
-                    emit('select', [note.id]);
-                    searchOpen = false;
-                  "
-                >
-                  {{ note.title || note.body.replace(/<[^>]*>/g, " ") }}
-                </button>
-              </div>
+          <div
+            data-canvas-chrome
+            class="absolute left-3 z-20"
+            :class="[chromeFramed ? 'top-3' : 'top-0', chromeHidden && 'hidden']"
+          >
+            <div
+              ref="chromePanel"
+              :class="
+                chromeFramed
+                  ? 'surface-panel flex w-fit items-center p-1'
+                  : 'flex h-[42px] w-fit items-center gap-0.5'
+              "
+            >
+              <Popover v-model:open="searchOpen">
+                <PopoverTrigger as-child>
+                  <button type="button" class="toolbar-btn" :aria-label="t('ideation.search')">
+                    <Search class="size-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" :side-offset="8" class="w-72 p-3" data-canvas-chrome>
+                  <Input
+                    v-model="query"
+                    :placeholder="t('ideation.search')"
+                    :aria-label="t('ideation.search')"
+                  />
+                  <div class="mt-2 max-h-64 overflow-auto">
+                    <button
+                      v-for="note in matches"
+                      :key="note.id"
+                      type="button"
+                      class="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
+                      @click="
+                        center(note);
+                        emit('selectGroup', null);
+                        emit('select', [note.id]);
+                        searchOpen = false;
+                      "
+                    >
+                      {{ note.title || note.body.replace(/<[^>]*>/g, " ") }}
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <slot name="session" :compact="view.width < 1280" />
             </div>
           </div>
           <p
@@ -1538,14 +1884,53 @@ onUnmounted(() => {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent
-        v-if="commentTarget"
-        @close-auto-focus.prevent="root?.focus({ preventScroll: true })"
+        v-if="commentTarget || noteTarget || bringTarget || canStartRound"
+        @close-auto-focus.prevent="focusAfterMenu"
       >
         <ContextMenuItem
+          v-if="commentTarget"
           id="brainstorming-comment-context-add"
           @select="emit('comment', commentTarget)"
         >
           <MessageSquarePlus class="size-4" />{{ t("brainstormingComments.add_comment") }}
+        </ContextMenuItem>
+        <template v-if="noteTarget">
+          <ContextMenuItem
+            v-if="noteTarget.state !== 'parked'"
+            id="brainstorming-note-context-park"
+            @select="emit('changeState', noteTarget.id, 'parked')"
+          >
+            <Bookmark class="size-4" />{{ t("ideation.parked") }}
+          </ContextMenuItem>
+          <ContextMenuItem
+            v-if="noteTarget.state !== 'active'"
+            id="brainstorming-note-context-restore"
+            @select="emit('changeState', noteTarget.id, 'active')"
+          >
+            <RotateCcw class="size-4" />{{ t("ideation.bringBack") }}
+          </ContextMenuItem>
+          <ContextMenuItem
+            v-if="noteTarget.state !== 'discarded'"
+            id="brainstorming-note-context-discard"
+            @select="emit('changeState', noteTarget.id, 'discarded')"
+          >
+            <CircleX class="size-4" />{{ t("ideation.canvas.discard") }}
+          </ContextMenuItem>
+        </template>
+        <ContextMenuItem
+          v-if="bringTarget"
+          id="brainstorming-note-context-bring"
+          @select="emit('bringForward', bringTarget.id, bringTarget.point)"
+        >
+          <ArrowDownToLine class="size-4" />{{ t("ideation.bringForward") }}
+        </ContextMenuItem>
+        <ContextMenuItem
+          v-if="canStartRound"
+          id="brainstorming-round-context-new"
+          :disabled="bands.pending"
+          @select="emit('newRound')"
+        >
+          <Plus class="size-4" />{{ t("ideation.rounds.newRound") }}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

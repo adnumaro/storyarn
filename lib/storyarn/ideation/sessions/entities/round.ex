@@ -1,5 +1,11 @@
 defmodule Storyarn.Ideation.Sessions.Round do
-  @moduledoc "An optional, session-owned creative round with an independent lifecycle."
+  @moduledoc """
+  A session-owned creative round. Rounds are horizontal bands of the session
+  canvas, stacked in chronological order. A band is as tall as its content, so
+  nothing about its height is stored; note positions are relative to its header.
+  A round in progress can be private: its contributions stay with their authors
+  until the facilitator reveals the round, or the timer does when asked to.
+  """
   use Ecto.Schema
 
   import Ecto.Changeset
@@ -9,7 +15,10 @@ defmodule Storyarn.Ideation.Sessions.Round do
     field :session_id, :id
     field :number, :integer
     field :prompt, :string
-    field :status, Ecto.Enum, values: [:planned, :active, :closed, :cancelled], default: :planned
+    field :status, Ecto.Enum, values: [:active, :closed], default: :active
+    field :private, :boolean, default: false
+    field :reveal_on_expiry, :boolean, default: false
+    field :revealed_at, :utc_datetime_usec
     field :started_at, :utc_datetime_usec
     field :closed_at, :utc_datetime_usec
     timestamps(type: :utc_datetime_usec)
@@ -25,6 +34,12 @@ defmodule Storyarn.Ideation.Sessions.Round do
     |> validate_length(:prompt, max: 2000, count: :codepoints)
     |> unique_constraint([:session_id, :number])
     |> check_constraint(:prompt, name: :ideation_rounds_prompt_length)
+  end
+
+  def privacy_changeset(round, attrs) do
+    round
+    |> cast(attrs, [:private, :reveal_on_expiry])
+    |> validate_required([:private, :reveal_on_expiry])
   end
 
   def lifecycle_changeset(round, attrs) do

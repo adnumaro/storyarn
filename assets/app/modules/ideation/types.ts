@@ -45,6 +45,12 @@ export interface NoteConnection {
 export interface CreatedConnection extends ConnectionVersion {
   before_version: number;
 }
+/** A deep link from the session tree, applied once per `seq`. */
+export interface BoardLink {
+  round_id: number | null;
+  view: "later" | null;
+  seq: number;
+}
 export interface CreatedIdea extends Idea {
   connected_from?: CreatedConnection[];
 }
@@ -72,13 +78,20 @@ export interface Idea extends IdeaContent {
 export interface IdeaGroup {
   id: number;
   session_id: number;
+  /** The round whose band holds the group; its frame and members are stored relative to that header. */
+  round_id?: number | null;
   title: string | null;
   synthesis: string | null;
   author_id: number | null;
   version: number;
   canvas: { x: number; y: number; width: number; height: number };
   idea_ids: number[];
-  members: Array<{ idea_id: number; source_revision: number; canvas: CanvasPlacement }>;
+  members: Array<{
+    idea_id: number;
+    source_revision: number;
+    round_id?: number | null;
+    canvas: CanvasPlacement;
+  }>;
   deleted_at: string | null;
   inserted_at: string;
 }
@@ -93,6 +106,8 @@ export interface GroupText {
 }
 export interface CanvasIdea extends Idea {
   round_number?: number;
+  /** Stable render key across the local-to-server id swap of a new note. */
+  key?: string;
 }
 export interface EditReceipt {
   id: number;
@@ -102,7 +117,6 @@ export interface EditReceipt {
   inserted_at: string;
 }
 export interface SessionConfiguration {
-  private_mode: boolean;
   default_visibility: Visibility;
   publication_policy: PublicationPolicy;
 }
@@ -125,6 +139,9 @@ export interface Session {
   inserted_at: string;
   configuration: SessionConfiguration;
   can_manage: boolean;
+  /** Session tree only: rounds in band order and the parked notes the viewer may see. */
+  rounds?: Round[];
+  parked_count?: number;
 }
 export interface SessionRevision {
   id: number;
@@ -139,16 +156,40 @@ export interface Member {
   display_name: string;
   avatar_url: string | null;
 }
+/** What the facilitator sets on the round in progress. */
+export interface RoundPrivacy {
+  private: boolean;
+  reveal_on_expiry: boolean;
+}
+/** Another person's note in a private round: where it is and how wide, nothing more. */
+export interface MaskedIdea {
+  id: number;
+  round_id: number;
+  canvas: { x?: number; y?: number; width?: number };
+}
 export interface Round {
   id: number;
   session_id: number;
   number: number;
   prompt: string | null;
-  status: "planned" | "active" | "closed" | "cancelled";
+  status: "active" | "closed";
+  private: boolean;
+  reveal_on_expiry: boolean;
+  revealed_at: string | null;
+  /** Canvas y of the round header; note positions in the band are relative to it. */
   started_at: string | null;
   closed_at: string | null;
   inserted_at: string;
   updated_at: string;
+}
+/** Width tiers of a round header, measured on the header itself. */
+export type HeaderTier = "xl" | "l" | "m" | "s" | "xs";
+/** The session timer as the round in progress shows it on its header. */
+export interface RoundTimerContext {
+  session: Session;
+  epoch: string;
+  timer: SessionTimer | null;
+  canEdit: boolean;
 }
 export interface SessionTimer {
   id: number;
@@ -157,7 +198,6 @@ export interface SessionTimer {
   deadline_at: string | null;
   remaining_seconds: number;
   duration_seconds: number;
-  reveal_on_expiry: boolean;
   close_contributions_on_expiry: boolean;
   outcome:
     | "completed"
@@ -167,7 +207,6 @@ export interface SessionTimer {
     | null;
   server_now: string;
 }
-export type RoundFilter = "all" | null | number;
 export interface Board {
   epoch: string;
   loading: boolean;
@@ -180,10 +219,9 @@ export interface Board {
   session_missing: boolean;
   timer: SessionTimer | null;
   rounds: Round[];
-  rounds_next: number | null;
   active_round: Round | null;
-  round_filter: RoundFilter;
   ideas: Idea[];
+  masked_ideas: MaskedIdea[];
   groups: IdeaGroup[];
   ideas_next: number | null;
   idea_before: number | null;

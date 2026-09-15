@@ -5,6 +5,7 @@ defmodule Storyarn.Ideation.Recovery.GroupState do
   # must never turn an unpublished draft into shared synthesis or provenance.
   def valid?(row, "groups", index) do
     Map.has_key?(index.sessions, row["session_id"]) and optional_id?(row["author_id"]) and
+      round_of_session?(row, index) and
       positive_integer?(row["version"]) and
       MapSet.member?(index.group_revisions, {row["id"], row["version"]}) and
       content?(row) and canvas?(row["canvas"])
@@ -115,4 +116,15 @@ defmodule Storyarn.Ideation.Recovery.GroupState do
 
   defp bytes?(_, _), do: false
   defp unique_by?(rows, fun), do: length(rows) == length(Enum.uniq_by(rows, fun))
+
+  # A group belongs to one of its session's rounds, or to none when it predates rounds.
+  defp round_of_session?(row, index) do
+    case row["round_id"] do
+      nil -> true
+      round_id -> round_in_session?(Map.get(index.rounds || %{}, round_id), row["session_id"])
+    end
+  end
+
+  defp round_in_session?(%{"session_id" => session_id}, expected), do: session_id == expected
+  defp round_in_session?(_round, _expected), do: false
 end

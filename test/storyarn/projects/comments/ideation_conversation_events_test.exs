@@ -19,7 +19,13 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     assert :ok = Projects.subscribe_ideation_conversations(outsider)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     refute_changed(ctx.project.id)
   end
@@ -30,7 +36,13 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     assert_changed_once(ctx.project.id)
   end
@@ -41,7 +53,13 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     assert_changed_once(ctx.project.id)
   end
@@ -53,7 +71,13 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     assert :ok = Projects.subscribe_ideation_conversations(inherited)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     assert_changed_once(ctx.project.id)
   end
@@ -98,7 +122,13 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
              Ideation.update_session(ctx.facilitator, project_id, ctx.session.id, renamed.revision, %{})
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, project_id, ctx.session.id, renamed.revision, false)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               project_id,
+               ctx.session.id,
+               renamed.revision,
+               false
+             )
 
     refute_receive {:ideation_conversations_changed, ^project_id}
     refute_changed(project_id)
@@ -115,7 +145,7 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
              })
 
     assert {:ok, round_session} =
-             Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, configured.revision, %{
+             Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, configured.revision, %{
                prompt: "Alternatives"
              })
 
@@ -142,7 +172,13 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     refute_changed(ctx.project.id)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, reopened.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               reopened.revision,
+               true
+             )
 
     assert_changed_once(ctx.project.id)
 
@@ -151,17 +187,27 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     assert_changed_once(ctx.project.id)
   end
 
-  test "timer expiry only invalidates sources when it actually reveals the private session", ctx do
+  test "timer expiry only invalidates sources when it actually reveals the private round", ctx do
     assert :ok = Projects.subscribe_ideation_comment_source_changes(ctx.peer)
-    timer = start_timer(ctx, false)
+    timer = start_timer(ctx)
     refute_changed(ctx.project.id)
     expire_timer(timer)
     refute_changed(ctx.project.id)
 
     assert {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, current.revision, true)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               current.revision,
+               true,
+               reveal_on_expiry: true
+             )
+
     assert_changed_once(ctx.project.id)
-    revealing = start_timer(ctx, true)
+    revealing = start_timer(ctx)
     refute_changed(ctx.project.id)
     expire_timer(revealing)
     assert_changed_once(ctx.project.id)
@@ -286,7 +332,13 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     idea = idea_fixture(ctx)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
 
@@ -398,13 +450,12 @@ defmodule Storyarn.Projects.IdeationConversationEventsTest do
     refute_receive {:ideation_comment_sources_changed, ^project_id}
   end
 
-  defp start_timer(ctx, reveal) do
+  defp start_timer(ctx) do
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
 
     {:ok, _} =
       Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, %{
-        seconds: 120,
-        reveal_on_expiry: reveal
+        seconds: 120
       })
 
     {:ok, timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)

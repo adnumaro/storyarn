@@ -231,6 +231,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     old = payload(view, ctx, %{})
 
     set_private_mode(ctx, true)
+    await_privacy(view, true)
     act(view, ctx, "reload")
     refute state(view)["open"]
     assert state(view)["selected"] == nil
@@ -246,11 +247,13 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert state(view)["error"] == "stale_board"
 
     set_private_mode(ctx, false)
+    await_privacy(view, false)
     act(view, ctx, "open")
     membership = Projects.get_membership(ctx.project.id, ctx.author.user.id)
     assert {:ok, _} = Projects.remove_member(ctx.owner, ctx.project.id, membership.id)
     render(view)
-    refute has_element?(view, "#brainstorming-panels")
+    # The dock injector stays mounted so it can come back; it just has no session.
+    assert LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["session-id"] == nil
     decisions = :sys.get_state(view.pid).socket.assigns.decisions
     refute decisions.open
     assert decisions.items == []
@@ -325,13 +328,39 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
 
   defp set_private_mode(ctx, private?) do
     {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, current.id, current.revision, private?)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               current.id,
+               current.revision,
+               private?
+             )
   end
 
   defp path(ctx),
     do: "/workspaces/#{ctx.project.workspace.slug}/projects/#{ctx.project.slug}/brainstorming/#{ctx.session.id}"
 
   defp state(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["decisions"]
+
+  # The board learns about the round's privacy through PubSub and refreshes shortly after.
+  defp await_privacy(view, private?) do
+    result =
+      Enum.reduce_while(1..200, :timeout, fn _, _ ->
+        render(view)
+        rounds = :sys.get_state(view.pid).socket.assigns.board.rounds
+
+        if Enum.any?(rounds, &(&1.private == private?)) do
+          {:halt, :ok}
+        else
+          Process.sleep(10)
+          {:cont, :timeout}
+        end
+      end)
+
+    assert result == :ok
+  end
 
   defp payload(view, ctx, attrs) do
     Map.merge(

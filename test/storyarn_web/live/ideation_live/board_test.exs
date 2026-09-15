@@ -139,6 +139,46 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_reply(view, %{status: "ok", value: %{count: 2}})
   end
 
+  test "bringing a note forward answers with the linked copy in the round in progress and refuses readers", ctx do
+    original = idea_fixture(ctx)
+    {ctx, second} = new_round(ctx)
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+
+    render_hook(
+      view,
+      "bring_idea_forward",
+      payload(view, %{idea_id: original.id, request_key: Ecto.UUID.generate(), canvas: %{x: 12, y: 30}})
+    )
+
+    assert_reply(view, %{status: "ok", value: %{id: id, source_idea_id: source, round_id: round_id, canvas: canvas}})
+    assert id != original.id
+    assert source == original.id
+    assert round_id == second.id
+    assert {12, 30} == {canvas["x"], canvas["y"]}
+    assert_board_eventually(view, fn board -> assert length(board["ideas"]) == 2 end)
+
+    {:ok, viewer, _} = live(log_in_user(ctx.conn, ctx.viewer.user), board_path(ctx, ctx.session.id))
+
+    render_hook(
+      viewer,
+      "bring_idea_forward",
+      payload(viewer, %{idea_id: original.id, request_key: Ecto.UUID.generate()})
+    )
+
+    assert_reply(viewer, %{status: "error", code: "unauthorized"})
+    render_hook(view, "bring_idea_forward", payload(view, %{idea_id: "x", request_key: Ecto.UUID.generate()}))
+    assert_reply(view, %{status: "error", code: "invalid_parameters"})
+  end
+
+  test "the session panel opens and closes through its event, and ignores anything else", ctx do
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    render_hook(view, "session_panel", payload(view, %{open: true}))
+    assert panels(view)["session-panel"] == true
+    render_hook(view, "session_panel", payload(view, %{open: false}))
+    assert panels(view)["session-panel"] == false
+    assert Process.alive?(view.pid)
+  end
+
   test "paste is sanitized on save and returned as inert content on reload", ctx do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
     render_hook(view, "create_idea", payload(view, idea_attrs(%{body: "<p>Hello<script>alert(1)</script></p>"})))
@@ -300,7 +340,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     for _ <- 1..2 do
       render_hook(sidebar, "create_session", %{epoch: epoch, session_id: nil})
       assert_reply(sidebar, %{status: "ok", value: %{id: id}})
-      assert_patch(view, board_path(ctx, id))
+      assert_patch(view, board_path(ctx, id), 2_000)
       assert data(view)["session"]["id"] == id
       assert {:ok, %{title: "Untitled session"}} = Ideation.get_session(ctx.author, ctx.project.id, id)
       assert find_live_child(view, "sidebar-brainstorming-#{ctx.project.id}").pid == sidebar.pid
@@ -320,6 +360,17 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
       assert_reply(view, %{status: "error", code: "invalid_parameters"})
       assert data(view)["session"]["id"] == ctx.session.id
     end
+  end
+
+  test "the settings action opens the session panel in the dock and closing it puts it away", ctx do
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    refute panels(view)["session-panel"]
+    render_hook(view, "board_action", payload(view, %{action: "settings"}))
+    assert panels(view)["session-panel"]
+    assert panels(view)["session"]["id"] == ctx.session.id
+    assert panels(view)["can-manage"] == false
+    render_hook(view, "session_panel", payload(view, %{open: false}))
+    refute panels(view)["session-panel"]
   end
 
   test "a role downgrade preserves readable notes and the draft epoch after a rejected write", ctx do
@@ -431,7 +482,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
       refute Jason.encode!(payload) =~ ctx.author.user.email
       assert {:noreply, received} = Board.handle_info({:remote_change, :brainstorming_cursor, payload}, socket)
       assert [["canvas_cursor", %{x: 20, y: 30}]] = Phoenix.LiveView.Utils.get_push_events(received)
-      private_board = put_in(socket.assigns.board.session.configuration.private_mode, true)
+      private_board = put_in(socket.assigns.board.active_round.private, true)
       assert {:noreply, ^private_board} = Board.handle_event("canvas_cursor", params, private_board)
 
       assert {:noreply, ^private_board} =
@@ -459,38 +510,53 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
         canvas_ready: true,
         board_error: nil,
         board: %{
-          session: %{id: ctx.session.id, configuration: %{private_mode: false}},
+          session: %{id: ctx.session.id},
+          active_round: %{id: 1, private: false},
           members: [%{id: ctx.author.user.id}]
         }
       }
     }
   end
 
-  test "round controls share metadata and preserve private mode and editing after closing", ctx do
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+  test "round actions share metadata and preserve private mode and editing after closing", ctx do
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
     assert {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    first = first_round(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.facilitator.user), board_path(ctx, session.id))
     {:ok, participant, _} = live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, session.id))
-    render_hook(view, "create_round", payload(view, %{revision: session.revision, prompt: "What motivates the rival?"}))
-    assert_reply(view, %{status: "ok"})
-    assert_board_eventually(view, fn board -> assert [%{"status" => "planned"}] = board["rounds"] end)
-    [round] = data(view)["rounds"]
-    refute Map.has_key?(round, "recovery_identity")
+    assert [%{"status" => "active"}] = data(view)["rounds"]
 
     render_hook(
       view,
-      "start_round",
-      payload(view, %{revision: data(view)["session"]["revision"], round_id: round["id"]})
+      "new_round",
+      payload(view, %{revision: session.revision, prompt: "What motivates the rival?"})
     )
 
     assert_reply(view, %{status: "ok"})
-    assert_board_eventually(participant, fn board -> assert board["active_round"]["id"] == round["id"] end)
-    assert_board_eventually(view, fn board -> assert board["active_round"]["id"] == round["id"] end)
-    # Read initial header props; subsequent updates use production prop diffs.
-    {:ok, header_view, _} = live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, session.id))
-    assert_board_eventually(header_view, fn board -> assert board["active_round"]["id"] == round["id"] end)
-    header = LiveVue.Test.get_vue(header_view, name: "live/ideation/BoardHeader")
-    assert header.props["active-round"]["prompt"] == round["prompt"]
+
+    assert_board_eventually(view, fn board ->
+      assert [%{"status" => "closed"}, %{"status" => "active"}] = board["rounds"]
+    end)
+
+    [closed, round] = data(view)["rounds"]
+    assert closed["id"] == first.id
+    refute Map.has_key?(round, "recovery_identity")
+
+    # Privacy is not inherited: the new round is set private on its own.
+    render_hook(
+      view,
+      "set_round_privacy",
+      payload(view, %{revision: data(view)["session"]["revision"], round_id: round["id"], private: true})
+    )
+
+    assert_reply(view, %{status: "ok"})
+
+    # Going private fences everyone's board; what follows must keep the new epoch.
+    assert_board_eventually(view, fn board -> assert board["active_round"]["private"] end)
+    assert_board_eventually(participant, fn board -> assert board["active_round"]["private"] end)
+    assert data(participant)["active_round"]["id"] == round["id"]
     epoch = data(participant)["epoch"]
 
     render_hook(
@@ -503,8 +569,8 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
 
     assert_board_eventually(participant, fn board ->
       assert board["active_round"] == nil
-      assert [%{"status" => "closed"}] = board["rounds"]
-      assert board["session"]["configuration"]["private_mode"]
+      assert [%{"status" => "closed"}, %{"status" => "closed"}] = board["rounds"]
+      assert Enum.all?(board["rounds"], & &1["private"])
       assert board["can_edit"]
       assert board["epoch"] == epoch
     end)
@@ -534,28 +600,27 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   test "round actions require the current board, current revision and managerial edit permission", ctx do
-    round = active_round(ctx)
+    round = first_round(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
 
-    for event <- ["create_round", "update_round", "cancel_round", "start_round", "close_round"] do
-      render_hook(view, event, payload(view, %{revision: 3, round_id: round.id}))
+    for event <- ["new_round", "update_round", "close_round"] do
+      render_hook(view, event, payload(view, %{revision: 1, round_id: round.id}))
       assert_reply(view, %{status: "error", code: "unauthorized"})
     end
 
     {:ok, manager, _} = live(log_in_user(build_conn(), ctx.facilitator.user), board_path(ctx, ctx.session.id))
-    render_hook(manager, "close_round", payload(manager, %{revision: 1, round_id: round.id}))
+    render_hook(manager, "close_round", payload(manager, %{revision: 3, round_id: round.id}))
     assert_reply(manager, %{status: "error", code: "stale_revision"})
-    render_hook(manager, "create_round", %{epoch: data(manager)["epoch"], session_id: -1, revision: 3})
+    render_hook(manager, "new_round", %{epoch: data(manager)["epoch"], session_id: -1, revision: 1})
     assert_reply(manager, %{status: "error", code: "stale_board"})
     {:ok, readonly, _} = live(log_in_user(build_conn(), ctx.viewer.user), board_path(ctx, ctx.session.id))
-    render_hook(readonly, "close_round", payload(readonly, %{revision: 3, round_id: round.id}))
+    render_hook(readonly, "close_round", payload(readonly, %{revision: 1, round_id: round.id}))
     assert_reply(readonly, %{status: "error", code: "unauthorized"})
     assert data(readonly)["active_round"]["id"] == round.id
   end
 
-  test "prepared questions can be corrected and cancelled in every participant's context", ctx do
-    {:ok, _} = Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{prompt: "A typo"})
-    {:ok, [round]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
+  test "the question of the round in progress can be corrected in every participant's context", ctx do
+    round = first_round(ctx)
     {:ok, manager, _} = live(log_in_user(ctx.conn, ctx.facilitator.user), board_path(ctx, ctx.session.id))
     {:ok, peer, _} = live(log_in_user(build_conn(), ctx.peer.user), board_path(ctx, ctx.session.id))
     epoch = data(peer)["epoch"]
@@ -563,33 +628,31 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     render_hook(
       manager,
       "update_round",
-      payload(manager, %{revision: "2", round_id: "#{round.id}", prompt: "Corrected"})
+      payload(manager, %{revision: "1", round_id: "#{round.id}", prompt: "Corrected"})
     )
 
     assert_reply(manager, %{status: "ok"})
-    assert_board_eventually(manager, fn board -> assert board["session"]["revision"] == 3 end)
-    assert_board_eventually(peer, fn board -> assert [%{"prompt" => "Corrected"}] = board["rounds"] end)
-
-    render_hook(manager, "cancel_round", payload(manager, %{revision: 3, round_id: round.id}))
-    assert_reply(manager, %{status: "ok"})
+    assert_board_eventually(manager, fn board -> assert board["session"]["revision"] == 2 end)
 
     assert_board_eventually(peer, fn board ->
-      assert [%{"status" => "cancelled", "prompt" => "Corrected"}] = board["rounds"]
+      assert [%{"prompt" => "Corrected", "status" => "active"}] = board["rounds"]
+      assert board["active_round"]["prompt"] == "Corrected"
       assert board["epoch"] == epoch
       assert board["can_edit"]
-      assert board["active_round"] == nil
     end)
 
-    assert_board_eventually(manager, fn board -> assert board["session"]["revision"] == 4 end)
-    render_hook(manager, "start_round", payload(manager, %{revision: 4, round_id: round.id}))
-    assert_reply(manager, %{status: "error", code: "round_cancelled"})
+    render_hook(manager, "close_round", payload(manager, %{revision: 2, round_id: round.id}))
+    assert_reply(manager, %{status: "ok"})
+    assert_board_eventually(manager, fn board -> assert board["active_round"] == nil end)
+    render_hook(manager, "update_round", payload(manager, %{revision: 3, round_id: round.id, prompt: "Later"}))
+    assert_reply(manager, %{status: "error", code: "round_not_active"})
   end
 
-  test "creation preserves explicit no-round while omitted round uses active and malformed IDs fail", ctx do
-    round = active_round(ctx)
+  test "creation rejects explicit no-round, omitted round uses the one in progress and malformed IDs fail", ctx do
+    round = first_round(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
     render_hook(view, "create_idea", payload(view, idea_attrs(%{round_id: nil})))
-    assert_reply(view, %{status: "ok", value: %{round_id: nil, late_contribution: false}})
+    assert_reply(view, %{status: "error", code: "round_required"})
     render_hook(view, "create_idea", payload(view, idea_attrs()))
     assert_reply(view, %{status: "ok", value: %{round_id: id, late_contribution: false}})
     assert id == round.id
@@ -600,118 +663,58 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     end
   end
 
-  test "round filtering pages the selected round, rejects foreign IDs and never resets the board", ctx do
-    outside = idea_fixture(ctx, %{visibility: :shared})
-    first = active_round(ctx)
-    first_notes = for _ <- 1..52, do: idea_fixture(ctx, %{visibility: :shared})
-    {:ok, _} = Ideation.close_round(ctx.facilitator, ctx.project.id, ctx.session.id, first.id, 3)
-    second = active_round(ctx)
-    for _ <- 1..51, do: idea_fixture(ctx, %{visibility: :shared})
-    private = idea_fixture(ctx)
-    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.viewer.user), board_path(ctx, ctx.session.id))
-    epoch = data(view)["epoch"]
-    render_hook(view, "filter_round", payload(view, %{round_id: first.id}))
-    assert_reply(view, %{status: "ok"})
+  test "the canvas receives every round in band order and deep links focus a band or the parked list", ctx do
+    first = first_round(ctx)
+    idea_fixture(ctx, %{visibility: :shared, state: :parked})
 
-    assert_board_eventually(view, fn board ->
-      assert board["round_filter"] == first.id
-      assert length(board["ideas"]) == 50
-      assert Enum.all?(board["ideas"], &(&1["round_id"] == first.id))
-      assert board["counts"]["active"] == 52
-      assert board["active_round"]["id"] == second.id
-    end)
-
-    render_hook(view, "browse_ideas", payload(view, %{before_id: data(view)["ideas_next"]}))
-    assert_reply(view, %{status: "ok"})
-
-    assert_board_eventually(view, fn board ->
-      assert Enum.map(board["ideas"], & &1["id"]) == Enum.reverse(Enum.map(first_notes, & &1.id))
-    end)
-
-    # Undo after filtering can request the previously loaded range. It must not
-    # lose an older command at the first page or include another author's draft.
-    oldest = hd(first_notes).id
-    render_hook(view, "filter_round", payload(view, %{round_id: "all", before_id: to_string(oldest)}))
-    assert_reply(view, %{status: "ok"})
-
-    assert_board_eventually(view, fn board ->
-      assert board["round_filter"] == "all"
-      assert board["idea_before"] == oldest
-      assert length(board["ideas"]) == 104
-      assert Enum.any?(board["ideas"], &(&1["id"] == oldest))
-      refute Enum.any?(board["ideas"], &(&1["id"] == private.id))
-      assert board["epoch"] == epoch
-    end)
-
-    render_hook(view, "filter_round", payload(view, %{round_id: nil}))
-    assert_reply(view, %{status: "ok"})
-
-    assert_board_eventually(view, fn board ->
-      assert [%{"id" => id}] = board["ideas"]
-      assert id == outside.id
-      assert board["round_filter"] == nil
-      assert board["epoch"] == epoch
-    end)
-
-    render_hook(view, "filter_round", payload(view, %{round_id: -1}))
-    assert_reply(view, %{status: "error", code: "invalid_parameters"})
-    render_hook(view, "filter_round", payload(view, %{round_id: "all", before_id: "invalid"}))
-    assert_reply(view, %{status: "error", code: "invalid_parameters"})
-    render_hook(view, "filter_round", payload(view, %{round_id: 9_007_199_254_740_991}))
-    assert_reply(view, %{status: "error", code: "round_not_found"})
-    assert data(view)["round_filter"] == nil
-    refute Enum.any?(data(view)["ideas"], &(&1["id"] == private.id))
-    refute_push_event(view, "brainstorming_reset", %{reason: "access_changed"})
-
-    render_hook(view, "filter_round", payload(view, %{round_id: first.id}))
-    assert_reply(view, %{status: "ok"})
-    send(view.pid, {:project_restored, 1})
-    render(view)
-    assert_board_eventually(view, fn board -> assert board["round_filter"] == "all" end)
-  end
-
-  test "active and selected rounds remain available beyond the loaded history page", ctx do
-    active = active_round(ctx)
-
-    Enum.reduce(1..51, 3, fn number, revision ->
+    Enum.reduce(1..60, 1, fn number, revision ->
       {:ok, session} =
-        Ideation.create_round(ctx.facilitator, ctx.project.id, ctx.session.id, revision, %{prompt: "Planned #{number}"})
+        Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, revision, %{prompt: "Question #{number}"})
 
       session.revision
     end)
 
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
-    assert data(view)["active_round"]["id"] == active.id
-    assert length(data(view)["rounds"]) == 51
+    rounds = data(view)["rounds"]
+    assert length(rounds) == 61
+    assert Enum.map(rounds, & &1["number"]) == Enum.to_list(1..61)
+    refute Enum.any?(rounds, &Map.has_key?(&1, "canvas_offset_y"))
+    assert data(view)["active_round"]["number"] == 61
+    refute Map.has_key?(data(view), "rounds_next")
+    refute Map.has_key?(data(view), "round_filter")
+    assert data(view)["counts"] == %{"active" => 0, "parked" => 1, "discarded" => 0}
 
-    render_hook(view, "filter_round", payload(view, %{round_id: active.id}))
-    assert_reply(view, %{status: "ok"})
-    assert_board_eventually(view, fn board -> assert board["round_filter"] == active.id end)
-    {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, _} = Ideation.close_round(ctx.facilitator, ctx.project.id, ctx.session.id, active.id, current.revision)
+    {:ok, linked, _} =
+      live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, ctx.session.id) <> "?round=#{first.id}")
 
-    assert_board_eventually(view, fn board ->
-      assert board["active_round"] == nil
-      assert board["round_filter"] == active.id
-      assert board["ideas"] == []
-      assert Enum.any?(board["rounds"], &(&1["id"] == active.id and &1["status"] == "closed"))
-    end)
+    first_id = first.id
+    assert %{"round_id" => ^first_id, "view" => nil, "seq" => 1} = link(linked)
 
-    render_hook(view, "browse_rounds", payload(view, %{before_id: data(view)["rounds_next"]}))
-    assert_reply(view, %{status: "ok"})
+    {:ok, list, _} =
+      live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, ctx.session.id) <> "?view=later")
 
-    assert_board_eventually(view, fn board ->
-      assert length(board["rounds"]) == 52
-      assert board["rounds_next"] == nil
-    end)
+    assert %{"round_id" => nil, "view" => "later", "seq" => 1} = link(list)
+
+    {:ok, plain, _} =
+      live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, ctx.session.id) <> "?round=abc")
+
+    assert %{"round_id" => nil, "view" => nil, "seq" => 1} = link(plain)
   end
 
-  defp active_round(ctx) do
-    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {:ok, prepared} = Ideation.create_round(ctx.facilitator, ctx.project.id, session.id, session.revision, %{})
-    {:ok, [round]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, session.id, limit: 1)
-    {:ok, _} = Ideation.start_round(ctx.facilitator, ctx.project.id, session.id, round.id, prepared.revision)
-    round
+  test "the session tree carries each session's rounds and its parked count", ctx do
+    first = first_round(ctx)
+    idea_fixture(ctx, %{visibility: :shared, state: :parked})
+    {:ok, _} = Ideation.new_round(ctx.facilitator, ctx.project.id, ctx.session.id, 1, %{})
+    {:ok, other} = Ideation.create_session(ctx.facilitator, ctx.project.id, %{title: "Other"})
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.viewer.user), board_path(ctx))
+    sidebar = LiveVue.Test.get_vue(view, name: "live/ideation/BoardSidebar")
+    sessions = sidebar.props["board"]["sessions"]
+    mine = Enum.find(sessions, &(&1["id"] == ctx.session.id))
+    assert Enum.map(mine["rounds"], & &1["number"]) == [1, 2]
+    assert hd(mine["rounds"])["id"] == first.id
+    assert mine["parked_count"] == 1
+    assert Enum.find(sessions, &(&1["id"] == other.id))["parked_count"] == 0
+    assert length(Enum.find(sessions, &(&1["id"] == other.id))["rounds"]) == 1
   end
 
   defp board_path(ctx, id \\ nil) do
@@ -720,6 +723,8 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   defp data(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["board"]
+  defp link(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["linked"]
+  defp panels(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props
 
   defp payload(view, attrs),
     do: Map.merge(attrs, %{epoch: data(view)["epoch"], session_id: data(view)["session"]["id"]})
@@ -727,7 +732,8 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   defp assert_board_eventually(view, assertion, attempts \\ 200)
 
   defp assert_board_eventually(view, assertion, attempts) when attempts > 1 do
-    render_async(view)
+    # The board loads asynchronously; under a full-suite load it can exceed the default 500 ms.
+    render_async(view, 2_000)
 
     try do
       assertion.(data(view))

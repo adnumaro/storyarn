@@ -79,3 +79,38 @@ describe("canvas Space panning", () => {
     expect(viewport.space.value).toBe(false);
   });
 });
+
+describe("the header rest line", () => {
+  it("never lets the canvas scroll above the first header, whoever moves the view", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    let limited!: ReturnType<typeof useCanvasViewport>;
+    const clamped = mount(
+      defineComponent({
+        setup() {
+          const root = ref<HTMLElement | null>(null);
+          limited = useCanvasViewport(root, { rest: () => 9 });
+          return () => h("div", { ref: root });
+        },
+      }),
+    );
+    expect(limited.view.y).toBe(9);
+    limited.wheel(new WheelEvent("wheel", { deltaY: -400, cancelable: true }));
+    expect(limited.view.y).toBe(9);
+    limited.wheel(new WheelEvent("wheel", { deltaY: 400, cancelable: true }));
+    expect(limited.view.y).toBe(-391);
+    limited.zoomTo(0.5, { x: 0, y: 600 });
+    expect(limited.view.y).toBeLessThanOrEqual(9);
+    limited.view.height = 600;
+    limited.fit([]);
+    expect(limited.view.y).toBe(9);
+    limited.view.y = 200;
+    expect(limited.view.y).toBe(9);
+    clamped.unmount();
+  });
+});
