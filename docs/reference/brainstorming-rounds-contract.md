@@ -47,7 +47,10 @@ facilitator or project owner with current edit permission changes them through
 `set_round_privacy/6`, from the settings menu of the round in progress. The
 change requires the caller's session revision and records a `round_updated`
 session revision. A closed round can only be set to not private; a round that
-has already been revealed rejects `private: true` with `round_revealed`.
+has already been revealed rejects `private: true` with `round_revealed`, and
+flags that are not booleans are rejected with `invalid_privacy`. The recorded
+`round_updated` snapshot carries `private`, `reveal_on_expiry` and `revealed_at`,
+so the audit trail shows who hid or revealed a round.
 
 While a round is private, its contributions stay with their authors. Every other
 participant, the facilitator included, reads that round's other notes as
@@ -84,7 +87,8 @@ pagination.
 
 Each idea receives an immutable `round_id` and `late_contribution` when first
 saved. An omitted round selects the round in progress under the same session
-lock; an explicit `null` is rejected with `round_required`. An explicit round
+lock; an explicit `null` is rejected with `round_required`, and so is an omitted
+round while no round is in progress, after `close_round/5`. An explicit round
 must belong to that session. A first save targeting a closed round is marked
 late; edits to an existing note never change its round or late flag.
 

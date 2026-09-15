@@ -21,12 +21,19 @@ defmodule Storyarn.Ideation.Ideas.Queries.Visible do
             fragment("CASE WHEN ? = ? THEN ? ELSE ? END", i.author_id, ^actor_id, i.revision, i.published_revision),
       left_join: source in Publication,
       on: source.idea_id == i.source_idea_id and source.revision == i.source_revision,
+      left_join: origin in Idea,
+      on: origin.id == i.source_idea_id,
+      left_join: origin_mask in subquery(Sessions.round_mask_query()),
+      on: origin_mask.id == origin.round_id,
       left_join: mask in subquery(Sessions.round_mask_query()),
       on: mask.id == i.round_id,
       where:
         i.session_id == ^session_id and is_nil(i.deleted_at) and
           (i.author_id == ^actor_id or not fragment("COALESCE(?, false)", mask.private)),
-      select: {i, r, not is_nil(source.id)}
+      select:
+        {i, r,
+         not is_nil(source.id) and
+           (origin.author_id == ^actor_id or not fragment("COALESCE(?, false)", origin_mask.private))}
   end
 
   def get(session_id, idea_id, actor_id) when valid_id(idea_id) do

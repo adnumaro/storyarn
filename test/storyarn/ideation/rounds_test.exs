@@ -55,6 +55,9 @@ defmodule Storyarn.Ideation.RoundsTest do
     assert started_revision.action == :round_started
 
     assert started_revision.snapshot["round"] == %{
+             "private" => false,
+             "reveal_on_expiry" => false,
+             "revealed_at" => nil,
              "number" => 2,
              "prompt" => "Explore the antagonist",
              "status" => "active",

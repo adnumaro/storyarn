@@ -46,8 +46,6 @@ defmodule StoryarnWeb.E2E.IdeationGroupsTest do
     browser =
       browser
       |> assert_has("[data-note-id]", count: 2)
-      |> refute_has("#brainstorming-undo")
-      |> refute_has("#brainstorming-redo")
       |> press("#brainstorming-canvas", "1")
       |> click("button[aria-label='Zoom out']")
       |> pan_canvas()

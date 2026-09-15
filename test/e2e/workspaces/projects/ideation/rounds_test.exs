@@ -101,7 +101,7 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       |> visit(path)
       |> assert_has("#brainstorming-round-#{round.id}[data-status=active]", text: "Round 2")
       |> refute_has("#brainstorming-round-close-#{round.id}")
-      |> refute_has("#brainstorming-round-next")
+      |> refute_has("#brainstorming-round-new-#{round.id}")
       |> press("#brainstorming-canvas", "n")
       |> assert_has("[data-note-id^='-'] [contenteditable=true]:focus")
       |> settled()
@@ -183,7 +183,6 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
     |> visit(board_path(ctx))
     |> assert_has("#brainstorming-round-#{first.id}[data-status=closed]", text: "Round 1")
     |> assert_has("#brainstorming-round-#{round.id}[data-status=active]", text: "Which memory changes the story?")
-    |> refute_has("#brainstorming-round-next")
     |> refute_has("#brainstorming-round-new-#{round.id}")
     |> refute_has("#brainstorming-round-close-#{round.id}")
   end

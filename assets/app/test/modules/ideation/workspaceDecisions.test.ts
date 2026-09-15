@@ -76,7 +76,7 @@ describe("decisions from the brainstorming canvas", () => {
     await wrapper.setProps({
       board: { ...current, epoch: "epoch-two", session: { ...current.session!, id: 2 } },
     });
-    reply?.({ status: "error", code: "private_mode" });
+    reply?.({ status: "error", code: "private_round" });
     await flushPromises();
     expect(wrapper.text()).not.toContain("Decisions are available when");
   });

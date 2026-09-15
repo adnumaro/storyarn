@@ -95,6 +95,29 @@ defmodule Storyarn.Ideation.BringForwardTest do
     assert Repo.aggregate(Idea, :count) == 2
   end
 
+  test "a copy keeps its origin to itself while the origin's round is hidden from the reader", ctx do
+    %{project: %{id: project_id}, session: %{id: session_id}} = ctx
+    first = first_round(ctx)
+    original = idea_fixture(ctx)
+    publish_idea(ctx, original)
+    {:ok, current} = Ideation.get_session(ctx.facilitator, project_id, session_id)
+
+    assert {:ok, _} =
+             Ideation.set_round_privacy(ctx.facilitator, project_id, session_id, first.id, current.revision, %{
+               private: true
+             })
+
+    {ctx, _second} = new_round(ctx)
+    assert {:ok, copy} = bring(ctx, original)
+    assert {:ok, %{source_idea_id: source}} = Ideation.get_idea(ctx.author, project_id, session_id, copy.id)
+    assert source == original.id
+    assert {:ok, %{source_idea_id: nil}} = Ideation.get_idea(ctx.peer, project_id, session_id, copy.id)
+
+    {:ok, current} = Ideation.get_session(ctx.facilitator, project_id, session_id)
+    assert {:ok, _} = Ideation.reveal_round(ctx.facilitator, project_id, session_id, first.id, current.revision)
+    assert {:ok, %{source_idea_id: ^source}} = Ideation.get_idea(ctx.peer, project_id, session_id, copy.id)
+  end
+
   test "refuses the round in progress, unreadable sources, bad placement, readers and closed contributions", ctx do
     %{project: %{id: project_id}, session: %{id: session_id}} = ctx
     original = idea_fixture(ctx)

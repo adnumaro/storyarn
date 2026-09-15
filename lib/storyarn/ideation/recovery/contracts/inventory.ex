@@ -164,7 +164,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   # Private mode moved from the session to the round in progress, and groups
-  # learned their round. A session that was private keeps hiding its active round.
+  # learned their round. A session that was private keeps hiding every round it has.
   def normalize(%{"version" => 7, "rows" => rows} = data) do
     private_sessions =
       for %{"id" => id, "configuration" => %{"private_mode" => true}} <- rows["sessions"], into: MapSet.new(), do: id

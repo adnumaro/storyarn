@@ -57,7 +57,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundPrivacy do
     private = get_change(changeset, :private)
 
     cond do
-      not changeset.valid? -> {:error, changeset}
+      not changeset.valid? -> {:error, :invalid_privacy}
       round.status == :closed and private != false -> {:error, :round_not_active}
       private == true and not is_nil(round.revealed_at) -> {:error, :round_revealed}
       changeset.changes == %{} -> {:ok, %{id: round.id, round: round, changed: false, revealed: false}}

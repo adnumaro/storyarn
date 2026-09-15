@@ -5,6 +5,7 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
   import Storyarn.IdeationFixtures
 
   alias Storyarn.Ideation
+  alias Storyarn.Projects
 
   setup do
     ideation_fixture()
@@ -34,6 +35,9 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
     assert {:ok, [placeholder]} = Ideation.list_masked_ideas(ctx.peer, ctx.project.id, ctx.session.id)
     assert placeholder.id == contribution.id
     assert placeholder.canvas == %{"x" => 400, "y" => 80, "width" => 280}
+    # Geometry only: no author, state, colour, text or timestamps travel with a mask.
+    assert %{id: _, round_id: _, canvas: _} = placeholder
+    assert map_size(placeholder) == 3
     refute placeholder.id == draft.id
   end
 
@@ -54,17 +58,30 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
       })
 
     assert {:ok, _} = Ideation.group_comment_source(ctx.peer, ctx.project.id, ctx.session.id, group.id)
+
+    assert {:ok, %{thread: thread}} =
+             Projects.create_ideation_comment(ctx.peer, ctx.project.id, ctx.session.id, {:group, group.id}, comment())
+
     assert {:ok, _} = set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, revision(ctx), true)
 
     for actor <- [ctx.peer, ctx.author, ctx.facilitator] do
       assert {:error, :not_found} = Ideation.group_comment_source(actor, ctx.project.id, ctx.session.id, group.id)
     end
 
+    # Nothing lands on the hidden thread, not even a reply from the peer who
+    # opened it: the thread is no parent at all for the time being.
+    assert {:error, :not_found} = Projects.get_comment_thread(ctx.peer, ctx.project.id, thread.id)
+    assert {:error, :invalid_parent} = Projects.reply_to_comment_thread(ctx.peer, ctx.project.id, thread.id, comment())
+
     round = first_round(ctx)
     assert {:ok, _} = Ideation.reveal_round(ctx.facilitator, ctx.project.id, ctx.session.id, round.id, revision(ctx))
     assert {:ok, %{id: id}} = Ideation.group_comment_source(ctx.peer, ctx.project.id, ctx.session.id, group.id)
     assert id == group.id
+    assert {:ok, _} = Projects.get_comment_thread(ctx.peer, ctx.project.id, thread.id)
+    assert Storyarn.Repo.aggregate(from(c in "comment_messages", where: c.thread_id == ^thread.id), :count) == 1
   end
+
+  defp comment, do: %{body: "Discuss this group", client_request_id: Ecto.UUID.generate(), mention_user_ids: []}
 
   test "when time runs out, every private round that asked to be revealed is, the closed ones too", ctx do
     first = first_round(ctx)

@@ -202,7 +202,7 @@ A note keeps the round active when writing began. If its first save arrives
 after closing, its footer identifies it as a late contribution to the original
 round. Closing does not publish, discard or freeze notes. Editing existing notes
 preserves their provenance, and undoing an unsaved deletion restores the original
-round. Switching filters retains drafts and local undo state. Existing connections
+round. Switching between the canvas and the list retains drafts and local undo state. Existing connections
 can relate readable notes across rounds.
 
 A note never moves to another round. **Bring to the active round**, in the context menu

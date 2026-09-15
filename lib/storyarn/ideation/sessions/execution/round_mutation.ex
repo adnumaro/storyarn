@@ -31,7 +31,10 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundMutation do
           "prompt" => round.prompt,
           "status" => Atom.to_string(round.status),
           "started_at" => timestamp(round.started_at),
-          "closed_at" => timestamp(round.closed_at)
+          "closed_at" => timestamp(round.closed_at),
+          "private" => round.private,
+          "reveal_on_expiry" => round.reveal_on_expiry,
+          "revealed_at" => timestamp(round.revealed_at)
         }
       })
     end

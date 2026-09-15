@@ -17,13 +17,15 @@ defmodule Storyarn.Ideation.Sessions.Queries.RoundContext do
   # Internal read composition: callers authorize the session before entering.
   def for_session(session_id, opts) when is_list(opts) do
     if Keyword.keyword?(opts) do
+      # Capped from the newest, so the round in progress is never the one dropped.
       rounds =
-        Repo.all(
-          from r in Round,
-            where: r.session_id == ^session_id,
-            order_by: [asc: r.number],
-            limit: @max_rounds
+        from(r in Round,
+          where: r.session_id == ^session_id,
+          order_by: [desc: r.number],
+          limit: @max_rounds
         )
+        |> Repo.all()
+        |> Enum.reverse()
 
       {:ok, %{rounds: rounds, active_round: Enum.find(rounds, &(&1.status == :active))}}
     else

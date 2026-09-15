@@ -30,7 +30,7 @@ defmodule Storyarn.Ideation.CanvasModeTest do
     assert second.visibility == :private
     assert {:error, :not_found} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, second.id)
 
-    assert {:error, _} =
+    assert {:error, :not_found} =
              Ideation.prepare_idea_reveal(ctx.peer, ctx.project.id, ctx.session.id, Ecto.UUID.generate(), [
                %{idea_id: second.id, revision: 1}
              ])
