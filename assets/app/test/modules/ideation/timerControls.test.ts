@@ -194,6 +194,17 @@ describe("session timer controls", () => {
       }),
     );
   });
+  it("offers a stopped clock's full duration again", () => {
+    controls(
+      timer({ version: 5, status: "cancelled", duration_seconds: 960, remaining_seconds: 0 }),
+    );
+    expect((wrapper.get("#brainstorming-timer-minutes").element as HTMLInputElement).value).toBe(
+      "16",
+    );
+    expect((wrapper.get("#brainstorming-timer-seconds").element as HTMLInputElement).value).toBe(
+      "00",
+    );
+  });
   it("shows the shared countdown to participants without manager actions", () => {
     controls(timer(), undefined, false);
     expect(wrapper.get("#brainstorming-timer-countdown").text()).toBe("05:00");

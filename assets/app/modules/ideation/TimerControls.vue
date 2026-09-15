@@ -47,6 +47,14 @@ watch(
   },
   { flush: "sync" },
 );
+// A stopped clock leaves its full duration in the digits, on every device.
+watch(
+  () => timer?.version,
+  () => {
+    if (timer?.status === "cancelled") draft.value = timer.duration_seconds;
+  },
+  { immediate: true },
+);
 function onOpenChange(open: boolean) {
   if (!open) writes.clearFailure();
 }

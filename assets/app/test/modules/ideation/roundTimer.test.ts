@@ -75,7 +75,9 @@ describe("timer on the round header", () => {
       },
     });
     expect(wrapper.get("#brainstorming-round-timer").text()).toBe("03:20");
-    expect(wrapper.text()).toContain("Paused");
+    // The play button says it all; no "Paused" label beside the digits.
+    expect(wrapper.text()).not.toContain("Paused");
+    expect(wrapper.find('[aria-label="Paused"]').exists()).toBe(false);
     await wrapper.get("#brainstorming-round-timer-resume").trigger("click");
     expect(send).toHaveBeenLastCalledWith(
       "resume_timer",
@@ -123,6 +125,21 @@ describe("timer on the round header", () => {
       "width: 100%",
     );
     expect(wrapper.text()).not.toContain("Round 2");
+  });
+
+  it("shows participants a pause icon instead of a label, and a stopped clock leaves its duration in the digits", async () => {
+    bar(timer({ status: "paused", remaining_seconds: 200 }), { canManage: false });
+    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("03:20");
+    expect(wrapper.text()).not.toContain("Paused");
+    expect(wrapper.find('[aria-label="Paused"]').exists()).toBe(true);
+    wrapper.unmount();
+    bar(timer({ version: 5, status: "cancelled", duration_seconds: 960, remaining_seconds: 0 }));
+    expect(
+      (wrapper.get("#brainstorming-round-timer-minutes").element as HTMLInputElement).value,
+    ).toBe("16");
+    expect(
+      (wrapper.get("#brainstorming-round-timer-seconds").element as HTMLInputElement).value,
+    ).toBe("00");
   });
 
   it("lets the facilitator cancel a running timer and start again once it is up", async () => {

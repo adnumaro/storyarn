@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { Pause, Play, Plus, Square } from "@lucide/vue";
-import { Badge } from "@components/ui/badge";
 import { useBoardText } from "../composables/useBoardText";
 import { useSessionTimer } from "../composables/useSessionTimer";
 import { activeTimer, DEFAULT_TIMER_SECONDS, useTimerWrites } from "../composables/useTimerWrites";
@@ -53,6 +52,14 @@ const idle = computed(() => (elapsed.value ? 0 : draft.value));
 watch([() => epoch, () => session.id], () => {
   draft.value = DEFAULT_TIMER_SECONDS;
 });
+// A stopped clock leaves its full duration in the digits, on every device.
+watch(
+  () => timer?.version,
+  () => {
+    if (timer?.status === "cancelled") draft.value = timer.duration_seconds;
+  },
+  { immediate: true },
+);
 function start(value: number) {
   draft.value = value;
   writes.start({ seconds: value, close_contributions_on_expiry: false });
@@ -68,9 +75,11 @@ function start(value: number) {
         :aria-label="`${t('ideation.timer.title')}: ${display}`"
         >{{ display }}</span
       >
-      <Badge v-if="!running" variant="secondary" class="font-medium text-muted-foreground">{{
-        t("ideation.timer.paused")
-      }}</Badge>
+      <Pause
+        v-if="!running && !mayManage"
+        class="size-3.5 text-muted-foreground"
+        :aria-label="t('ideation.timer.paused')"
+      />
       <template v-if="mayManage && seconds > 0">
         <button
           :id="running ? 'brainstorming-round-timer-pause' : 'brainstorming-round-timer-resume'"
