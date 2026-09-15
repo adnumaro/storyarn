@@ -1,0 +1,43 @@
+assets/app/modules/ideation/components/CanvasNote.vue
+  s_02773c3f2b5565::t_ca036038e2da3f 8,99-103,117,121-126,132-145,245-297
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_8018b6451249c9 6,395-400
+  s_02773c3f2b5565::t_9c3d3eeffd624f 7,387,417-423
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_ca036038e2da3f 22-23
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_ca036038e2da3f 22-23
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_02773c3f2b5565::t_bee958eab680c3 111-112,195
+  s_02773c3f2b5565::t_332f92515c9da9 399-404,406-410
+  s_02773c3f2b5565::t_4f8e2fb42893db 66
+  s_02773c3f2b5565::t_ca036038e2da3f 19-21,166,169-170,172-173,176,189-194,196,1439-1441,1750,1760-1782
+  s_02773c3f2b5565::t_d00e23cb6e1aa6 1327-1330
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_45d9524907ac2e 228-234
+assets/app/test/modules/ideation/canvasNoteStates.test.ts
+  s_02773c3f2b5565::t_97e69d77f91fbb 41,43,45
+  s_02773c3f2b5565::t_c1a9151088800b 1-40,42,44,46-56
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_02773c3f2b5565::t_bee958eab680c3 1110
+  s_02773c3f2b5565::t_ca036038e2da3f 715-717,1147,1298,1303
+assets/app/test/modules/ideation/canvasInteractions.test.ts
+  s_02773c3f2b5565::t_c1a9151088800b 537,566
+  s_02773c3f2b5565::t_45d9524907ac2e 538-565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "15e63fbaaa4b6fc21283779d3891c6999a13a130",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
