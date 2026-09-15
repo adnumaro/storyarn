@@ -30,6 +30,7 @@ import {
 import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Input } from "@components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import CanvasNote from "./CanvasNote.vue";
 import CanvasGroup from "./CanvasGroup.vue";
 import { groupBounds, groupVisibility, type MemberGeometry } from "../lib/groups";
@@ -1664,41 +1665,41 @@ onUnmounted(() => {
               ref="chromePanel"
               :class="
                 chromeFramed
-                  ? 'surface-panel flex items-center p-1'
-                  : 'flex h-[42px] items-center gap-0.5'
+                  ? 'surface-panel flex w-fit items-center p-1'
+                  : 'flex h-[42px] w-fit items-center gap-0.5'
               "
             >
-              <button
-                type="button"
-                class="toolbar-btn"
-                :aria-label="t('ideation.search')"
-                @click="searchOpen = !searchOpen"
-              >
-                <Search class="size-4" /></button
-              ><slot name="session" />
-            </div>
-            <div v-if="searchOpen" class="surface-panel mt-2 w-72 p-3">
-              <Input
-                v-model="query"
-                :placeholder="t('ideation.search')"
-                :aria-label="t('ideation.search')"
-              />
-              <div class="mt-2 max-h-64 overflow-auto">
-                <button
-                  v-for="note in matches"
-                  :key="note.id"
-                  type="button"
-                  class="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
-                  @click="
-                    center(note);
-                    emit('selectGroup', null);
-                    emit('select', [note.id]);
-                    searchOpen = false;
-                  "
-                >
-                  {{ note.title || note.body.replace(/<[^>]*>/g, " ") }}
-                </button>
-              </div>
+              <Popover v-model:open="searchOpen">
+                <PopoverTrigger as-child>
+                  <button type="button" class="toolbar-btn" :aria-label="t('ideation.search')">
+                    <Search class="size-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" :side-offset="8" class="w-72 p-3" data-canvas-chrome>
+                  <Input
+                    v-model="query"
+                    :placeholder="t('ideation.search')"
+                    :aria-label="t('ideation.search')"
+                  />
+                  <div class="mt-2 max-h-64 overflow-auto">
+                    <button
+                      v-for="note in matches"
+                      :key="note.id"
+                      type="button"
+                      class="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
+                      @click="
+                        center(note);
+                        emit('selectGroup', null);
+                        emit('select', [note.id]);
+                        searchOpen = false;
+                      "
+                    >
+                      {{ note.title || note.body.replace(/<[^>]*>/g, " ") }}
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <slot name="session" />
             </div>
           </div>
           <p
