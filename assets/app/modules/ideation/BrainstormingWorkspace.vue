@@ -25,7 +25,6 @@ import CanvasShapePicker from "./components/CanvasShapePicker.vue";
 import { useCanvasConnections } from "./composables/useCanvasConnections";
 import GroupSelectionTools from "./components/GroupSelectionTools.vue";
 import { useCanvasGroups } from "./composables/useCanvasGroups";
-import SessionDialog from "./components/SessionDialog.vue";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
 import RoundStartedToast from "./components/RoundStartedToast.vue";
@@ -62,8 +61,7 @@ const { t, error, options, member } = useBoardText();
 const selectedIds = ref<number[]>([]);
 const selected = computed(() => selectedIds.value[0] ?? null);
 const editing = ref<number | null>(null);
-const settings = ref(false),
-  list = ref(false);
+const list = ref(false);
 const failure = ref<string | null>(null),
   resetNotice = ref(false),
   starting = ref(false);
@@ -301,7 +299,6 @@ async function revealGroup(id: number) {
   canvas.value?.fitAll();
 }
 let editingBefore: Idea | undefined;
-let headerEvent: number | undefined;
 function reset(reason: string) {
   oldestLoadedIdeaId = null;
   rememberLoadedIdeas();
@@ -313,7 +310,6 @@ function reset(reason: string) {
   connections.reset();
   selectedIds.value = [];
   editing.value = null;
-  settings.value = false;
   history.clear();
   editingBefore = undefined;
   resetNotice.value = reason !== "access_changed" && notes.drafts.recovered.value.length > 0;
@@ -950,7 +946,6 @@ watch(
     if (before && !now) {
       editing.value = null;
       editingBefore = undefined;
-      settings.value = false;
       cancelHistoryPreparation?.();
       history.clear();
       connections.reset();
@@ -982,10 +977,6 @@ const live = useLive();
 let focusEvent: number | undefined;
 let listEvent: number | undefined;
 onMounted(() => {
-  headerEvent = live.handleEvent("board_action", (payload) => {
-    if (payload.epoch !== board.epoch || payload.session_id !== board.session?.id) return;
-    if (payload.action === "settings") settings.value = true;
-  });
   // Deep links from the session tree: a round to scroll to, or the parked list.
   focusEvent = live.handleEvent("brainstorming_focus_round", (payload) => {
     if (payload.epoch !== board.epoch) return;
@@ -1004,7 +995,6 @@ onUnmounted(() => {
   focusStop?.();
   history.clear();
   connections.reset();
-  if (headerEvent !== undefined) live.removeHandleEvent(headerEvent);
   if (focusEvent !== undefined) live.removeHandleEvent(focusEvent);
   if (listEvent !== undefined) live.removeHandleEvent(listEvent);
 });
@@ -1429,18 +1419,5 @@ onUnmounted(() => {
         >
       </div>
     </div>
-    <SessionDialog
-      v-if="settings && board.session"
-      :session="board.session"
-      :context="context()"
-      :request="request"
-      :members="board.members"
-      :can-manage="board.can_manage"
-      @close="settings = false"
-      @changed="
-        settings = false;
-        sync();
-      "
-    />
   </div>
 </template>

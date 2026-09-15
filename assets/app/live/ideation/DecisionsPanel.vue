@@ -140,7 +140,7 @@ function date(value: string) {
     v-if="state.open"
     side="right"
     :open="state.open"
-    :close-on-outside="false"
+    :close-on-outside="state.mode === 'list' || state.mode === 'detail'"
     class="decision-panel"
     @close="exit('close')"
   >

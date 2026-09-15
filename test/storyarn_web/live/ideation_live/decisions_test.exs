@@ -252,7 +252,8 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     membership = Projects.get_membership(ctx.project.id, ctx.author.user.id)
     assert {:ok, _} = Projects.remove_member(ctx.owner, ctx.project.id, membership.id)
     render(view)
-    refute has_element?(view, "#brainstorming-panels")
+    # The dock injector stays mounted so it can come back; it just has no session.
+    assert LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["session-id"] == nil
     decisions = :sys.get_state(view.pid).socket.assigns.decisions
     refute decisions.open
     assert decisions.items == []

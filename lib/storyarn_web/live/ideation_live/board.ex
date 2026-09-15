@@ -55,8 +55,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
         }
       }
     >
+      <%!-- The navbar and the dock only pick up injectors that exist when they
+           mount, so both stay rendered and empty until a session is open. --%>
       <.vue
-        :if={@board.session}
         v-component="live/ideation/BoardHeader"
         v-socket={@socket}
         v-diff={true}
@@ -64,9 +65,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         id="brainstorming-header"
         session={@board.session}
         can-manage={@board.can_manage}
-        can-edit={@board.can_edit}
         epoch={@epoch}
-        timer={@board.timer}
         context-reference={@exploration_reference}
       />
 
@@ -88,7 +87,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
         comments={@comments}
       />
       <.vue
-        :if={@board.session}
         v-component="live/ideation/BoardPanels"
         v-socket={@socket}
         v-inject:panels="project-layout"
@@ -96,7 +94,11 @@ defmodule StoryarnWeb.IdeationLive.Board do
         references={@references}
         decisions={@decisions}
         epoch={@epoch}
-        session-id={@session_id}
+        session-id={@board.session && @session_id}
+        session={@board.session}
+        members={@board.members}
+        can-manage={@board.can_manage}
+        session-panel={@session_panel}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -133,6 +135,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> assign(:board_error, nil)
      |> assign(:epoch, Ecto.UUID.generate())
      |> assign(:session_id, nil)
+     |> assign(:session_panel, false)
      |> assign(:subscribed_session, nil)
      |> assign(:canvas_scope, nil)
      |> assign(:canvas_ready, false)
@@ -158,7 +161,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
           |> ReferenceHandlers.init()
           |> DecisionHandlers.init()
           |> subscribe_session(id)
-          |> assign(:session_id, id)
+          |> assign(session_id: id, session_panel: false)
 
         filters = %{socket.assigns.filters | idea_before: nil}
         socket = assign(socket, :filters, filters)
@@ -180,7 +183,13 @@ defmodule StoryarnWeb.IdeationLive.Board do
          |> DecisionHandlers.init()
          |> subscribe_session(nil)
          |> canvas_subscription(nil)
-         |> assign(session_id: nil, refresh_running: nil, board: BoardData.empty(), board_error: "not_found")}
+         |> assign(
+           session_id: nil,
+           session_panel: false,
+           refresh_running: nil,
+           board: BoardData.empty(),
+           board_error: "not_found"
+         )}
     end
   end
 
@@ -304,18 +313,18 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   def handle_event("canvas_cursor", _, socket), do: {:noreply, socket}
 
-  def handle_event("board_action", %{"action" => action} = params, socket) when action in ~w(settings reveal) do
+  # The session's details and settings open in the dock, like decisions.
+  def handle_event("board_action", %{"action" => "settings"} = params, socket) do
     case current_session(params, socket) do
-      :ok ->
-        {:noreply,
-         push_event(socket, "board_action", %{
-           action: action,
-           epoch: socket.assigns.epoch,
-           session_id: socket.assigns.session_id
-         })}
+      :ok -> {:noreply, assign(socket, :session_panel, true)}
+      _ -> {:noreply, socket}
+    end
+  end
 
-      _ ->
-        {:noreply, socket}
+  def handle_event("session_panel", %{"open" => false} = params, socket) do
+    case current_session(params, socket) do
+      :ok -> {:noreply, assign(socket, :session_panel, false)}
+      _ -> {:noreply, socket}
     end
   end
 
@@ -610,7 +619,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
     |> DecisionHandlers.init()
     |> canvas_subscription(nil)
     |> reset_epoch("access_changed")
-    |> assign(board: BoardData.empty(), board_error: "unauthorized", canvas_ready: false)
+    |> assign(board: BoardData.empty(), board_error: "unauthorized", canvas_ready: false, session_panel: false)
   end
 
   defp cursors_enabled?(%{assigns: %{canvas_ready: true, board_error: nil, board: %{session: session}}} = socket)

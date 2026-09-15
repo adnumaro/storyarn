@@ -40,10 +40,10 @@
     "saveMine": "Save my text instead",
     "moreHistory": "Load older entries",
     "sessionSettings": "Session details and settings",
+    "sessionSettingsClose": "Close session settings",
     "sessionHelp": "Start with a title. The rest is optional, and you decide how to work.",
     "sessionTitle": "Session title",
     "sessionPlaceholder": "What are we exploring?",
-    "preset": "Starting approach",
     "free": "Private first",
     "openPreset": "Share as you go",
     "assisted": "Facilitated sharing",
@@ -254,12 +254,7 @@
       "contributionsClosed": "New contributions are closed.",
       "closedHelp": "New contributions are closed. Existing notes remain editable and your drafts are kept.",
       "closeNow": "Close new contributions now",
-      "reopen": "Reopen contributions",
-      "outcomes": {
-        "skipped_authorization": "Time ended. Automatic actions were skipped because facilitator access changed.",
-        "skipped_configuration": "Time ended. Automatic actions were skipped because the session settings changed.",
-        "skipped_session": "Time ended. Automatic actions were skipped because the session is no longer open."
-      }
+      "reopen": "Reopen contributions"
     },
     "groups": {
       "untitled": "Untitled group",

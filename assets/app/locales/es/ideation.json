@@ -40,10 +40,10 @@
     "saveMine": "Guardar mi texto",
     "moreHistory": "Cargar entradas anteriores",
     "sessionSettings": "Detalles y ajustes de la sesión",
+    "sessionSettingsClose": "Cerrar ajustes de la sesión",
     "sessionHelp": "Empieza con un título. El resto es opcional y tú decides cómo trabajar.",
     "sessionTitle": "Título de la sesión",
     "sessionPlaceholder": "¿Qué vamos a explorar?",
-    "preset": "Enfoque inicial",
     "free": "Primero en privado",
     "openPreset": "Compartir sobre la marcha",
     "assisted": "Publicación asistida",
@@ -254,12 +254,7 @@
       "contributionsClosed": "Las nuevas aportaciones están cerradas.",
       "closedHelp": "Las nuevas aportaciones están cerradas. Puedes seguir editando las notas existentes y tus borradores se conservan.",
       "closeNow": "Cerrar nuevas aportaciones ahora",
-      "reopen": "Reabrir aportaciones",
-      "outcomes": {
-        "skipped_authorization": "Terminó el tiempo. No se aplicaron las acciones automáticas porque cambió el acceso del facilitador.",
-        "skipped_configuration": "Terminó el tiempo. No se aplicaron las acciones automáticas porque cambió la configuración de la sesión.",
-        "skipped_session": "Terminó el tiempo. No se aplicaron las acciones automáticas porque la sesión ya no está abierta."
-      }
+      "reopen": "Reabrir aportaciones"
     },
     "groups": {
       "untitled": "Grupo sin título",
