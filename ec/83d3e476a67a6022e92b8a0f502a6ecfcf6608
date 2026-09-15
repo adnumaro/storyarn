@@ -1,0 +1,28 @@
+assets/app/test/modules/ideation/roundTimer.test.ts
+  s_02773c3f2b5565::t_994c09dfe08248 78-80,130-136
+  s_02773c3f2b5565::t_23ffcd386aa8f0 137-142
+  s_02773c3f2b5565::t_7f06e42f1a8289 143-144
+assets/app/modules/ideation/components/RoundTimer.vue
+  s_02773c3f2b5565::t_8bc2f21ab0f9c6 55-62,78-82
+assets/app/test/modules/ideation/timerControls.test.ts
+  s_02773c3f2b5565::t_23ffcd386aa8f0 198-206
+  s_02773c3f2b5565::t_994c09dfe08248 197,207
+assets/app/modules/ideation/TimerControls.vue
+  s_02773c3f2b5565::t_8bc2f21ab0f9c6 50-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ec83d3e476a67a6022e92b8a0f502a6ecfcf6608",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
