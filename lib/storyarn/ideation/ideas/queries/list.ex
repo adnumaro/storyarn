@@ -117,7 +117,9 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
   defp filter_round(query, round_id), do: where(query, [i], i.round_id == ^round_id)
 
   # Other people's notes in a private round: where they are and how wide, never
-  # what they say or who wrote them. The board draws them as placeholders.
+  # what they say or who wrote them. The board draws them as placeholders, and
+  # only for what the reveal will show: a draft nobody consented to publish
+  # has no place there.
   def masked(scope, project_id, session_id) do
     with {:ok, _} <- Sessions.get_session(scope, project_id, session_id) do
       actor_id = scope.user.id
@@ -129,7 +131,8 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
             on: mask.id == i.round_id,
             where:
               i.session_id == ^session_id and is_nil(i.deleted_at) and mask.private and
-                i.author_id != ^actor_id and i.state != :discarded,
+                i.author_id != ^actor_id and i.state != :discarded and
+                (i.publication_consent == :facilitator_assisted or not is_nil(i.published_revision)),
             order_by: i.id,
             limit: 2000,
             select: %{id: i.id, round_id: i.round_id, canvas: i.canvas}

@@ -39,9 +39,15 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundPrivacy do
 
   # Archiving freezes publication: end every private mask without revealing.
   # Returns how many rounds stopped hiding, so the archive can wake the sources.
+  # Archiving ends every mask for good: the round counts as revealed, without
+  # publishing anything, so reopening cannot hide it again.
   def end_masks(session_id) do
+    now = %{TimeHelpers.now() | microsecond: {0, 6}}
+
     {count, _} =
-      Repo.update_all(from(r in Round, where: r.session_id == ^session_id and r.private), set: [private: false])
+      Repo.update_all(from(r in Round, where: r.session_id == ^session_id and r.private),
+        set: [private: false, revealed_at: now]
+      )
 
     count
   end

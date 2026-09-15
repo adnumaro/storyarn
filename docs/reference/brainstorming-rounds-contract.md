@@ -52,7 +52,10 @@ has already been revealed rejects `private: true` with `round_revealed`.
 While a round is private, its contributions stay with their authors. Every other
 participant, the facilitator included, reads that round's other notes as
 placeholders: identity, round and canvas position/width only, with no text,
-author or state. Groups, comments and decision sources of that round are
+author or state. A placeholder stands only for what the reveal will show: a
+draft nobody consented to publish, a discarded note or a note without a place
+on the canvas has none. A group of a private round is hidden with its notes,
+comment thread included. Groups, comments and decision sources of that round are
 unavailable until the reveal, and cursors are not shared while the round in
 progress is private. A canvas save in a private round does not publish; a save
 in a shared round publishes atomically as before.
@@ -61,9 +64,10 @@ Setting `private: false` on a private round is the reveal, also exposed as
 `reveal_round/5`. It stamps `revealed_at` and, in the same transaction under the
 contribution lock, publishes the round's consenting, non-discarded contributions
 that still have an author. The timer performs the same reveal when it reaches
-0:00 and the round in progress has `reveal_on_expiry`. A reveal is irreversible.
-Archiving a session ends the mask of every private round without revealing
-anything, and reopening does not restore it.
+0:00 for every private round with `reveal_on_expiry`: the round in progress and
+any round closed since the clock started. A reveal is irreversible. Archiving a
+session ends the mask of every private round for good: each counts as revealed
+without publishing anything, and after reopening it cannot be made private again.
 
 ## Bands
 

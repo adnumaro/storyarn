@@ -4,13 +4,13 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
   import Ecto.Query
 
   alias Storyarn.Ideation.Ideas
-  alias Storyarn.Ideation.Sessions
   alias Storyarn.Ideation.Sessions.Adapters.ProjectAccess
   alias Storyarn.Ideation.Sessions.Adapters.TimerActor
   alias Storyarn.Ideation.Sessions.Events.Invalidation
   alias Storyarn.Ideation.Sessions.Events.TimerInvalidation
   alias Storyarn.Ideation.Sessions.Execution.ContributionAccess
   alias Storyarn.Ideation.Sessions.Execution.TimerMutation
+  alias Storyarn.Ideation.Sessions.Round
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Ideation.Sessions.Timer
   alias Storyarn.Repo
@@ -113,17 +113,27 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
 
   defp effects(session, _, _, _), do: {:ok, session, false}
 
-  # The round in progress asked to be revealed when time runs out.
+  # Every private round that asked to be revealed when time runs out, the one
+  # in progress and any closed since the clock started. Each reveal records a
+  # session revision, so the next one reads the revision it left.
   defp reveal(session, access) do
-    case Sessions.active_private_round(session.id) do
-      %{reveal_on_expiry: true} = round ->
-        access = ContributionAccess.from_session(session, access)
+    rounds =
+      Repo.all(
+        from r in Round,
+          where: r.session_id == ^session.id and r.private and r.reveal_on_expiry,
+          order_by: r.number
+      )
 
-        with {:ok, _} <- Ideas.reveal_round_locked(access, session.revision, round.id), do: {:ok, true}
+    access = ContributionAccess.from_session(session, access)
 
-      _ ->
-        {:ok, false}
-    end
+    Enum.reduce_while(rounds, {:ok, false}, fn round, _ ->
+      revision = Repo.one!(from s in Session, where: s.id == ^session.id, select: s.revision)
+
+      case Ideas.reveal_round_locked(access, revision, round.id) do
+        {:ok, _} -> {:cont, {:ok, true}}
+        error -> {:halt, error}
+      end
+    end)
   end
 
   defp receipt(session, timer, outcome, revealed \\ false),
