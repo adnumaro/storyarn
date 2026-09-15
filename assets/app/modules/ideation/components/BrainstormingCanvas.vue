@@ -382,10 +382,16 @@ function contentBottom(roundId: number): number | null {
   return bottoms.length ? Math.max(...bottoms) : null;
 }
 const bandLayout = computed(() => bandOffsets(bands.rounds, contentBottom));
+// A jump lands before every note has been measured. While the layout settles,
+// the header goes back to its rest line, until the person moves the view.
+let settling: { roundId: number; until: number } | null = null;
 watch(
   bandLayout,
   (next) => {
     if (!sameOffsets(next, bands.offsets)) emit("bands", next);
+    if (settling && performance.now() <= settling.until)
+      view.y = HEADER_REST - (next.get(settling.roundId) ?? offsetOf(settling.roundId)) * view.zoom;
+    else settling = null;
   },
   { immediate: true },
 );
@@ -421,6 +427,7 @@ function nextHeaderTop(round: Round) {
 // Bring a band's header to its rest line, keeping zoom and x. The freshly
 // measured layout already knows a round the props have not yet.
 function scrollToRound(round: Round) {
+  settling = { roundId: round.id, until: performance.now() + 1500 };
   view.y = HEADER_REST - (bandLayout.value.get(round.id) ?? offsetOf(round.id)) * view.zoom;
 }
 // A session with several rounds opens on the one in progress; the rest fit everything.
@@ -874,6 +881,7 @@ function pointerMove(event: PointerEvent) {
     for (const note of drag.notes)
       positions.value.set(note.id, { x: note.origin.x + dx / view.zoom, y: note.origin.y + delta });
   } else if (drag.id === null) {
+    settling = null;
     view.x = drag.origin.x + dx;
     view.y = drag.origin.y + dy;
   } else {
@@ -1286,6 +1294,7 @@ watch(
   () => marquee.cancel(),
 );
 function canvasWheel(event: WheelEvent) {
+  settling = null;
   if (selectingArea.value) event.preventDefault();
   else wheel(event);
 }

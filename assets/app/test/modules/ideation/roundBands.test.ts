@@ -493,6 +493,30 @@ describe("round bands on the canvas", () => {
     expect(style(21)).toContain("top: 150px");
   });
 
+  it("keeps a jumped-to header on its rest line while the bands settle, until the view moves", async () => {
+    const wrapper = canvas();
+    const scroll = (wrapper.vm as unknown as { scrollToRound: (round: { id: number }) => void })
+      .scrollToRound;
+    scroll(round({ id: 21 }));
+    expect(view.y).toBe(0 - 320);
+    // Band 1's content is measured lower: its header offsets move and the jump follows.
+    await wrapper.setProps({
+      notes: [
+        idea({ id: 10, round_id: 20, canvas: { x: 10, y: 300 } }),
+        idea({ id: 11, round_id: 21, canvas: { x: 40, y: 560 } }),
+      ],
+    });
+    expect(view.y).toBe(0 - (300 + 96 + 160));
+    await wrapper.trigger("wheel", { deltaY: 10 });
+    await wrapper.setProps({
+      notes: [
+        idea({ id: 10, round_id: 20, canvas: { x: 10, y: 500 } }),
+        idea({ id: 11, round_id: 21, canvas: { x: 40, y: 560 } }),
+      ],
+    });
+    expect(view.y).toBe(0 - (300 + 96 + 160));
+  });
+
   it("scrolls a band's header to the top at any zoom", () => {
     const wrapper = canvas();
     const scroll = (wrapper.vm as unknown as { scrollToRound: (round: { id: number }) => void })

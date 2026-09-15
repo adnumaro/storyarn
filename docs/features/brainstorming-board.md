@@ -180,23 +180,23 @@ operations. Other editors can arrange or connect shared notes and duplicate
 readable notes as their own contributions. Read-only members can inspect authorized content
 but cannot write.
 
-## Optional rounds
+## Rounds
 
-The Rounds control in the existing header lets the facilitator prepare a round
-with an optional question, start it, close it and consult previous rounds.
-Prepared questions can be edited or cancelled before starting. Cancelled rounds
-remain in the round history, without becoming active or accepting notes.
-Participants can read that context without managing the session. The canvas
-remains the working surface throughout; no round or timer is required to create
-notes. Only one round can be active at a time.
-The current question also appears above the canvas; longer questions can be
-expanded in place without opening the round controls.
+Every session starts with Round 1; while it is the only round the canvas stays
+quiet about it and only shows its question, if any. **New round**, on the header
+of the round in progress or in the canvas context menu, closes that round and
+opens the next band below the notes in one step; the facilitator writes the
+question in place on the new header. **Close round** ends the round without
+opening another, for the convergence at the end: anything added afterwards is
+marked as a late contribution. Only one round is in progress at a time, and
+participants read the headers without managing them.
 
-The round filter changes which notes are shown, independently of the active
-round. It offers all rounds, notes without a round, and each loaded round.
-Pagination applies to that view. Creating, duplicating or pasting while viewing
-a previous round returns the view to all rounds so the new note remains visible;
-new contributions belong to the currently active round, or to no round.
+Rounds are horizontal bands of one canvas, stacked in order and as tall as their
+content: a band grows as notes land below its content and pushes the later
+rounds down, and a note never rises above its header. Every round is on the
+canvas, so there is no round filter; the list view keeps its state filter. The
+session tree lists the rounds and the "For later" leaf: `?round=` scrolls to a
+band and `?view=later` opens the parked list.
 
 A note keeps the round active when writing began. If its first save arrives
 after closing, its footer identifies it as a late contribution to the original
