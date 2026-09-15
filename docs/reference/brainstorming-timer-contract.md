@@ -16,7 +16,7 @@ Recovering a session replaced by a snapshot also cancels its old timer before
 archiving it. Reopening that generation cannot reactivate an old expiry job.
 
 The header of the round in progress shows the same digits to all participants,
-including viewers; the board header keeps a compact chip with the same countdown.
+including viewers.
 A facilitator or project owner with current edit permission types a duration into
 the digits (two fields, minutes and seconds, up to 99:59; the second digit of the minutes moves on to the seconds) and presses play or Enter, then can
 pause, resume, add one minute or cancel beside them. Durations range from 1
@@ -53,7 +53,7 @@ Closing contributions blocks new notes, duplication and pasting new cards. It
 preserves editing, moving, deleting and undoing a matching deletion of existing
 notes. Replaying an already committed creation still returns its original
 receipt. Closing and reopening contributions is a session action offered from
-the timer chip; a manager can use it without starting a timer. It does not
+the session settings panel; a manager can use it without starting a timer. It does not
 archive the session or change a round's state.
 
 ## Persisted state and execution

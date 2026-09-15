@@ -272,8 +272,7 @@ remain readable. Group recovery is described in the
 
 ## Independent countdown
 
-The header of the round in progress carries the shared timer, and the board
-header keeps a compact chip with the same countdown. The digits are the input:
+The header of the round in progress carries the shared timer. The digits are the input:
 the facilitator clicks them, types the minutes and the seconds (two digits each; the
 minutes move on to the seconds by themselves), from one second up to 99:59, and
 presses play or Enter. Beside a running clock they can pause,
@@ -283,7 +282,7 @@ line under the header fills as time passes. Reaching 0:00 is the whole message:
 the digits stay at 0:00, muted, and become editable again.
 
 Whether the round is revealed at 0:00 is the round's own setting, not a timer
-option. Closing new contributions is a session action offered in the timer chip;
+option. Closing new contributions is a session action offered in the session settings panel;
 it preserves edits and undo on existing notes, and a manager can reopen them.
 Rounds and timers never control each other automatically. See the
 [timer contract](../reference/brainstorming-timer-contract.md).

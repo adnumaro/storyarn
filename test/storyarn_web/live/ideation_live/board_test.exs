@@ -322,6 +322,17 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     end
   end
 
+  test "the settings action opens the session panel in the dock and closing it puts it away", ctx do
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    refute panels(view)["session-panel"]
+    render_hook(view, "board_action", payload(view, %{action: "settings"}))
+    assert panels(view)["session-panel"]
+    assert panels(view)["session"]["id"] == ctx.session.id
+    assert panels(view)["can-manage"] == false
+    render_hook(view, "session_panel", payload(view, %{open: false}))
+    refute panels(view)["session-panel"]
+  end
+
   test "a role downgrade preserves readable notes and the draft epoch after a rejected write", ctx do
     idea = idea_fixture(ctx)
     hidden = idea_fixture(ctx, %{body: "A peer's private text"}, ctx.peer)
@@ -673,6 +684,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   defp data(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["board"]
+  defp panels(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props
 
   defp payload(view, attrs),
     do: Map.merge(attrs, %{epoch: data(view)["epoch"], session_id: data(view)["session"]["id"]})

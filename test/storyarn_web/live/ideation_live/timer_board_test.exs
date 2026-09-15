@@ -51,7 +51,7 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
     {:ok, fresh_viewer, _} = live(log_in_user(build_conn(), ctx.viewer.user), board_path(ctx))
     assert_board_eventually(fresh_viewer, fn board -> assert board["timer"]["status"] == "running" end)
     header = LiveVue.Test.get_vue(fresh_viewer, name: "live/ideation/BoardHeader")
-    assert Map.delete(header.props["timer"], "server_now") == Map.delete(timer, "server_now")
+    assert Map.delete(data(fresh_viewer)["timer"], "server_now") == Map.delete(timer, "server_now")
     refute header.props["can-manage"]
     assert {:ok, stored} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert stored.actor_id == ctx.facilitator.user.id
