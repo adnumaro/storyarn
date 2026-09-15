@@ -1,0 +1,29 @@
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_463690cb025b00 24
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_ec7ca769a904db 24
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_f5c95f282f4e9e 394
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_216091a6e31e2c 208,241
+docs/reference/brainstorming-ideas-contract.md
+  s_02773c3f2b5565::t_abfc9c31734963 174
+docs/reference/brainstorming-rounds-contract.md
+  s_02773c3f2b5565::t_2e85ffefaf75f7 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bddaa4d6852f57eb92452307b8d9d8eed73dd703",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
