@@ -1,0 +1,20 @@
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_02773c3f2b5565::t_df76a0eaef6413 84,1245-1259,1261,1274-1281,1283
+  s_02773c3f2b5565::t_2e418bb4b0f33e 85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "caee69ac73aa40dd4cf1fcc7fee95dc3588ff5c0",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
