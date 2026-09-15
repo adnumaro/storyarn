@@ -1,0 +1,57 @@
+test/storyarn/ideation/bring_forward_test.exs
+  s_02773c3f2b5565::t_aeb425a06799df 98-120
+lib/storyarn/ideation/ideas/queries/visible.ex
+  s_02773c3f2b5565::t_d5a47a955b869d 24-27,33-36
+lib/storyarn/ideation/sessions/execution/round_mutation.ex
+  s_02773c3f2b5565::t_d5a47a955b869d 34-37
+lib/storyarn/ideation/sessions/queries/round_context.ex
+  s_02773c3f2b5565::t_d5a47a955b869d 20,22-25,27-28
+assets/app/test/modules/ideation/workspaceDecisions.test.ts
+  s_02773c3f2b5565::t_aeb425a06799df 79
+lib/storyarn/ideation/README.md
+  s_02773c3f2b5565::t_d5a47a955b869d 12
+assets/app/test/modules/ideation/timerWrites.test.ts
+  s_02773c3f2b5565::t_8a08573ca94175 34,71,77-81
+  s_02773c3f2b5565::t_aeb425a06799df 1-33,35-70,72-76,82-120
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_d5a47a955b869d 205
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_d5a47a955b869d 196
+test/storyarn/ideation/round_privacy_test.exs
+  s_02773c3f2b5565::t_97803fe1800314 8,61-64,73,75,84
+  s_02773c3f2b5565::t_aeb425a06799df 38-40
+  s_02773c3f2b5565::t_a0d1851415beaf 81
+  s_02773c3f2b5565::t_1737bd7125f6b1 80
+  s_02773c3f2b5565::t_a1cf47e3cf7aaf 71-72,74
+  s_02773c3f2b5565::t_21a6673aa9969d 85
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_d5a47a955b869d 196
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_02773c3f2b5565::t_d5a47a955b869d 167
+test/storyarn/ideation/rounds_test.exs
+  s_02773c3f2b5565::t_6e4055fa5df92c 58-60
+test/storyarn/ideation/canvas_mode_test.exs
+  s_02773c3f2b5565::t_a1cf47e3cf7aaf 33
+test/e2e/workspaces/projects/ideation/rounds_test.exs
+  s_02773c3f2b5565::t_311d47be9d101b 104
+lib/storyarn/ideation/sessions/execution/round_privacy.ex
+  s_02773c3f2b5565::t_d5a47a955b869d 60
+docs/reference/brainstorming-rounds-contract.md
+  s_02773c3f2b5565::t_aeb425a06799df 50-53,90-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "391136110fb4d13171464c67bf8cf60f28fc5de6",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
