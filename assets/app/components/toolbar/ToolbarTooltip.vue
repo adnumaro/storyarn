@@ -16,7 +16,7 @@ const { side = "bottom", align = "center" } = defineProps<{
           <slot />
         </span>
       </TooltipTrigger>
-      <TooltipContent :side="side" :align="align">
+      <TooltipContent :side="side" :align="align" class="max-w-60">
         {{ label }}
       </TooltipContent>
     </Tooltip>

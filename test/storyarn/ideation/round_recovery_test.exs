@@ -25,7 +25,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert {:ok, _} = Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, ordinary.id, next.id, true)
     capsule = capture(ctx)
 
-    assert {:ok, %{"version" => 7, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 8, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["rounds"]) == 2
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
@@ -66,6 +66,12 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
       data
       |> Map.put("version", 1)
       |> update_in(
+        ["rows", "rounds"],
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+      )
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+      |> update_in(
         ["rows"],
         &Map.drop(
           &1,
@@ -79,7 +85,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 7
+    assert normalized["version"] == 8
     assert normalized["rows"]["rounds"] == []
     {ctx, _round} = new_round(ctx, %{prompt: "Created after the old snapshot"})
     maps = restore(ctx, capsule)
@@ -97,10 +103,18 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     {:ok, data} = ctx |> capture() |> Capsule.open()
     [round] = data["rows"]["rounds"]
     now = round["started_at"]
+    # Rounds learnt their privacy in version 8; the legacy rows never carried it.
+    round = Map.drop(round, ~w(private reveal_on_expiry revealed_at))
 
     legacy =
       data
       |> Map.put("version", 6)
+      |> update_in(
+        ["rows", "rounds"],
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+      )
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
       |> put_in(["rows", "rounds"], [
         round,
         Map.merge(round, %{"id" => round["id"] + 1, "number" => 2, "status" => "planned", "started_at" => nil}),
@@ -118,7 +132,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 7
+    assert normalized["version"] == 8
     assert [%{"number" => 1, "status" => "active"} = normalized_round] = normalized["rows"]["rounds"]
     refute Map.has_key?(normalized_round, "canvas_offset_y")
     assert now
@@ -142,7 +156,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     {ctx, second} = new_round(ctx, %{prompt: "Next"})
     capsule = capture(ctx)
     assert {:ok, data} = Capsule.open(capsule)
-    assert data["version"] == 7
+    assert data["version"] == 8
     assert [saved_first, _saved_second] = data["rows"]["rounds"]
     assert saved_first["status"] == "closed"
     assert saved_first["prompt"] == "Corrected question"

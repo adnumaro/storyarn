@@ -9,11 +9,11 @@ defmodule Storyarn.Ideation.Ideas.Queries.GroupSources do
   # Closed capability projection: no text, unpublished revisions or private sources.
   def list(session_id, ids) do
     from(i in Idea,
-      join: s in subquery(Sessions.canvas_settings_query()),
-      on: s.id == i.session_id,
+      left_join: mask in subquery(Sessions.round_mask_query()),
+      on: mask.id == i.round_id,
       where:
         i.session_id == ^session_id and i.id in ^ids and is_nil(i.deleted_at) and
-          not is_nil(i.published_revision) and not s.private_mode,
+          not is_nil(i.published_revision) and not fragment("COALESCE(?, false)", mask.private),
       order_by: i.id,
       select: %{idea_id: i.id, source_revision: i.published_revision, round_id: i.round_id, canvas: i.canvas}
     )

@@ -13,7 +13,6 @@ defmodule Storyarn.Ideation.Sessions.Timer do
     field :duration_seconds, :integer
     field :started_at, :utc_datetime_usec
     field :completed_at, :utc_datetime_usec
-    field :reveal_on_expiry, :boolean, default: false
     field :close_contributions_on_expiry, :boolean, default: false
     field :configuration_version, :integer
 

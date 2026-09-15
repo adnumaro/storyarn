@@ -155,14 +155,22 @@ defmodule Storyarn.Ideation.GroupsTest do
     group = create_group_fixture(ctx)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     for actor <- [ctx.author, ctx.peer, ctx.facilitator, ctx.viewer] do
       assert {:ok, []} = Ideation.list_groups(actor, ctx.project.id, ctx.session.id)
     end
 
-    assert {:error, :private_mode} = edit_group(ctx, group, %{title: "Hidden"})
-    assert {:error, :private_mode} = Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs(ctx))
+    assert {:error, :private_round} = edit_group(ctx, group, %{title: "Hidden"})
+
+    assert {:error, :invalid_group_members} =
+             Ideation.create_group(ctx.author, ctx.project.id, ctx.session.id, attrs(ctx))
   end
 
   test "UUID receipts remain durable through later edits and cannot be reused for different intent", ctx do

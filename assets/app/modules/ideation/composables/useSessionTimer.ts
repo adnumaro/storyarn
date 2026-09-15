@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type { SessionTimer } from "../types";
+import { formatSeconds } from "./useTimerWrites";
 
 function remainingTime(timer: SessionTimer | null): number {
   if (!timer) return 0;
@@ -74,13 +75,6 @@ export function useSessionTimer(
     mounted = false;
     clearInterval(interval);
   });
-  const display = computed(() => {
-    const value = seconds.value;
-    const minutes = Math.floor(value / 60);
-    const tail = String(value % 60).padStart(2, "0");
-    return value >= 3600
-      ? `${Math.floor(value / 3600)}:${String(minutes % 60).padStart(2, "0")}:${tail}`
-      : `${minutes}:${tail}`;
-  });
+  const display = computed(() => formatSeconds(seconds.value));
   return { seconds, display };
 }

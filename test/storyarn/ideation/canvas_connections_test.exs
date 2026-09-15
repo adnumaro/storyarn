@@ -136,7 +136,7 @@ defmodule Storyarn.Ideation.CanvasConnectionsTest do
 
     request = command([{shared, target, true}], [{shared, 0}])
     assert {:error, :unauthorized} = apply_batch(%{ctx | author: ctx.viewer}, request)
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    {:ok, _} = Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
     assert {:error, :not_found} = apply_batch(%{ctx | author: ctx.peer}, request)
     {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
     {:ok, _} = Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision)

@@ -7,6 +7,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { useI18n } from "vue-i18n";
 import { pasteContent } from "../lib/paste";
 import type { Idea } from "../types";
+import { noteFill, noteInk } from "../lib/noteColors";
 const {
   note,
   body,
@@ -94,17 +95,8 @@ watch(
 );
 onMounted(focus);
 const shape = computed(() => note.canvas?.shape ?? "rectangle");
-const color = computed(
-  () =>
-    ({
-      yellow: "#f5e6a8",
-      coral: "#f8cbbd",
-      mint: "#cbe8d5",
-      blue: "#c9e2f5",
-      violet: "#e2d5f4",
-      paper: "#f4f1e9",
-    })[note.canvas?.color ?? "yellow"] ?? "#f5e6a8",
-);
+const fill = computed(() => noteFill(note.canvas?.color));
+const ink = computed(() => noteInk(note.canvas?.color) ?? undefined);
 </script>
 <template>
   <article
@@ -121,7 +113,7 @@ const color = computed(
       `canvas-note--${shape}`,
       { 'canvas-note--selected': selected, 'canvas-note--editing': editing },
     ]"
-    :style="{ '--note-color': color }"
+    :style="{ '--note-color': fill, '--note-ink': ink }"
   >
     <span aria-hidden="true" class="note-outline" />
     <span aria-hidden="true" class="note-surface" />
@@ -226,6 +218,11 @@ const color = computed(
 }
 .canvas-note--plain .note-surface {
   background: transparent;
+}
+/* A text-only note wears its colour on the words, leaning on the theme's ink
+   so it reads on both grounds. */
+.canvas-note--plain .note-content {
+  color: color-mix(in srgb, var(--note-ink, hsl(var(--foreground))) 80%, hsl(var(--foreground)));
 }
 .canvas-note--plain .note-surface::before {
   background: transparent;

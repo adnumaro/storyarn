@@ -17,6 +17,7 @@ defmodule Storyarn.Ideation.Groups.Execution.Mutation do
          {:ok, sources} <- Memberships.validate(access.session_id, 0, attrs.idea_ids) do
       group =
         Repo.insert!(%Group{
+          round_id: List.first(sources).round_id,
           session_id: access.session_id,
           author_id: access.user_id,
           title: attrs.title,

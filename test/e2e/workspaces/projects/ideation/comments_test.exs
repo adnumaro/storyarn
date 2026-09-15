@@ -89,7 +89,14 @@ defmodule StoryarnWeb.E2E.IdeationCommentsTest do
     assert {:ok, %{threads: [thread]}} =
              Projects.list_ideation_comment_threads(ctx.peer, project.id, ctx.session.id, idea.id)
 
-    {:ok, _} = Ideation.set_private_mode(ctx.facilitator, project.id, ctx.session.id, ctx.session.revision, true)
+    {:ok, _} =
+      Storyarn.IdeationFixtures.set_private_mode(
+        ctx.facilitator,
+        project.id,
+        ctx.session.id,
+        ctx.session.revision,
+        true
+      )
 
     browser
     |> refute_has("#brainstorming-comments-content")

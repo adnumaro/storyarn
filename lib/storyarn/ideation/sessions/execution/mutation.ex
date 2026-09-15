@@ -25,8 +25,8 @@ defmodule Storyarn.Ideation.Sessions.Execution.Mutation do
            %Session{} = session <- lock_session(project_id, session_id),
            :ok <- authorize_manager(session, access),
            :ok <- check_revision(session, revision),
-           {:ok, updated} <- callback.(session, access) do
-        {:ok, {updated, Invalidation.comment_change(session, updated)}}
+           {:ok, updated, change} <- completed(callback.(session, access), session) do
+        {:ok, {updated, change}}
       else
         nil -> {:error, :not_found}
         {:error, reason} -> {:error, reason}
@@ -84,4 +84,9 @@ defmodule Storyarn.Ideation.Sessions.Execution.Mutation do
 
   defp check_revision(%{revision: revision}, revision), do: :ok
   defp check_revision(_session, _revision), do: {:error, :stale_revision}
+
+  # A command may name the comment change itself when session fields cannot tell.
+  defp completed({:ok, updated, change}, _session), do: {:ok, updated, change}
+  defp completed({:ok, updated}, session), do: {:ok, updated, Invalidation.comment_change(session, updated)}
+  defp completed(other, _session), do: other
 end

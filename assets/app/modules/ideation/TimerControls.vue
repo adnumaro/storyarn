@@ -5,9 +5,9 @@ import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useBoardText } from "./composables/useBoardText";
 import { useSessionTimer } from "./composables/useSessionTimer";
-import { activeTimer, timerDraft, useTimerWrites } from "./composables/useTimerWrites";
-import type { TimerControl, TimerStart } from "./composables/useTimerWrites";
-import TimerStartForm from "./components/TimerStartForm.vue";
+import { activeTimer, DEFAULT_TIMER_SECONDS, useTimerWrites } from "./composables/useTimerWrites";
+import type { TimerControl } from "./composables/useTimerWrites";
+import TimerDigits from "./components/TimerDigits.vue";
 import type { Session, SessionTimer } from "./types";
 
 const { session, epoch, timer, canManage, canEdit } = defineProps<{
@@ -36,23 +36,31 @@ const elapsed = computed(
   () => timer?.status === "elapsed" || (timer?.status === "running" && seconds.value === 0),
 );
 const label = computed(() => {
-  if (elapsed.value) return t("ideation.timer.elapsed");
-  if (active.value) return display.value;
+  if (active.value || elapsed.value) return display.value;
   return t("ideation.timer.title");
 });
-const draft = ref(timerDraft());
+const draft = ref(DEFAULT_TIMER_SECONDS);
 watch(
   [() => epoch, () => session.id],
   () => {
-    draft.value = timerDraft();
+    draft.value = DEFAULT_TIMER_SECONDS;
   },
   { flush: "sync" },
+);
+// A stopped clock leaves its full duration in the digits, on every device.
+watch(
+  () => timer?.version,
+  () => {
+    if (timer?.status === "cancelled") draft.value = timer.duration_seconds;
+  },
+  { immediate: true },
 );
 function onOpenChange(open: boolean) {
   if (!open) writes.clearFailure();
 }
-function start(options: TimerStart) {
-  writes.start(options);
+function start(value: number) {
+  draft.value = value;
+  writes.start({ seconds: value, close_contributions_on_expiry: false });
 }
 function control(event: TimerControl) {
   writes.control(event, seconds.value);
@@ -87,25 +95,16 @@ function control(event: TimerControl) {
         />
       </button>
     </PopoverTrigger>
-    <span role="status" class="sr-only">{{ elapsed ? t("ideation.timer.elapsed") : "" }}</span>
     <PopoverContent
       align="start"
       class="w-80 space-y-4 p-4"
       :aria-label="t('ideation.timer.title')"
     >
-      <div>
-        <h2 class="text-sm font-semibold">{{ t("ideation.timer.title") }}</h2>
-        <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {{ t("ideation.timer.help") }}
-        </p>
-      </div>
+      <h2 class="text-sm font-semibold">{{ t("ideation.timer.title") }}</h2>
       <p v-if="failure" role="alert" class="text-xs text-destructive">{{ error(failure) }}</p>
       <div v-if="active || timer?.status === 'elapsed'" class="space-y-3 text-center">
         <p class="text-3xl font-medium tabular-nums">{{ display }}</p>
-        <p v-if="elapsed" id="brainstorming-timer-finished" class="text-xs text-primary">
-          {{ t("ideation.timer.elapsed") }}
-        </p>
-        <p v-else-if="timer?.status === 'paused'" class="text-xs text-muted-foreground">
+        <p v-if="timer?.status === 'paused'" class="text-xs text-muted-foreground">
           {{ t("ideation.timer.paused") }}
         </p>
         <p
@@ -113,15 +112,6 @@ function control(event: TimerControl) {
           class="text-xs text-muted-foreground"
         >
           {{ t(`ideation.timer.outcomes.${timer.outcome}`) }}
-        </p>
-        <p v-if="active && timer?.reveal_on_expiry" class="text-xs text-muted-foreground">
-          {{ t("ideation.timer.reveal") }}
-        </p>
-        <p
-          v-if="active && timer?.close_contributions_on_expiry"
-          class="text-xs text-muted-foreground"
-        >
-          {{ t("ideation.timer.close") }}
         </p>
         <div v-if="mayManage && active" class="flex flex-wrap items-center justify-center gap-1">
           <Button
@@ -162,13 +152,14 @@ function control(event: TimerControl) {
           >
         </div>
       </div>
-      <TimerStartForm
-        v-if="mayManage && !active"
-        v-model="draft"
-        :private-mode="session.configuration.private_mode"
-        :pending="pending"
-        @start="start"
-      />
+      <div v-if="mayManage && !active" class="flex justify-center">
+        <TimerDigits
+          :seconds="draft"
+          :pending="pending"
+          @update:seconds="draft = $event"
+          @start="start"
+        />
+      </div>
       <div class="space-y-2 border-t pt-3">
         <p
           class="text-xs"

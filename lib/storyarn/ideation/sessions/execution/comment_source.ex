@@ -19,7 +19,6 @@ defmodule Storyarn.Ideation.Sessions.Execution.CommentSource do
            %{
              id: session.id,
              name: session.title,
-             private_mode: session.configuration.private_mode,
              inserted_at: DateTime.truncate(session.inserted_at, :second),
              recovery_identity: session.recovery_identity
            }}

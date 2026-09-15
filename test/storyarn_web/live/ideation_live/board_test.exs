@@ -431,7 +431,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
       refute Jason.encode!(payload) =~ ctx.author.user.email
       assert {:noreply, received} = Board.handle_info({:remote_change, :brainstorming_cursor, payload}, socket)
       assert [["canvas_cursor", %{x: 20, y: 30}]] = Phoenix.LiveView.Utils.get_push_events(received)
-      private_board = put_in(socket.assigns.board.session.configuration.private_mode, true)
+      private_board = put_in(socket.assigns.board.active_round.private, true)
       assert {:noreply, ^private_board} = Board.handle_event("canvas_cursor", params, private_board)
 
       assert {:noreply, ^private_board} =
@@ -459,7 +459,8 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
         canvas_ready: true,
         board_error: nil,
         board: %{
-          session: %{id: ctx.session.id, configuration: %{private_mode: false}},
+          session: %{id: ctx.session.id},
+          active_round: %{id: 1, private: false},
           members: [%{id: ctx.author.user.id}]
         }
       }
@@ -467,7 +468,9 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   test "round actions share metadata and preserve private mode and editing after closing", ctx do
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
     assert {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
     first = first_round(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.facilitator.user), board_path(ctx, session.id))
@@ -489,7 +492,20 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     [closed, round] = data(view)["rounds"]
     assert closed["id"] == first.id
     refute Map.has_key?(round, "recovery_identity")
-    assert_board_eventually(participant, fn board -> assert board["active_round"]["id"] == round["id"] end)
+
+    # Privacy is not inherited: the new round is set private on its own.
+    render_hook(
+      view,
+      "set_round_privacy",
+      payload(view, %{revision: data(view)["session"]["revision"], round_id: round["id"], private: true})
+    )
+
+    assert_reply(view, %{status: "ok"})
+
+    # Going private fences everyone's board; what follows must keep the new epoch.
+    assert_board_eventually(view, fn board -> assert board["active_round"]["private"] end)
+    assert_board_eventually(participant, fn board -> assert board["active_round"]["private"] end)
+    assert data(participant)["active_round"]["id"] == round["id"]
     epoch = data(participant)["epoch"]
 
     render_hook(
@@ -503,7 +519,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_board_eventually(participant, fn board ->
       assert board["active_round"] == nil
       assert [%{"status" => "closed"}, %{"status" => "closed"}] = board["rounds"]
-      assert board["session"]["configuration"]["private_mode"]
+      assert Enum.all?(board["rounds"], & &1["private"])
       assert board["can_edit"]
       assert board["epoch"] == epoch
     end)

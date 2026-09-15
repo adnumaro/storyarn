@@ -385,7 +385,7 @@ defmodule StoryarnWeb.CommentLive.OverlayTest do
     assert state(view)["selectedThreadId"] == detail.thread.id
 
     {:ok, _} =
-      Storyarn.Ideation.set_private_mode(
+      Storyarn.IdeationFixtures.set_private_mode(
         ideation.facilitator,
         ideation.project.id,
         ideation.session.id,

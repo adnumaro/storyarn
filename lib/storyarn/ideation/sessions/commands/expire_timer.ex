@@ -4,6 +4,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
   import Ecto.Query
 
   alias Storyarn.Ideation.Ideas
+  alias Storyarn.Ideation.Sessions
   alias Storyarn.Ideation.Sessions.Adapters.ProjectAccess
   alias Storyarn.Ideation.Sessions.Adapters.TimerActor
   alias Storyarn.Ideation.Sessions.Events.Invalidation
@@ -61,7 +62,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
     outcome = outcome(session, timer, authorization, original_actor_id)
     original_session = session
 
-    with {:ok, session} <- effects(session, timer, outcome, authorization),
+    with {:ok, session, revealed} <- effects(session, timer, outcome, authorization),
          {:ok, elapsed} <-
            timer
            |> change(
@@ -74,7 +75,8 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
            )
            |> Repo.update(),
          {:ok, session} <- TimerMutation.record(session, elapsed.actor_id, elapsed, :timer_elapsed) do
-      {:ok, {receipt(session, elapsed, outcome), Invalidation.comment_change(original_session, session)}}
+      change = if revealed, do: :sources, else: Invalidation.comment_change(original_session, session)
+      {:ok, {receipt(session, elapsed, outcome, revealed), change}}
     end
   end
 
@@ -97,27 +99,37 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
   defp outcome(_, _, _, _), do: :skipped_authorization
 
   defp effects(session, timer, :completed, {:ok, access}) do
-    with :ok <- reveal(session, timer, access) do
+    with {:ok, revealed} <- reveal(session, access) do
       current = Repo.get!(Session, session.id)
 
-      if timer.close_contributions_on_expiry,
-        do: current |> change(contributions_open: false) |> Repo.update(),
-        else: {:ok, current}
+      result =
+        if timer.close_contributions_on_expiry,
+          do: current |> change(contributions_open: false) |> Repo.update(),
+          else: {:ok, current}
+
+      with {:ok, current} <- result, do: {:ok, current, revealed}
     end
   end
 
-  defp effects(session, _, _, _), do: {:ok, session}
+  defp effects(session, _, _, _), do: {:ok, session, false}
 
-  defp reveal(session, %{reveal_on_expiry: true}, access) do
-    access = ContributionAccess.from_session(session, access)
-    with {:ok, _} <- Ideas.set_private_mode_locked(access, session.revision, false), do: :ok
+  # The round in progress asked to be revealed when time runs out.
+  defp reveal(session, access) do
+    case Sessions.active_private_round(session.id) do
+      %{reveal_on_expiry: true} = round ->
+        access = ContributionAccess.from_session(session, access)
+
+        with {:ok, _} <- Ideas.reveal_round_locked(access, session.revision, round.id), do: {:ok, true}
+
+      _ ->
+        {:ok, false}
+    end
   end
 
-  defp reveal(_, _, _), do: :ok
-
-  defp receipt(session, timer, outcome),
+  defp receipt(session, timer, outcome, revealed \\ false),
     do: %{
       outcome: outcome,
+      revealed: revealed,
       timer: timer,
       project_id: if(session, do: session.project_id),
       session_id: if(session, do: session.id)
@@ -131,8 +143,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
       Invalidation.notify(response, result.project_id, change)
       TimerInvalidation.notify(response)
 
-      if outcome == :completed and result.timer.reveal_on_expiry,
-        do: Ideas.notify_timer_reveal(result.project_id, result.session_id)
+      if result.revealed, do: Ideas.notify_timer_reveal(result.project_id, result.session_id)
     end
 
     response

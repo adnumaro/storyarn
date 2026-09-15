@@ -8,6 +8,7 @@ defmodule Storyarn.Ideation.Groups.Group do
     field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :session_id, :id
     field :author_id, :id
+    field :round_id, :id
     field :title, EncryptedBinary, redact: true
     field :synthesis, EncryptedBinary, redact: true
     field :version, :integer, default: 1

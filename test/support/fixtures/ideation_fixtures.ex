@@ -69,6 +69,36 @@ defmodule Storyarn.IdeationFixtures do
     %{ctx | session: session}
   end
 
+  # Session-wide private mode became round privacy. Enabling hides the round in
+  # progress; disabling reveals the round in progress, or the last one when
+  # every round is closed. Callers keep the old five-argument shape.
+  def set_private_mode(scope, project_id, session_id, revision, enabled, opts \\ []) do
+    with {:ok, rounds} <- Ideation.list_rounds(scope, project_id, session_id) do
+      round = Enum.find(rounds, &(&1.status == :active)) || List.first(rounds)
+      reveal_on_expiry = Keyword.get(opts, :reveal_on_expiry, false)
+
+      cond do
+        is_nil(round) ->
+          {:error, :round_required}
+
+        enabled ->
+          Ideation.set_round_privacy(scope, project_id, session_id, round.id, revision, %{
+            private: true,
+            reveal_on_expiry: reveal_on_expiry
+          })
+
+        true ->
+          Ideation.reveal_round(scope, project_id, session_id, round.id, revision)
+      end
+    end
+  end
+
+  # Whether any round of the session currently hides other people's notes.
+  def private_round?(scope, project_id, session_id) do
+    {:ok, rounds} = Ideation.list_rounds(scope, project_id, session_id)
+    Enum.any?(rounds, & &1.private)
+  end
+
   def configure_session(ctx, changes) do
     {:ok, current} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
 

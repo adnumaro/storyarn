@@ -180,29 +180,39 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
       |> visit(path)
       |> assert_has("#canvas-note-#{prompt.id}")
 
-    assert_has(peer, "button[aria-label='Start private mode for everyone'][disabled]")
+    {:ok, rounds} = Ideation.list_rounds(ctx.facilitator, project.id, ctx.session.id)
+    active = Enum.find(rounds, &(&1.status == :active))
+    refute_has(peer, "#brainstorming-round-settings-#{active.id}")
 
     {:ok, _} =
       PlaywrightEx.Frame.click(facilitator.frame_id,
-        selector: "button[aria-label='Start private mode for everyone']",
+        selector: "#brainstorming-round-settings-#{active.id}",
         timeout: 10_000
       )
 
-    facilitator = assert_has(facilitator, "button[aria-label='End private mode and reveal to everyone']")
+    {:ok, _} =
+      PlaywrightEx.Frame.click(facilitator.frame_id,
+        selector: "#brainstorming-round-private-toggle-#{active.id}",
+        timeout: 10_000
+      )
+
+    facilitator = assert_has(facilitator, "#brainstorming-round-private-#{active.id}")
 
     peer =
       peer
       |> refute_has("#canvas-note-#{prompt.id}")
+      |> assert_has("#canvas-masked-#{prompt.id}")
       |> press("#brainstorming-canvas", "n")
       |> type("[contenteditable=true]", "A forgotten promise changed the river.")
       |> assert_has("[data-note-id]:not([data-note-id^='-'])", text: "A forgotten promise changed the river.")
 
     refute_has(facilitator, ".canvas-note", text: "A forgotten promise changed the river.")
     {:ok, [own]} = Ideation.list_ideas(ctx.peer, project.id, ctx.session.id)
+    facilitator = assert_has(facilitator, "#canvas-masked-#{own.id}")
 
     {:ok, _} =
       PlaywrightEx.Frame.click(facilitator.frame_id,
-        selector: "button[aria-label='End private mode and reveal to everyone']",
+        selector: "#brainstorming-round-reveal-#{active.id}",
         timeout: 10_000
       )
 

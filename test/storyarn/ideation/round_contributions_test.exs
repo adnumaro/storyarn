@@ -102,13 +102,15 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
   end
 
   test "closing a private round neither reveals drafts nor prevents later edits or saves", ctx do
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
     round = first_round(ctx)
     attrs = %{request_key: Ecto.UUID.generate(), round_id: round.id, body: "Private contribution"}
     assert {:ok, idea} = Ideation.create_canvas_idea(ctx.author, ctx.project.id, ctx.session.id, attrs)
     ctx = close_round(ctx, round)
-    assert ctx.session.configuration.private_mode
-    assert ctx.session.configuration_version == 2
+    assert Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
+    assert ctx.session.configuration_version == 1
 
     assert {:ok, changed} =
              Ideation.update_canvas_idea(
@@ -220,7 +222,9 @@ defmodule Storyarn.Ideation.RoundContributionsTest do
       assert {:error, :invalid_options} = Ideation.count_parked_ideas(ctx.viewer, ctx.project.id, invalid)
     end
 
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+
     assert {:ok, counts} = Ideation.count_parked_ideas(ctx.viewer, ctx.project.id, ids)
     assert counts == %{other.id => 1}
   end

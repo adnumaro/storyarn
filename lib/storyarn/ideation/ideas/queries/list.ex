@@ -63,10 +63,13 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
           from i in Idea,
             join: s in subquery(Sessions.canvas_settings_query()),
             on: s.id == i.session_id,
+            left_join: mask in subquery(Sessions.round_mask_query()),
+            on: mask.id == i.round_id,
             where:
               i.session_id in ^session_ids and s.project_id == ^project_id and is_nil(i.deleted_at) and
                 i.state == :parked and
-                (i.author_id == ^actor_id or (not s.private_mode and not is_nil(i.published_revision))),
+                (i.author_id == ^actor_id or
+                   (not fragment("COALESCE(?, false)", mask.private) and not is_nil(i.published_revision))),
             group_by: i.session_id,
             select: {i.session_id, count(i.id)}
         )
@@ -111,4 +114,27 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
   defp filter_round(query, :all), do: query
   defp filter_round(query, nil), do: where(query, [i], is_nil(i.round_id))
   defp filter_round(query, round_id), do: where(query, [i], i.round_id == ^round_id)
+
+  # Other people's notes in a private round: where they are and how wide, never
+  # what they say or who wrote them. The board draws them as placeholders.
+  def masked(scope, project_id, session_id) do
+    with {:ok, _} <- Sessions.get_session(scope, project_id, session_id) do
+      actor_id = scope.user.id
+
+      rows =
+        Repo.all(
+          from i in Idea,
+            join: mask in subquery(Sessions.round_mask_query()),
+            on: mask.id == i.round_id,
+            where:
+              i.session_id == ^session_id and is_nil(i.deleted_at) and mask.private and
+                i.author_id != ^actor_id and i.state != :discarded,
+            order_by: i.id,
+            limit: 2000,
+            select: %{id: i.id, round_id: i.round_id, canvas: i.canvas}
+        )
+
+      {:ok, Enum.map(rows, &%{&1 | canvas: Map.take(&1.canvas, ~w(x y width))})}
+    end
+  end
 end

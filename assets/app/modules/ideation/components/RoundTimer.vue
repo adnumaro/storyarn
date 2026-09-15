@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Pause, Play, Plus, Square, Timer } from "@lucide/vue";
-import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { Pause, Play, Plus, Square } from "@lucide/vue";
 import { useBoardText } from "../composables/useBoardText";
 import { useSessionTimer } from "../composables/useSessionTimer";
-import { activeTimer, timerDraft, useTimerWrites } from "../composables/useTimerWrites";
-import type { TimerStart } from "../composables/useTimerWrites";
+import { activeTimer, DEFAULT_TIMER_SECONDS, useTimerWrites } from "../composables/useTimerWrites";
 import type { Session, SessionTimer } from "../types";
-import TimerStartForm from "./TimerStartForm.vue";
+import TimerDigits from "./TimerDigits.vue";
 
-// The timer zone of the round in progress: big digits everyone reads, the
-// facilitator's pause/resume/+1 min/cancel beside them, and "Start timer"
-// while idle or once time is up. Reaching 0:00 is the whole message; the line
-// under the header fills as time passes and this reports the fraction.
+// The timer zone of the round in progress. Everyone reads the digits; the
+// facilitator types a duration into them and presses play, then pauses,
+// extends or cancels beside them. Reaching 0:00 is the whole message: the
+// digits stay, editable again for the facilitator. The line under the header
+// fills as time passes and this reports the fraction.
 const { session, epoch, timer, canManage, canEdit } = defineProps<{
   session: Session;
   epoch: string;
@@ -48,37 +45,29 @@ const fraction = computed(() => {
   return Math.min(1, Math.max(0, 1 - seconds.value / timer.duration_seconds));
 });
 watch(fraction, (value) => emit("progress", value));
-// The parent draws the line; it needs the first value once both are mounted.
 onMounted(() => emit("progress", fraction.value));
-const draft = ref(timerDraft());
-const open = ref(false);
+// What the digits show while nothing runs: 00:00 once time is up, else the last duration.
+const draft = ref(DEFAULT_TIMER_SECONDS);
+const idle = computed(() => (elapsed.value ? 0 : draft.value));
 watch([() => epoch, () => session.id], () => {
-  draft.value = timerDraft();
-  open.value = false;
+  draft.value = DEFAULT_TIMER_SECONDS;
 });
-// The digits take the popover's place as soon as the timer runs.
-watch(active, (value) => {
-  if (value) open.value = false;
-});
-function onOpen(value: boolean) {
-  open.value = value;
-  if (!value) writes.clearFailure();
-}
-function start(options: TimerStart) {
-  writes.start(options);
+// A stopped clock leaves its full duration in the digits, on every device.
+watch(
+  () => timer?.version,
+  () => {
+    if (timer?.status === "cancelled") draft.value = timer.duration_seconds;
+  },
+  { immediate: true },
+);
+function start(value: number) {
+  draft.value = value;
+  writes.start({ seconds: value, close_contributions_on_expiry: false });
 }
 </script>
 <template>
   <div class="pointer-events-auto flex shrink-0 items-center gap-2">
-    <span
-      v-if="elapsed"
-      id="brainstorming-round-timer"
-      role="status"
-      class="text-[22px] font-semibold leading-none tabular-nums text-muted-foreground"
-      :aria-label="`${t('ideation.timer.title')}: ${t('ideation.timer.elapsed')}`"
-      >0:00</span
-    >
-    <template v-else-if="active">
+    <template v-if="active && !elapsed">
       <span
         id="brainstorming-round-timer"
         class="text-[22px] font-semibold leading-none tabular-nums"
@@ -86,9 +75,11 @@ function start(options: TimerStart) {
         :aria-label="`${t('ideation.timer.title')}: ${display}`"
         >{{ display }}</span
       >
-      <Badge v-if="!running" variant="secondary" class="font-medium text-muted-foreground">{{
-        t("ideation.timer.paused")
-      }}</Badge>
+      <Pause
+        v-if="!running && !mayManage"
+        class="size-3.5 text-muted-foreground"
+        :aria-label="t('ideation.timer.paused')"
+      />
       <template v-if="mayManage && seconds > 0">
         <button
           :id="running ? 'brainstorming-round-timer-pause' : 'brainstorming-round-timer-resume'"
@@ -123,33 +114,24 @@ function start(options: TimerStart) {
         <Square class="size-3.5" />
       </button>
     </template>
-    <Popover v-if="!active && mayManage" :open="open" @update:open="onOpen">
-      <PopoverTrigger as-child>
-        <Button id="brainstorming-round-timer-start" variant="ghost" size="sm"
-          ><Timer class="size-3.5" />{{ t("ideation.timer.start") }}</Button
-        >
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        class="w-80 space-y-4 p-4"
-        :aria-label="t('ideation.timer.title')"
-      >
-        <div>
-          <h2 class="text-sm font-semibold">{{ t("ideation.timer.title") }}</h2>
-          <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {{ t("ideation.timer.help") }}
-          </p>
-        </div>
-        <p v-if="writes.failure.value" role="alert" class="text-xs text-destructive">
-          {{ error(writes.failure.value) }}
-        </p>
-        <TimerStartForm
-          v-model="draft"
-          :private-mode="session.configuration.private_mode"
-          :pending="writes.pending.value"
-          @start="start"
-        />
-      </PopoverContent>
-    </Popover>
+    <TimerDigits
+      v-else-if="mayManage"
+      :seconds="idle"
+      :pending="writes.pending.value"
+      id-prefix="brainstorming-round-timer"
+      @update:seconds="draft = $event"
+      @start="start"
+    />
+    <span
+      v-else-if="elapsed"
+      id="brainstorming-round-timer"
+      role="status"
+      class="text-[22px] font-semibold leading-none tabular-nums text-muted-foreground"
+      :aria-label="`${t('ideation.timer.title')}: ${t('ideation.timer.elapsed')}`"
+      >00:00</span
+    >
+    <p v-if="writes.failure.value" role="alert" class="text-xs text-destructive">
+      {{ error(writes.failure.value) }}
+    </p>
   </div>
 </template>

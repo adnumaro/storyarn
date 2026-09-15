@@ -36,8 +36,7 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     manager =
       manager
       |> click("#brainstorming-timer-trigger")
-      |> press("#brainstorming-timer-duration", "ControlOrMeta+a")
-      |> type("#brainstorming-timer-duration", "600")
+      |> type("#brainstorming-timer-minutes", "10")
       |> click("#brainstorming-timer-start:not([disabled])")
       |> assert_has("#brainstorming-timer-pause:not([disabled])")
       |> press("#brainstorming-timer-pause[aria-disabled=false]", "Enter")
@@ -48,7 +47,6 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     assert {:ok, paused} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert paused.status == :paused
     assert paused.duration_seconds == 600
-    refute paused.reveal_on_expiry
     refute paused.close_contributions_on_expiry
 
     viewer =
@@ -157,8 +155,9 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     browser |> visit(board_path(ctx)) |> assert_has(".canvas-note", count: 2)
   end
 
-  defp format_seconds(seconds),
-    do: "#{div(seconds, 60)}:#{seconds |> rem(60) |> Integer.to_string() |> String.pad_leading(2, "0")}"
+  defp format_seconds(seconds), do: "#{pad(div(seconds, 60))}:#{pad(rem(seconds, 60))}"
+
+  defp pad(value), do: value |> Integer.to_string() |> String.pad_leading(2, "0")
 
   defp board_path(ctx) do
     project = Repo.preload(ctx.project, :workspace)

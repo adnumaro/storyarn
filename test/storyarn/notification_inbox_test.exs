@@ -155,7 +155,15 @@ defmodule Storyarn.NotificationInboxTest do
 
   defp set_private_mode(ctx, private?) do
     assert {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, session.id, session.revision, private?)
+
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               session.id,
+               session.revision,
+               private?
+             )
   end
 
   defp capture_queries(callback) do
