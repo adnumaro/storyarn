@@ -1,0 +1,31 @@
+test/storyarn/ideation/round_privacy_test.exs
+  s_02773c3f2b5565::t_6394c602c365b8 78,80-81
+  s_02773c3f2b5565::t_57a39297de63d1 4,87-91
+  s_02773c3f2b5565::t_170d9fb830f0b6 1-3,5-77,79,82-86,92-119
+lib/storyarn/ideation/groups/execution/comment_source.ex
+  s_02773c3f2b5565::t_7632371b34c3b6 24,26-35
+lib/storyarn/ideation/sessions/execution/round_privacy.ex
+  s_02773c3f2b5565::t_7632371b34c3b6 42-43,45-46,48-50
+lib/storyarn/ideation/sessions/commands/expire_timer.ex
+  s_02773c3f2b5565::t_a42b3173ef06c8 13,116-118,120-136
+lib/storyarn/ideation/ideas/queries/list.ex
+  s_02773c3f2b5565::t_7632371b34c3b6 120-122,134-135
+docs/reference/brainstorming-rounds-contract.md
+  s_02773c3f2b5565::t_68e50def1781ca 55-58,67-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b19dff2a2aeac834fcc90b368ff5b5effc349c6c",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
