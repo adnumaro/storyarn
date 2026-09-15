@@ -1,0 +1,43 @@
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_bc9fb43b0dc585 287-293
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_02773c3f2b5565::t_8cb240e3da7343 234-249,405-407,1288-1293,1317,1548-1549,1655
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_8cb240e3da7343 211-212
+assets/app/modules/ideation/BrainstormingSidebar.vue
+  s_02773c3f2b5565::t_8cb240e3da7343 191-195,197
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_726f648ca92b17 170
+  s_02773c3f2b5565::t_867c1a679976b6 155,451,478,487,492,501,504
+assets/app/modules/ideation/components/RoundBar.vue
+  s_02773c3f2b5565::t_8cb240e3da7343 33,50-51,102-105,211-221
+  s_02773c3f2b5565::t_67c8420a5d9875 16
+assets/app/modules/ideation/composables/useCanvasViewport.ts
+  s_02773c3f2b5565::t_8cb240e3da7343 1,10-13,15-26
+assets/app/test/modules/ideation/brainstormingSidebar.test.ts
+  s_02773c3f2b5565::t_726f648ca92b17 60,68
+  s_02773c3f2b5565::t_867c1a679976b6 67,69-84
+assets/app/test/modules/ideation/canvasViewport.test.ts
+  s_02773c3f2b5565::t_726f648ca92b17 109
+  s_02773c3f2b5565::t_867c1a679976b6 82-108,110-116
+assets/app/test/modules/ideation/canvasAreaSelection.test.ts
+  s_02773c3f2b5565::t_31697c94a4c130 365-366,368,370
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_8cb240e3da7343 211-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ebc8df032a91d85412968dce53cece7d66997bc0",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
