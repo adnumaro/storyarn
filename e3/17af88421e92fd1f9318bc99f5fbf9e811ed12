@@ -1,0 +1,31 @@
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_02773c3f2b5565::t_03175476d42f54 163,166-167,197-198,203-205,210-217
+  s_02773c3f2b5565::t_71dd897ac9d052 218
+priv/repo/migrations/20260915100000_ideation_round_privacy.exs
+  s_02773c3f2b5565::t_03175476d42f54 20-21,25,31-38,72,80
+test/storyarn/ideation/round_recovery_test.exs
+  s_02773c3f2b5565::t_db189efacafdfe 61-138
+  s_02773c3f2b5565::t_cddff9da4e52fc 167-172,176,178
+priv/repo/migrations/20260914120000_ideation_round_bands.exs
+  s_02773c3f2b5565::t_03175476d42f54 46,49-50,125-136
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_02773c3f2b5565::t_cddff9da4e52fc 271-273
+  s_02773c3f2b5565::t_03175476d42f54 161,163,172-178,181-187,195-205,221-270
+  s_02773c3f2b5565::t_4c0381da676776 274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e317af88421e92fd1f9318bc99f5fbf9e811ed12",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
