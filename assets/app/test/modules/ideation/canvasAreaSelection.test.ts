@@ -362,11 +362,12 @@ describe("canvas area selection", () => {
       await pointer(wrapper.element, "pointerdown", origin, {
         button: method === "middle" ? 1 : 0,
       });
-      await pointer(wrapper.element, "pointermove", { x: origin.x + 160, y: origin.y + 60 });
+      // Upwards: the canvas never scrolls above the first header, so a downward pan is held.
+      await pointer(wrapper.element, "pointermove", { x: origin.x + 160, y: origin.y - 60 });
       expect(viewport(wrapper).x).toBe(initial.x + 160);
-      expect(viewport(wrapper).y).toBe(initial.y + 60);
+      expect(viewport(wrapper).y).toBe(initial.y - 60);
       expect(wrapper.find("#brainstorming-selection-area").exists()).toBe(false);
-      await pointer(wrapper.element, "pointerup", { x: origin.x + 160, y: origin.y + 60 });
+      await pointer(wrapper.element, "pointerup", { x: origin.x + 160, y: origin.y - 60 });
       expect(selected).toEqual([12]);
       expect(wrapper.emitted("move")).toBeUndefined();
     },

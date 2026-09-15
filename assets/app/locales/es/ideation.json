@@ -208,6 +208,8 @@
       "prepare": "Preparar ronda",
       "start": "Iniciar ronda",
       "close": "Cerrar ronda",
+      "closeHint": "Termina la ronda; lo que llegue después queda marcado como tardío",
+      "short": "R{number}",
       "planned": "Preparada",
       "active": "En curso",
       "closed": "Cerrada",

@@ -13,6 +13,7 @@ import EditableText from "@components/forms/EditableText.vue";
 import { useBoardText } from "../composables/useBoardText";
 import type { Round, RoundPrivacy, RoundTimerContext } from "../types";
 import RoundTimer from "./RoundTimer.vue";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 // The header of a round band: number, question, status and, for the
 // facilitator, the round actions. The line under the content is the band
@@ -29,6 +30,7 @@ const {
   timer = null,
   count = 0,
   sticky = false,
+  inset = 0,
 } = defineProps<{
   round: Round;
   /** The session has a single round: the header stays quiet about rounds. */
@@ -45,6 +47,8 @@ const {
   count?: number;
   /** Pinned under the app chrome while the viewport is inside the band: frosted, no shadow. */
   sticky?: boolean;
+  /** Room to leave on the left for the floating chrome while pinned, in px. */
+  inset?: number;
 }>();
 const emit = defineEmits<{
   close: [id: number];
@@ -95,7 +99,10 @@ const fillClass = computed(() => {
     class="relative select-none"
     :class="contact ? 'bg-primary/5' : sticky ? 'bg-background/[0.86] backdrop-blur-[12px]' : ''"
   >
-    <div class="flex min-h-10 items-center gap-3 px-4">
+    <div
+      class="flex min-h-10 items-center gap-3 px-4"
+      :style="inset ? { paddingLeft: `${inset}px` } : undefined"
+    >
       <span
         v-if="!single"
         class="shrink-0 text-sm font-semibold"
@@ -201,15 +208,17 @@ const fillClass = computed(() => {
       <template v-if="canManage && !single">
         <template v-if="active">
           <span aria-hidden="true" class="h-5 w-px bg-border" />
-          <Button
-            :id="`brainstorming-round-close-${round.id}`"
-            class="pointer-events-auto"
-            variant="ghost"
-            size="sm"
-            :disabled="pending"
-            @click="emit('close', round.id)"
-            ><Square class="size-3.5" />{{ t("ideation.rounds.close") }}</Button
-          >
+          <ToolbarTooltip :label="t('ideation.rounds.closeHint')">
+            <Button
+              :id="`brainstorming-round-close-${round.id}`"
+              class="pointer-events-auto"
+              variant="ghost"
+              size="sm"
+              :disabled="pending"
+              @click="emit('close', round.id)"
+              ><Square class="size-3.5" />{{ t("ideation.rounds.close") }}</Button
+            >
+          </ToolbarTooltip>
         </template>
         <Button
           v-if="active || last"

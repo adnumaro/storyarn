@@ -57,11 +57,29 @@ describe("brainstorming session tree", () => {
       "/p/brainstorming/1?round=21",
       "/p/brainstorming/1?view=later",
     ]);
-    expect(wrapper.get("#brainstorming-tree-round-21").text()).toContain("Round 2");
+    expect(wrapper.get("#brainstorming-tree-round-21").text()).toContain("R2");
     expect(wrapper.get("#brainstorming-tree-later-1").text()).toContain("For later");
     expect(wrapper.get("#brainstorming-tree-later-1").text()).toContain("1");
     expect(wrapper.find("#brainstorming-tree-rounds-2").exists()).toBe(false);
     expect(wrapper.find("#brainstorming-tree-session-2 button").exists()).toBe(false);
+  });
+
+  it("labels a round with its question, and by number until it has one", async () => {
+    const wrapper = await sidebar([
+      session({
+        id: 1,
+        rounds: [
+          round({ id: 20, number: 1, prompt: null }),
+          round({ id: 21, number: 2, prompt: "What does the keeper want?" }),
+        ],
+        parked_count: 0,
+      }),
+    ]);
+    expect(wrapper.get("#brainstorming-tree-round-20").text()).toBe("Round 1");
+    expect(wrapper.get("#brainstorming-tree-round-21").text()).toBe("R2What does the keeper want?");
+    expect(wrapper.get("#brainstorming-tree-round-21").attributes("title")).toBe(
+      "What does the keeper want?",
+    );
   });
 
   it("collapses on demand and marks the linked round or list as current", async () => {

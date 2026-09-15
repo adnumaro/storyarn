@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, reactive, ref, type Ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch, type Ref } from "vue";
 export interface Point {
   x: number;
   y: number;
@@ -7,8 +7,23 @@ export interface NoteBounds extends Point {
   width: number;
   height: number;
 }
-export function useCanvasViewport(container: Ref<HTMLElement | null>) {
+export function useCanvasViewport(
+  container: Ref<HTMLElement | null>,
+  { rest }: { rest?: () => number } = {},
+) {
   const view = reactive({ x: 100, y: 100, zoom: 1, width: 800, height: 600 });
+  // Nothing exists above the first round header, so the viewport never shows
+  // that side: canvas y = 0 stays at or above the header rest line, whoever
+  // moves the view (wheel, hand, zoom, fit, jumps).
+  if (rest)
+    watch(
+      () => view.y,
+      (y) => {
+        const limit = rest();
+        if (y > limit) view.y = limit;
+      },
+      { flush: "sync", immediate: true },
+    );
   const space = ref(false);
   const transform = computed(() => `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`);
   let observer: ResizeObserver | undefined;

@@ -231,7 +231,22 @@ function ideaCommentTarget(noteId: number) {
 }
 
 const root = ref<HTMLElement | null>(null);
-const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(root);
+// The floating chrome (search + references, `top-3` over a 36 px panel) owns the
+// top-left corner. A header rests centred on that row: jumping to a round brings
+// its header here, scrolling past it pins the header here, and the viewport
+// never scrolls above the first header. While a header is anywhere in the
+// chrome's zone it makes room for the panel on its left.
+const HEADER_REST = 9;
+const CHROME_ZONE = 60;
+// The header row in screen pixels: the bar's min height plus its line.
+const HEADER_HEIGHT = 42;
+const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(root, {
+  rest: () => HEADER_REST,
+});
+const chromePanel = ref<HTMLElement | null>(null);
+const chromeWidth = ref(0);
+const chromeInset = computed(() => 12 + chromeWidth.value + 12);
+let chromeObserver: ResizeObserver | undefined;
 const { t, member } = useBoardText();
 const tool = ref("select"),
   query = ref("");
@@ -374,11 +389,6 @@ watch(
   },
   { immediate: true },
 );
-// Where a header rests on screen: just under the floating chrome. Jumping to a
-// round brings its header here, and scrolling past it pins the header here.
-const HEADER_REST = 60;
-// The header row in screen pixels: the bar's min height plus its line.
-const HEADER_HEIGHT = 42;
 function canvasHeaderTop(round: Round) {
   return view.y + offsetOf(round.id) * view.zoom;
 }
@@ -391,6 +401,9 @@ function headerTop(round: Round) {
 }
 function headerPinned(round: Round) {
   return canvasHeaderTop(round) < HEADER_REST;
+}
+function headerUnderChrome(round: Round) {
+  return canvasHeaderTop(round) < CHROME_ZONE;
 }
 function nextHeaderTop(round: Round) {
   const rounds = orderedRounds.value;
@@ -1272,6 +1285,12 @@ function canvasWheel(event: WheelEvent) {
   else wheel(event);
 }
 onMounted(async () => {
+  if (typeof ResizeObserver !== "undefined" && chromePanel.value) {
+    chromeObserver = new ResizeObserver(([entry]) => {
+      chromeWidth.value = entry!.contentRect.width;
+    });
+    chromeObserver.observe(chromePanel.value);
+  }
   if (typeof ResizeObserver !== "undefined")
     noteObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -1295,6 +1314,7 @@ watch(
   },
 );
 onUnmounted(() => {
+  chromeObserver?.disconnect();
   noteObserver?.disconnect();
   const nudge = groupNudge;
   groupNudge = null;
@@ -1525,7 +1545,8 @@ onUnmounted(() => {
               <RoundBar
                 :round="round"
                 :single="!multiRound"
-                :sticky="headerPinned(round)"
+                :sticky="headerUnderChrome(round)"
+                :inset="headerUnderChrome(round) ? chromeInset : 0"
                 :last="round.id === lastRound?.id"
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
@@ -1631,7 +1652,7 @@ onUnmounted(() => {
             </p>
           </div>
           <div data-canvas-chrome class="absolute left-3 top-3 z-20">
-            <div class="surface-panel flex items-center p-1">
+            <div ref="chromePanel" class="surface-panel flex items-center p-1">
               <button
                 type="button"
                 class="toolbar-btn"

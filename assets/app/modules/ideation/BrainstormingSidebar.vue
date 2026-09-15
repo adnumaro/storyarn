@@ -188,8 +188,13 @@ function browse(status: string, before: number | null = null) {
                 class="size-1.5 shrink-0 rounded-full"
                 :class="round.status === 'active' ? 'bg-primary' : 'bg-transparent'"
               />
+              <span
+                v-if="round.prompt"
+                class="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground/80"
+                >{{ t("ideation.rounds.short", { number: round.number }) }}</span
+              >
               <span class="truncate">{{
-                t("ideation.rounds.number", { number: round.number })
+                round.prompt ?? t("ideation.rounds.number", { number: round.number })
               }}</span>
             </LiveLink>
             <LiveLink

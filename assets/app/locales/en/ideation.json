@@ -208,6 +208,8 @@
       "prepare": "Prepare round",
       "start": "Start round",
       "close": "Close round",
+      "closeHint": "Ends the round; anything added afterwards is marked as a late contribution",
+      "short": "R{number}",
       "planned": "Prepared",
       "active": "In progress",
       "closed": "Closed",
