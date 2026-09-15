@@ -293,6 +293,19 @@ never scrolls above the first header: nothing lives there. The session tree
 names each round by its question ("R3 · Which ending…") and by its number until
 it has one; "Close round" explains itself on hover.
 
+The header measures its own width and never touches the question: whole, on
+one line, at every width. Its two groups share a row while they fit and the
+controls drop to a second 40 px row when they do not. From 1000 px down the
+status badge goes, "Close round", the timer's stop and the round settings fold
+into a "More actions" menu, and "Reveal" and the pause button keep only their
+icons; from 800 px down the note count goes and "Private" becomes a lock; from
+640 px down "New round" is an icon; below 640 px the question stands alone on
+the first row, the round number opens the second, "+1 min" reads "+1" and
+"New round" joins the menu. A question wider than its row pans horizontally
+under an edge fade. The search and references controls lose their label below
+1280 px of canvas and leave the pinned row below 1000 px, returning once no
+header sits under them.
+
 The header of the round in progress carries the shared timer. The digits are the input:
 the facilitator clicks them, types the minutes and the seconds (two digits each; the
 minutes move on to the seconds by themselves), from one second up to 99:59, and

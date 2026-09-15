@@ -182,6 +182,8 @@ export interface Round {
   inserted_at: string;
   updated_at: string;
 }
+/** Width tiers of a round header, measured on the header itself. */
+export type HeaderTier = "xl" | "l" | "m" | "s" | "xs";
 /** The session timer as the round in progress shows it on its header. */
 export interface RoundTimerContext {
   session: Session;

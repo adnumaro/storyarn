@@ -4,7 +4,7 @@ import { Pause, Play, Plus, Square } from "@lucide/vue";
 import { useBoardText } from "../composables/useBoardText";
 import { useSessionTimer } from "../composables/useSessionTimer";
 import { activeTimer, DEFAULT_TIMER_SECONDS, useTimerWrites } from "../composables/useTimerWrites";
-import type { Session, SessionTimer } from "../types";
+import type { HeaderTier, Session, SessionTimer } from "../types";
 import TimerDigits from "./TimerDigits.vue";
 
 // The timer zone of the round in progress. Everyone reads the digits; the
@@ -12,12 +12,21 @@ import TimerDigits from "./TimerDigits.vue";
 // extends or cancels beside them. Reaching 0:00 is the whole message: the
 // digits stay, editable again for the facilitator. The line under the header
 // fills as time passes and this reports the fraction.
-const { session, epoch, timer, canManage, canEdit } = defineProps<{
+const {
+  session,
+  epoch,
+  timer,
+  canManage,
+  canEdit,
+  tier = "xl",
+} = defineProps<{
   session: Session;
   epoch: string;
   timer: SessionTimer | null;
   canManage: boolean;
   canEdit: boolean;
+  /** The header's width tier: labels and the stop button give way as it narrows. */
+  tier?: HeaderTier;
 }>();
 const emit = defineEmits<{ progress: [fraction: number] }>();
 const { t, error } = useBoardText();
@@ -64,6 +73,12 @@ function start(value: number) {
   draft.value = value;
   writes.start({ seconds: value, close_contributions_on_expiry: false });
 }
+// Below 1000 px the header folds the stop into its menu and asks for it here.
+const stoppable = computed(() => mayManage.value && active.value && !elapsed.value);
+function cancel() {
+  writes.control("cancel_timer", seconds.value);
+}
+defineExpose({ stoppable, cancel });
 </script>
 <template>
   <div class="pointer-events-auto flex shrink-0 items-center gap-2">
@@ -84,13 +99,16 @@ function start(value: number) {
         <button
           :id="running ? 'brainstorming-round-timer-pause' : 'brainstorming-round-timer-resume'"
           type="button"
-          class="toolbar-btn"
+          class="toolbar-btn gap-1"
           :aria-label="t(running ? 'ideation.timer.pause' : 'ideation.timer.resume')"
           :aria-disabled="writes.pending.value"
           :class="writes.pending.value ? 'opacity-50' : ''"
           @click="writes.control(running ? 'pause_timer' : 'resume_timer', seconds)"
         >
-          <Pause v-if="running" class="size-3.5" /><Play v-else class="size-3.5" />
+          <Pause v-if="running" class="size-3.5" /><Play v-else class="size-3.5" /><span
+            v-if="tier === 'xl'"
+            >{{ t(running ? "ideation.timer.pause" : "ideation.timer.resume") }}</span
+          >
         </button>
         <button
           id="brainstorming-round-timer-extend"
@@ -100,13 +118,13 @@ function start(value: number) {
           :disabled="writes.pending.value || (timer?.duration_seconds ?? 0) + 60 > 86400"
           @click="writes.control('extend_timer', seconds)"
         >
-          <Plus class="size-3.5" /><span class="@max-3xl:hidden">{{
-            t("ideation.timer.oneMinute")
+          <Plus class="size-3.5" /><span>{{
+            t(tier === "xs" ? "ideation.timer.oneMinuteShort" : "ideation.timer.oneMinute")
           }}</span>
         </button>
       </template>
       <button
-        v-if="mayManage"
+        v-if="stoppable && (tier === 'xl' || tier === 'l')"
         id="brainstorming-round-timer-cancel"
         type="button"
         class="toolbar-btn"

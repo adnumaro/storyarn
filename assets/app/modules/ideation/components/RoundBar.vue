@@ -1,17 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { Eye, Lock, Plus, Settings2, Square } from "@lucide/vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { Ellipsis, Eye, Lock, Plus, Settings2, Square } from "@lucide/vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
 import EditableText from "@components/forms/EditableText.vue";
 import { useBoardText } from "../composables/useBoardText";
-import type { Round, RoundPrivacy, RoundTimerContext } from "../types";
+import type { HeaderTier, Round, RoundPrivacy, RoundTimerContext } from "../types";
 import RoundTimer from "./RoundTimer.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
@@ -20,6 +25,12 @@ import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 // boundary; everything below it belongs to this round. The header is drawn
 // over the canvas but only its controls take the pointer: a note that ends up
 // under the header row stays reachable, and a drag can start across it.
+//
+// The question is the one piece that never gives way: whole, on one line, at
+// every width. The header measures itself and everything else changes form
+// by tier: the controls drop to a second row when the two groups do not fit,
+// secondary pieces thin out, actions fold into a menu, and below 640 px the
+// question stands alone on the first row.
 const {
   round,
   single = false,
@@ -64,8 +75,49 @@ const editable = computed(() => canManage && active.value);
 const noteCount = computed(() =>
   count === 1 ? t("ideation.rounds.noteCountOne") : t("ideation.rounds.noteCountOther", { count }),
 );
-// The question always shows whole; on a narrow screen the controls drop under it.
-const controls = computed(() => !!timer || (canManage && (round.private || !single)));
+// Width tiers, measured on the header itself; until measured, the desktop layout.
+const root = ref<HTMLElement | null>(null);
+const width = ref(1440);
+let observer: ResizeObserver | undefined;
+onMounted(() => {
+  if (typeof ResizeObserver === "undefined" || !root.value) return;
+  observer = new ResizeObserver(([entry]) => {
+    width.value = entry!.contentRect.width;
+  });
+  observer.observe(root.value);
+});
+onUnmounted(() => observer?.disconnect());
+const tier = computed<HeaderTier>(() => {
+  if (width.value >= 1280) return "xl";
+  if (width.value >= 1000) return "l";
+  if (width.value >= 800) return "m";
+  if (width.value >= 640) return "s";
+  return "xs";
+});
+const wide = computed(() => tier.value === "xl" || tier.value === "l");
+const roomy = computed(() => wide.value || tier.value === "m");
+const stacked = computed(() => tier.value === "xs");
+// Wider than its row, the question pans under an edge fade rather than wrap.
+const questionEl = ref<HTMLElement | null>(null);
+const panning = ref(false);
+watch(
+  [width, () => round.prompt, tier],
+  () => {
+    void nextTick(() => {
+      const el = questionEl.value;
+      panning.value = !!el && el.scrollWidth > el.clientWidth;
+    });
+  },
+  { immediate: true },
+);
+const timerRef = ref<InstanceType<typeof RoundTimer> | null>(null);
+// Folded actions: round actions and the timer's stop and settings, below 1000 px.
+const overflow = computed(
+  () => canManage && !wide.value && (active.value || (stacked.value && last && !single)),
+);
+const controls = computed(
+  () => !!timer || (canManage && (round.private || !single || active.value)) || overflow.value,
+);
 function setPrivacy(attrs: RoundPrivacy) {
   emit("updatePrivacy", round.id, attrs);
 }
@@ -96,42 +148,60 @@ const fillClass = computed(() => {
 <template>
   <div
     :id="`brainstorming-round-${round.id}`"
+    ref="root"
     :data-status="round.status"
+    :data-tier="tier"
     data-canvas-chrome
     class="relative select-none"
     :class="contact ? 'bg-primary/5' : sticky ? 'bg-background/[0.86] backdrop-blur-[12px]' : ''"
   >
     <div
-      class="@container flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1"
+      class="flex flex-wrap items-center gap-x-3 px-4"
       :style="inset ? { paddingLeft: `${inset}px` } : undefined"
     >
-      <div class="flex max-w-full shrink-0 grow basis-auto items-center gap-3">
+      <span
+        v-if="!single"
+        class="flex h-10 shrink-0 items-center text-sm font-semibold"
+        :class="[
+          active ? 'text-primary' : 'text-muted-foreground',
+          stacked ? 'order-2' : 'order-1',
+        ]"
+        >{{ t("ideation.rounds.number", { number: round.number }) }}</span
+      >
+      <div
+        class="order-1 flex h-10 max-w-full shrink-0 items-center gap-3 whitespace-nowrap"
+        :class="stacked && 'basis-full'"
+      >
         <span
-          v-if="!single"
-          class="shrink-0 text-sm font-semibold"
-          :class="active ? 'text-primary' : 'text-muted-foreground'"
-          >{{ t("ideation.rounds.number", { number: round.number }) }}</span
+          v-if="editable || round.prompt"
+          ref="questionEl"
+          class="flex min-w-0 shrink items-center overflow-x-auto [scrollbar-width:none]"
+          :class="
+            panning &&
+            'pr-12 [mask-image:linear-gradient(to_right,black_calc(100%-48px),transparent)]'
+          "
         >
-        <EditableText
-          v-if="editable"
-          :id="`brainstorming-round-prompt-${round.id}`"
-          v-model="draft"
-          :placeholder="t('ideation.rounds.addQuestion')"
-          :disabled="pending"
-          class="pointer-events-auto min-w-0 flex-initial text-sm"
-          display-class="text-sm"
-          @save="emit('updatePrompt', round.id, $event)"
-        />
-        <span
-          v-else-if="round.prompt"
-          class="min-w-0 text-sm"
-          :class="active ? 'text-foreground' : 'text-muted-foreground'"
-          >{{ round.prompt }}</span
-        >
+          <EditableText
+            v-if="editable"
+            :id="`brainstorming-round-prompt-${round.id}`"
+            v-model="draft"
+            :placeholder="t('ideation.rounds.addQuestion')"
+            :disabled="pending"
+            class="pointer-events-auto text-sm"
+            display-class="text-sm"
+            @save="emit('updatePrompt', round.id, $event)"
+          />
+          <span
+            v-else-if="round.prompt"
+            class="text-sm"
+            :class="active ? 'text-foreground' : 'text-muted-foreground'"
+            >{{ round.prompt }}</span
+          >
+        </span>
         <Badge
-          v-if="!single"
+          v-if="!single && wide"
           :variant="active ? 'outline' : 'secondary'"
-          class="shrink-0 font-medium @max-xl:hidden"
+          class="shrink-0 font-medium"
         >
           <span
             v-if="active"
@@ -142,47 +212,57 @@ const fillClass = computed(() => {
             t(active ? "ideation.rounds.active" : "ideation.rounds.closed")
           }}</span>
         </Badge>
-        <Badge
-          v-if="round.private"
-          :id="`brainstorming-round-private-${round.id}`"
-          variant="outline"
-          class="shrink-0 gap-1 font-medium text-primary"
-          ><Lock class="size-3" />{{ t("ideation.rounds.private") }}</Badge
-        >
         <span
+          v-if="roomy"
           :id="`brainstorming-round-count-${round.id}`"
-          class="shrink-0 text-xs tabular-nums text-muted-foreground @max-2xl:hidden"
+          class="shrink-0 text-xs tabular-nums text-muted-foreground"
           >{{ noteCount }}</span
         >
       </div>
+      <span
+        v-if="round.private"
+        :id="`brainstorming-round-private-${round.id}`"
+        class="flex h-10 shrink-0 items-center text-primary"
+        :class="stacked ? 'order-2' : 'order-1'"
+        :aria-label="t('ideation.rounds.private')"
+      >
+        <Badge v-if="roomy" variant="outline" class="gap-1 font-medium text-primary"
+          ><Lock class="size-3" />{{ t("ideation.rounds.private") }}</Badge
+        >
+        <Lock v-else class="size-3.5" />
+      </span>
       <div
         v-if="controls"
         :id="`brainstorming-round-controls-${round.id}`"
-        class="ml-auto flex shrink-0 items-center justify-end gap-3"
+        class="ml-auto flex h-10 shrink-0 grow items-center justify-end gap-2"
+        :class="stacked ? 'order-3' : 'order-1'"
       >
         <RoundTimer
           v-if="timer"
+          ref="timerRef"
           :session="timer.session"
           :epoch="timer.epoch"
           :timer="timer.timer"
           :can-manage="canManage"
           :can-edit="timer.canEdit"
+          :tier="tier"
           @progress="progress = $event"
         />
         <Button
           v-if="canManage && round.private"
           :id="`brainstorming-round-reveal-${round.id}`"
           class="pointer-events-auto"
+          :class="wide ? '' : 'w-8 px-0'"
           variant="outline"
           size="sm"
           :disabled="pending"
-          @click="emit('reveal', round.id)"
           :aria-label="t('ideation.rounds.reveal')"
-          ><Eye class="size-3.5" /><span class="@max-3xl:hidden">{{
+          @click="emit('reveal', round.id)"
+          ><Eye class="size-3.5" /><span v-if="wide">{{
             t("ideation.rounds.reveal")
           }}</span></Button
         >
-        <DropdownMenu v-if="canManage && active">
+        <DropdownMenu v-if="canManage && active && wide">
           <DropdownMenuTrigger as-child>
             <button
               :id="`brainstorming-round-settings-${round.id}`"
@@ -216,7 +296,7 @@ const fillClass = computed(() => {
           </DropdownMenuContent>
         </DropdownMenu>
         <template v-if="canManage && !single">
-          <template v-if="active">
+          <template v-if="active && wide">
             <span aria-hidden="true" class="h-5 w-px bg-border" />
             <ToolbarTooltip :label="t('ideation.rounds.closeHint')">
               <Button
@@ -225,28 +305,93 @@ const fillClass = computed(() => {
                 variant="ghost"
                 size="sm"
                 :disabled="pending"
-                @click="emit('close', round.id)"
                 :aria-label="t('ideation.rounds.close')"
-                ><Square class="size-3.5" /><span class="@max-3xl:hidden">{{
-                  t("ideation.rounds.close")
-                }}</span></Button
+                @click="emit('close', round.id)"
+                ><Square class="size-3.5" />{{ t("ideation.rounds.close") }}</Button
               >
             </ToolbarTooltip>
           </template>
           <Button
-            v-if="active || last"
+            v-if="(active || last) && !stacked"
             :id="`brainstorming-round-new-${round.id}`"
             class="pointer-events-auto"
+            :class="roomy ? '' : 'w-8 px-0'"
             variant="outline"
             size="sm"
             :disabled="pending"
-            @click="emit('newRound')"
             :aria-label="t('ideation.rounds.newRound')"
-            ><Plus class="size-3.5" /><span class="@max-3xl:hidden">{{
+            @click="emit('newRound')"
+            ><Plus class="size-3.5" /><span v-if="roomy">{{
               t("ideation.rounds.newRound")
             }}</span></Button
           >
         </template>
+        <DropdownMenu v-if="overflow">
+          <DropdownMenuTrigger as-child>
+            <button
+              :id="`brainstorming-round-more-${round.id}`"
+              type="button"
+              class="toolbar-btn pointer-events-auto"
+              :aria-label="t('ideation.rounds.more')"
+              :disabled="pending"
+            >
+              <Ellipsis class="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              v-if="active && !single"
+              :id="`brainstorming-round-close-${round.id}`"
+              @select="emit('close', round.id)"
+              ><Square class="size-3.5" />{{ t("ideation.rounds.close") }}</DropdownMenuItem
+            >
+            <DropdownMenuItem
+              v-if="stacked && (active || last) && !single"
+              :id="`brainstorming-round-new-${round.id}`"
+              @select="emit('newRound')"
+              ><Plus class="size-3.5" />{{ t("ideation.rounds.newRound") }}</DropdownMenuItem
+            >
+            <template v-if="active">
+              <DropdownMenuSeparator v-if="!single" />
+              <DropdownMenuItem
+                v-if="timerRef?.stoppable"
+                id="brainstorming-round-timer-cancel"
+                @select="timerRef?.cancel()"
+                ><Square class="size-3.5" />{{ t("ideation.timer.cancel") }}</DropdownMenuItem
+              >
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger
+                  ><span :id="`brainstorming-round-settings-${round.id}`" class="flex items-center"
+                    ><Settings2 class="mr-2 size-3.5" />{{ t("ideation.rounds.settings") }}</span
+                  ></DropdownMenuSubTrigger
+                >
+                <DropdownMenuSubContent>
+                  <DropdownMenuCheckboxItem
+                    :id="`brainstorming-round-private-toggle-${round.id}`"
+                    :model-value="round.private"
+                    :disabled="pending || !!round.revealed_at"
+                    @update:model-value="
+                      setPrivacy({
+                        private: $event === true,
+                        reveal_on_expiry: round.reveal_on_expiry,
+                      })
+                    "
+                    >{{ t("ideation.rounds.privateSetting") }}</DropdownMenuCheckboxItem
+                  >
+                  <DropdownMenuCheckboxItem
+                    :id="`brainstorming-round-reveal-on-expiry-${round.id}`"
+                    :model-value="round.reveal_on_expiry"
+                    :disabled="pending || !round.private"
+                    @update:model-value="
+                      setPrivacy({ private: round.private, reveal_on_expiry: $event === true })
+                    "
+                    >{{ t("ideation.rounds.revealOnExpiry") }}</DropdownMenuCheckboxItem
+                  >
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </template>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
     <div class="relative" :class="lineClass">

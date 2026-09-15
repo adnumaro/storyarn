@@ -1201,7 +1201,7 @@ onUnmounted(() => {
         @redo="redo"
         @list="list = true"
       >
-        <template #session>
+        <template #session="{ compact }">
           <Button
             id="brainstorming-session-references"
             variant="ghost"
@@ -1209,7 +1209,7 @@ onUnmounted(() => {
             :disabled="!online"
             @click="useReferences(null)"
             :aria-label="t('brainstormingReferences.title')"
-            ><Link2 class="size-4" /><span class="max-lg:hidden">{{
+            ><Link2 class="size-4" /><span v-if="!compact">{{
               t("brainstormingReferences.title")
             }}</span></Button
           >

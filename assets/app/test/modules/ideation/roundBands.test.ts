@@ -102,6 +102,11 @@ function canvas(props = {}) {
         DropdownMenu: Passthrough,
         DropdownMenuTrigger: Passthrough,
         DropdownMenuContent: Passthrough,
+        DropdownMenuItem: Passthrough,
+        DropdownMenuSeparator: true,
+        DropdownMenuSub: Passthrough,
+        DropdownMenuSubTrigger: Passthrough,
+        DropdownMenuSubContent: Passthrough,
         DropdownMenuCheckboxItem: CheckboxStub,
       },
     },
@@ -385,26 +390,53 @@ describe("round bands on the canvas", () => {
   });
 
   it("hands focus back to the canvas when its menu closes, unless a note is being written", async () => {
+    // The menu leaves the DOM after its exit animation; jsdom has none, so the
+    // closed menu is told it is animating until the test ends the animation.
+    // That window is where a fast hand starts writing.
+    const computed = window.getComputedStyle.bind(window);
+    vi.spyOn(window, "getComputedStyle").mockImplementation((el, pseudo) => {
+      const style = computed(el, pseudo ?? undefined);
+      const closing =
+        el instanceof HTMLElement && el.role === "menu" && el.dataset.state === "closed";
+      return closing
+        ? new Proxy(style, {
+            get: (target, key) => (key === "animationName" ? "exit" : Reflect.get(target, key)),
+          })
+        : style;
+    });
+    if (!("CSS" in globalThis)) Object.assign(globalThis, { CSS: { escape: (s: string) => s } });
     const wrapper = canvas();
     const root = wrapper.get("#brainstorming-canvas").element as HTMLElement;
-    const focusRoot = vi.spyOn(root, "focus");
     const choose = async () => {
       await wrapper.get('[data-note-id="10"]').trigger("contextmenu", { button: 2 });
       await flushPromises();
       document.querySelector<HTMLElement>("#brainstorming-note-context-bring")!.click();
       await flushPromises();
     };
-    // A note took the caret before the menu finished closing (jsdom closes it at
-    // once, so the caret is stood in for): the menu leaves it there.
+    const finishClosing = async () => {
+      const menu = document.querySelector<HTMLElement>("[role=menu][data-state=closed]");
+      expect(menu).not.toBeNull();
+      menu!.dispatchEvent(
+        Object.assign(new Event("animationend", { bubbles: true }), { animationName: "exit" }),
+      );
+      await flushPromises();
+      expect(document.querySelector("[role=menu]")).toBeNull();
+    };
+    // A note took the caret while the menu was still closing: the menu leaves it there.
     const editor = document.createElement("div");
     editor.setAttribute("contenteditable", "true");
-    Object.defineProperty(document, "activeElement", { get: () => editor, configurable: true });
+    editor.tabIndex = 0;
+    root.appendChild(editor);
     await choose();
-    Reflect.deleteProperty(document, "activeElement");
-    expect(focusRoot).not.toHaveBeenCalled();
+    editor.focus();
+    expect(document.activeElement).toBe(editor);
+    await finishClosing();
+    expect(document.activeElement).toBe(editor);
+    editor.remove();
     // Nothing being written: the canvas takes the focus back for its shortcuts.
     await choose();
-    expect(focusRoot).toHaveBeenCalled();
+    await finishClosing();
+    expect(document.activeElement).toBe(root);
   });
 
   it("offers to bring a note of an earlier round into the one in progress, under its content", async () => {

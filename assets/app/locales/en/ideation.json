@@ -229,7 +229,8 @@
       "settings": "Round settings",
       "noteCountOne": "1 note",
       "noteCountOther": "{count} notes",
-      "hiddenNote": "Another person's private note"
+      "hiddenNote": "Another person's private note",
+      "more": "More actions"
     },
     "timer": {
       "title": "Timer",
@@ -246,7 +247,8 @@
       "contributionsClosed": "New contributions are closed.",
       "closedHelp": "New contributions are closed. Existing notes remain editable and your drafts are kept.",
       "closeNow": "Close new contributions now",
-      "reopen": "Reopen contributions"
+      "reopen": "Reopen contributions",
+      "oneMinuteShort": "1"
     },
     "groups": {
       "untitled": "Untitled group",

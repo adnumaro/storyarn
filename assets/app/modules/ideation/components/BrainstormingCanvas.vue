@@ -256,7 +256,12 @@ const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(
 });
 const chromePanel = ref<HTMLElement | null>(null);
 const chromeWidth = ref(0);
-const chromeInset = computed(() => (chromeWidth.value ? 12 + chromeWidth.value + 12 : 0));
+// Under 1000 px of canvas the pinned header keeps its whole row: the chrome
+// leaves it and comes back once no header sits under the chrome zone.
+const chromeHidden = computed(() => !chromeFramed.value && view.width < 1000);
+const chromeInset = computed(() =>
+  chromeWidth.value && !chromeHidden.value ? 12 + chromeWidth.value + 12 : 0,
+);
 // Headers are as tall as their question and controls take; each is measured,
 // and the pin and band maths follow the measure.
 const headerHeights = ref(new Map<number, number>());
@@ -1734,8 +1739,8 @@ onUnmounted(() => {
           </div>
           <div
             data-canvas-chrome
-            class="absolute left-3 z-20 max-md:hidden"
-            :class="chromeFramed ? 'top-3' : 'top-0'"
+            class="absolute left-3 z-20"
+            :class="[chromeFramed ? 'top-3' : 'top-0', chromeHidden && 'hidden']"
           >
             <div
               ref="chromePanel"
@@ -1775,7 +1780,7 @@ onUnmounted(() => {
                   </div>
                 </PopoverContent>
               </Popover>
-              <slot name="session" />
+              <slot name="session" :compact="view.width < 1280" />
             </div>
           </div>
           <p

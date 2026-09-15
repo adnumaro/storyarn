@@ -229,7 +229,8 @@
       "settings": "Ajustes de la ronda",
       "noteCountOne": "1 nota",
       "noteCountOther": "{count} notas",
-      "hiddenNote": "Nota privada de otra persona"
+      "hiddenNote": "Nota privada de otra persona",
+      "more": "Más acciones"
     },
     "timer": {
       "title": "Cronómetro",
@@ -246,7 +247,8 @@
       "contributionsClosed": "Las nuevas aportaciones están cerradas.",
       "closedHelp": "Las nuevas aportaciones están cerradas. Puedes seguir editando las notas existentes y tus borradores se conservan.",
       "closeNow": "Cerrar nuevas aportaciones ahora",
-      "reopen": "Reabrir aportaciones"
+      "reopen": "Reabrir aportaciones",
+      "oneMinuteShort": "1"
     },
     "groups": {
       "untitled": "Grupo sin título",
