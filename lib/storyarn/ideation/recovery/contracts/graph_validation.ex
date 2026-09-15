@@ -160,10 +160,10 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   end
 
   defp round_metadata?(row) do
-    positive?(row["number"]) and round_privacy?(row) and
-      (is_nil(row["prompt"]) or (is_binary(row["prompt"]) and length(String.to_charlist(row["prompt"])) <= 2000)) and
-      round_timing?(row)
+    positive?(row["number"]) and round_privacy?(row) and round_prompt?(row["prompt"]) and round_timing?(row)
   end
+
+  defp round_prompt?(prompt), do: is_nil(prompt) or (is_binary(prompt) and length(String.to_charlist(prompt)) <= 2000)
 
   # Snapshots of round audit rows carry no privacy fields; stored rounds do.
   defp round_privacy?(row) when not is_map_key(row, "private"), do: true
@@ -194,17 +194,27 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
     length(sessions) == MapSet.size(MapSet.new(sessions))
   end
 
+  # Audit snapshots keep the history as it was: a round prepared or cancelled
+  # before bands existed still validates, and no longer has to exist.
   defp round_snapshot?(%{"action" => action, "snapshot" => snapshot} = row, index)
        when action in ~w(round_created round_updated round_cancelled round_started round_closed) do
     round = snapshot["round"]
 
-    is_map(round) and round_metadata?(round) and
-      Enum.any?(index.rounds, fn {_, current} ->
-        current["session_id"] == row["session_id"] and current["number"] == round["number"]
-      end)
+    is_map(round) and positive?(round["number"]) and round_privacy?(round) and round_prompt?(round["prompt"]) and
+      (historical_round?(round) or
+         (round_timing?(round) and round_exists?(index, row["session_id"], round["number"])))
   end
 
   defp round_snapshot?(_, _), do: true
+
+  defp historical_round?(%{"status" => status}) when status in ~w(planned cancelled), do: true
+  defp historical_round?(_), do: false
+
+  defp round_exists?(index, session_id, number) do
+    Enum.any?(index.rounds, fn {_, current} ->
+      current["session_id"] == session_id and current["number"] == number
+    end)
+  end
 
   defp contextual_snapshot?(%{"action" => "context_linked", "snapshot" => snapshot} = row, index) do
     request = snapshot["contextual_request"]

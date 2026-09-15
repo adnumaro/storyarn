@@ -43,10 +43,11 @@ defmodule Storyarn.Repo.Migrations.IdeationRoundBands do
     WHERE NOT EXISTS (SELECT 1 FROM ideation_rounds r WHERE r.session_id = s.id)
     """)
 
+    # Notes written outside any round join the earliest round of their session.
     execute("""
     UPDATE ideation_ideas i SET round_id = r.id
-    FROM ideation_rounds r
-    WHERE r.session_id = i.session_id AND r.number = 1 AND i.round_id IS NULL
+    FROM (SELECT DISTINCT ON (session_id) id, session_id FROM ideation_rounds ORDER BY session_id, number) r
+    WHERE r.session_id = i.session_id AND i.round_id IS NULL
     """)
 
     flush()
@@ -121,14 +122,18 @@ defmodule Storyarn.Repo.Migrations.IdeationRoundBands do
           :ok
 
         groups ->
-          repo().query!(
-            """
-            UPDATE ideation_groups
-            SET canvas = jsonb_set(canvas, '{y}', to_jsonb((canvas->>'y')::numeric - $1::numeric))
-            WHERE id = ANY($2) AND jsonb_typeof(canvas->'y') = 'number'
-            """,
-            [natural_top, groups]
-          )
+          # A group's revisions keep matching its frame, as recovery expects.
+          for table <- ~w(ideation_groups ideation_group_revisions),
+              column = if(table == "ideation_groups", do: "id", else: "group_id") do
+            repo().query!(
+              """
+              UPDATE #{table}
+              SET canvas = jsonb_set(canvas, '{y}', to_jsonb((canvas->>'y')::numeric - $1::numeric))
+              WHERE #{column} = ANY($2) AND jsonb_typeof(canvas->'y') = 'number'
+              """,
+              [natural_top, groups]
+            )
+          end
       end
     end)
   end

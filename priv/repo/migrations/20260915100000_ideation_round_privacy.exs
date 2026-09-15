@@ -17,14 +17,24 @@ defmodule Storyarn.Repo.Migrations.IdeationRoundPrivacy do
 
     create index(:ideation_groups, [:round_id])
 
+    # A private session hid every round it had; each keeps its mask until the
+    # facilitator reveals it.
     execute("""
     UPDATE ideation_rounds r SET private = true
     FROM ideation_sessions s
-    WHERE r.session_id = s.id AND r.status = 'active'
+    WHERE r.session_id = s.id
       AND COALESCE(s.configuration->>'private_mode', 'false') = 'true'
     """)
 
     execute("UPDATE ideation_sessions SET configuration = configuration - 'private_mode'")
+
+    # A clock that promised to reveal at 0:00 hands that promise to the round in progress.
+    execute("""
+    UPDATE ideation_rounds r SET reveal_on_expiry = true
+    FROM ideation_timers t
+    WHERE t.session_id = r.session_id AND r.status = 'active' AND r.private
+      AND t.reveal_on_expiry AND t.status IN ('running', 'paused')
+    """)
 
     # The timer takes any duration from one second; the digits are the input.
     # The round decides the reveal at 0:00, so the clock loses its own flag.
@@ -59,7 +69,7 @@ defmodule Storyarn.Repo.Migrations.IdeationRoundPrivacy do
       DROP CONSTRAINT ideation_timers_values_valid,
       ADD CONSTRAINT ideation_timers_values_valid CHECK (
         version > 0 AND configuration_version > 0 AND
-        duration_seconds BETWEEN 15 AND 86400 AND
+        duration_seconds BETWEEN 1 AND 86400 AND
         remaining_seconds BETWEEN 0 AND duration_seconds
       )
     """)
@@ -67,7 +77,7 @@ defmodule Storyarn.Repo.Migrations.IdeationRoundPrivacy do
     execute("""
     UPDATE ideation_sessions s SET configuration = configuration || '{"private_mode": true}'::jsonb
     FROM ideation_rounds r
-    WHERE r.session_id = s.id AND r.status = 'active' AND r.private
+    WHERE r.session_id = s.id AND r.private
     """)
 
     alter table(:ideation_groups) do

@@ -158,8 +158,9 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   # keep absolute note positions, so their headers all start at 0.
   def normalize(%{"version" => 6, "rows" => rows} = data) do
     rounds = Enum.filter(rows["rounds"], &(&1["status"] in ["active", "closed"]))
+    {rounds, ideas} = with_first_rounds(rows["sessions"], rounds, rows["ideas"])
 
-    normalize(%{data | "version" => 7, "rows" => Map.put(rows, "rounds", rounds)})
+    normalize(%{data | "version" => 7, "rows" => rows |> Map.put("rounds", rounds) |> Map.put("ideas", ideas)})
   end
 
   # Private mode moved from the session to the round in progress, and groups
@@ -168,10 +169,22 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     private_sessions =
       for %{"id" => id, "configuration" => %{"private_mode" => true}} <- rows["sessions"], into: MapSet.new(), do: id
 
+    # A clock that promised to reveal at 0:00 hands that promise to the round in progress.
+    revealing_sessions =
+      for %{"session_id" => id, "reveal_on_expiry" => true, "status" => status} <- Map.get(rows, "timers", []),
+          status in ["running", "paused"],
+          into: MapSet.new(),
+          do: id
+
     rounds =
       Enum.map(rows["rounds"], fn round ->
-        private = round["status"] == "active" and MapSet.member?(private_sessions, round["session_id"])
-        Map.merge(round, %{"private" => private, "reveal_on_expiry" => false, "revealed_at" => nil})
+        active? = round["status"] == "active"
+
+        Map.merge(round, %{
+          "private" => MapSet.member?(private_sessions, round["session_id"]),
+          "reveal_on_expiry" => active? and MapSet.member?(revealing_sessions, round["session_id"]),
+          "revealed_at" => nil
+        })
       end)
 
     sessions =
@@ -179,7 +192,17 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
         Map.update(session, "configuration", %{}, &Map.delete(&1 || %{}, "private_mode"))
       end)
 
-    groups = Enum.map(rows["groups"], &Map.put(&1, "round_id", nil))
+    # A group belongs to the round of its notes.
+    idea_rounds = Map.new(rows["ideas"], &{&1["id"], &1["round_id"]})
+
+    group_rounds =
+      rows
+      |> Map.get("group_memberships", [])
+      |> Enum.reject(& &1["removed_at"])
+      |> Enum.group_by(& &1["group_id"], &idea_rounds[&1["idea_id"]])
+      |> Map.new(fn {group_id, round_ids} -> {group_id, round_ids |> Enum.reject(&is_nil/1) |> List.first()} end)
+
+    groups = Enum.map(rows["groups"], &Map.put(&1, "round_id", group_rounds[&1["id"]]))
 
     # The clock no longer decides the reveal, so its flag leaves the rows and the audit snapshots.
     rows =
@@ -194,6 +217,60 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def normalize(data), do: data
+
+  # Every session has a round: one that had none is born its Round 1, in
+  # progress unless the session is archived. Notes without a round join the
+  # earliest round of their session, as the bands migration did.
+  defp with_first_rounds(sessions, rounds, ideas) do
+    with_rounds = MapSet.new(rounds, & &1["session_id"])
+    next_id = Enum.reduce(rounds, 0, &max(&1["id"], &2)) + 1
+
+    {born, _} =
+      sessions
+      |> Enum.reject(&MapSet.member?(with_rounds, &1["id"]))
+      |> Enum.map_reduce(next_id, fn session, id -> {first_round(session, id), id + 1} end)
+
+    rounds = rounds ++ born
+
+    earliest =
+      rounds
+      |> Enum.group_by(& &1["session_id"])
+      |> Map.new(fn {session_id, list} -> {session_id, Enum.min_by(list, & &1["number"])["id"]} end)
+
+    ideas =
+      Enum.map(ideas, fn idea ->
+        case {idea["round_id"], earliest[idea["session_id"]]} do
+          {nil, round_id} when is_integer(round_id) ->
+            Map.merge(idea, %{"round_id" => round_id, "late_contribution" => false})
+
+          _ ->
+            idea
+        end
+      end)
+
+    {rounds, ideas}
+  end
+
+  defp first_round(session, id) do
+    open? = session["status"] == "open"
+
+    %{
+      "id" => id,
+      "recovery_identity" => derived_identity(session["recovery_identity"], "round-1"),
+      "session_id" => session["id"],
+      "number" => 1,
+      "prompt" => nil,
+      "status" => if(open?, do: "active", else: "closed"),
+      "started_at" => session["inserted_at"],
+      "closed_at" => if(open?, do: nil, else: session["inserted_at"]),
+      "inserted_at" => session["inserted_at"],
+      "updated_at" => session["inserted_at"]
+    }
+  end
+
+  # Opening the same capsule again must find the same born round; identities
+  # travel base64-encoded like every other row's.
+  defp derived_identity(identity, suffix), do: Base.encode64(:crypto.hash(:md5, "#{identity}:#{suffix}"))
 
   defp strip_timer_reveal(%{"snapshot" => %{"timer" => %{} = timer} = snapshot} = row),
     do: %{row | "snapshot" => %{snapshot | "timer" => Map.delete(timer, "reveal_on_expiry")}}

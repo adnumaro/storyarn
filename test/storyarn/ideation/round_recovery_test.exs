@@ -58,6 +58,84 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert Repo.aggregate(Round, :count) == 2
   end
 
+  test "the audit trail of rounds prepared or cancelled before bands still captures and restores", ctx do
+    idea = idea_fixture(ctx)
+    {:ok, [existing | _]} = Ideation.list_session_revisions(ctx.facilitator, ctx.project.id, ctx.session.id)
+
+    audit = fn number, action, status ->
+      %{
+        session_id: ctx.session.id,
+        actor_id: ctx.facilitator.user.id,
+        number: number,
+        action: action,
+        snapshot:
+          Map.put(existing.snapshot, "round", %{
+            "number" => 2,
+            "prompt" => "Prepared before bands",
+            "status" => status,
+            "started_at" => nil,
+            "closed_at" => nil
+          }),
+        inserted_at: DateTime.utc_now()
+      }
+    end
+
+    # What the old create_round / cancel_round commands recorded; the migration keeps these rows.
+    Repo.insert_all("ideation_session_revisions", [
+      audit.(existing.number + 1, "round_created", "planned"),
+      audit.(existing.number + 2, "round_cancelled", "cancelled")
+    ])
+
+    Repo.update_all(from(s in "ideation_sessions", where: s.id == ^ctx.session.id), inc: [revision: 2])
+
+    capsule = capture(ctx)
+    assert {:ok, opened} = Capsule.open(capsule)
+    assert Enum.count(opened["rows"]["session_revisions"], &(&1["action"] in ~w(round_created round_cancelled))) == 2
+
+    {ctx, _round} = new_round(ctx, %{prompt: "Kept moving"})
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+
+    assert {:ok, %{round_id: round_id}} =
+             Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][idea.id])
+
+    assert {:ok, [%{id: ^round_id, number: 1}]} = Ideation.list_rounds(ctx.author, ctx.project.id, session_id)
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+  end
+
+  test "a private session before round privacy hides every round it had, and its clock's promise moves to the round in progress",
+       ctx do
+    idea_fixture(ctx)
+    {ctx, _second} = new_round(ctx, %{prompt: "Second"})
+    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, _} = Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, %{seconds: 300})
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+
+    legacy =
+      data
+      |> Map.put("version", 7)
+      |> update_in(
+        ["rows", "rounds"],
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+      )
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", true) end))
+      |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+      |> update_in(["rows", "sessions"], fn rows ->
+        Enum.map(rows, &put_in(&1, ["configuration", "private_mode"], true))
+      end)
+
+    {:ok, capsule} = Capsule.seal(legacy)
+    assert {:ok, normalized} = Capsule.open(capsule)
+
+    assert [
+             %{"number" => 1, "status" => "closed", "private" => true, "reveal_on_expiry" => false},
+             %{"number" => 2, "status" => "active", "private" => true, "reveal_on_expiry" => true}
+           ] = Enum.sort_by(normalized["rows"]["rounds"], & &1["number"])
+
+    refute Enum.any?(normalized["rows"]["sessions"], &Map.has_key?(&1["configuration"], "private_mode"))
+    refute Enum.any?(normalized["rows"]["timers"], &Map.has_key?(&1, "reveal_on_expiry"))
+  end
+
   test "legacy version-one capsules normalize round defaults and remain verifiable", ctx do
     idea = idea_fixture(ctx)
     {:ok, data} = ctx |> capture() |> Capsule.open()
@@ -86,13 +164,18 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
     assert normalized["version"] == 8
-    assert normalized["rows"]["rounds"] == []
+    # A session that had no rounds is born its Round 1, in progress, and its notes join it.
+    assert [%{"number" => 1, "status" => "active", "private" => false, "session_id" => born_session}] =
+             normalized["rows"]["rounds"]
+
+    assert born_session == ctx.session.id
+    assert Enum.all?(normalized["rows"]["ideas"], &(&1["round_id"] != nil and &1["late_contribution"] == false))
     {ctx, _round} = new_round(ctx, %{prompt: "Created after the old snapshot"})
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
-    assert {:ok, []} = Ideation.list_rounds(ctx.author, ctx.project.id, session_id)
+    assert {:ok, [%{number: 1, status: :active} = first]} = Ideation.list_rounds(ctx.author, ctx.project.id, session_id)
     assert {:ok, restored} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][idea.id])
-    assert restored.round_id == nil
+    assert restored.round_id == first.id
     assert restored.late_contribution == false
     assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
     assert restore(ctx, capsule) == maps
