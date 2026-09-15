@@ -23,15 +23,15 @@ defmodule StoryarnWeb.E2E.IdeationStatesTest do
     |> assert_has(selector)
     |> refute_has("#brainstorming-tree-later-#{ctx.session.id}")
     |> right_click("#{selector} .note-content")
-    |> click("#brainstorming-note-context-park")
+    |> click_item("#brainstorming-note-context-park")
     |> assert_has("#{selector}[data-note-state=parked] .note-tab", text: "For later")
     |> assert_has("#brainstorming-tree-later-#{ctx.session.id}", text: "1")
     |> right_click("#{selector} .note-content")
-    |> click("#brainstorming-note-context-discard")
+    |> click_item("#brainstorming-note-context-discard")
     |> assert_has("#{selector}[data-note-state=discarded] .note-tab", text: "Discarded")
     |> refute_has("#brainstorming-tree-later-#{ctx.session.id}")
     |> right_click("#{selector} .note-content")
-    |> click("#brainstorming-note-context-restore")
+    |> click_item("#brainstorming-note-context-restore")
     |> assert_has("#{selector}[data-note-state=active]")
     |> refute_has("#{selector} .note-tab")
     |> assert_has("#brainstorming-workspace[aria-busy=false]")
@@ -69,7 +69,7 @@ defmodule StoryarnWeb.E2E.IdeationStatesTest do
       |> visit(board_path(ctx))
       |> assert_has("#brainstorming-tree-later-#{ctx.session.id}", text: "1")
       |> right_click("#canvas-note-#{parked.id} .note-content")
-      |> click("#brainstorming-note-context-bring")
+      |> click_item("#brainstorming-note-context-bring")
       |> assert_has(".canvas-note[data-round-id='#{second.id}']", text: "Keep the light")
       |> refute_has("#brainstorming-tree-later-#{ctx.session.id}")
       |> assert_has("#brainstorming-workspace[aria-busy=false]")
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.E2E.IdeationStatesTest do
     |> authenticate(ctx.author.user)
     |> visit("#{board_path(ctx)}?view=later")
     |> assert_has("#canvas-list-note-#{parked.id}", text: "For later")
-    |> click("#canvas-list-bring-#{parked.id}")
+    |> click_item("#canvas-list-bring-#{parked.id}")
     |> refute_has("#canvas-list-note-#{parked.id}")
     |> assert_has("#brainstorming-workspace[aria-busy=false]")
 
@@ -126,7 +126,8 @@ defmodule StoryarnWeb.E2E.IdeationStatesTest do
       end
   end
 
-  defp click(browser, selector) do
+  # Menu items and list buttons are plain elements, outside the library's click/2 scope.
+  defp click_item(browser, selector) do
     {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: selector, timeout: 10_000)
     browser
   end
