@@ -1,0 +1,23 @@
+assets/app/modules/ideation/components/CanvasNote.vue
+  s_02773c3f2b5565::t_92f302f112a906 8,143-146,286-287
+assets/app/test/modules/ideation/canvasNoteStates.test.ts
+  s_02773c3f2b5565::t_bf7620e170e607 48,51-52
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_bf7620e170e607 232-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bda87f7f987e53831b68e3efe08f9f16b9271e99",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
