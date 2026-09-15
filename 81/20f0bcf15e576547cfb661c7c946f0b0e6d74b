@@ -1,0 +1,23 @@
+priv/gettext/default.pot
+  s_02773c3f2b5565::t_eead9e8fb5141b 139,149
+priv/gettext/en/LC_MESSAGES/default.po
+  s_02773c3f2b5565::t_b59fe1266cb78d 139,149
+priv/gettext/es/LC_MESSAGES/default.po
+  s_02773c3f2b5565::t_04abf5cb21bc67 139,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8120f0bcf15e576547cfb661c7c946f0b0e6d74b",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
