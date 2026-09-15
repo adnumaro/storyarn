@@ -32,8 +32,9 @@ const {
     <ReferencesPanel :state="references" :epoch="epoch" :session-id="sessionId" />
     <DecisionsPanel v-if="decisions" :state="decisions" :epoch="epoch" :session-id="sessionId" />
     <SessionPanel
-      v-if="sessionPanel && session"
+      v-if="session"
       :key="session.id"
+      :open="sessionPanel"
       :session="session"
       :epoch="epoch"
       :members="members"

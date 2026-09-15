@@ -12,11 +12,12 @@ import type { HistoryPage, Member, Session, SessionRevision } from "@modules/ide
 // The session's details and settings live in the right dock, next to
 // decisions and references: title, purpose and context, who facilitates and
 // who owns decisions, whether new contributions are open, archiving, history.
-const { session, epoch, members, canManage } = defineProps<{
+const { session, epoch, members, canManage, open } = defineProps<{
   session: Session;
   epoch: string;
   members: Member[];
   canManage: boolean;
+  open: boolean;
 }>();
 const { t, error, member } = useBoardText();
 const live = useLive();
@@ -108,7 +109,7 @@ function close() {
 </script>
 
 <template>
-  <Sidebar side="right" :open="true" @close="close">
+  <Sidebar side="right" :open="open" @close="close">
     <template #header>
       <div class="flex items-center justify-between gap-2 py-2.5">
         <div class="flex min-w-0 items-center gap-2 text-sm font-medium">
