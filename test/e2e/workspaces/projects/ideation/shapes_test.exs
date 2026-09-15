@@ -32,7 +32,7 @@ defmodule StoryarnWeb.E2E.BrainstormingShapesTest do
         <p></p>
         """,
         0,
-        0
+        60
       )
 
     selector = "#canvas-note-#{source.id}"
