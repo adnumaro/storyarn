@@ -189,12 +189,7 @@ function confirm() {
 </script>
 
 <template>
-  <Sidebar
-    v-if="state.open"
-    side="right"
-    :open="state.open"
-    @close="!confirmation && request('close')"
-  >
+  <Sidebar side="right" :open="state.open" @close="!confirmation && request('close')">
     <template #header>
       <div class="flex items-center justify-between gap-2 py-2.5">
         <div class="flex min-w-0 items-center gap-2 text-sm font-medium">

@@ -15,7 +15,13 @@ function panel(canManage = true, reply: Record<string, unknown> = { status: "ok"
   const current = board();
   wrapper = mount(Panel, {
     attachTo: document.body,
-    props: { session: current.session!, epoch: current.epoch, members: current.members, canManage },
+    props: {
+      session: current.session!,
+      epoch: current.epoch,
+      members: current.members,
+      canManage,
+      open: true,
+    },
     global: {
       provide: {
         _live_vue: { pushEvent, handleEvent: vi.fn(), removeHandleEvent: vi.fn(), upload: vi.fn() },

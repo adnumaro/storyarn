@@ -137,7 +137,6 @@ function date(value: string) {
 </script>
 <template>
   <Sidebar
-    v-if="state.open"
     side="right"
     :open="state.open"
     :close-on-outside="state.mode === 'list' || state.mode === 'detail'"
