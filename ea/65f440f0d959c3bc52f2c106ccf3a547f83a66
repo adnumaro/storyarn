@@ -1,0 +1,23 @@
+assets/app/test/modules/ideation/timerDigits.test.ts
+  s_02773c3f2b5565::t_a618d86aa4304d 77-87
+test/e2e/workspaces/projects/ideation/timer_test.exs
+  s_02773c3f2b5565::t_a618d86aa4304d 38
+assets/app/modules/ideation/components/TimerDigits.vue
+  s_02773c3f2b5565::t_a618d86aa4304d 56-61,95,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ea65f440f0d959c3bc52f2c106ccf3a547f83a66",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
