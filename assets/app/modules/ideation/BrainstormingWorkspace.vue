@@ -1204,16 +1204,19 @@ onUnmounted(() => {
                 @click="proposeDecision()"
                 ><ListChecks class="size-4" /></Button
             ></ToolbarTooltip>
-            <Button
+            <ToolbarTooltip
               v-if="current.visibility === 'shared' && current.published_revision"
-              id="brainstorming-idea-references"
-              variant="ghost"
-              size="icon-sm"
-              :disabled="!online"
-              :aria-label="t('brainstormingReferences.ideaReferences')"
-              @click="useReferences(current.id)"
-              ><Link2 class="size-4"
-            /></Button>
+              :label="t('brainstormingReferences.ideaReferences')"
+              ><Button
+                id="brainstorming-idea-references"
+                variant="ghost"
+                size="icon-sm"
+                :disabled="!online"
+                :aria-label="t('brainstormingReferences.ideaReferences')"
+                @click="useReferences(current.id)"
+                ><Link2 class="size-4"
+              /></Button>
+            </ToolbarTooltip>
 
             <GroupSelectionTools
               v-if="writable"
@@ -1235,14 +1238,17 @@ onUnmounted(() => {
             />
             <template v-if="writable"
               ><Popover
-                ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"
-                  ><span
-                    class="size-4 rounded-full border border-foreground/10"
-                    :style="{
-                      background: colors.find((c) => c.id === (current?.canvas?.color ?? 'yellow'))
-                        ?.value,
-                    }" /></PopoverTrigger
-                ><PopoverContent class="flex w-auto gap-2 p-2"
+                ><ToolbarTooltip :label="t('ideation.canvas.color')"
+                  ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"
+                    ><span
+                      class="size-4 rounded-full border border-foreground/10"
+                      :style="{
+                        background: colors.find(
+                          (c) => c.id === (current?.canvas?.color ?? 'yellow'),
+                        )?.value,
+                      }" /></PopoverTrigger
+                ></ToolbarTooltip>
+                <PopoverContent class="flex w-auto gap-2 p-2"
                   ><button
                     v-for="item in colors"
                     :key="item.id"
@@ -1254,9 +1260,11 @@ onUnmounted(() => {
                     @click="color(item.id)" /></PopoverContent></Popover
             ></template>
             <Popover v-if="current.canvas?.links?.length"
-              ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.connections')"
-                ><Unplug class="size-3.5" /></PopoverTrigger
-              ><PopoverContent class="w-64 space-y-1"
+              ><ToolbarTooltip :label="t('ideation.canvas.connections')"
+                ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.connections')"
+                  ><Unplug class="size-3.5" /></PopoverTrigger
+              ></ToolbarTooltip>
+              <PopoverContent class="w-64 space-y-1"
                 ><button
                   v-for="id in current.canvas.links"
                   :key="id"
