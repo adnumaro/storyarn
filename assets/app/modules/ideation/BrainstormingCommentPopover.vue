@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { computed, provide, ref, watch } from "vue";
-import { Bell, BellOff, CheckCheck } from "@lucide/vue";
-import { Button } from "@components/ui/button";
+import { computed, provide } from "vue";
 import { useI18n } from "vue-i18n";
 import CommentPopover from "@components/comments/CommentPopover.vue";
-import LiveLink from "@components/navigation/LiveLink.vue";
 import type { CommentUiConfig } from "@components/comments/types";
 import { useLive, type LiveInterface } from "@shared/composables/useLive";
 import type { BrainstormingCommentsState } from "./commentTypes";
 
-const { state, epoch, sessionId, baseUrl } = defineProps<{
+const {
+  state,
+  epoch,
+  sessionId,
+  baseUrl,
+  currentUserId = null,
+} = defineProps<{
   state: BrainstormingCommentsState;
   epoch: string;
   sessionId: number;
   baseUrl: string;
+  currentUserId?: number | null;
 }>();
 const live = useLive();
 const { t } = useI18n();
@@ -29,6 +33,14 @@ const panel = computed(() => ({
   selectedSourceLabel: sourceLabel.value,
   error: state.error ? message(state.error) : null,
 }));
+const permalink = computed(() =>
+  state.thread && typeof window !== "undefined"
+    ? new URL(
+        `${baseUrl}/${sessionId}?thread=${state.thread.id}`,
+        window.location.origin,
+      ).toString()
+    : null,
+);
 const ui: CommentUiConfig = {
   domScope: "brainstorming",
   i18nPrefix: "brainstormingComments",
@@ -54,50 +66,15 @@ provide<LiveInterface>("_live_vue", {
           : {}),
       },
       (reply) =>
-        callback?.(reply?.ok === false ? { ...reply, error: message(reply.error) } : reply),
+        callback?.(
+          reply?.ok === false && !event.startsWith("comments_follow") && event !== "comments_read"
+            ? { ...reply, error: message(reply.error) }
+            : reply,
+        ),
       onError,
     );
   },
 });
-const pending = ref(false);
-const actionError = ref<string | null>(null);
-let requestToken: symbol | null = null;
-watch(
-  () => `${epoch}:${sessionId}:${state.context}:${state.thread?.id}:${state.open}`,
-  () => {
-    requestToken = null;
-    pending.value = false;
-    actionError.value = null;
-  },
-);
-function personalAction(action: "follow" | "read") {
-  const thread = state.thread;
-  if (!thread || pending.value) return;
-  const token = Symbol();
-  requestToken = token;
-  pending.value = true;
-  actionError.value = null;
-  const finish = (ok: boolean) => {
-    if (requestToken !== token) return;
-    pending.value = false;
-    requestToken = null;
-    if (!ok) actionError.value = t("brainstormingComments.update_failed");
-  };
-  live.pushEvent(
-    `comments_${action}`,
-    {
-      epoch,
-      session_id: sessionId,
-      comment_context: state.context,
-      thread_id: thread.id,
-      ...(action === "follow"
-        ? { following: !thread.following }
-        : { message_id: thread.last_message_id }),
-    },
-    (reply) => finish(reply.ok === true),
-    () => finish(false),
-  );
-}
 </script>
 
 <template>
@@ -106,47 +83,7 @@ function personalAction(action: "follow" | "read") {
     :key="`${epoch}:${sessionId}:${state.context}`"
     :state="panel"
     :ui="ui"
-  >
-    <template v-if="state.thread" #footer>
-      <div class="space-y-2 px-3 py-2">
-        <div class="flex flex-wrap items-center gap-2">
-          <Button
-            id="brainstorming-comment-follow"
-            variant="outline"
-            size="sm"
-            :disabled="pending"
-            :aria-pressed="state.thread.following"
-            @click="personalAction('follow')"
-          >
-            <BellOff v-if="state.thread.following" class="size-4" /><Bell v-else class="size-4" />
-            {{
-              t(
-                state.thread.following
-                  ? "brainstormingComments.unfollow"
-                  : "brainstormingComments.follow",
-              )
-            }}
-          </Button>
-          <Button
-            v-if="state.thread.unread"
-            id="brainstorming-comment-read"
-            variant="ghost"
-            size="sm"
-            :disabled="pending"
-            @click="personalAction('read')"
-            ><CheckCheck class="size-4" />{{ t("brainstormingComments.mark_read") }}</Button
-          >
-        </div>
-        <p class="text-xs text-muted-foreground">{{ t("brainstormingComments.follow_help") }}</p>
-        <p v-if="actionError" role="alert" class="text-xs text-destructive">{{ actionError }}</p>
-      </div>
-      <LiveLink
-        :to="`${baseUrl}/${sessionId}?thread=${state.thread.id}`"
-        mode="patch"
-        class="block px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
-        id="brainstorming-comment-link"
-        >{{ $t("brainstormingComments.permalink") }}</LiveLink
-      >
-    </template>
-  </CommentPopover>
+    :permalink="permalink"
+    :current-user-id="currentUserId"
+  />
 </template>

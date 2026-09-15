@@ -42,7 +42,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
      |> assign(:hub, %{
        threads: [],
        nextCursor: nil,
-       counts: %{all: 0, open: 0, resolved: 0},
+       counts: empty_counts(),
        filters: filters,
        workspaces: [],
        projects: [],
@@ -75,11 +75,13 @@ defmodule StoryarnWeb.CommentLive.Overlay do
 
   def handle_event("hub_open", _params, socket) do
     Projects.subscribe_comment_conversations(socket.assigns.current_scope)
+    Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
     {:reply, %{ok: true}, socket |> assign(:open, true) |> schedule_refresh() |> refresh_access()}
   end
 
   def handle_event("hub_close", _params, socket) do
     Projects.unsubscribe_comment_conversations(socket.assigns.current_scope)
+    Projects.unsubscribe_ideation_comment_participation(socket.assigns.current_scope)
     if timer = socket.assigns.refresh_timer, do: Process.cancel_timer(timer)
 
     {:reply, %{ok: true},
@@ -143,6 +145,15 @@ defmodule StoryarnWeb.CommentLive.Overlay do
     )
   end
 
+  def handle_event(event, params, socket) when event in ~w(comments_follow comments_read) do
+    Authorize.with_authorization(
+      socket,
+      :manage_comment_state,
+      &mutate(event, params, &1),
+      fn current, _reason -> failure(refresh_access(current), :not_found) end
+    )
+  end
+
   # This surface never creates a source or a thread, even through forged events.
   def handle_event(_event, _params, socket), do: failure(socket, :not_found)
 
@@ -152,6 +163,9 @@ defmodule StoryarnWeb.CommentLive.Overlay do
   def handle_info({event, _payload}, socket) when event in @access_events, do: {:noreply, refresh_access(socket)}
 
   def handle_info({:comment_conversations_changed, project_id}, socket),
+    do: {:noreply, schedule_comment_refresh(socket, project_id)}
+
+  def handle_info({:ideation_comment_participation_changed, project_id, _container_id, _thread_id}, socket),
     do: {:noreply, schedule_comment_refresh(socket, project_id)}
 
   def handle_info({:dashboard_invalidate, _source}, socket) do
@@ -348,7 +362,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
         |> put_hub(%{
           threads: [],
           nextCursor: nil,
-          counts: %{all: 0, open: 0, resolved: 0},
+          counts: empty_counts(),
           error: gettext("Comments could not be loaded. Please try again.")
         })
     end
@@ -462,6 +476,12 @@ defmodule StoryarnWeb.CommentLive.Overlay do
     )
   end
 
+  defp mutation("comments_follow", scope, project_id, id, params),
+    do: Projects.set_ideation_comment_following(scope, project_id, id, params["following"])
+
+  defp mutation("comments_read", scope, project_id, id, params),
+    do: Projects.mark_ideation_comment_read(scope, project_id, id, Params.positive(params["message_id"]))
+
   defp mutation("comments_set_status", scope, project_id, id, params),
     do:
       Projects.set_comment_thread_status(
@@ -510,6 +530,19 @@ defmodule StoryarnWeb.CommentLive.Overlay do
       conversation: empty_conversation(),
       contextUrl: nil
     })
+  end
+
+  defp empty_counts do
+    %{
+      all: 0,
+      open: 0,
+      resolved: 0,
+      tools: %{"sheet" => 0, "flow" => 0, "scene" => 0, "brainstorming" => 0},
+      unread: 0,
+      mentioned: 0,
+      participated: 0,
+      following: 0
+    }
   end
 
   defp empty_conversation do

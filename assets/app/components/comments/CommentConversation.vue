@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { AtSign, Check, CheckCheck, CornerUpLeft, RotateCcw, X } from "@lucide/vue";
+import { Bell, BellOff, CheckCheck, CircleAlert, Lock, RotateCcw } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
 import CommentComposer from "./CommentComposer.vue";
-import type { CommentStatus, CommentsPanelState, CommentThread, CommentUiConfig } from "./types";
+import CommentMessageItem from "./CommentMessageItem.vue";
+import CommentThreadHeader from "./CommentThreadHeader.vue";
+import { formatCommentTime } from "./commentTime";
+import type { CommentMessage, CommentsPanelState, CommentThread, CommentUiConfig } from "./types";
+import { currentPagePermalink, useCommentThreadActions } from "./useCommentThreadActions";
 
 interface StoredReplyTarget {
   parentId: number;
@@ -14,23 +18,42 @@ interface StoredReplyTarget {
   sourceType: string;
 }
 
+/**
+ * The body of a conversation, shared by the editor popover, the Sequence
+ * dialog and the hub detail: reference header, thread, footer and composer.
+ */
 const {
   state,
   ui,
   draftStorageKey = null,
+  surfaceLabel = null,
+  permalink = null,
+  currentUserId = null,
+  showHeader = true,
+  headerVariant = "strip",
+  showClose = false,
+  messagesId = null,
 } = defineProps<{
   state: CommentsPanelState;
   ui: CommentUiConfig;
   draftStorageKey?: string | null;
+  /** Name of the surface (sheet, flow, scene, session) for drafts, which have no thread yet. */
+  surfaceLabel?: string | null;
+  /** Deep link to the thread when the current page is not its editor (the hub). */
+  permalink?: string | null;
+  currentUserId?: number | null;
+  showHeader?: boolean;
+  headerVariant?: "strip" | "card";
+  showClose?: boolean;
+  /** Optional id for the scrolling message list, so a host can remember its position. */
+  messagesId?: string | null;
 }>();
+const emit = defineEmits<{ close: [] }>();
 const live = useLive();
-const { t, locale } = useI18n();
+const { locale } = useI18n();
 const replyToId = ref<number | null>(readReplyTarget());
-const statusPending = ref(false);
-const localError = ref<string | null>(null);
-let statusRequestToken: symbol | null = null;
 const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
-const domId = (name: string) => `${ui.domScope}-comment-${name}`;
+const thread = computed(() => state.thread);
 const sourceAvailable = computed(() => !state.thread || state.thread.source.status === "available");
 const composerEnabled = computed(
   () =>
@@ -40,13 +63,28 @@ const composerEnabled = computed(
       ? state.thread.status === "open"
       : state.selectedSourceId != null || state.draftPosition != null),
 );
-const firstMessage = computed(
+const rootMessage = computed(
   () => state.messages.find((message) => message.parent_id == null) ?? state.messages[0],
 );
 const replyParentId = computed(
-  () => replyToId.value ?? state.thread?.root_message_id ?? firstMessage.value?.id ?? null,
+  () => replyToId.value ?? state.thread?.root_message_id ?? rootMessage.value?.id ?? null,
 );
-const replyTo = computed(() => state.messages.find((message) => message.id === replyToId.value));
+const replyTarget = computed(() =>
+  state.messages.find((message) => message.id === replyToId.value && message.parent_id != null),
+);
+const currentUser = computed(() => state.members.find((member) => member.id === currentUserId));
+const permalinkFor = () =>
+  permalink ?? (thread.value ? currentPagePermalink(thread.value.id) : null);
+const actions = useCommentThreadActions(() => state, ui, permalinkFor);
+const resolvedLine = computed(() => {
+  const current = thread.value;
+  if (!current || current.status !== "resolved" || !current.resolved_by || !current.resolved_at)
+    return null;
+  return {
+    name: current.resolved_by.display_name,
+    time: formatCommentTime(current.resolved_at, locale.value),
+  };
+});
 
 watch(
   [
@@ -56,10 +94,7 @@ watch(
     () => draftStorageKey,
   ],
   () => {
-    statusRequestToken = null;
     replyToId.value = readReplyTarget();
-    localError.value = null;
-    statusPending.value = false;
   },
   { flush: "sync" },
 );
@@ -72,35 +107,36 @@ function replyTargetKey() {
 
 function readReplyTarget(): number | null {
   const key = replyTargetKey();
-  const thread = state.thread;
-  if (!key || !thread || typeof window === "undefined") return null;
+  const current = state.thread;
+  if (!key || !current || typeof window === "undefined") return null;
   try {
     const stored: unknown = JSON.parse(window.sessionStorage.getItem(key) ?? "null");
-    return validReplyTarget(stored, thread) ? stored.parentId : null;
+    return validReplyTarget(stored, current) ? stored.parentId : null;
   } catch {
     // A malformed or unavailable session draft must not change the reply target.
   }
   return null;
 }
 
-function validReplyTarget(value: unknown, thread: CommentThread): value is StoredReplyTarget {
+function validReplyTarget(value: unknown, current: CommentThread): value is StoredReplyTarget {
   if (!value || typeof value !== "object") return false;
   const candidate = value as StoredReplyTarget;
   return (
     typeof candidate.parentId === "number" &&
     Number.isSafeInteger(candidate.parentId) &&
     candidate.parentId > 0 &&
-    candidate.threadId === thread.id &&
-    candidate.sourceId === thread.source.id &&
-    candidate.sourceType === thread.source.type
+    candidate.threadId === current.id &&
+    candidate.sourceId === current.source.id &&
+    candidate.sourceType === current.source.type
   );
 }
 
-function selectReply(parentId: number | null) {
+function selectReply(message: CommentMessage | null) {
+  const parentId = message && message.parent_id != null ? message.id : null;
   replyToId.value = parentId;
   const key = replyTargetKey();
-  const thread = state.thread;
-  if (!key || !thread || typeof window === "undefined") return;
+  const current = state.thread;
+  if (!key || !current || typeof window === "undefined") return;
   try {
     if (parentId == null) window.sessionStorage.removeItem(key);
     else
@@ -108,226 +144,155 @@ function selectReply(parentId: number | null) {
         key,
         JSON.stringify({
           parentId,
-          threadId: thread.id,
-          sourceId: thread.source.id,
-          sourceType: thread.source.type,
+          threadId: current.id,
+          sourceId: current.source.id,
+          sourceType: current.source.type,
         }),
       );
   } catch {
     // Replying remains available when browser storage is disabled.
   }
 }
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf())
-    ? ""
-    : new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(
-        date,
-      );
-}
-
-function changeStatus(status: CommentStatus) {
-  const thread = state.thread;
-  if (!thread || !state.canComment || !sourceAvailable.value || statusPending.value) return;
-  const requestToken = Symbol();
-  statusRequestToken = requestToken;
-  statusPending.value = true;
-  localError.value = null;
-  live.pushEvent(
-    "comments_set_status",
-    { thread_id: thread.id, status, expected_revision: thread.revision },
-    (reply) => {
-      if (statusRequestToken !== requestToken || state.thread?.id !== thread.id) return;
-      statusRequestToken = null;
-      statusPending.value = false;
-      if (reply.ok !== true)
-        localError.value =
-          typeof reply.error === "string" ? reply.error : t(translationKey("update_failed"));
-    },
-    () => {
-      if (statusRequestToken !== requestToken || state.thread?.id !== thread.id) return;
-      statusRequestToken = null;
-      statusPending.value = false;
-      localError.value = t(translationKey("update_failed"));
-    },
-  );
-}
 </script>
 
 <template>
-  <div :id="`${ui.domScope}-comments-content`" class="space-y-4 pb-2">
+  <div :id="`${ui.domScope}-comments-content`" class="flex min-h-0 flex-1 flex-col">
+    <CommentThreadHeader
+      v-if="showHeader"
+      class="shrink-0"
+      :state="state"
+      :ui="ui"
+      :actions="actions"
+      :surface-label="surfaceLabel"
+      :variant="headerVariant"
+      :show-close="showClose"
+      @close="emit('close')"
+    />
     <p
-      v-if="state.error || localError"
+      v-if="state.error || (!showHeader && actions.error.value)"
       role="alert"
-      class="rounded-md bg-destructive/10 p-2 text-xs text-destructive"
+      class="mx-3.5 mt-2 shrink-0 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
     >
-      {{ localError || state.error }}
+      {{ state.error || actions.error.value }}
     </p>
 
-    <template v-if="state.thread">
-      <div class="space-y-2">
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium">
-              {{
-                state.thread.source.type === ui.canvasSourceType
-                  ? $t(translationKey("canvas_label"))
-                  : state.thread.source.label
-              }}
-            </p>
-            <p
-              v-if="state.thread.context"
-              :id="domId('context')"
-              class="mt-1 text-xs text-muted-foreground"
-            >
-              {{ state.thread.context.label }}
-              <span v-if="state.thread.context.status === 'unavailable'">
-                · {{ $t(translationKey("context_unavailable")) }}
-              </span>
-            </p>
-            <p class="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-              <CheckCheck v-if="state.thread.status === 'resolved'" class="size-3.5" />{{
-                $t(translationKey(state.thread.status))
-              }}
-            </p>
-          </div>
-          <Button
-            v-if="state.canComment && sourceAvailable"
-            :id="domId('status')"
-            variant="outline"
-            size="sm"
-            class="shrink-0 gap-1.5 text-xs"
-            :disabled="statusPending"
-            @click="changeStatus(state.thread.status === 'open' ? 'resolved' : 'open')"
-            ><Check v-if="state.thread.status === 'open'" class="size-3.5" /><RotateCcw
-              v-else
-              class="size-3.5"
-            />{{
-              $t(translationKey(state.thread.status === "open" ? "resolve" : "reopen"))
-            }}</Button
-          >
-        </div>
-      </div>
+    <div
+      v-if="thread"
+      :id="messagesId ?? undefined"
+      class="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1.5"
+    >
       <p
         v-if="!sourceAvailable"
         role="status"
-        class="rounded-md bg-muted p-2 text-xs text-muted-foreground"
+        class="mx-3.5 mb-2 flex gap-2 rounded-md border border-[hsl(24_85%_60%/.3)] bg-[hsl(24_85%_60%/.08)] px-2.5 py-2 text-xs leading-relaxed"
       >
+        <CircleAlert class="mt-0.5 size-3.5 shrink-0 text-[hsl(24_85%_62%)]" />
         {{
           $t(
             translationKey(
-              state.thread.source.type === ui.canvasSourceType
-                ? "canvas_unavailable"
-                : "unavailable",
+              thread.source.type === ui.canvasSourceType ? "canvas_unavailable" : "unavailable",
             ),
           )
         }}
       </p>
-      <ol class="space-y-3" aria-live="polite" :aria-label="$t(translationKey('messages'))">
-        <li
-          v-for="message in state.messages"
-          :id="`${ui.domScope}-comment-message-${message.id}`"
-          :key="message.id"
-          class="rounded-lg border border-border bg-background p-3"
-          :class="{ 'ring-1 ring-primary': replyToId === message.id }"
-        >
-          <div class="mb-2 flex items-center gap-2">
-            <img
-              v-if="message.author.avatar_url"
-              :src="message.author.avatar_url"
-              alt=""
-              class="size-6 rounded-full object-cover"
-            />
-            <span
-              v-else
-              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold"
-              aria-hidden="true"
-              >{{ message.author.display_name.slice(0, 2).toUpperCase() }}</span
-            >
-            <div class="min-w-0">
-              <p class="truncate text-xs font-medium">{{ message.author.display_name }}</p>
-              <time :datetime="message.inserted_at" class="text-[10px] text-muted-foreground">{{
-                formatDate(message.inserted_at)
-              }}</time>
-            </div>
-          </div>
-          <p class="whitespace-pre-wrap break-words text-sm leading-relaxed">
-            {{ message.body }}
-          </p>
-          <div v-if="message.mentions.length" class="mt-2 flex flex-wrap gap-1">
-            <span
-              v-for="(member, index) in message.mentions"
-              :key="member.id ?? `deleted-${index}`"
-              class="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
-              ><AtSign class="size-3" />{{ member.display_name }}</span
-            >
-          </div>
-          <Button
-            v-if="composerEnabled"
-            variant="ghost"
-            size="sm"
-            class="-mb-1 -ml-2 mt-1 gap-1.5 text-xs text-muted-foreground"
-            :aria-label="$t(translationKey('reply_to'), { name: message.author.display_name })"
-            @click="selectReply(message.id)"
-            ><CornerUpLeft class="size-3" />{{ $t(translationKey("reply")) }}</Button
-          >
-        </li>
-      </ol>
       <Button
         v-if="state.messageNextCursor"
         variant="ghost"
-        size="sm"
-        class="w-full"
+        size="xs"
+        class="mx-3.5 mb-1 w-[calc(100%-1.75rem)] text-muted-foreground"
         @click="live.pushEvent('comments_load_messages', {})"
         >{{ $t(translationKey("load_messages")) }}</Button
       >
-      <p
-        v-if="state.thread.status === 'resolved' && sourceAvailable"
-        class="rounded-md bg-muted p-2 text-xs text-muted-foreground"
-      >
-        {{ $t(translationKey("resolved_hint")) }}
-      </p>
-    </template>
+      <ol aria-live="polite" :aria-label="$t(translationKey('messages'))">
+        <li v-for="message in state.messages" :key="message.id">
+          <CommentMessageItem
+            :message="message"
+            :ui="ui"
+            :root="message.id === rootMessage?.id"
+            :mine="message.author.id != null && message.author.id === currentUserId"
+            :highlighted="replyToId === message.id"
+            :can-reply="composerEnabled && message.id !== rootMessage?.id"
+            @reply="selectReply"
+          />
+        </li>
+      </ol>
+    </div>
 
     <div
-      v-if="state.canComment"
+      v-if="state.canComment && sourceAvailable"
       v-show="composerEnabled"
-      :class="{ 'border-t border-border pt-3': state.thread }"
+      class="shrink-0 px-3.5 py-2.5"
+      :class="{ 'border-t border-border': thread }"
     >
-      <div
-        v-if="replyTo || (ui.persistReplyDraft && replyToId != null)"
-        class="mb-2 flex items-center justify-between gap-2 rounded-md bg-muted p-2 text-xs"
-      >
-        <span class="truncate">{{
-          replyTo
-            ? $t(translationKey("reply_to"), { name: replyTo.author.display_name })
-            : $t(translationKey("reply_to_previous"))
-        }}</span
-        ><button
-          type="button"
-          :aria-label="$t(translationKey('cancel_reply'))"
-          @click="selectReply(null)"
-        >
-          <X class="size-3.5" />
-        </button>
-      </div>
       <CommentComposer
         :source-id="state.selectedSourceId"
         :position="state.draftPosition ?? null"
         :context="state.draftContext"
-        :draft-id="state.draftId ?? null"
-        :draft-storage-key="draftStorageKey"
+        :storage="{ draftId: state.draftId ?? null, key: draftStorageKey }"
         :thread-id="state.thread?.id ?? null"
         :parent-id="replyParentId"
         :members="state.members"
         :disabled="!composerEnabled || Boolean(state.draftPending)"
         :ui="ui"
+        :answering="{
+          to: replyTarget?.author ?? null,
+          previous: replyToId != null && !replyTarget,
+          authorName: currentUser?.display_name ?? null,
+        }"
         @sent="selectReply(null)"
+        @cancel-reply="selectReply(null)"
       />
     </div>
-    <p v-if="!state.canComment" class="text-xs text-muted-foreground">
-      {{ $t(translationKey("readonly_hint")) }}
-    </p>
+    <div
+      v-if="thread?.status === 'resolved' && sourceAvailable"
+      class="flex shrink-0 items-center gap-2 border-t border-border py-2 pl-3.5 pr-2 text-xs"
+    >
+      <CheckCheck class="size-3.5 shrink-0 text-[hsl(150_45%_55%)]" />
+      <span class="min-w-0 flex-1 text-muted-foreground">
+        <i18n-t v-if="resolvedLine" :keypath="translationKey('resolved_by')" tag="span">
+          <template #name
+            ><span class="text-foreground">{{ resolvedLine.name }}</span></template
+          >
+          <template #time>{{ resolvedLine.time }}</template>
+        </i18n-t>
+        <template v-else>{{ $t(translationKey("resolved_hint")) }}</template>
+      </span>
+      <Button
+        v-if="actions.canChangeStatus.value"
+        :id="`${ui.domScope}-comment-reopen`"
+        variant="outline"
+        size="xs"
+        :disabled="actions.pending.value"
+        @click="actions.setStatus('open')"
+        ><RotateCcw class="size-3" />{{ $t(translationKey("reopen")) }}</Button
+      >
+    </div>
+    <div
+      v-else-if="thread && !state.canComment"
+      class="flex shrink-0 items-center gap-2 border-t border-border py-2 pl-3.5 pr-2 text-xs text-muted-foreground"
+    >
+      <Lock class="size-3.5 shrink-0" />
+      <span class="min-w-0 flex-1">{{ $t(translationKey("viewer_hint")) }}</span>
+      <Button
+        v-if="sourceAvailable && thread.unread"
+        :id="`${ui.domScope}-comment-read-toggle`"
+        variant="ghost"
+        size="xs"
+        :disabled="actions.pending.value"
+        @click="actions.markRead()"
+        ><CheckCheck class="size-3" />{{ $t(translationKey("mark_read")) }}</Button
+      >
+      <Button
+        v-if="sourceAvailable"
+        :id="`${ui.domScope}-comment-follow-toggle`"
+        variant="ghost"
+        size="xs"
+        :disabled="actions.pending.value"
+        @click="actions.toggleFollow()"
+        ><BellOff v-if="thread.following" class="size-3" /><Bell v-else class="size-3" />{{
+          $t(translationKey(thread.following ? "unfollow" : "follow"))
+        }}</Button
+      >
+    </div>
   </div>
 </template>

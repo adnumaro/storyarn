@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CommentPin from "@components/comments/CommentPin.vue";
+import CommentPinPreview from "@components/comments/CommentPinPreview.vue";
 import { MessageCircle, Repeat2, Eye, EyeOff } from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
@@ -11,6 +12,7 @@ import type {
 } from "../../lib/comment-geometry";
 import type { SceneCommentTargets } from "../../lib/comment-snap-adapter";
 import { useSceneCanvasComments } from "../../composables/useSceneCanvasComments";
+import { sceneCommentUi } from "../../lib/sceneCommentUi";
 import SceneCommentPopover from "../panels/SceneCommentPopover.vue";
 
 const {
@@ -22,7 +24,7 @@ const {
   commentPins,
   focusThreadId,
   targets = { pins: [], zones: [], connections: [], annotations: [] },
-  draftStorageKey = null,
+  viewer = {},
   contextVisibility = { hidden: false, local: false },
 } = defineProps<{
   container: HTMLElement;
@@ -33,7 +35,8 @@ const {
   commentPins: SceneCommentThread[];
   focusThreadId: number | null;
   targets?: SceneCommentTargets;
-  draftStorageKey?: string | null;
+  /** The signed-in reader: their draft storage key and id (for "you" markers). */
+  viewer?: { draftStorageKey?: string | null; userId?: number | null };
   contextVisibility?: { hidden: boolean; local: boolean };
 }>();
 
@@ -77,7 +80,7 @@ const {
   pins: () => commentPins,
   focusThreadId: () => focusThreadId,
   targets: () => targets,
-  draftStorageKey: () => draftStorageKey,
+  draftStorageKey: () => viewer.draftStorageKey ?? null,
   live,
 });
 
@@ -276,6 +279,8 @@ onUnmounted(() => popupObserver?.disconnect());
       :key="pin.thread.id"
       :movable="state.canComment"
       :selected="state.thread?.id === pin.thread.id && popupOpen"
+      :unread="pin.thread.unread === true"
+      :count="Math.max(0, pin.thread.message_count - 1)"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('scenes.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
@@ -310,22 +315,18 @@ onUnmounted(() => popupObserver?.disconnect());
       @lostpointercapture="onLostCapture"
     />
 
-    <div
+    <CommentPinPreview
       v-if="hoveredPin && !(popupOpen && state.thread?.id === hoveredPin.thread.id)"
       id="scene-comment-preview"
-      role="tooltip"
-      class="absolute rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl"
+      class="absolute"
+      :thread="hoveredPin.thread"
+      :ui="sceneCommentUi"
       :style="{
         left: `${previewPosition.x}px`,
         top: `${previewPosition.y}px`,
         width: `${previewSize.width}px`,
       }"
-    >
-      <p class="truncate text-xs font-semibold">{{ hoveredPin.thread.author.display_name }}</p>
-      <p class="mt-1.5 line-clamp-3 whitespace-pre-wrap break-words text-xs text-muted-foreground">
-        {{ hoveredPin.thread.preview }}
-      </p>
-    </div>
+    />
 
     <div
       v-if="contextMenuPoint"
@@ -373,7 +374,8 @@ onUnmounted(() => popupObserver?.disconnect());
     >
       <SceneCommentPopover
         :state="panelState"
-        :draft-storage-key="draftStorageKey"
+        :draft-storage-key="viewer.draftStorageKey ?? null"
+        :current-user-id="viewer.userId ?? null"
         @close="discardStoredDraft"
       />
     </div>

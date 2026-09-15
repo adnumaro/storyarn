@@ -309,7 +309,7 @@ msgstr ""
 msgid "Invalid layout."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:1035
+#: lib/storyarn_web/live/sheet_live/show.ex:1045
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr ""
@@ -458,17 +458,17 @@ msgstr ""
 msgid "This dialogue line is no longer available. Refresh and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:413
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:452
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:407
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:446
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:410
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:449
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""

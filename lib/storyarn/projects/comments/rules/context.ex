@@ -226,9 +226,60 @@ defmodule Storyarn.Projects.Comments.Context do
       id: thread.context_id,
       label: if(target, do: label(thread.context_type, target), else: thread.context_label),
       status: if(target, do: "available", else: "unavailable"),
-      offset: offset(thread)
+      offset: offset(thread),
+      preview: preview(thread.context_type, target)
     }
   end
+
+  # A structured reference of the current target: the kind of thing discussed
+  # and, when it has one, its current value. Always read live, never stored,
+  # so it cannot go stale or leak a deleted target.
+  defp preview(_type, nil), do: nil
+  defp preview("sheet_block", block), do: %{kind: block.type, value: block_preview_value(block)}
+  defp preview("sheet_cover", _sheet), do: %{kind: "cover", value: nil}
+  defp preview("sheet_header", _sheet), do: %{kind: "header", value: nil}
+  defp preview("sheet_title", _sheet), do: %{kind: "title", value: nil}
+  defp preview("sheet_column_group", _group), do: %{kind: "row", value: nil}
+  defp preview("flow_node", node), do: %{kind: node.type, value: node_preview_value(node)}
+  defp preview("scene_" <> kind, _target), do: %{kind: kind, value: nil}
+  defp preview(_type, _target), do: nil
+
+  defp block_preview_value(block), do: preview_content(block.type, Map.get(block.value || %{}, "content"), block.config)
+
+  defp preview_content(type, text, _config) when type in ~w(text rich_text) and is_binary(text),
+    do: present(HtmlUtils.strip_and_truncate(text, 120))
+
+  defp preview_content("number", number, _config) when is_number(number), do: number
+  defp preview_content("boolean", flag, _config) when is_boolean(flag), do: flag
+  defp preview_content("date", date, _config) when is_binary(date), do: present(date)
+  defp preview_content("select", key, config) when is_binary(key), do: present(option_label(config, key))
+
+  defp preview_content("multi_select", keys, config) when is_list(keys),
+    do: keys |> Enum.map(&option_label(config, &1)) |> Enum.reject(&is_nil/1) |> Enum.join(", ") |> present()
+
+  defp preview_content(_type, _content, _config), do: nil
+
+  defp option_label(config, key) do
+    options = Map.get(config || %{}, "options") || []
+
+    case Enum.find(options, &(is_map(&1) and &1["key"] == key)) do
+      %{"value" => value} when is_binary(value) -> present(HtmlUtils.strip_and_truncate(value, 120))
+      _ -> if(is_binary(key), do: present(key))
+    end
+  end
+
+  defp node_preview_value(%{type: "dialogue", data: data}) when is_map(data) do
+    case data["text"] do
+      text when is_binary(text) -> present(HtmlUtils.strip_and_truncate(text, 120))
+      _ -> nil
+    end
+  end
+
+  defp node_preview_value(_node), do: nil
+
+  defp present(nil), do: nil
+  defp present(""), do: nil
+  defp present(value), do: value
 
   defp normalize_type(type) when is_atom(type), do: Atom.to_string(type)
   defp normalize_type(type), do: type

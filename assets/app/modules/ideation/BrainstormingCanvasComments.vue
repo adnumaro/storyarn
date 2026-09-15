@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import CommentPin from "@components/comments/CommentPin.vue";
+import CommentPinPreview from "@components/comments/CommentPinPreview.vue";
+import type { CommentUiConfig } from "@components/comments/types";
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
@@ -19,6 +21,12 @@ const { state, view, epoch, sessionId, baseUrl, notes, groups } = defineProps<{
 }>();
 const emit = defineEmits<{ focus: [point: CommentPosition] }>();
 const live = useLive();
+const previewUi: CommentUiConfig = {
+  domScope: "brainstorming",
+  i18nPrefix: "brainstormingComments",
+  canvasSourceType: "ideation_session",
+  selectedSourceFallbackKey: "idea_label",
+};
 const popup = ref<HTMLElement | null>(null);
 const popupSize = ref({ width: 360, height: 400 });
 const hoverId = ref<number | null>(null);
@@ -294,6 +302,8 @@ onUnmounted(() => {
       :key="pin.thread.id"
       :movable="state.canComment"
       :selected="state.open && state.thread?.id === pin.thread.id"
+      :unread="pin.thread.unread === true"
+      :count="Math.max(0, pin.thread.message_count - 1)"
       :style="{ left: `${pin.point.x}px`, top: `${pin.point.y}px` }"
       :aria-label="
         $t('brainstormingComments.pin_label', { author: pin.thread.author.display_name })
@@ -336,18 +346,17 @@ onUnmounted(() => {
     <p id="brainstorming-comment-move-help" class="sr-only">
       {{ $t("brainstormingComments.keyboard_move_hint") }}
     </p>
-    <div
+    <CommentPinPreview
       v-if="hovered && !state.open && !drag"
       id="brainstorming-comment-preview"
-      class="absolute max-w-64 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg"
+      class="absolute w-64"
+      :thread="hovered.thread"
+      :ui="previewUi"
       :style="{
-        left: `${commentPopoverPosition(hovered.point, view, { width: 256, height: 100 }).x}px`,
-        top: `${commentPopoverPosition(hovered.point, view, { width: 256, height: 100 }).y}px`,
+        left: `${commentPopoverPosition(hovered.point, view, { width: 256, height: 120 }).x}px`,
+        top: `${commentPopoverPosition(hovered.point, view, { width: 256, height: 120 }).y}px`,
       }"
-    >
-      <p class="font-medium">{{ hovered.thread.author.display_name }}</p>
-      <p class="mt-1 line-clamp-3">{{ hovered.thread.preview }}</p>
-    </div>
+    />
     <div
       v-if="state.open"
       id="brainstorming-comment-popover"

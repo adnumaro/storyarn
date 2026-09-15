@@ -79,7 +79,7 @@ describe("Brainstorming comments boundary", () => {
     expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("Why this ending?");
     await wrapper.get("form").trigger("submit");
     expect(pushEvent.mock.calls[1][1].client_request_id).toBe(request.client_request_id);
-    expect(wrapper.text()).toContain("Mention people");
+    expect(wrapper.find('button[aria-label="Mention people"]').exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -97,7 +97,7 @@ describe("Brainstorming comments boundary", () => {
     const { wrapper, pushEvent } = await panel({ thread, groupId: 22, canComment: false });
     expect(pushEvent).not.toHaveBeenCalled();
     expect(wrapper.find("textarea").exists()).toBe(false);
-    await wrapper.get("#brainstorming-comment-follow").trigger("click");
+    await wrapper.get("#brainstorming-comment-follow-toggle").trigger("click");
     expect(pushEvent.mock.calls[0][0]).toBe("comments_follow");
     expect(pushEvent.mock.calls[0][1]).toMatchObject({
       thread_id: 7,
@@ -108,27 +108,31 @@ describe("Brainstorming comments boundary", () => {
     });
     pushEvent.mock.calls[0][2]({ ok: true });
     await wrapper.vm.$nextTick();
-    await wrapper.get("#brainstorming-comment-read").trigger("click");
+    await wrapper.get("#brainstorming-comment-read-toggle").trigger("click");
     expect(pushEvent.mock.calls[1][0]).toBe("comments_read");
     expect(pushEvent.mock.calls[1][1]).toMatchObject({ thread_id: 7, message_id: 45 });
     pushEvent.mock.calls[1][2]({ ok: false });
     await wrapper.vm.$nextTick();
     expect(wrapper.get("[role='alert']").text()).toContain("Could not update");
-    expect(wrapper.get("#brainstorming-comment-follow").attributes("disabled")).toBeUndefined();
+    expect(
+      wrapper.get("#brainstorming-comment-follow-toggle").attributes("disabled"),
+    ).toBeUndefined();
     wrapper.unmount();
   });
 
   it("ignores a late personal-state reply after changing the discussion context", async () => {
-    const { wrapper, pushEvent } = await panel({ thread });
-    await wrapper.get("#brainstorming-comment-follow").trigger("click");
+    const { wrapper, pushEvent } = await panel({ thread, canComment: false });
+    await wrapper.get("#brainstorming-comment-follow-toggle").trigger("click");
     const late = pushEvent.mock.calls[0][2];
     await wrapper.setProps({
-      state: { ...state, thread: { ...thread, id: 8 }, context: "context-2" },
+      state: { ...state, thread: { ...thread, id: 8 }, context: "context-2", canComment: false },
     });
     late({ ok: false });
     await wrapper.vm.$nextTick();
     expect(wrapper.find("[role='alert']").exists()).toBe(false);
-    expect(wrapper.get("#brainstorming-comment-follow").attributes("disabled")).toBeUndefined();
+    expect(
+      wrapper.get("#brainstorming-comment-follow-toggle").attributes("disabled"),
+    ).toBeUndefined();
     wrapper.unmount();
   });
 });

@@ -1790,6 +1790,16 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
   end
 
+  def handle_info({:ideation_comment_participation_changed, project_id, scene_id, _thread_id}, socket) do
+    %{project: project, scene: scene, compact: compact} = socket.assigns
+
+    if project.id == project_id && scene && scene.id == scene_id && !compact do
+      {:noreply, CommentHandlers.refresh(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Shell topic messages (ProjectLayout + SceneSidebarLive)
   # ---------------------------------------------------------------------------

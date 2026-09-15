@@ -1522,6 +1522,16 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
+  def handle_info({:ideation_comment_participation_changed, project_id, flow_id, _thread_id}, socket) do
+    %{project: project, flow: flow, loading: loading} = socket.assigns
+
+    if project.id == project_id && flow && flow.id == flow_id && !loading do
+      {:noreply, CommentHandlers.refresh(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
   # Health is recomputed from this flow's own data on every edit, like sheets
   # and scenes. A cross-flow mutation can change this flow's stale-reference

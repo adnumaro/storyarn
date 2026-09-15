@@ -24,7 +24,7 @@ function composer(persistReplyDraft = true) {
       parentId: 21,
       members: [],
       ui: { ...ui, persistReplyDraft },
-      draftStorageKey: key,
+      storage: { key },
     },
     global: {
       stubs: { Popover: passthrough, PopoverContent: passthrough, PopoverTrigger: passthrough },

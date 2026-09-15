@@ -6,6 +6,7 @@ defmodule Storyarn.Projects.Comments.Projections.SheetBlockRecord do
     field(:sheet_id, :integer)
     field(:type, :string)
     field(:config, :map)
+    field(:value, :map)
     field(:variable_name, :string)
     field(:column_group_id, Ecto.UUID)
     field(:deleted_at, :utc_datetime)

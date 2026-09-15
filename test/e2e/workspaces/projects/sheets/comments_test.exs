@@ -223,7 +223,7 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
     |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)
     |> refute_has("[data-sheet-comment-row='#{group_id}']")
     |> assert_has("#sheet-comment-context", text: "Row of 3 blocks")
-    |> assert_has("#sheet-comment-context", text: "Context unavailable")
+    |> assert_has("#sheet-comment-context", text: "Context removed")
     |> fill_in("#sheet-comment-body", "Reply", with: reply)
     |> click("#sheet-comment-send")
     |> assert_has("#sheet-comment-popover", text: reply)
@@ -288,7 +288,7 @@ defmodule StoryarnWeb.E2E.SheetCommentsTest do
     |> visit(sheet_path(project, child) <> "?thread=#{thread_id}")
     |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)
     |> assert_has("#sheet-comment-context", text: "Shared motivation")
-    |> assert_has("#sheet-comment-context", text: "Context unavailable")
+    |> assert_has("#sheet-comment-context", text: "Context removed")
     |> assert_has("#sheet-comment-popover", text: feedback)
 
     assert {:ok, retained} = Projects.get_comment_thread(scope, project.id, thread_id)

@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   alias StoryarnWeb.Helpers.Authorize
 
   @mutations ~w(create reply set_status mode place move)
+  @personal ~w(follow read)
 
   def init(socket) do
     socket
@@ -30,7 +31,16 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
       )
     end
 
-    refresh(socket)
+    socket |> subscribe_participation() |> refresh()
+  end
+
+  defp subscribe_participation(socket) do
+    if connected?(socket) and socket.assigns[:comment_participation_subscribed] != true do
+      Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
+      assign(socket, :comment_participation_subscribed, true)
+    else
+      socket
+    end
   end
 
   def unload(socket) do
@@ -74,6 +84,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
       socket,
       :edit_content,
       &mutate(action, params, &1),
+      fn current, _reason -> failure(clear(current), :unauthorized) end
+    )
+  end
+
+  def handle(action, params, socket) when action in @personal do
+    Authorize.with_authorization(
+      socket,
+      :manage_comment_state,
+      &personal_state(action, params, &1),
       fn current, _reason -> failure(clear(current), :unauthorized) end
     )
   end
@@ -381,6 +400,26 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   end
 
   defp positive_id(_id), do: nil
+
+  # Following and read marks are personal state; the thread stays open with
+  # the refreshed participation flags.
+  defp personal_state(action, params, socket) do
+    thread_id = positive_id(params["thread_id"])
+    %{current_scope: scope, project: project} = socket.assigns
+
+    with {:ok, _detail} <- current_sheet_thread(socket, thread_id),
+         {:ok, _thread} <- personal_update(action, scope, project.id, thread_id, params) do
+      {:reply, %{ok: true}, refresh(socket)}
+    else
+      _error -> failure(refresh(socket), :not_found)
+    end
+  end
+
+  defp personal_update("follow", scope, project_id, thread_id, params),
+    do: Projects.set_ideation_comment_following(scope, project_id, thread_id, params["following"])
+
+  defp personal_update("read", scope, project_id, thread_id, params),
+    do: Projects.mark_ideation_comment_read(scope, project_id, thread_id, positive_id(params["message_id"]))
 
   defp put_state(socket, attrs), do: assign(socket, :comments, Map.merge(socket.assigns.comments, attrs))
 

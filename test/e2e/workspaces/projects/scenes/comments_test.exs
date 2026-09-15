@@ -258,10 +258,10 @@ defmodule StoryarnWeb.E2E.SceneCommentsTest do
     session
     |> assert_scene_pin_visibility(target.label, false)
     |> assert_has("#scene-comment-message-#{created.thread.root_message_id}")
-    |> assert_has("#scene-comment-context", text: "unavailable")
+    |> assert_has("#scene-comment-context", text: "Context removed")
     |> reload_page()
     |> assert_has("#{pin}[aria-expanded=true]", timeout: 20_000)
-    |> assert_has("#scene-comment-context", text: "unavailable")
+    |> assert_has("#scene-comment-context", text: "Context removed")
 
     assert {:ok, [orphaned]} = Projects.list_scene_comment_pins(scope, project.id, scene.id)
     assert orphaned.id == created.thread.id

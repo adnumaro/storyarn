@@ -4,14 +4,24 @@ import CommentPopover from "@components/comments/CommentPopover.vue";
 import type { FlowCommentsPanelState } from "../../../types/comments";
 import { adaptFlowCommentsState, flowCommentUi } from "../../lib/flowCommentUi";
 
-const { state, draftStorageKey = null } = defineProps<{
+const {
+  state,
+  draftStorageKey = null,
+  currentUserId = null,
+} = defineProps<{
   state: FlowCommentsPanelState;
   draftStorageKey?: string | null;
+  currentUserId?: number | null;
 }>();
 
 const sharedState = computed(() => adaptFlowCommentsState(state));
 </script>
 
 <template>
-  <CommentPopover :state="sharedState" :ui="flowCommentUi" :draft-storage-key="draftStorageKey" />
+  <CommentPopover
+    :state="sharedState"
+    :ui="flowCommentUi"
+    :draft-storage-key="draftStorageKey"
+    :current-user-id="currentUserId"
+  />
 </template>

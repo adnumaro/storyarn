@@ -21,6 +21,8 @@ const state: HubState = {
     tool: "",
     status: "all",
     personal: "all",
+    unread: "",
+    following: "",
     search: "",
   },
   selectedProjectId: null,

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { AtSign, LoaderCircle, Send, X } from "@lucide/vue";
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import UserAvatar from "@components/UserAvatar.vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
@@ -22,50 +23,76 @@ interface Draft {
   error: string | null;
 }
 
+type Member = CommentMember & { id: number };
+
+/** Where an unsent text lives: the draft identity and the browser storage key. */
+export interface CommentComposerStorage {
+  draftId?: string | null;
+  key?: string | null;
+}
+
+/** Whom the composer answers and as whom. */
+export interface CommentComposerAnswering {
+  /** The message being answered when it is not the root; shown as a cancelable chip. */
+  to?: CommentMember | null;
+  /** A restored reply target whose message is not loaded yet. */
+  previous?: boolean;
+  /** The current user's name, drawn as the avatar beside the reply field. */
+  authorName?: string | null;
+}
+
 const {
   sourceId = null,
   threadId = null,
   parentId = null,
   position = null,
   context,
-  draftId = null,
-  draftStorageKey = null,
+  storage = {},
   members,
   disabled = false,
   ui,
+  answering = {},
 } = defineProps<{
   sourceId?: number | null;
   threadId?: number | null;
   parentId?: number | null;
   position?: CommentPosition | null;
   context?: CommentContextReference | null;
-  draftId?: string | null;
-  draftStorageKey?: string | null;
+  storage?: CommentComposerStorage;
   members: CommentMember[];
   disabled?: boolean;
   ui: CommentUiConfig;
+  answering?: CommentComposerAnswering;
 }>();
 
-const emit = defineEmits<{ sent: [] }>();
+const emit = defineEmits<{ sent: []; cancelReply: [] }>();
 const live = useLive();
 const { t } = useI18n();
 const drafts = reactive(new Map<string, Draft>());
-const memberSearch = ref("");
-const mentionOpen = ref(false);
+const textarea = ref<HTMLTextAreaElement | null>(null);
+const focused = ref(false);
+const mentionQuery = ref<string | null>(null);
+const mentionIndex = ref(0);
 const clearingDrafts = new WeakSet<Draft>();
 const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
 const domId = (name: string) => `${ui.domScope}-comment-${name}`;
+const isReply = computed(() => threadId != null);
+const draftId = computed(() => storage.draftId ?? null);
+const draftStorageKey = computed(() => storage.key ?? null);
+const replyTo = computed(() => answering.to ?? null);
+const replyToPrevious = computed(() => answering.previous === true);
+const authorName = computed(() => answering.authorName ?? null);
 const storageKey = computed(() => {
-  if (threadId == null) return draftStorageKey;
-  return ui.persistReplyDraft && draftStorageKey
-    ? `${draftStorageKey}:thread:${threadId}:parent:${parentId}`
+  if (threadId == null) return draftStorageKey.value;
+  return ui.persistReplyDraft && draftStorageKey.value
+    ? `${draftStorageKey.value}:thread:${threadId}:parent:${parentId}`
     : null;
 });
 
 const draftKey = computed(() => {
   if (storageKey.value) return `stored:${storageKey.value}`;
   if (threadId != null) return `thread:${threadId}:parent:${parentId}`;
-  if (draftId) return `draft:${draftId}`;
+  if (draftId.value) return `draft:${draftId.value}`;
   if (sourceId != null) return `source:${sourceId}`;
   if (position) return `canvas:${position.x}:${position.y}`;
   return "canvas:unplaced";
@@ -104,16 +131,30 @@ watch(
   },
   { flush: "sync" },
 );
+
+/** A reply field stays one line until it is focused or holds text. */
+const expanded = computed(
+  () =>
+    !isReply.value ||
+    focused.value ||
+    draft.value.body.length > 0 ||
+    replyTo.value != null ||
+    replyToPrevious.value,
+);
 const availableMembers = computed(() =>
-  members.filter((member): member is CommentMember & { id: number } => member.id != null),
+  members.filter((member): member is Member => member.id != null),
 );
-const selectedMembers = computed(() =>
-  availableMembers.value.filter((member) => draft.value.mentionIds.includes(member.id)),
-);
-const filteredMembers = computed(() =>
-  availableMembers.value.filter((member) =>
-    member.display_name.toLocaleLowerCase().includes(memberSearch.value.toLocaleLowerCase()),
-  ),
+const mentionCandidates = computed(() => {
+  const query = (mentionQuery.value ?? "").toLocaleLowerCase();
+  return availableMembers.value.filter((member) =>
+    member.display_name.toLocaleLowerCase().includes(query),
+  );
+});
+const mentionOpen = computed(
+  () =>
+    ui.mentionsEnabled !== false &&
+    mentionQuery.value != null &&
+    mentionCandidates.value.length > 0,
 );
 const canSend = computed(
   () =>
@@ -123,14 +164,98 @@ const canSend = computed(
     (threadId != null ? parentId != null : sourceId != null || position != null),
 );
 
-function toggleMention(memberId: number) {
+watch(mentionCandidates, () => (mentionIndex.value = 0));
+
+/** Members whose `@Name` is still present in the text; typing over a name unmentions them. */
+function syncMentionIds() {
   const current = draft.value;
-  if (current.pending || disabled) return;
-  if (current.mentionIds.includes(memberId)) {
-    current.mentionIds = current.mentionIds.filter((id) => id !== memberId);
-  } else if (current.mentionIds.length < 50) {
-    current.mentionIds.push(memberId);
+  current.mentionIds = current.mentionIds.filter((id) => {
+    const member = availableMembers.value.find((candidate) => candidate.id === id);
+    return member != null && current.body.includes(`@${member.display_name}`);
+  });
+}
+
+function detectMentionQuery() {
+  const field = textarea.value;
+  if (!field) return;
+  const before = field.value.slice(0, field.selectionStart ?? field.value.length);
+  const match = /(?:^|\s)@([^\s@]*)$/.exec(before);
+  mentionQuery.value = match ? match[1] : null;
+}
+
+function onInput() {
+  syncMentionIds();
+  detectMentionQuery();
+}
+
+function openMentionPicker() {
+  if (disabled || draft.value.pending || !availableMembers.value.length) return;
+  const field = textarea.value;
+  if (!field) return;
+  field.focus();
+  const caret = field.selectionStart ?? field.value.length;
+  const before = field.value.slice(0, caret);
+  const needsSpace = before.length > 0 && !/\s$/.test(before);
+  const insertion = `${needsSpace ? " " : ""}@`;
+  draft.value.body = `${before}${insertion}${field.value.slice(caret)}`;
+  nextTick(() => {
+    const next = caret + insertion.length;
+    field.setSelectionRange(next, next);
+    mentionQuery.value = "";
+  });
+}
+
+function insertMention(member: Member) {
+  const field = textarea.value;
+  const current = draft.value;
+  if (!field) return;
+  const caret = field.selectionStart ?? current.body.length;
+  const before = current.body.slice(0, caret);
+  const start = before.search(/(?:^|\s)@[^\s@]*$/);
+  const head = start === -1 ? before : before.slice(0, start) + (start > 0 ? " " : "");
+  const insertion = `@${member.display_name} `;
+  current.body = `${head}${insertion}${current.body.slice(caret)}`;
+  if (!current.mentionIds.includes(member.id) && current.mentionIds.length < 50) {
+    current.mentionIds.push(member.id);
   }
+  mentionQuery.value = null;
+  nextTick(() => {
+    const next = head.length + insertion.length;
+    field.focus();
+    field.setSelectionRange(next, next);
+  });
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+    event.preventDefault();
+    submit();
+    return;
+  }
+  if (!mentionOpen.value) return;
+  const count = mentionCandidates.value.length;
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    mentionIndex.value = (mentionIndex.value + 1) % count;
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    mentionIndex.value = (mentionIndex.value - 1 + count) % count;
+  } else if (event.key === "Enter" || event.key === "Tab") {
+    event.preventDefault();
+    insertMention(mentionCandidates.value[mentionIndex.value]);
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    mentionQuery.value = null;
+  }
+}
+
+function onBlur() {
+  focused.value = false;
+  // Let a click on a mention candidate land before the list disappears.
+  setTimeout(() => {
+    if (!focused.value) mentionQuery.value = null;
+  }, 150);
 }
 
 function ensureRequestIdentity(current: Draft, fingerprint: string, storageKey: string | null) {
@@ -173,15 +298,7 @@ function clearSubmittedDraft(
     clearCommentDraft(key);
 }
 
-function submit() {
-  if (!canSend.value) return;
-  const current = draft.value;
-  const submittedStorageKey = storageKey.value;
-  const storedMentionIds = JSON.stringify(current.mentionIds);
-  const body = current.body.trim();
-  const mentionIds = [
-    ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
-  ].sort((left, right) => left - right);
+function buildPayload(current: Draft, body: string, mentionIds: number[]) {
   const createPosition = threadId == null && position ? { x: position.x, y: position.y } : null;
   const createContext = createContextReference();
   const fingerprint = JSON.stringify({
@@ -194,7 +311,7 @@ function submit() {
     body,
     mentionIds,
   });
-  ensureRequestIdentity(current, fingerprint, submittedStorageKey);
+  ensureRequestIdentity(current, fingerprint, storageKey.value);
   const createTarget = ui.createSourceKey ? { [ui.createSourceKey]: sourceId } : {};
   const payload = {
     body,
@@ -208,8 +325,22 @@ function submit() {
         }
       : { thread_id: threadId, parent_id: parentId }),
   };
+  return { payload, fingerprint };
+}
+
+function submit() {
+  if (!canSend.value) return;
+  const current = draft.value;
+  const submittedStorageKey = storageKey.value;
+  const storedMentionIds = JSON.stringify(current.mentionIds);
+  const body = current.body.trim();
+  const mentionIds = [
+    ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
+  ].sort((left, right) => left - right);
+  const { payload, fingerprint } = buildPayload(current, body, mentionIds);
   current.pending = true;
   current.error = null;
+  mentionQuery.value = null;
   live.pushEvent(
     threadId == null ? "comments_create" : "comments_reply",
     payload,
@@ -244,77 +375,133 @@ function submit() {
 </script>
 
 <template>
-  <form class="space-y-2" :data-testid="`${ui.domScope}-comment-composer`" @submit.prevent="submit">
-    <label :for="domId('body')" class="text-xs font-medium">{{
-      threadId == null ? $t(translationKey("new_thread")) : $t(translationKey("reply"))
-    }}</label>
-    <textarea
-      :id="domId('body')"
-      v-model="draft.body"
-      class="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-      :placeholder="$t(translationKey('placeholder'))"
-      :disabled="disabled || draft.pending"
-      maxlength="10000"
-      @keydown.ctrl.enter.prevent="submit"
-      @keydown.meta.enter.prevent="submit"
+  <form
+    class="flex items-start gap-2"
+    :data-testid="`${ui.domScope}-comment-composer`"
+    @submit.prevent="submit"
+  >
+    <UserAvatar
+      v-if="isReply && authorName"
+      :display-name="authorName"
+      size="xs"
+      class="mt-1.5 shrink-0"
     />
-    <div v-if="selectedMembers.length" class="flex flex-wrap gap-1" aria-live="polite">
-      <button
-        v-for="member in selectedMembers"
-        :key="member.id"
-        type="button"
-        class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs text-primary"
-        :disabled="disabled || draft.pending"
-        :aria-label="$t(translationKey('remove_mention'), { name: member.display_name })"
-        @click="toggleMention(member.id)"
-      >
-        <AtSign class="size-3" />{{ member.display_name }}<X class="size-3" />
-      </button>
-    </div>
-    <p v-if="draft.error" role="alert" class="text-xs text-destructive">{{ draft.error }}</p>
-    <div class="flex items-center justify-between gap-2">
-      <Popover v-if="ui.mentionsEnabled !== false" v-model:open="mentionOpen">
-        <PopoverTrigger as-child>
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            :disabled="disabled || draft.pending || !members.length"
-            class="gap-1.5 text-xs"
-            ><AtSign class="size-3.5" />{{ $t(translationKey("mention")) }}</Button
+    <!-- The composer box anchors the mention list; `open` is controlled, so the
+         trigger's own click toggle is ignored. -->
+    <Popover :open="mentionOpen">
+      <PopoverTrigger as-child>
+        <div
+          class="min-w-0 flex-1 rounded-lg border bg-background transition-[border-color,box-shadow]"
+          :class="
+            expanded && focused
+              ? 'border-ring ring-[3px] ring-ring/20'
+              : 'border-input hover:border-ring/60'
+          "
+        >
+          <div
+            v-if="replyTo || replyToPrevious"
+            class="flex items-center gap-2 border-b border-border px-2.5 py-1 text-[11px] text-muted-foreground"
           >
-        </PopoverTrigger>
-        <PopoverContent class="w-64 p-2" align="start">
-          <input
-            v-model="memberSearch"
-            :aria-label="$t(translationKey('search_people'))"
-            :placeholder="$t(translationKey('search_people'))"
-            class="mb-2 w-full rounded-md border border-input px-2 py-1.5 text-sm"
-          />
-          <div class="max-h-48 space-y-0.5 overflow-y-auto">
+            <span class="min-w-0 flex-1 truncate">{{
+              replyTo
+                ? $t(translationKey("replying_to"), { name: replyTo.display_name })
+                : $t(translationKey("reply_to_previous"))
+            }}</span>
             <button
-              v-for="member in filteredMembers"
-              :key="member.id"
               type="button"
-              class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
-              :class="{ 'bg-accent': draft.mentionIds.includes(member.id) }"
-              :aria-pressed="draft.mentionIds.includes(member.id)"
-              @click="toggleMention(member.id)"
+              class="shrink-0 rounded p-0.5 hover:text-foreground"
+              :aria-label="$t(translationKey('cancel_reply'))"
+              @click="emit('cancelReply')"
             >
-              <AtSign class="size-3.5 text-muted-foreground" />{{ member.display_name }}
+              <X class="size-3" />
             </button>
-            <p v-if="!filteredMembers.length" class="px-2 py-2 text-xs text-muted-foreground">
-              {{ $t(translationKey("no_people")) }}
-            </p>
           </div>
-        </PopoverContent>
-      </Popover>
-      <Button :id="domId('send')" type="submit" size="sm" class="gap-1.5" :disabled="!canSend"
-        ><LoaderCircle v-if="draft.pending" class="size-3.5 animate-spin" /><Send
-          v-else
-          class="size-3.5"
-        />{{ $t(translationKey("send")) }}</Button
+          <label :for="domId('body')" class="sr-only">{{
+            isReply ? $t(translationKey("reply")) : $t(translationKey("new_thread"))
+          }}</label>
+          <textarea
+            :id="domId('body')"
+            ref="textarea"
+            v-model="draft.body"
+            class="block w-full resize-none bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50"
+            :class="expanded ? 'min-h-16 py-2' : 'h-8 py-1.5 leading-5 md:h-8'"
+            :rows="expanded ? 2 : 1"
+            :placeholder="
+              isReply ? $t(translationKey('reply_placeholder')) : $t(translationKey('placeholder'))
+            "
+            :disabled="disabled || draft.pending"
+            maxlength="10000"
+            @focus="focused = true"
+            @blur="onBlur"
+            @input="onInput"
+            @click="detectMentionQuery"
+            @keyup.left.right="detectMentionQuery"
+            @keydown="onKeydown"
+          />
+          <p v-if="draft.error" role="alert" class="px-2.5 pb-1 text-xs text-destructive">
+            {{ draft.error }}
+          </p>
+          <div
+            v-if="expanded"
+            class="flex items-center gap-2 px-1.5 pb-1.5 pl-2.5 text-[11px] text-muted-foreground"
+          >
+            <Button
+              v-if="ui.mentionsEnabled !== false"
+              variant="ghost"
+              size="icon-xs"
+              type="button"
+              class="-ml-1 size-5 text-muted-foreground"
+              :aria-label="$t(translationKey('mention'))"
+              :title="$t(translationKey('mention'))"
+              :disabled="disabled || draft.pending || !availableMembers.length"
+              @mousedown.prevent
+              @click="openMentionPicker"
+              ><AtSign class="size-3"
+            /></Button>
+            <span class="hidden sm:inline">{{ $t(translationKey("mention_hint")) }}</span>
+            <span class="hidden sm:inline">{{ $t(translationKey("send_hint")) }}</span>
+            <span class="flex-1" />
+            <Button
+              :id="domId('send')"
+              type="submit"
+              size="xs"
+              class="gap-1"
+              :disabled="!canSend"
+              @mousedown.prevent
+              ><LoaderCircle v-if="draft.pending" class="size-3 animate-spin" /><Send
+                v-else
+                class="size-3"
+              />{{ $t(translationKey("send")) }}</Button
+            >
+          </div>
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        side="bottom"
+        :side-offset="4"
+        class="w-64 p-1"
+        :aria-label="$t(translationKey('search_people'))"
+        @open-auto-focus.prevent
+        @close-auto-focus.prevent
       >
-    </div>
+        <ul role="listbox" class="max-h-48 overflow-y-auto">
+          <li
+            v-for="(member, index) in mentionCandidates"
+            :key="member.id"
+            role="option"
+            :aria-selected="index === mentionIndex"
+            class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm"
+            :class="{ 'bg-accent': index === mentionIndex }"
+            @mousedown.prevent
+            @mouseenter="mentionIndex = index"
+            @click="insertMention(member)"
+          >
+            <UserAvatar :display-name="member.display_name" size="xs" />
+            <span class="truncate">{{ member.display_name }}</span>
+          </li>
+        </ul>
+      </PopoverContent>
+    </Popover>
   </form>
 </template>

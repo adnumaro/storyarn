@@ -106,11 +106,22 @@ defmodule Storyarn.Projects.CommentConversationsTest do
                second.thread.revision
              )
 
-    assert {:ok, %{threads: [resolved], counts: %{all: 3, open: 2, resolved: 1}}} =
+    assert {:ok,
+            %{
+              threads: [resolved],
+              counts: %{all: 1, open: 2, resolved: 1, tools: %{"flow" => 1, "sheet" => 0, "scene" => 0}}
+            }} =
              Projects.list_comment_conversations(ctx.peer, status: "resolved")
 
     assert resolved.id == second.thread.id
-    assert {:ok, %{threads: [flow], counts: %{all: 1}}} = Projects.list_comment_conversations(ctx.peer, tool: "flow")
+
+    assert {:ok,
+            %{
+              threads: [flow],
+              counts: %{all: 3, open: 0, resolved: 1, tools: %{"flow" => 1, "sheet" => 1, "scene" => 1}}
+            }} =
+             Projects.list_comment_conversations(ctx.peer, tool: "flow")
+
     assert flow.id == second.thread.id
   end
 
@@ -125,15 +136,19 @@ defmodule Storyarn.Projects.CommentConversationsTest do
                client_request_id: Ecto.UUID.generate()
              })
 
-    assert {:ok, %{threads: [participated], counts: %{all: 1}}} =
+    assert {:ok, %{threads: [participated], counts: %{all: 1, participated: 1, mentioned: 1}}} =
              Projects.list_comment_conversations(ctx.peer, participated: true, limit: 1)
 
     assert participated.id == other.thread.id
 
-    assert {:ok, %{threads: [thread], counts: %{all: 1}}} =
+    assert {:ok, %{threads: [thread], counts: %{all: 1, mentioned: 1, participated: 1}}} =
              Projects.list_comment_conversations(ctx.peer, mentioned: true, limit: 1)
 
     assert thread.id == mentioned.thread.id
+
+    assert {:ok, %{threads: [], counts: %{all: 0, mentioned: 0, participated: 0, unread: 0, following: 0}}} =
+             Projects.list_comment_conversations(ctx.peer, following: true)
+
     assert {:ok, %{threads: [], counts: %{all: 0}}} = Projects.list_comment_conversations(ctx.viewer, mentioned: true)
   end
 
@@ -188,7 +203,7 @@ defmodule Storyarn.Projects.CommentConversationsTest do
     assert {:ok, %{threads: [], counts: %{all: 0}}} =
              Projects.list_comment_conversations(ctx.peer, search: "lighthouse")
 
-    assert {:ok, %{threads: [], counts: %{all: 0}}} =
+    assert {:ok, %{threads: [], counts: %{tools: %{"brainstorming" => 0}}}} =
              Projects.list_comment_conversations(ctx.peer, tool: "brainstorming")
   end
 
@@ -285,6 +300,17 @@ defmodule Storyarn.Projects.CommentConversationsTest do
     assert source_missing.id == detail.thread.id
     assert source_missing.source.status == "unavailable"
     assert is_nil(source_missing.destination)
+
+    assert source_missing.unread
+    root_id = hd(detail.messages).id
+    assert {:ok, _} = Projects.mark_ideation_comment_read(ctx.peer, ctx.project.id, detail.thread.id, root_id)
+    assert {:ok, _} = Projects.set_ideation_comment_following(ctx.peer, ctx.project.id, detail.thread.id, true)
+
+    assert {:ok, %{threads: [read], counts: %{unread: 0, following: 1}}} =
+             Projects.list_comment_conversations(ctx.peer)
+
+    refute read.unread
+    assert read.following
   end
 
   test "final authorization recheck removes canonical previews and counts after mid-read revocation", ctx do
@@ -397,11 +423,12 @@ defmodule Storyarn.Projects.CommentConversationsTest do
     {counted, queries} = counted_page(ctx.peer, opts)
     {uncounted, fewer_queries} = counted_page(ctx.peer, Keyword.put(opts, :include_counts, false))
 
-    assert counted.counts == %{all: 3, open: 3, resolved: 0}
+    assert %{all: 3, open: 3, resolved: 0, tools: %{"sheet" => 3}, unread: 3} = counted.counts
     assert uncounted.counts == nil
     assert uncounted.threads == counted.threads
     assert uncounted.next_cursor == counted.next_cursor
-    assert fewer_queries == queries - 1
+    # Facet counts take two queries: one grouped by tool and status, one for the personal toggles.
+    assert fewer_queries == queries - 2
   end
 
   defp counted_page(scope, opts \\ []) do

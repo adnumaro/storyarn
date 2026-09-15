@@ -1,0 +1,45 @@
+{
+  "comments": {
+    "kinds": {
+      "text": "bloque de texto",
+      "rich_text": "bloque de texto enriquecido",
+      "number": "bloque numérico",
+      "boolean": "bloque booleano",
+      "date": "bloque de fecha",
+      "select": "bloque de selección",
+      "multi_select": "bloque de selección múltiple",
+      "table": "bloque de tabla",
+      "reference": "bloque de referencia",
+      "gallery": "bloque de galería",
+      "cover": "portada",
+      "header": "cabecera",
+      "title": "título",
+      "row": "fila de bloques",
+      "dialogue": "nodo de diálogo",
+      "entry": "nodo entry",
+      "exit": "nodo exit",
+      "condition": "nodo de condición",
+      "instruction": "nodo de instrucción",
+      "hub": "nodo hub",
+      "jump": "nodo jump",
+      "subflow": "nodo subflow",
+      "annotation": "anotación",
+      "sequence": "sequence",
+      "pin": "pin",
+      "zone": "zona",
+      "connection": "conexión",
+      "idea": "idea",
+      "group": "grupo"
+    },
+    "values": {
+      "yes": "Sí",
+      "no": "No"
+    },
+    "tools": {
+      "sheet": "Fichas",
+      "flow": "Flujos",
+      "scene": "Escenas",
+      "brainstorming": "Brainstorming"
+    }
+  }
+}

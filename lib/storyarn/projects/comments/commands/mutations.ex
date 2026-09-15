@@ -473,8 +473,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
     })
     |> Repo.update!()
 
-    followers =
-      if Queries.ideation?(thread), do: Storyarn.Projects.Comments.ParticipationState.followers(thread.id), else: []
+    followers = Storyarn.Projects.Comments.ParticipationState.followers(thread.id)
 
     recipients =
       Enum.map(followers, &%{user_id: &1, kind: "comment_followed"}) ++

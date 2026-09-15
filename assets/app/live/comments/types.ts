@@ -9,13 +9,29 @@ export interface HubThread extends CommentThread {
   workspace_slug: string;
 }
 
+export type HubToggle = "" | "1";
+
 export interface HubFilters {
   workspace_id: string;
   project_id: string;
   tool: string;
   status: "all" | "open" | "resolved";
   personal: "all" | "participated" | "mentioned";
+  unread: HubToggle;
+  following: HubToggle;
   search: string;
+}
+
+/** Facet counts for the current scope and search: what each chip would show if selected. */
+export interface HubCounts {
+  all: number;
+  open: number;
+  resolved: number;
+  tools: Record<string, number>;
+  unread: number;
+  mentioned: number;
+  participated: number;
+  following: number;
 }
 
 export interface HubWorkspaceOption {
@@ -29,8 +45,8 @@ export interface HubProjectOption extends HubWorkspaceOption {
 
 export interface HubState {
   threads: HubThread[];
-  counts?: { all: number; open: number; resolved: number };
-  nextCursor: { at: string; id: number } | null;
+  counts?: HubCounts;
+  nextCursor: { prio?: number; at: string; id: number } | null;
   filters: HubFilters;
   workspaces: HubWorkspaceOption[];
   projects: HubProjectOption[];

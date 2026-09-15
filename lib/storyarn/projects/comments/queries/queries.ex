@@ -223,6 +223,19 @@ defmodule Storyarn.Projects.Comments.Queries do
     |> Map.new()
   end
 
+  def last_messages([]), do: %{}
+
+  def last_messages(thread_ids) do
+    from(m in Message,
+      where: m.thread_id in ^thread_ids,
+      distinct: m.thread_id,
+      order_by: [asc: m.thread_id, desc: m.id],
+      select: {m.thread_id, m}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
   def message(project_id, message_id) do
     Repo.one(from(m in Message, where: m.id == ^message_id and m.project_id == ^project_id))
   end

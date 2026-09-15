@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CommentPin from "@components/comments/CommentPin.vue";
+import CommentPinPreview from "@components/comments/CommentPinPreview.vue";
 import { Repeat2 } from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import type { AreaPlugin } from "rete-area-plugin";
@@ -8,6 +9,7 @@ import type { FlowCommentsPanelState, FlowCommentThread } from "../../../types/c
 import { useLive } from "@shared/composables/useLive";
 import { commentPopoverPosition } from "../../lib/comment-geometry";
 import { useCanvasComments } from "../../composables/useCanvasComments";
+import { flowCommentUi } from "../../lib/flowCommentUi";
 import FlowCommentPopover from "../panels/FlowCommentPopover.vue";
 
 const {
@@ -17,6 +19,7 @@ const {
   commentPins,
   focusThreadId,
   draftStorageKey = null,
+  currentUserId = null,
 } = defineProps<{
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   container: HTMLElement;
@@ -24,6 +27,7 @@ const {
   commentPins: FlowCommentThread[];
   focusThreadId: number | null;
   draftStorageKey?: string | null;
+  currentUserId?: number | null;
 }>();
 const live = useLive();
 const popup = ref<HTMLElement | null>(null);
@@ -181,6 +185,8 @@ onUnmounted(() => popupObserver?.disconnect());
       :key="pin.thread.id"
       :movable="state.canComment"
       :selected="state.thread?.id === pin.thread.id && popupOpen"
+      :unread="pin.thread.unread === true"
+      :count="Math.max(0, pin.thread.message_count - 1)"
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('flows.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
@@ -215,22 +221,18 @@ onUnmounted(() => popupObserver?.disconnect());
       @lostpointercapture="onLostCapture"
     />
 
-    <div
+    <CommentPinPreview
       v-if="hoveredPin && !(popupOpen && state.thread?.id === hoveredPin.thread.id)"
       id="flow-comment-preview"
-      role="tooltip"
-      class="absolute rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl"
+      class="absolute"
+      :thread="hoveredPin.thread"
+      :ui="flowCommentUi"
       :style="{
         left: `${previewPosition.x}px`,
         top: `${previewPosition.y}px`,
         width: `${previewSize.width}px`,
       }"
-    >
-      <p class="truncate text-xs font-semibold">{{ hoveredPin.thread.author.display_name }}</p>
-      <p class="mt-1.5 line-clamp-3 whitespace-pre-wrap break-words text-xs text-muted-foreground">
-        {{ hoveredPin.thread.preview }}
-      </p>
-    </div>
+    />
 
     <div
       v-if="popupOpen"
@@ -250,7 +252,11 @@ onUnmounted(() => popupObserver?.disconnect());
       @wheel.stop
       @contextmenu.stop
     >
-      <FlowCommentPopover :state="panelState" :draft-storage-key="draftStorageKey" />
+      <FlowCommentPopover
+        :state="panelState"
+        :draft-storage-key="draftStorageKey"
+        :current-user-id="currentUserId"
+      />
     </div>
   </div>
 </template>

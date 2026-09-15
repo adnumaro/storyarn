@@ -21,8 +21,7 @@ defmodule Storyarn.Projects.Comments.ParticipationState do
     with true <- Payload.valid_id?(thread_id),
          {:ok, _, _} <- Access.authorize_locked(scope, project_id, :view),
          thread when not is_nil(thread) <- Queries.thread(project_id, thread_id),
-         true <- Queries.ideation?(thread),
-         source when not is_nil(source) <- Queries.available_source(thread, scope: scope, lock: :share) do
+         true <- Queries.readable?(thread, scope) do
       thread = Queries.thread(project_id, thread_id, lock: :update) || Repo.rollback(:not_found)
       write(thread, scope.user.id, action)
       thread
@@ -58,17 +57,13 @@ defmodule Storyarn.Projects.Comments.ParticipationState do
     Repo.all(from(p in Participation, where: p.thread_id == ^thread_id and p.following, select: p.user_id))
   end
 
-  def decorate(dtos, %{user: %{id: user_id}}) do
-    ids =
-      for %{source: %{type: type}, id: id} <- dtos, type in ~w(ideation_session ideation_idea ideation_group), do: id
-
-    decorate_ideation(dtos, ids, user_id)
-  end
-
+  # Following, unread and the read marker are personal state on every thread
+  # the reader can see, whichever editor owns the source.
+  def decorate(dtos, %{user: %{id: user_id}}), do: decorate_all(dtos, Enum.map(dtos, & &1.id), user_id)
   def decorate(dtos, _), do: dtos
-  defp decorate_ideation(dtos, [], _user_id), do: dtos
+  defp decorate_all(dtos, [], _user_id), do: dtos
 
-  defp decorate_ideation(dtos, ids, user_id) do
+  defp decorate_all(dtos, ids, user_id) do
     states =
       from(p in Participation, where: p.thread_id in ^ids and p.user_id == ^user_id)
       |> Repo.all()
