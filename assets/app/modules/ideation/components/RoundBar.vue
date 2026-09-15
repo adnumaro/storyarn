@@ -174,7 +174,7 @@ const fillClass = computed(() => {
             <Settings2 class="size-3.5" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="w-72">
+        <DropdownMenuContent align="end">
           <DropdownMenuCheckboxItem
             :id="`brainstorming-round-private-toggle-${round.id}`"
             :model-value="round.private"
