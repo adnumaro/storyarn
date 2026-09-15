@@ -1,0 +1,22 @@
+lib/storyarn/ideation/ideas/queries/list.ex
+  s_02773c3f2b5565::t_5ce8a6063b902a 72,76,78-80,85-102
+  s_02773c3f2b5565::t_d7d95686d02a01 103
+lib/storyarn/ideation/README.md
+  s_02773c3f2b5565::t_37d4ce4049e750 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "856bda2e8040f10bc8c64b3893464fbf50b56558",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
