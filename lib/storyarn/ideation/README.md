@@ -9,7 +9,7 @@ roles. Capabilities collaborate through their own facades.
 
 | Role         | Responsibility                                                                |
 | ------------ | ----------------------------------------------------------------------------- |
-| `commands/`  | Session lifecycle, responsibilities, round and timer lifecycle    |
+| `commands/`  | Session lifecycle, responsibilities, round and timer lifecycle                |
 | `queries/`   | Authorized, bounded reads of session data and revision history                |
 | `entities/`  | Session, configuration, round, timer and revision schemas; no persistence I/O |
 | `execution/` | Locked, atomic session mutation and revision recording                        |

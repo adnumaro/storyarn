@@ -68,28 +68,37 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
   # Parked notes the reader can see, minus those with a copy brought ahead
   # that the reader can see too: the tree and the board's list must agree.
   defp waiting_query(session_ids, project_id, actor_id) do
-    forwarded =
-      from d in Idea,
-        left_join: copy_mask in subquery(Sessions.round_mask_query()),
-        on: copy_mask.id == d.round_id,
-        where:
-          d.source_idea_id == parent_as(:idea).id and is_nil(d.deleted_at) and
-            (d.author_id == ^actor_id or
-               (not fragment("COALESCE(?, false)", copy_mask.private) and not is_nil(d.published_revision)))
-
     from i in Idea,
-      as: :idea,
+      as: :note,
       join: s in subquery(Sessions.canvas_settings_query()),
       on: s.id == i.session_id,
       left_join: mask in subquery(Sessions.round_mask_query()),
+      as: :mask,
       on: mask.id == i.round_id,
-      where:
-        i.session_id in ^session_ids and s.project_id == ^project_id and is_nil(i.deleted_at) and
-          i.state == :parked and not exists(forwarded) and
-          (i.author_id == ^actor_id or
-             (not fragment("COALESCE(?, false)", mask.private) and not is_nil(i.published_revision))),
+      where: i.session_id in ^session_ids and s.project_id == ^project_id and is_nil(i.deleted_at),
+      where: i.state == :parked and not exists(forwarded_query(actor_id)),
+      where: ^readable(actor_id),
       group_by: i.session_id,
       select: {i.session_id, count(i.id)}
+  end
+
+  defp forwarded_query(actor_id) do
+    from d in Idea,
+      as: :note,
+      left_join: mask in subquery(Sessions.round_mask_query()),
+      as: :mask,
+      on: mask.id == d.round_id,
+      where: d.source_idea_id == parent_as(:note).id and is_nil(d.deleted_at),
+      where: ^readable(actor_id)
+  end
+
+  # A note the reader can see: their own, or published in a round that is not masked.
+  defp readable(actor_id) do
+    dynamic(
+      [note: i, mask: mask],
+      i.author_id == ^actor_id or
+        (not fragment("COALESCE(?, false)", mask.private) and not is_nil(i.published_revision))
+    )
   end
 
   defp count_options(opts) when is_list(opts) do
