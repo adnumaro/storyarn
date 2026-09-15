@@ -678,19 +678,18 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     {:ok, linked, _} =
       live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, ctx.session.id) <> "?round=#{first.id}")
 
-    epoch = data(linked)["epoch"]
-    assert_push_event(linked, "brainstorming_focus_round", %{round_id: round_id, epoch: ^epoch})
-    assert round_id == first.id
+    first_id = first.id
+    assert %{"round_id" => ^first_id, "view" => nil, "seq" => 1} = link(linked)
 
     {:ok, list, _} =
       live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, ctx.session.id) <> "?view=later")
 
-    assert_push_event(list, "brainstorming_open_list", %{state: "parked"})
+    assert %{"round_id" => nil, "view" => "later", "seq" => 1} = link(list)
 
     {:ok, plain, _} =
       live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, ctx.session.id) <> "?round=abc")
 
-    refute_push_event(plain, "brainstorming_focus_round", %{})
+    assert %{"round_id" => nil, "view" => nil, "seq" => 1} = link(plain)
   end
 
   test "the session tree carries each session's rounds and its parked count", ctx do
@@ -715,6 +714,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   defp data(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["board"]
+  defp link(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["linked"]
   defp panels(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props
 
   defp payload(view, attrs),

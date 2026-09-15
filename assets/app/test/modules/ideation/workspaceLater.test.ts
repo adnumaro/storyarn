@@ -35,21 +35,19 @@ function workspace() {
     ],
   });
   wrapper = shallowMount(Workspace, {
-    props: { board: current, baseUrl: "/brainstorming" },
+    // The session tree's "For later" link arrives as a prop.
+    props: {
+      board: current,
+      baseUrl: "/brainstorming",
+      linked: { round_id: null, view: "later", seq: 1 },
+    },
     global: {
       provide: { _live_vue: live },
       renderStubDefaultSlot: true,
       stubs: { BrainstormingCanvas: Canvas },
     },
   });
-  // The session tree opens the parked list through a LiveView event.
-  const open = vi
-    .mocked(live.handleEvent)
-    .mock.calls.find(([name]) => name === "brainstorming_open_list")?.[1] as (payload: {
-    state: string;
-    epoch: string;
-  }) => void;
-  return { live, current, open };
+  return { live, current };
 }
 afterEach(() => {
   wrapper?.unmount();
@@ -58,8 +56,7 @@ afterEach(() => {
 
 describe("the For later list", () => {
   it("lists parked notes that have no copy ahead, and brings one into the round in progress", async () => {
-    const { live, current, open } = workspace();
-    open({ state: "parked", epoch: current.epoch });
+    const { live } = workspace();
     await flushPromises();
     expect(wrapper.find("#canvas-list-note-10").exists()).toBe(true);
     expect(wrapper.find("#canvas-list-note-13").exists()).toBe(true);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { bandOffsets as layoutBands, NOTE_HEIGHT, type BandOffsets } from "./lib/bands";
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import {
   Archive,
   ArrowDownToLine,
@@ -19,7 +19,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import DashboardContent from "@shell/DashboardContent.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
-import { useLive } from "@shared/composables/useLive";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
 import CanvasConnectionTools from "./components/CanvasConnectionTools.vue";
 import CanvasShapePicker from "./components/CanvasShapePicker.vue";
@@ -50,13 +49,20 @@ import type {
   ConnectionChange,
   Round,
   RoundPrivacy,
+  BoardLink,
 } from "./types";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
 import { NOTE_COLOR_IDS, noteColor, noteSwatch } from "./lib/noteColors";
-const { board, baseUrl, comments } = defineProps<{
+const {
+  board,
+  baseUrl,
+  comments,
+  linked = null,
+} = defineProps<{
   board: Board;
   baseUrl: string;
   comments?: BrainstormingCommentsState;
+  linked?: BoardLink | null;
 }>();
 const { t, error, options, member } = useBoardText();
 const selectedIds = ref<number[]>([]);
@@ -995,30 +1001,27 @@ watch(visible, (notes) => {
   const next = selectedIds.value.filter((id) => ids.has(id));
   if (next.length !== selectedIds.value.length) select(next);
 });
-const live = useLive();
-let focusEvent: number | undefined;
-let listEvent: number | undefined;
-onMounted(() => {
-  // Deep links from the session tree: a round to scroll to, or the parked list.
-  focusEvent = live.handleEvent("brainstorming_focus_round", (payload) => {
-    if (payload.epoch !== board.epoch) return;
-    const id = Number(payload.round_id);
-    if (Number.isInteger(id) && id > 0) focusRound(id);
-  });
-  listEvent = live.handleEvent("brainstorming_open_list", (payload) => {
-    if (payload.epoch !== board.epoch) return;
-    finish();
-    state.value = String(payload.state ?? "all");
-    list.value = true;
-  });
-});
+// Deep links from the session tree: a round to scroll to, or the parked list.
+// They arrive as a prop so the first render honours them; `seq` re-applies a
+// repeated link.
+watch(
+  () => linked?.seq,
+  () => {
+    if (!linked?.seq) return;
+    if (linked.round_id) focusRound(linked.round_id);
+    if (linked.view === "later") {
+      finish();
+      state.value = "parked";
+      list.value = true;
+    }
+  },
+  { immediate: true },
+);
 onUnmounted(() => {
   cancelHistoryPreparation?.();
   focusStop?.();
   history.clear();
   connections.reset();
-  if (focusEvent !== undefined) live.removeHandleEvent(focusEvent);
-  if (listEvent !== undefined) live.removeHandleEvent(listEvent);
 });
 </script>
 <template>

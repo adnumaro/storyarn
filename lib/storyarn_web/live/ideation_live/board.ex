@@ -83,6 +83,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
             error: @board_error
           })
         }
+        linked={@linked}
         base-url={@urls.tools["brainstorming"]}
         comments={@comments}
       />
@@ -136,6 +137,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> assign(:epoch, Ecto.UUID.generate())
      |> assign(:session_id, nil)
      |> assign(:session_panel, false)
+     |> assign(:linked, %{round_id: nil, view: nil, seq: 0})
      |> assign(:subscribed_session, nil)
      |> assign(:canvas_scope, nil)
      |> assign(:canvas_ready, false)
@@ -548,20 +550,19 @@ defmodule StoryarnWeb.IdeationLive.Board do
   end
 
   # Deep links from the session tree: `?round=` scrolls the canvas to that band
-  # and `?view=later` opens the parked list. Both survive reloads.
+  # and `?view=later` opens the parked list. They travel as a prop, which the
+  # first render already carries (an event pushed while mounting is lost);
+  # `seq` grows with every link so the same target applies again.
   defp linked_focus(socket, params) do
-    socket =
+    round_id =
       case Params.optional_id(params["round"]) do
-        {:ok, id} when is_integer(id) ->
-          push_event(socket, "brainstorming_focus_round", %{round_id: id, epoch: socket.assigns.epoch})
-
-        _ ->
-          socket
+        {:ok, id} when is_integer(id) -> id
+        _ -> nil
       end
 
-    if params["view"] == "later",
-      do: push_event(socket, "brainstorming_open_list", %{state: "parked", epoch: socket.assigns.epoch}),
-      else: socket
+    view = if params["view"] == "later", do: "later"
+    seq = socket.assigns.linked.seq + 1
+    assign(socket, :linked, %{round_id: round_id, view: view, seq: seq})
   end
 
   defp reload_access(socket) do

@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.E2E.IdeationStatesTest do
   use PhoenixTest.Playwright.Case, async: false
 
+  import PhoenixTest.Playwright, only: [press: 3]
   import Storyarn.IdeationFixtures
   import StoryarnWeb.E2EHelpers
 
@@ -22,6 +23,7 @@ defmodule StoryarnWeb.E2E.IdeationStatesTest do
     |> visit(board_path(ctx))
     |> assert_has(selector)
     |> refute_has("#brainstorming-tree-later-#{ctx.session.id}")
+    |> press("#brainstorming-canvas", "1")
     |> right_click("#{selector} .note-content")
     |> click_item("#brainstorming-note-context-park")
     |> assert_has("#{selector}[data-note-state=parked] .note-tab", text: "For later")
@@ -68,6 +70,7 @@ defmodule StoryarnWeb.E2E.IdeationStatesTest do
       |> authenticate(ctx.author.user)
       |> visit(board_path(ctx))
       |> assert_has("#brainstorming-tree-later-#{ctx.session.id}", text: "1")
+      |> press("#brainstorming-canvas", "1")
       |> right_click("#canvas-note-#{parked.id} .note-content")
       |> click_item("#brainstorming-note-context-bring")
       |> assert_has(".canvas-note[data-round-id='#{second.id}']", text: "Keep the light")

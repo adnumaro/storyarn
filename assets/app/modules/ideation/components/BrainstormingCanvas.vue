@@ -240,8 +240,11 @@ const HEADER_REST = 0;
 const CHROME_ZONE = 60;
 // The header row in screen pixels: the bar's min height plus its line.
 const HEADER_HEIGHT = 42;
+// A group frame rises above its members; over the first band that is above the
+// canvas top, and the view may go that far up so its header stays reachable.
+const overhang = ref(0);
 const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(root, {
-  rest: () => HEADER_REST,
+  rest: ({ zoom }) => HEADER_REST + overhang.value * zoom,
 });
 const chromePanel = ref<HTMLElement | null>(null);
 const chromeWidth = ref(0);
@@ -381,6 +384,13 @@ function contentBottom(roundId: number): number | null {
   }
   return bottoms.length ? Math.max(...bottoms) : null;
 }
+watch(
+  layouts,
+  (list) => {
+    overhang.value = Math.max(0, ...list.map((layout) => -layout.bounds.y));
+  },
+  { immediate: true },
+);
 const bandLayout = computed(() => bandOffsets(bands.rounds, contentBottom));
 // A jump lands before every note has been measured. While the layout settles,
 // the header goes back to its rest line, until the person moves the view.
@@ -432,6 +442,8 @@ function scrollToRound(round: Round) {
 }
 // A session with several rounds opens on the one in progress; the rest fit everything.
 function openView() {
+  // A deep link may already have asked for a round; the default view yields to it.
+  if (settling) return;
   const active = orderedRounds.value.find((round) => round.status === "active");
   if (multiRound.value && active) scrollToRound(active);
   else fitAll();

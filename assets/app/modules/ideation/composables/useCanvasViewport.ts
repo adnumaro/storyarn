@@ -9,7 +9,7 @@ export interface NoteBounds extends Point {
 }
 export function useCanvasViewport(
   container: Ref<HTMLElement | null>,
-  { rest }: { rest?: () => number } = {},
+  { rest }: { rest?: (view: { zoom: number }) => number } = {},
 ) {
   const view = reactive({ x: 100, y: 100, zoom: 1, width: 800, height: 600 });
   // Nothing exists above the first round header, so the viewport never shows
@@ -19,7 +19,7 @@ export function useCanvasViewport(
     watch(
       () => view.y,
       (y) => {
-        const limit = rest();
+        const limit = rest(view);
         if (y > limit) view.y = limit;
       },
       { flush: "sync", immediate: true },

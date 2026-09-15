@@ -10,4 +10,5 @@ export type {
   Session,
   SessionRevision,
   SessionTimer,
+  BoardLink,
 } from "./types";

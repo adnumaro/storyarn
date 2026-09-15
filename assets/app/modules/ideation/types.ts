@@ -45,6 +45,12 @@ export interface NoteConnection {
 export interface CreatedConnection extends ConnectionVersion {
   before_version: number;
 }
+/** A deep link from the session tree, applied once per `seq`. */
+export interface BoardLink {
+  round_id: number | null;
+  view: "later" | null;
+  seq: number;
+}
 export interface CreatedIdea extends Idea {
   connected_from?: CreatedConnection[];
 }

@@ -351,6 +351,20 @@ describe("canvas area selection", () => {
     expect(wrapper.find("#brainstorming-selection-area").exists()).toBe(false);
   });
 
+  it("lets the view rise as far as a group frame above the first header", async () => {
+    const member = {
+      idea_id: 10,
+      source_revision: 1,
+      canvas: { x: 100, y: 60, width: 100, version: 1 },
+    };
+    const { wrapper } = await canvas({
+      notes: [idea({ id: 10, canvas: { x: 100, y: 60, width: 100 } })],
+      groups: [ideaGroup({ id: 5, idea_ids: [10], members: [member] })],
+    });
+    // The frame rises 64px above its member at 60: the canvas may show 4px above the header.
+    expect(viewport(wrapper).y).toBe(4);
+  });
+
   it.each(["Space", "hand", "middle"])(
     "retains the existing selection when panning with %s",
     async (method) => {
