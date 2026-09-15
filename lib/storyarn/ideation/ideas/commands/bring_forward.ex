@@ -19,7 +19,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.BringForward do
   alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
-  # "Bring to this round" is the only way an idea crosses rounds: a new note of
+  # "Bring to the active round" is the only way an idea crosses rounds: a new note of
   # the actor's own under the header in progress, linked to the revision of the
   # original they can read. The original stays where it was, in its state.
   def run(scope, project_id, session_id, source_id, attrs) when valid_id(source_id) and is_map(attrs) do
