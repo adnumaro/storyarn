@@ -272,6 +272,10 @@ remain readable. Group recovery is described in the
 
 ## Independent countdown
 
+While you scroll inside a band, its header stays pinned just under the floating
+chrome, frosted and without a shadow, until the next band's header pushes it
+out; the header keeps its screen size at any zoom, only its position scales.
+
 The header of the round in progress carries the shared timer. The digits are the input:
 the facilitator clicks them, types the minutes and the seconds (two digits each; the
 minutes move on to the seconds by themselves), from one second up to 99:59, and
