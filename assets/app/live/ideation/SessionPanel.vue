@@ -35,15 +35,23 @@ let disposed = false;
 onBeforeUnmount(() => {
   disposed = true;
 });
-// A saved change comes back through the board; the fields follow it.
+// A saved change comes back through the board; a field follows it unless
+// somebody is typing in it, so a collaborator's save never wipes a draft.
+const fields = () => ({
+  title: [title, session.title] as const,
+  objective: [objective, session.objective ?? ""] as const,
+  description: [description, session.context ?? ""] as const,
+  facilitator: [facilitator, String(session.facilitator_id ?? "")] as const,
+  decisionOwner: [decisionOwner, String(session.decision_owner_id ?? "")] as const,
+});
+const synced = Object.fromEntries(Object.entries(fields()).map(([key, [, value]]) => [key, value]));
 watch(
   () => session.revision,
   () => {
-    title.value = session.title;
-    objective.value = session.objective ?? "";
-    description.value = session.context ?? "";
-    facilitator.value = String(session.facilitator_id ?? "");
-    decisionOwner.value = String(session.decision_owner_id ?? "");
+    for (const [key, [field, value]] of Object.entries(fields())) {
+      if (field.value === synced[key]) field.value = value;
+      synced[key] = value;
+    }
   },
 );
 const people = computed(() =>

@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  type ComponentPublicInstance,
+} from "vue";
 import { useElementSize } from "@vueuse/core";
 import {
   ArrowDownToLine,
@@ -248,7 +256,24 @@ const { view, space, transform, world, zoomTo, wheel, fit } = useCanvasViewport(
 });
 const chromePanel = ref<HTMLElement | null>(null);
 const chromeWidth = ref(0);
-const chromeInset = computed(() => 12 + chromeWidth.value + 12);
+const chromeInset = computed(() => (chromeWidth.value ? 12 + chromeWidth.value + 12 : 0));
+// Headers are as tall as their question and controls take; each is measured,
+// and the pin and band maths follow the measure.
+const headerHeights = ref(new Map<number, number>());
+const headerElements = new Map<number, HTMLElement>();
+let headerObserver: ResizeObserver | undefined;
+function watchHeader(roundId: number, el: Element | ComponentPublicInstance | null) {
+  const previous = headerElements.get(roundId);
+  if (previous === el) return;
+  if (previous) headerObserver?.unobserve(previous);
+  if (el instanceof HTMLElement) {
+    headerElements.set(roundId, el);
+    headerObserver?.observe(el);
+  } else headerElements.delete(roundId);
+}
+function headerHeight(round: Round) {
+  return headerHeights.value.get(round.id) ?? HEADER_HEIGHT;
+}
 let chromeObserver: ResizeObserver | undefined;
 const { t, member } = useBoardText();
 const tool = ref("select"),
@@ -407,7 +432,7 @@ function canvasHeaderTop(round: Round) {
 function headerTop(round: Round) {
   const own = canvasHeaderTop(round);
   if (own >= HEADER_REST) return own;
-  return Math.min(HEADER_REST, nextHeaderTop(round) - HEADER_HEIGHT);
+  return Math.min(HEADER_REST, nextHeaderTop(round) - headerHeight(round));
 }
 function headerPinned(round: Round) {
   return canvasHeaderTop(round) < HEADER_REST;
@@ -448,8 +473,8 @@ function openView() {
   if (multiRound.value && active) scrollToRound(active);
   else fitAll();
 }
-// The header row a band keeps free under its offset, in canvas units.
-const HEADER_STRIP = 44;
+// The row a band keeps free under its offset for its header, in canvas units.
+const HEADER_GAP = 2;
 // Placeholders share one height: what hides in a private round has no measured card.
 const MASKED_HEIGHT = 96;
 // A single, unnamed round has no header to show, except while its facilitator
@@ -458,11 +483,20 @@ const clockShown = computed(() => {
   const status = bands.timer?.timer?.status;
   return status === "running" || status === "paused" || status === "elapsed";
 });
+// The clock lives on the header of the round in progress; closed without a
+// successor, the session's last band keeps it in reach.
+function clockRound(round: Round) {
+  return (
+    round.status === "active" ||
+    (!orderedRounds.value.some((candidate) => candidate.status === "active") &&
+      round.id === lastRound.value?.id)
+  );
+}
 function headerShown(round: Round) {
   return (
     multiRound.value ||
     !!round.prompt ||
-    (round.status === "active" && (bands.canManage || clockShown.value))
+    (clockRound(round) && ((round.status === "active" && bands.canManage) || clockShown.value))
   );
 }
 // Where a note of this round may start: under its header. Bands grow with
@@ -471,7 +505,8 @@ function bandTop(roundId: number | null): { round: Round; top: number } | null {
   if (roundId == null) return null;
   const round = orderedRounds.value.find((candidate) => candidate.id === roundId);
   if (!round) return null;
-  return { round, top: offsetOf(round.id) + (headerShown(round) ? HEADER_STRIP : 0) };
+  const strip = headerShown(round) ? headerHeight(round) + HEADER_GAP : 0;
+  return { round, top: offsetOf(round.id) + strip };
 }
 // Which header lines a dragged note is pressing against.
 const contact = ref(new Set<number>());
@@ -1315,6 +1350,17 @@ onMounted(async () => {
     });
     chromeObserver.observe(chromePanel.value);
   }
+  if (typeof ResizeObserver !== "undefined") {
+    headerObserver = new ResizeObserver((entries) => {
+      const next = new Map(headerHeights.value);
+      for (const entry of entries) {
+        const id = Number((entry.target as HTMLElement).dataset.roundHeader);
+        next.set(id, (entry.target as HTMLElement).offsetHeight);
+      }
+      headerHeights.value = next;
+    });
+    for (const el of headerElements.values()) headerObserver.observe(el);
+  }
   if (typeof ResizeObserver !== "undefined")
     noteObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -1339,6 +1385,7 @@ watch(
 );
 onUnmounted(() => {
   chromeObserver?.disconnect();
+  headerObserver?.disconnect();
   noteObserver?.disconnect();
   const nudge = groupNudge;
   groupNudge = null;
@@ -1561,6 +1608,8 @@ onUnmounted(() => {
             <div
               v-if="headerShown(round)"
               :id="`brainstorming-band-${round.id}`"
+              :ref="(el) => watchHeader(round.id, el as Element | null)"
+              :data-round-header="round.id"
               class="absolute left-0 right-0 z-10"
               :class="headerPinned(round) ? 'pointer-events-auto' : 'pointer-events-none'"
               :data-pinned="headerPinned(round) || undefined"
@@ -1575,7 +1624,7 @@ onUnmounted(() => {
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
                 :contact="contact.has(round.id)"
-                :timer="round.status === 'active' ? (bands.timer ?? null) : null"
+                :timer="clockRound(round) ? (bands.timer ?? null) : null"
                 :count="bands.counts?.get(round.id) ?? 0"
                 @close="emit('closeRound', $event)"
                 @update-privacy="(id, attrs) => emit('updatePrivacy', id, attrs)"
@@ -1677,7 +1726,7 @@ onUnmounted(() => {
           </div>
           <div
             data-canvas-chrome
-            class="absolute left-3 z-20"
+            class="absolute left-3 z-20 max-md:hidden"
             :class="chromeFramed ? 'top-3' : 'top-0'"
           >
             <div

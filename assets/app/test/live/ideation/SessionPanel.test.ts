@@ -64,6 +64,27 @@ describe("session settings panel", () => {
     ]);
   });
 
+  it("follows a collaborator's save except in the field being edited", async () => {
+    const { current } = panel();
+    await wrapper.get("#session-objective").setValue("Half-written");
+    const session = current.session!;
+    await wrapper.setProps({
+      session: { ...session, revision: session.revision + 1, title: "Renamed by a peer" },
+    });
+    expect((wrapper.get("#session-title").element as HTMLInputElement).value).toBe(
+      "Renamed by a peer",
+    );
+    expect((wrapper.get("#session-objective").element as HTMLTextAreaElement).value).toBe(
+      "Half-written",
+    );
+    await wrapper.setProps({
+      session: { ...session, revision: session.revision + 2, objective: "Theirs" },
+    });
+    expect((wrapper.get("#session-objective").element as HTMLTextAreaElement).value).toBe(
+      "Half-written",
+    );
+  });
+
   it("closes new contributions from the panel and lets a manager reopen them", async () => {
     const { pushEvent, current } = panel();
     await wrapper.get("#brainstorming-contributions-toggle").trigger("click");

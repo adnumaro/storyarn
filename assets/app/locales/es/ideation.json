@@ -121,7 +121,12 @@
       "connections_pending": "Todavía no se ha confirmado un enlace. Reinténtalo para continuar.",
       "invalid_connections": "Algunos enlaces de la selección ya no son válidos. Vuelve a seleccionar las notas.",
       "outside_band": "Ese sitio pertenece a otra ronda. Mantén la nota dentro de su banda.",
-      "mixed_rounds": "Un grupo solo puede contener notas de una misma ronda."
+      "mixed_rounds": "Un grupo solo puede contener notas de una misma ronda.",
+      "private_round": "Esta ronda es privada hasta que el facilitador la revele",
+      "round_revealed": "Una ronda revelada no puede volver a ser privada",
+      "same_round": "La nota ya está en la ronda activa",
+      "round_required": "No hay ninguna ronda en curso",
+      "source_discarded": "Una nota descartada vuelve con Recuperar"
     },
     "saveStatus": {
       "saved": "Guardado",

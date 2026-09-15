@@ -96,10 +96,13 @@ function start(value: number) {
           id="brainstorming-round-timer-extend"
           type="button"
           class="toolbar-btn gap-1"
+          :aria-label="t('ideation.timer.oneMinute')"
           :disabled="writes.pending.value || (timer?.duration_seconds ?? 0) + 60 > 86400"
           @click="writes.control('extend_timer', seconds)"
         >
-          <Plus class="size-3.5" />{{ t("ideation.timer.oneMinute") }}
+          <Plus class="size-3.5" /><span class="max-md:hidden">{{
+            t("ideation.timer.oneMinute")
+          }}</span>
         </button>
       </template>
       <button

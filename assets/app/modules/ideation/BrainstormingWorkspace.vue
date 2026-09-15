@@ -275,6 +275,8 @@ const groups = useCanvasGroups(
   () => bandOffsets.value,
 );
 function groupingProblem(ids: number[], sources: ReturnType<typeof selectedNotes>) {
+  if (sources.some((note) => note.round_id != null && privateRounds.value.has(note.round_id)))
+    return "private_round";
   if (sources.some((note) => groups.groups.value.some((group) => group.idea_ids.includes(note.id))))
     return "already_grouped";
   const shared = sources.every((note) => note.id > 0 && note.visibility === "shared");
@@ -602,10 +604,10 @@ async function closeRound(id: number) {
   roundPending.value = false;
   if (reply.status !== "ok") failure.value = reply.status === "error" ? reply.code : "unavailable";
 }
-function add(point: Point) {
+function add(point: Point, roundId?: number) {
   if (!canCreate.value || mutationBusy.value) return;
   finish();
-  const id = notes.add(point, current.value?.canvas?.color);
+  const id = notes.add(point, current.value?.canvas?.color, undefined, roundId);
   history.push(presenceCommand(id, true));
   selectedIds.value = [id];
   editing.value = id;
@@ -728,18 +730,22 @@ async function remove(ids: number[]) {
     select([]);
   }
 }
-// The copy lands under the lowest note of the round in progress. The canvas
-// measures that; from the list it is estimated from note geometry.
+// Where a note lands when it has no place of its own: under the lowest note
+// of the round in progress. The canvas measures that; here it is estimated
+// from note geometry.
+function landing(x: number): Point {
+  const active = board.active_round;
+  const top = active ? (bandOffsets.value.get(active.id) ?? 0) : 0;
+  const bottoms = notes.notes.value
+    .filter((other) => other.round_id === active?.id && typeof other.canvas?.y === "number")
+    .map((other) => (other.canvas?.y ?? 0) + NOTE_HEIGHT);
+  return { x, y: (bottoms.length ? Math.max(...bottoms) : top + 60) + 24 };
+}
 function bringForward(id: number, point?: Point) {
   const note = notes.notes.value.find((candidate) => candidate.id === id);
   const active = board.active_round;
   if (!note || !active || !canCreate.value || note.round_id === active.id) return;
-  const top = bandOffsets.value.get(active.id) ?? 0;
-  const bottoms = notes.notes.value
-    .filter((other) => other.round_id === active.id && typeof other.canvas?.y === "number")
-    .map((other) => (other.canvas?.y ?? 0) + NOTE_HEIGHT);
-  const y = (bottoms.length ? Math.max(...bottoms) : top + 60) + 24;
-  notes.bringForward(note, point ?? { x: note.canvas?.x ?? 0, y });
+  notes.bringForward(note, point ?? landing(note.canvas?.x ?? 0));
 }
 function changeState(value: "active" | "parked" | "discarded", id = current.value?.id) {
   const note = id === undefined ? null : notes.find(id);
@@ -1392,10 +1398,11 @@ onUnmounted(() => {
               :options="options(['active', 'parked', 'discarded', 'all'])"
             /><Button
               v-if="canCreate"
+              id="brainstorming-list-new"
               size="sm"
               @click="
                 list = false;
-                add({ x: 0, y: 0 });
+                add(landing(0), board.active_round?.id);
               "
               ><Plus class="size-4" />{{ t("ideation.newIdea") }}</Button
             >

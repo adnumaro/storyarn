@@ -94,8 +94,10 @@ defmodule Storyarn.Ideation.Ideas.Commands.BringForward do
   defp contributions_open(%{contributions_open: true}), do: :ok
   defp contributions_open(_access), do: {:error, :contributions_closed}
 
+  # A discarded note was let go; it comes back through "Bring back", not ahead.
   defp readable(access, source_id) do
     case access.session_id |> Visible.query(access.user_id) |> where([i], i.id == ^source_id) |> Repo.one() do
+      {%{state: :discarded}, _revision, _} -> {:error, :source_discarded}
       {source, revision, _provenance_published?} -> {:ok, source, revision}
       nil -> {:error, :not_found}
     end

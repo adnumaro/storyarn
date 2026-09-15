@@ -64,6 +64,8 @@ const editable = computed(() => canManage && active.value);
 const noteCount = computed(() =>
   count === 1 ? t("ideation.rounds.noteCountOne") : t("ideation.rounds.noteCountOther", { count }),
 );
+// The question always shows whole; on a narrow screen the controls drop under it.
+const controls = computed(() => !!timer || (canManage && (round.private || !single)));
 function setPrivacy(attrs: RoundPrivacy) {
   emit("updatePrivacy", round.id, attrs);
 }
@@ -78,7 +80,7 @@ watch(
 );
 // The line is the band boundary; with a timer running it also fills as time passes.
 const progress = ref(0);
-const timerState = computed(() => (active.value ? (timer?.timer?.status ?? null) : null));
+const timerState = computed(() => timer?.timer?.status ?? null);
 const lineClass = computed(() => {
   if (contact) return "h-0.5 bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]";
   if (single && !timerState.value) return "h-0 bg-transparent";
@@ -100,137 +102,152 @@ const fillClass = computed(() => {
     :class="contact ? 'bg-primary/5' : sticky ? 'bg-background/[0.86] backdrop-blur-[12px]' : ''"
   >
     <div
-      class="flex min-h-10 items-center gap-3 px-4"
+      class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1"
       :style="inset ? { paddingLeft: `${inset}px` } : undefined"
     >
-      <span
-        v-if="!single"
-        class="shrink-0 text-sm font-semibold"
-        :class="active ? 'text-primary' : 'text-muted-foreground'"
-        >{{ t("ideation.rounds.number", { number: round.number }) }}</span
-      >
-      <EditableText
-        v-if="editable"
-        :id="`brainstorming-round-prompt-${round.id}`"
-        v-model="draft"
-        :placeholder="t('ideation.rounds.addQuestion')"
-        :disabled="pending"
-        class="pointer-events-auto min-w-0 flex-initial truncate text-sm"
-        display-class="text-sm"
-        @save="emit('updatePrompt', round.id, $event)"
-      />
-      <span
-        v-else-if="round.prompt"
-        class="min-w-0 truncate text-sm"
-        :class="active ? 'text-foreground' : 'text-muted-foreground'"
-        :title="round.prompt"
-        >{{ round.prompt }}</span
-      >
-      <Badge
-        v-if="!single"
-        :variant="active ? 'outline' : 'secondary'"
-        class="shrink-0 font-medium"
-      >
+      <div class="flex min-w-0 flex-1 basis-56 items-center gap-3">
         <span
-          v-if="active"
-          aria-hidden="true"
-          class="mr-1.5 inline-block size-1.5 rounded-full bg-primary"
+          v-if="!single"
+          class="shrink-0 text-sm font-semibold"
+          :class="active ? 'text-primary' : 'text-muted-foreground'"
+          >{{ t("ideation.rounds.number", { number: round.number }) }}</span
+        >
+        <EditableText
+          v-if="editable"
+          :id="`brainstorming-round-prompt-${round.id}`"
+          v-model="draft"
+          :placeholder="t('ideation.rounds.addQuestion')"
+          :disabled="pending"
+          class="pointer-events-auto min-w-0 flex-initial text-sm"
+          display-class="text-sm"
+          @save="emit('updatePrompt', round.id, $event)"
         />
-        <span :class="active ? '' : 'text-muted-foreground'">{{
-          t(active ? "ideation.rounds.active" : "ideation.rounds.closed")
-        }}</span>
-      </Badge>
-      <Badge
-        v-if="round.private"
-        :id="`brainstorming-round-private-${round.id}`"
-        variant="outline"
-        class="shrink-0 gap-1 font-medium text-primary"
-        ><Lock class="size-3" />{{ t("ideation.rounds.private") }}</Badge
+        <span
+          v-else-if="round.prompt"
+          class="min-w-0 text-sm"
+          :class="active ? 'text-foreground' : 'text-muted-foreground'"
+          >{{ round.prompt }}</span
+        >
+        <Badge
+          v-if="!single"
+          :variant="active ? 'outline' : 'secondary'"
+          class="shrink-0 font-medium"
+        >
+          <span
+            v-if="active"
+            aria-hidden="true"
+            class="mr-1.5 inline-block size-1.5 rounded-full bg-primary"
+          />
+          <span :class="active ? '' : 'text-muted-foreground'">{{
+            t(active ? "ideation.rounds.active" : "ideation.rounds.closed")
+          }}</span>
+        </Badge>
+        <Badge
+          v-if="round.private"
+          :id="`brainstorming-round-private-${round.id}`"
+          variant="outline"
+          class="shrink-0 gap-1 font-medium text-primary"
+          ><Lock class="size-3" />{{ t("ideation.rounds.private") }}</Badge
+        >
+        <span
+          :id="`brainstorming-round-count-${round.id}`"
+          class="shrink-0 text-xs tabular-nums text-muted-foreground"
+          >{{ noteCount }}</span
+        >
+      </div>
+      <div
+        v-if="controls"
+        :id="`brainstorming-round-controls-${round.id}`"
+        class="ml-auto flex shrink-0 items-center justify-end gap-3 max-md:basis-full"
       >
-      <span
-        :id="`brainstorming-round-count-${round.id}`"
-        class="shrink-0 text-xs tabular-nums text-muted-foreground"
-        >{{ noteCount }}</span
-      >
-      <span class="flex-1" />
-      <RoundTimer
-        v-if="active && timer"
-        :session="timer.session"
-        :epoch="timer.epoch"
-        :timer="timer.timer"
-        :can-manage="canManage"
-        :can-edit="timer.canEdit"
-        @progress="progress = $event"
-      />
-      <Button
-        v-if="canManage && round.private"
-        :id="`brainstorming-round-reveal-${round.id}`"
-        class="pointer-events-auto"
-        variant="outline"
-        size="sm"
-        :disabled="pending"
-        @click="emit('reveal', round.id)"
-        ><Eye class="size-3.5" />{{ t("ideation.rounds.reveal") }}</Button
-      >
-      <DropdownMenu v-if="canManage && active">
-        <DropdownMenuTrigger as-child>
-          <button
-            :id="`brainstorming-round-settings-${round.id}`"
-            type="button"
-            class="toolbar-btn pointer-events-auto"
-            :aria-label="t('ideation.rounds.settings')"
-            :disabled="pending"
-          >
-            <Settings2 class="size-3.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuCheckboxItem
-            :id="`brainstorming-round-private-toggle-${round.id}`"
-            :model-value="round.private"
-            :disabled="pending || !!round.revealed_at"
-            @update:model-value="
-              setPrivacy({ private: $event === true, reveal_on_expiry: round.reveal_on_expiry })
-            "
-            >{{ t("ideation.rounds.privateSetting") }}</DropdownMenuCheckboxItem
-          >
-          <DropdownMenuCheckboxItem
-            :id="`brainstorming-round-reveal-on-expiry-${round.id}`"
-            :model-value="round.reveal_on_expiry"
-            :disabled="pending || !round.private"
-            @update:model-value="
-              setPrivacy({ private: round.private, reveal_on_expiry: $event === true })
-            "
-            >{{ t("ideation.rounds.revealOnExpiry") }}</DropdownMenuCheckboxItem
-          >
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <template v-if="canManage && !single">
-        <template v-if="active">
-          <span aria-hidden="true" class="h-5 w-px bg-border" />
-          <ToolbarTooltip :label="t('ideation.rounds.closeHint')">
-            <Button
-              :id="`brainstorming-round-close-${round.id}`"
-              class="pointer-events-auto"
-              variant="ghost"
-              size="sm"
-              :disabled="pending"
-              @click="emit('close', round.id)"
-              ><Square class="size-3.5" />{{ t("ideation.rounds.close") }}</Button
-            >
-          </ToolbarTooltip>
-        </template>
+        <RoundTimer
+          v-if="timer"
+          :session="timer.session"
+          :epoch="timer.epoch"
+          :timer="timer.timer"
+          :can-manage="canManage"
+          :can-edit="timer.canEdit"
+          @progress="progress = $event"
+        />
         <Button
-          v-if="active || last"
-          :id="`brainstorming-round-new-${round.id}`"
+          v-if="canManage && round.private"
+          :id="`brainstorming-round-reveal-${round.id}`"
           class="pointer-events-auto"
           variant="outline"
           size="sm"
           :disabled="pending"
-          @click="emit('newRound')"
-          ><Plus class="size-3.5" />{{ t("ideation.rounds.newRound") }}</Button
+          @click="emit('reveal', round.id)"
+          :aria-label="t('ideation.rounds.reveal')"
+          ><Eye class="size-3.5" /><span class="max-md:hidden">{{
+            t("ideation.rounds.reveal")
+          }}</span></Button
         >
-      </template>
+        <DropdownMenu v-if="canManage && active">
+          <DropdownMenuTrigger as-child>
+            <button
+              :id="`brainstorming-round-settings-${round.id}`"
+              type="button"
+              class="toolbar-btn pointer-events-auto"
+              :aria-label="t('ideation.rounds.settings')"
+              :disabled="pending"
+            >
+              <Settings2 class="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuCheckboxItem
+              :id="`brainstorming-round-private-toggle-${round.id}`"
+              :model-value="round.private"
+              :disabled="pending || !!round.revealed_at"
+              @update:model-value="
+                setPrivacy({ private: $event === true, reveal_on_expiry: round.reveal_on_expiry })
+              "
+              >{{ t("ideation.rounds.privateSetting") }}</DropdownMenuCheckboxItem
+            >
+            <DropdownMenuCheckboxItem
+              :id="`brainstorming-round-reveal-on-expiry-${round.id}`"
+              :model-value="round.reveal_on_expiry"
+              :disabled="pending || !round.private"
+              @update:model-value="
+                setPrivacy({ private: round.private, reveal_on_expiry: $event === true })
+              "
+              >{{ t("ideation.rounds.revealOnExpiry") }}</DropdownMenuCheckboxItem
+            >
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <template v-if="canManage && !single">
+          <template v-if="active">
+            <span aria-hidden="true" class="h-5 w-px bg-border" />
+            <ToolbarTooltip :label="t('ideation.rounds.closeHint')">
+              <Button
+                :id="`brainstorming-round-close-${round.id}`"
+                class="pointer-events-auto"
+                variant="ghost"
+                size="sm"
+                :disabled="pending"
+                @click="emit('close', round.id)"
+                :aria-label="t('ideation.rounds.close')"
+                ><Square class="size-3.5" /><span class="max-md:hidden">{{
+                  t("ideation.rounds.close")
+                }}</span></Button
+              >
+            </ToolbarTooltip>
+          </template>
+          <Button
+            v-if="active || last"
+            :id="`brainstorming-round-new-${round.id}`"
+            class="pointer-events-auto"
+            variant="outline"
+            size="sm"
+            :disabled="pending"
+            @click="emit('newRound')"
+            :aria-label="t('ideation.rounds.newRound')"
+            ><Plus class="size-3.5" /><span class="max-md:hidden">{{
+              t("ideation.rounds.newRound")
+            }}</span></Button
+          >
+        </template>
+      </div>
     </div>
     <div class="relative" :class="lineClass">
       <div

@@ -55,6 +55,22 @@ afterEach(() => {
 });
 
 describe("the For later list", () => {
+  it("starts a new idea from the list inside the round in progress, under its notes", async () => {
+    workspace();
+    await flushPromises();
+    await wrapper.get("#brainstorming-list-new").trigger("click");
+    await flushPromises();
+    const notes = wrapper.findComponent(Canvas).props("notes") as {
+      id: number;
+      round_id: number | null;
+      canvas: { y: number } | null;
+    }[];
+    const fresh = notes.find((note) => note.id < 0);
+    expect(fresh?.round_id).toBe(21);
+    // Round 2 has no offset yet in this shell, so the note lands under its lowest note.
+    expect(fresh?.canvas?.y).toBeGreaterThanOrEqual(84);
+  });
+
   it("lists parked notes that have no copy ahead, and brings one into the round in progress", async () => {
     const { live } = workspace();
     await flushPromises();

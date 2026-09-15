@@ -65,9 +65,17 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
 
   def parked_counts(_scope, _project_id, _session_ids), do: {:error, :invalid_options}
 
-  # Parked notes the reader can see, minus those with a copy brought ahead.
+  # Parked notes the reader can see, minus those with a copy brought ahead
+  # that the reader can see too: the tree and the board's list must agree.
   defp waiting_query(session_ids, project_id, actor_id) do
-    forwarded = from d in Idea, where: d.source_idea_id == parent_as(:idea).id and is_nil(d.deleted_at)
+    forwarded =
+      from d in Idea,
+        left_join: copy_mask in subquery(Sessions.round_mask_query()),
+        on: copy_mask.id == d.round_id,
+        where:
+          d.source_idea_id == parent_as(:idea).id and is_nil(d.deleted_at) and
+            (d.author_id == ^actor_id or
+               (not fragment("COALESCE(?, false)", copy_mask.private) and not is_nil(d.published_revision)))
 
     from i in Idea,
       as: :idea,
@@ -132,7 +140,8 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
             where:
               i.session_id == ^session_id and is_nil(i.deleted_at) and mask.private and
                 i.author_id != ^actor_id and i.state != :discarded and
-                (i.publication_consent == :facilitator_assisted or not is_nil(i.published_revision)),
+                (i.publication_consent == :facilitator_assisted or not is_nil(i.published_revision)) and
+                fragment("jsonb_typeof(? -> 'y') = 'number'", i.canvas),
             order_by: i.id,
             limit: 2000,
             select: %{id: i.id, round_id: i.round_id, canvas: i.canvas}

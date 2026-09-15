@@ -67,8 +67,14 @@ defmodule Storyarn.Ideation.BringForwardTest do
     assert {:ok, parked} =
              Ideation.update_idea(ctx.author, project_id, session_id, original.id, 1, edit_attrs(%{state: :parked}))
 
-    {ctx, _second} = new_round(ctx)
+    publish_idea(ctx, parked)
+    {ctx, second} = new_round(ctx)
     assert {:ok, %{^session_id => 1}} = Ideation.count_parked_ideas(ctx.author, project_id, [session_id])
+
+    assert {:ok, _} =
+             Ideation.set_round_privacy(ctx.facilitator, project_id, session_id, second.id, ctx.session.revision, %{
+               private: true
+             })
 
     key = Ecto.UUID.generate()
     assert {:ok, copy} = bring(ctx, parked, %{request_key: key, canvas: %{x: 0, y: 10}})
@@ -77,6 +83,11 @@ defmodule Storyarn.Ideation.BringForwardTest do
 
     assert {:ok, still} = Ideation.get_idea(ctx.author, project_id, session_id, original.id)
     assert still.state == :parked
+
+    # A copy the reader cannot see does not take the original off their list: tree and list agree.
+    assert {:ok, %{^session_id => 1}} = Ideation.count_parked_ideas(ctx.peer, project_id, [session_id])
+    assert {:ok, [%{id: original_id}]} = Ideation.list_ideas(ctx.peer, project_id, session_id, state: :parked)
+    assert original_id == original.id
 
     assert {:ok, replayed} = bring(ctx, parked, %{request_key: key, canvas: %{x: 0, y: 10}})
     assert replayed.id == copy.id
@@ -94,6 +105,15 @@ defmodule Storyarn.Ideation.BringForwardTest do
     assert {:error, :invalid_canvas} = bring(ctx, original, %{canvas: "nope"})
     assert {:error, :invalid_request_key} = bring(ctx, original, %{request_key: "nope"})
     assert {:error, :not_found} = bring(ctx, original, %{}, ctx.peer)
+
+    assert {:ok, discarded} =
+             Ideation.update_idea(ctx.author, project_id, session_id, original.id, 1, edit_attrs(%{state: :discarded}))
+
+    assert {:error, :source_discarded} = bring(ctx, discarded)
+
+    assert {:ok, _} =
+             Ideation.update_idea(ctx.author, project_id, session_id, original.id, 2, edit_attrs(%{state: :active}))
+
     assert {:error, :not_found} = bring(ctx, %{id: original.id + 1000})
     assert {:error, :unauthorized} = bring(ctx, original, %{}, ctx.viewer)
 

@@ -323,9 +323,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
     end
   end
 
-  def handle_event("session_panel", %{"open" => false} = params, socket) do
+  def handle_event("session_panel", %{"open" => open} = params, socket) when is_boolean(open) do
     case current_session(params, socket) do
-      :ok -> {:noreply, assign(socket, :session_panel, false)}
+      :ok -> {:noreply, assign(socket, :session_panel, open)}
       _ -> {:noreply, socket}
     end
   end
@@ -657,7 +657,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   defp fence_privacy_change(socket, _next), do: socket
 
-  defp privacy(%{rounds: rounds}) when is_list(rounds), do: for(round <- rounds, do: {round.id, round.private})
+  # Only the set of hidden rounds matters: a new public round changes nothing
+  # for the panels, and re-initialising them would drop a decision being written.
+  defp privacy(%{rounds: rounds}) when is_list(rounds), do: for(round <- rounds, round.private, do: round.id)
   defp privacy(_board), do: []
 
   defp reset_epoch(socket, reason) do

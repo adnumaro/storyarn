@@ -170,6 +170,15 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_reply(view, %{status: "error", code: "invalid_parameters"})
   end
 
+  test "the session panel opens and closes through its event, and ignores anything else", ctx do
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    render_hook(view, "session_panel", payload(view, %{open: true}))
+    assert panels(view)["session-panel"] == true
+    render_hook(view, "session_panel", payload(view, %{open: false}))
+    assert panels(view)["session-panel"] == false
+    assert Process.alive?(view.pid)
+  end
+
   test "paste is sanitized on save and returned as inert content on reload", ctx do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
     render_hook(view, "create_idea", payload(view, idea_attrs(%{body: "<p>Hello<script>alert(1)</script></p>"})))

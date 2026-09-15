@@ -121,7 +121,12 @@
       "connections_pending": "A connection has not been confirmed yet. Retry it to continue.",
       "invalid_connections": "Some selected connections are no longer valid. Select the notes again.",
       "outside_band": "That spot belongs to another round. Keep the note inside its band.",
-      "mixed_rounds": "A group can only hold notes from the same round."
+      "mixed_rounds": "A group can only hold notes from the same round.",
+      "private_round": "This round is private until the facilitator reveals it",
+      "round_revealed": "A revealed round cannot be made private again",
+      "same_round": "The note is already in the active round",
+      "round_required": "No round is in progress",
+      "source_discarded": "A discarded note comes back with Bring back"
     },
     "saveStatus": {
       "saved": "Saved",

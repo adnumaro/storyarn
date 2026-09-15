@@ -435,13 +435,42 @@ describe("round bands on the canvas", () => {
     const header = asked.get("#brainstorming-band-20");
     expect(header.text()).toContain("Where does Mara go?");
     expect(header.text()).not.toContain("Round 1");
+    // Nothing to operate: no controls row, so a narrow screen keeps one line.
+    expect(asked.find("#brainstorming-round-controls-20").exists()).toBe(false);
 
     // A participant consults the clock in the same header once it runs.
     const clocked = single(null, false, timer({ status: "paused" }));
     expect(clocked.get("#brainstorming-band-20 #brainstorming-round-timer").text()).toBe("05:00");
+    expect(clocked.find("#brainstorming-round-controls-20").exists()).toBe(true);
     expect(clocked.get("#brainstorming-band-20").text()).not.toContain("Round 1");
     const stopped = single(null, false, timer({ status: "cancelled" }));
     expect(stopped.find("#brainstorming-band-20").exists()).toBe(false);
+  });
+
+  it("keeps the clock on the last band once no round is in progress", () => {
+    const wrapper = canvas({
+      notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
+      bands: {
+        rounds: [
+          round({ id: 20, number: 1, status: "closed" }),
+          round({ id: 21, number: 2, status: "closed" }),
+        ],
+        offsets: new Map([
+          [20, 0],
+          [21, 500],
+        ]),
+        canManage: false,
+        pending: false,
+        timer: {
+          session: board().session!,
+          epoch: "a",
+          timer: timer({ status: "paused" }),
+          canEdit: false,
+        },
+      },
+    });
+    expect(wrapper.get("#brainstorming-band-21 #brainstorming-round-timer").text()).toBe("05:00");
+    expect(wrapper.find("#brainstorming-band-20 #brainstorming-round-timer").exists()).toBe(false);
   });
 
   it("opens on the round in progress and fits everything when there is one round", async () => {
