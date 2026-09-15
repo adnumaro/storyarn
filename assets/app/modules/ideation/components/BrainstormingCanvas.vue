@@ -405,6 +405,11 @@ function headerPinned(round: Round) {
 function headerUnderChrome(round: Round) {
   return canvasHeaderTop(round) < CHROME_ZONE;
 }
+// With a header on the chrome row, the search and references sit in that row
+// as plain controls; the panel keeps its own frame only over bare canvas.
+const chromeFramed = computed(
+  () => !orderedRounds.value.some((round) => headerShown(round) && headerUnderChrome(round)),
+);
 function nextHeaderTop(round: Round) {
   const rounds = orderedRounds.value;
   const index = rounds.findIndex((candidate) => candidate.id === round.id);
@@ -1651,8 +1656,19 @@ onUnmounted(() => {
               }}
             </p>
           </div>
-          <div data-canvas-chrome class="absolute left-3 top-3 z-20">
-            <div ref="chromePanel" class="surface-panel flex items-center p-1">
+          <div
+            data-canvas-chrome
+            class="absolute left-3 z-20"
+            :class="chromeFramed ? 'top-3' : 'top-[9px]'"
+          >
+            <div
+              ref="chromePanel"
+              :class="
+                chromeFramed
+                  ? 'surface-panel flex items-center p-1'
+                  : 'flex h-[42px] items-center gap-0.5'
+              "
+            >
               <button
                 type="button"
                 class="toolbar-btn"

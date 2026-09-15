@@ -284,9 +284,10 @@ remain readable. Group recovery is described in the
 
 ## Independent countdown
 
-While you scroll inside a band, its header stays pinned on the row of the
-floating search and references panel, frosted and without a shadow, making room
-for the panel on its left, until the next band's header pushes it out; the
+While you scroll inside a band, its header stays pinned on the chrome row,
+frosted and without a shadow, and the search and references controls join that
+row as plain controls on its left (their own framed panel only shows over bare
+canvas), until the next band's header pushes it out; the
 header keeps its screen size at any zoom, only its position scales. The canvas
 never scrolls above the first header: nothing lives there. The session tree
 names each round by its question ("R3 · Which ending…") and by its number until
