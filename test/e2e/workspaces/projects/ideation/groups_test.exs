@@ -23,8 +23,10 @@ defmodule StoryarnWeb.E2E.IdeationGroupsTest do
   test "organize and synthesize shared notes directly on the canvas, with collaboration and undo",
        %{conn: conn} = context do
     ctx = ideation_fixture()
-    first = note(ctx, ctx.author, "She protects the city because she once abandoned her sister.", 0, 60, "yellow")
-    second = note(ctx, ctx.peer, "Her rival knows the truth about the evacuation.", 340, 60, "blue")
+    # Low enough for the group frame, which rises 64 px above its members, to
+    # clear the band header resting on the chrome row.
+    first = note(ctx, ctx.author, "She protects the city because she once abandoned her sister.", 0, 120, "yellow")
+    second = note(ctx, ctx.peer, "Her rival knows the truth about the evacuation.", 340, 120, "blue")
 
     browser = conn |> authenticate(ctx.author.user) |> visit(path(ctx)) |> assert_has("#brainstorming-canvas")
 
