@@ -102,10 +102,10 @@ const fillClass = computed(() => {
     :class="contact ? 'bg-primary/5' : sticky ? 'bg-background/[0.86] backdrop-blur-[12px]' : ''"
   >
     <div
-      class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1"
+      class="@container flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1"
       :style="inset ? { paddingLeft: `${inset}px` } : undefined"
     >
-      <div class="flex min-w-0 flex-1 basis-56 items-center gap-3">
+      <div class="flex max-w-full shrink-0 grow basis-auto items-center gap-3">
         <span
           v-if="!single"
           class="shrink-0 text-sm font-semibold"
@@ -131,7 +131,7 @@ const fillClass = computed(() => {
         <Badge
           v-if="!single"
           :variant="active ? 'outline' : 'secondary'"
-          class="shrink-0 font-medium"
+          class="shrink-0 font-medium @max-xl:hidden"
         >
           <span
             v-if="active"
@@ -151,14 +151,14 @@ const fillClass = computed(() => {
         >
         <span
           :id="`brainstorming-round-count-${round.id}`"
-          class="shrink-0 text-xs tabular-nums text-muted-foreground"
+          class="shrink-0 text-xs tabular-nums text-muted-foreground @max-2xl:hidden"
           >{{ noteCount }}</span
         >
       </div>
       <div
         v-if="controls"
         :id="`brainstorming-round-controls-${round.id}`"
-        class="ml-auto flex shrink-0 items-center justify-end gap-3 max-md:basis-full"
+        class="ml-auto flex shrink-0 items-center justify-end gap-3"
       >
         <RoundTimer
           v-if="timer"
@@ -178,7 +178,7 @@ const fillClass = computed(() => {
           :disabled="pending"
           @click="emit('reveal', round.id)"
           :aria-label="t('ideation.rounds.reveal')"
-          ><Eye class="size-3.5" /><span class="max-md:hidden">{{
+          ><Eye class="size-3.5" /><span class="@max-3xl:hidden">{{
             t("ideation.rounds.reveal")
           }}</span></Button
         >
@@ -227,7 +227,7 @@ const fillClass = computed(() => {
                 :disabled="pending"
                 @click="emit('close', round.id)"
                 :aria-label="t('ideation.rounds.close')"
-                ><Square class="size-3.5" /><span class="max-md:hidden">{{
+                ><Square class="size-3.5" /><span class="@max-3xl:hidden">{{
                   t("ideation.rounds.close")
                 }}</span></Button
               >
@@ -242,7 +242,7 @@ const fillClass = computed(() => {
             :disabled="pending"
             @click="emit('newRound')"
             :aria-label="t('ideation.rounds.newRound')"
-            ><Plus class="size-3.5" /><span class="max-md:hidden">{{
+            ><Plus class="size-3.5" /><span class="@max-3xl:hidden">{{
               t("ideation.rounds.newRound")
             }}</span></Button
           >

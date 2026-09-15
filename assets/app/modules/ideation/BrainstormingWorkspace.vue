@@ -1200,7 +1200,10 @@ onUnmounted(() => {
             size="sm"
             :disabled="!online"
             @click="useReferences(null)"
-            ><Link2 class="size-4" />{{ t("brainstormingReferences.title") }}</Button
+            :aria-label="t('brainstormingReferences.title')"
+            ><Link2 class="size-4" /><span class="max-lg:hidden">{{
+              t("brainstormingReferences.title")
+            }}</span></Button
           >
         </template>
         <template #selection="{ connectionTools }">

@@ -100,7 +100,7 @@ function start(value: number) {
           :disabled="writes.pending.value || (timer?.duration_seconds ?? 0) + 60 > 86400"
           @click="writes.control('extend_timer', seconds)"
         >
-          <Plus class="size-3.5" /><span class="max-md:hidden">{{
+          <Plus class="size-3.5" /><span class="@max-3xl:hidden">{{
             t("ideation.timer.oneMinute")
           }}</span>
         </button>
