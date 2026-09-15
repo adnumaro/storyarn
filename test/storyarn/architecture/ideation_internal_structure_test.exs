@@ -192,6 +192,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                  group_operations ++
                  idea_operations ++
                  [
+                   bring_idea_forward: 5,
                    reveal_round: 5,
                    comment_source: 4,
                    comment_source: 5,
@@ -239,6 +240,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
              Enum.sort(
                idea_operations ++
                  [
+                   bring_idea_forward: 5,
                    comment_source: 5,
                    comment_sources_query: 0,
                    reveal_round_locked: 3,

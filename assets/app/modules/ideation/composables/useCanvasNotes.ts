@@ -23,6 +23,7 @@ interface NewNote {
   error: string | null;
   attempt?: Idea;
   connection?: NoteConnection;
+  source?: number;
 }
 interface PlacementAttempt {
   canvas: CanvasPlacement;
@@ -213,6 +214,21 @@ export function useCanvasNotes(
     });
     return id;
   }
+  // A copy of a readable note under the header in progress, linked to what it
+  // copied; the original stays where it was. The server keeps the look and
+  // takes the placement from here.
+  function bringForward(source: Idea, point: Point): number {
+    const { width, shape, color } = source.canvas ?? {};
+    const id = add(
+      { ...point, ...(width ? { width } : {}), ...(shape ? { shape } : {}) },
+      color ?? "none",
+      { title: source.title, body: source.body, state: "active" },
+      activeRoundId.value,
+    );
+    newNotes.get(id)!.source = source.id;
+    void saveNew(id);
+    return id;
+  }
   function open(idea: Idea) {
     if (idea.id > 0 && idea.author_id === board().current_user_id) drafts.open(idea);
   }
@@ -237,21 +253,26 @@ export function useCanvasNotes(
     const snapshot = entry.attempt ?? { ...entry.idea, canvas: { ...entry.idea.canvas } };
     entry.attempt = snapshot;
     const reply = await request<CreatedIdea>(
-      "create_idea",
-      {
-        request_key: entry.key,
-        round_id: snapshot.round_id,
-        title: snapshot.title,
-        body: snapshot.body,
-        configuration_version: entry.version,
-        canvas: snapshot.canvas ? relative(snapshot.canvas, snapshot.round_id) : undefined,
-        ...(entry.connection ? { connection: entry.connection } : {}),
-      },
+      entry.source ? "bring_idea_forward" : "create_idea",
+      creationPayload(entry, snapshot),
       entry.context,
     );
     if (started !== generation) return;
     entry.pending = false;
     acceptCreation(id, entry, snapshot, reply);
+  }
+  function creationPayload(entry: NewNote, snapshot: Idea): Record<string, unknown> {
+    const canvas = snapshot.canvas ? relative(snapshot.canvas, snapshot.round_id) : undefined;
+    if (entry.source) return { request_key: entry.key, idea_id: entry.source, canvas };
+    return {
+      request_key: entry.key,
+      round_id: snapshot.round_id,
+      title: snapshot.title,
+      body: snapshot.body,
+      configuration_version: entry.version,
+      canvas,
+      ...(entry.connection ? { connection: entry.connection } : {}),
+    };
   }
   function acceptCreation(id: number, entry: NewNote, snapshot: Idea, reply: Reply<CreatedIdea>) {
     if (reply.status === "ok") {
@@ -595,6 +616,7 @@ export function useCanvasNotes(
     drafts,
     errors,
     add,
+    bringForward,
     open,
     change,
     save,

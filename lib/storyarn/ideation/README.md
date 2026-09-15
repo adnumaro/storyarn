@@ -42,7 +42,9 @@ Content revisions and edit receipts are internal records for current heads,
 pinned publications, concurrency, retries and compatible recovery capsules. They
 are not a user-facing card history: historical-revision, conflict-list and receipt
 queries have been removed. The immediate save-conflict response remains available.
-There is no derivation command; older capsules retain their existing provenance.
+`bring_idea_forward/5` is the one derivation command: it copies the revision of a
+readable note into the round in progress as the actor's own note, linked through
+`source_idea_id`/`source_revision`; older capsules retain their existing provenance.
 
 `restore_idea/6` only reverses a particular deletion of the acting author's note,
 guarded by its revision and deletion marker. It restores that identity with an

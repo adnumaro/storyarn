@@ -171,12 +171,14 @@ Discarding does not erase content or withdraw a prior publication. Returning an
 idea to active is another authored revision. On shared ideas the current creative
 state is visible even while the author has unpublished text changes.
 
-New contributions do not have a derivation API or a **Develop this idea** action.
-Existing source identities and revisions remain in compatible recovery capsules;
-restoration retains and remaps that provenance without granting access to private
-source content. Cross-tool links and materialization remain separate work.
-[ENG-164](https://linear.app/sunset/issue/ENG-164/spike-definir-el-valor-y-la-experiencia-de-desarrollar-una-idea)
-evaluates whether a future development workflow adds value beyond duplication.
+**Bring to this round** is the derivation API: `bring_idea_forward/5` creates
+the actor's own copy of a readable note under the round in progress, linked
+through `source_idea_id` and `source_revision` (see the
+[round contract](brainstorming-rounds-contract.md)). The link is visible to the
+copy's author, and to everyone once the source is published. Existing source
+identities and revisions remain in compatible recovery capsules; restoration
+retains and remaps that provenance without granting access to private source
+content. Cross-tool links and materialization remain separate work.
 
 ## Effective permission matrix
 

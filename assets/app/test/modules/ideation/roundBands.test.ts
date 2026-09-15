@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, reactive, ref } from "vue";
-import { mount, type VueWrapper } from "@vue/test-utils";
+import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import BrainstormingCanvas from "@modules/ideation/components/BrainstormingCanvas.vue";
 import { bandAt, bandOffsets } from "@modules/ideation/lib/bands";
 import { board, idea, round, timer } from "./fixtures";
@@ -381,6 +381,26 @@ describe("round bands on the canvas", () => {
     });
     expect(member.find("#brainstorming-round-new-21").exists()).toBe(false);
     expect(member.find("#brainstorming-band-21").exists()).toBe(true);
+  });
+
+  it("offers to bring a note of an earlier round into the one in progress, under its content", async () => {
+    const bring = async (wrapper: VueWrapper, id: number) => {
+      await wrapper.get(`[data-note-id="${id}"]`).trigger("contextmenu", { button: 2 });
+      await flushPromises();
+      return document.querySelector<HTMLElement>("#brainstorming-note-context-bring");
+    };
+    const wrapper = canvas();
+    const item = await bring(wrapper, 10);
+    expect(item?.textContent).toContain("Bring to this round");
+    item!.click();
+    await flushPromises();
+    // Note 11 ends at 560 + 96 in round 2, whose header sits at 500: the copy goes under it.
+    expect(wrapper.emitted("bringForward")).toEqual([[10, { x: 10, y: 680 }]]);
+    wrapper.unmount();
+    mounted.splice(mounted.indexOf(wrapper), 1);
+
+    expect(await bring(canvas(), 11)).toBeNull();
+    expect(await bring(canvas({ permissions: { edit: true, create: false } }), 10)).toBeNull();
   });
 
   it("stays quiet with a single round and only shows its question, or the facilitator's placeholder", () => {

@@ -59,6 +59,64 @@ describe("canvas persistence", () => {
     ]);
     app.unmount();
   });
+  it("brings a note forward as the actor's own copy under the round in progress", async () => {
+    const { result, app, current, request, replies } = setup(
+      () =>
+        new Map([
+          [20, 0],
+          [21, 500],
+        ]),
+    );
+    const closed = round({ id: 20, number: 1, status: "closed" });
+    const active = round({ id: 21, number: 2, status: "active", prompt: null });
+    const source = idea({
+      id: 10,
+      round_id: 20,
+      title: "Keep the light",
+      body: "<p>Mara keeps the light</p>",
+      state: "parked",
+      canvas: { x: 40, y: 120, width: 320, color: "mint", shape: "ellipse" },
+    });
+    current.value = board({ ideas: [source], rounds: [closed, active], active_round: active });
+    await nextTick();
+
+    const id = result.bringForward(result.find(10)!, { x: 40, y: 680 });
+    expect(id).toBeLessThan(0);
+    expect(result.find(id)).toMatchObject({
+      round_id: 21,
+      title: "Keep the light",
+      body: "<p>Mara keeps the light</p>",
+      state: "active",
+      canvas: { x: 40, y: 680, width: 320, color: "mint", shape: "ellipse" },
+    });
+    await flush();
+    expect(request).toHaveBeenCalledWith(
+      "bring_idea_forward",
+      {
+        request_key: expect.any(String),
+        idea_id: 10,
+        canvas: { x: 40, y: 180, width: 320, color: "mint", shape: "ellipse" },
+      },
+      expect.anything(),
+    );
+    replies[0]({
+      status: "ok",
+      value: idea({
+        id: 12,
+        round_id: 21,
+        title: "Keep the light",
+        body: "<p>Mara keeps the light</p>",
+        source_idea_id: 10,
+        source_revision: 1,
+        canvas: { x: 40, y: 180, width: 320, color: "mint", shape: "ellipse" },
+      }),
+    });
+    await flush();
+    expect(result.resolveId(id)).toBe(12);
+    expect(result.find(12)).toMatchObject({ source_idea_id: 10, canvas: { y: 680 } });
+    expect(result.find(10)).toMatchObject({ state: "parked", round_id: 20 });
+    app.unmount();
+  });
   it("replays an uncertain creation unchanged and retains subsequent typing", async () => {
     const { result, app, request, replies, selected } = setup();
     const id = result.add({ x: 40, y: 60 });

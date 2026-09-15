@@ -205,6 +205,11 @@ preserves their provenance, and undoing an unsaved deletion restores the origina
 round. Switching filters retains drafts and local undo state. Existing connections
 can relate readable notes across rounds.
 
+A note never moves to another round. **Bring to this round**, in the context menu
+of any readable note of an earlier round and in the For later list, makes a copy
+of it in the note's own look under the lowest content of the round in progress,
+linked to the original, which stays where it was.
+
 Undo and redo preserve the current view when their notes belong to that view,
 including restoring a deleted note. When a target is hidden or outside the loaded
 range, the canvas loads all rounds through the previously displayed range before
@@ -231,8 +236,10 @@ note to active. Both states stay on the canvas in place: a note kept for later
 wears a "For later" tab over its top edge and a dashed outline that follows its
 shape, both in the primary colour; a discarded note wears the same tab and
 outline in grey and fades behind the others with its text struck through, back
-to full strength while it is being edited. The list keeps its
-state filter. These states do not change the round's privacy.
+to full strength while it is being edited. The list keeps its state filter; its
+For later view lists only parked notes without a copy brought ahead, each with
+**Bring to this round**, and the session tree counts them the same way. These
+states do not change the round's privacy.
 
 ## Persistence and collaboration
 

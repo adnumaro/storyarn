@@ -2,16 +2,17 @@
 import { bandOffsets as layoutBands, NOTE_HEIGHT, type BandOffsets } from "./lib/bands";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
-  StickyNote,
-  Plus,
   Archive,
+  ArrowDownToLine,
+  Ban,
   CircleX,
-  RotateCcw,
   LayoutDashboard,
-  Unplug,
   Link2,
   ListChecks,
-  Ban,
+  Plus,
+  RotateCcw,
+  StickyNote,
+  Unplug,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -218,8 +219,16 @@ const visible = computed(() =>
     round_number: rounds.value.find((round) => round.id === note.round_id)?.number,
   })),
 );
+// A parked note with a copy brought ahead is no longer waiting for later.
+const forwarded = computed(
+  () => new Set(notes.notes.value.map((note) => note.source_idea_id).filter((id) => id != null)),
+);
 const listed = computed(() =>
-  visible.value.filter((note) => state.value === "all" || note.state === state.value),
+  visible.value.filter(
+    (note) =>
+      (state.value === "all" || note.state === state.value) &&
+      !(state.value === "parked" && forwarded.value.has(note.id)),
+  ),
 );
 const statuses = computed(() =>
   Object.fromEntries([...notes.drafts.drafts.values()].map((d) => [d.idea.id, d.status])),
@@ -712,6 +721,19 @@ async function remove(ids: number[]) {
     select([]);
   }
 }
+// The copy lands under the lowest note of the round in progress. The canvas
+// measures that; from the list it is estimated from note geometry.
+function bringForward(id: number, point?: Point) {
+  const note = notes.notes.value.find((candidate) => candidate.id === id);
+  const active = board.active_round;
+  if (!note || !active || !canCreate.value || note.round_id === active.id) return;
+  const top = bandOffsets.value.get(active.id) ?? 0;
+  const bottoms = notes.notes.value
+    .filter((other) => other.round_id === active.id && typeof other.canvas?.y === "number")
+    .map((other) => (other.canvas?.y ?? 0) + NOTE_HEIGHT);
+  const y = (bottoms.length ? Math.max(...bottoms) : top + 60) + 24;
+  notes.bringForward(note, point ?? { x: note.canvas?.x ?? 0, y });
+}
 function changeState(value: "active" | "parked" | "discarded", id = current.value?.id) {
   const note = id === undefined ? null : notes.find(id);
   if (!note || note.author_id !== board.current_user_id || mutationBusy.value) return;
@@ -1145,6 +1167,7 @@ onUnmounted(() => {
         @edit="edit"
         @change="notes.change"
         @change-state="(id, state) => changeState(state, id)"
+        @bring-forward="bringForward"
         @finish="finish"
         @move="move"
         @connect="connect"
@@ -1374,35 +1397,50 @@ onUnmounted(() => {
             >
           </div>
           <div class="divide-y rounded-lg border">
-            <button
+            <div
               v-for="note in listed"
               :id="`canvas-list-note-${note.id}`"
               :key="note.id"
-              type="button"
-              class="flex w-full items-start gap-3 p-4 text-left hover:bg-accent/30"
-              @click="locate(note)"
+              class="flex items-start gap-3 p-4 hover:bg-accent/30"
             >
-              <StickyNote class="mt-1 size-4 shrink-0 text-muted-foreground" />
-              <div>
-                <p v-if="note.title" class="text-sm font-medium">{{ note.title }}</p>
-                <p class="text-sm">{{ note.body.replace(/<[^>]*>/g, " ") }}</p>
-                <p class="mt-2 text-xs text-muted-foreground">
-                  {{ member(note.author_id, board.members) }} ·
-                  {{ t(`ideation.${note.state}`) }}
-                  <span v-if="note.round_id">
-                    ·
-                    {{
-                      rounds.find((round) => round.id === note.round_id)
-                        ? t("ideation.rounds.number", {
-                            number: rounds.find((round) => round.id === note.round_id)!.number,
-                          })
-                        : t("ideation.rounds.assigned")
-                    }}</span
-                  >
-                  <span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span>
-                </p>
-              </div>
-            </button>
+              <button
+                type="button"
+                class="flex min-w-0 flex-1 items-start gap-3 text-left"
+                @click="locate(note)"
+              >
+                <StickyNote class="mt-1 size-4 shrink-0 text-muted-foreground" />
+                <div>
+                  <p v-if="note.title" class="text-sm font-medium">{{ note.title }}</p>
+                  <p class="text-sm">{{ note.body.replace(/<[^>]*>/g, " ") }}</p>
+                  <p class="mt-2 text-xs text-muted-foreground">
+                    {{ member(note.author_id, board.members) }} ·
+                    {{ t(`ideation.${note.state}`) }}
+                    <span v-if="note.round_id">
+                      ·
+                      {{
+                        rounds.find((round) => round.id === note.round_id)
+                          ? t("ideation.rounds.number", {
+                              number: rounds.find((round) => round.id === note.round_id)!.number,
+                            })
+                          : t("ideation.rounds.assigned")
+                      }}</span
+                    >
+                    <span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span>
+                  </p>
+                </div>
+              </button>
+              <Button
+                v-if="
+                  note.state === 'parked' && canCreate && note.round_id !== board.active_round?.id
+                "
+                :id="`canvas-list-bring-${note.id}`"
+                variant="outline"
+                size="sm"
+                class="shrink-0"
+                @click="bringForward(note.id)"
+                ><ArrowDownToLine class="size-4" />{{ t("ideation.bringForward") }}</Button
+              >
+            </div>
           </div></DashboardContent
         >
       </div>

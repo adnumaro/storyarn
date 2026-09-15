@@ -56,25 +56,7 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
   def parked_counts(scope, project_id, session_ids) when is_list(session_ids) and length(session_ids) <= 200 do
     with :ok <- Sessions.authorize_project_read(scope, project_id),
          true <- Enum.all?(session_ids, &valid_id/1) do
-      actor_id = scope.user.id
-
-      counts =
-        Repo.all(
-          from i in Idea,
-            join: s in subquery(Sessions.canvas_settings_query()),
-            on: s.id == i.session_id,
-            left_join: mask in subquery(Sessions.round_mask_query()),
-            on: mask.id == i.round_id,
-            where:
-              i.session_id in ^session_ids and s.project_id == ^project_id and is_nil(i.deleted_at) and
-                i.state == :parked and
-                (i.author_id == ^actor_id or
-                   (not fragment("COALESCE(?, false)", mask.private) and not is_nil(i.published_revision))),
-            group_by: i.session_id,
-            select: {i.session_id, count(i.id)}
-        )
-
-      {:ok, Map.new(counts)}
+      {:ok, session_ids |> waiting_query(project_id, scope.user.id) |> Repo.all() |> Map.new()}
     else
       false -> {:error, :invalid_options}
       {:error, reason} -> {:error, reason}
@@ -82,6 +64,25 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
   end
 
   def parked_counts(_scope, _project_id, _session_ids), do: {:error, :invalid_options}
+
+  # Parked notes the reader can see, minus those with a copy brought ahead.
+  defp waiting_query(session_ids, project_id, actor_id) do
+    forwarded = from d in Idea, where: d.source_idea_id == parent_as(:idea).id and is_nil(d.deleted_at)
+
+    from i in Idea,
+      as: :idea,
+      join: s in subquery(Sessions.canvas_settings_query()),
+      on: s.id == i.session_id,
+      left_join: mask in subquery(Sessions.round_mask_query()),
+      on: mask.id == i.round_id,
+      where:
+        i.session_id in ^session_ids and s.project_id == ^project_id and is_nil(i.deleted_at) and
+          i.state == :parked and not exists(forwarded) and
+          (i.author_id == ^actor_id or
+             (not fragment("COALESCE(?, false)", mask.private) and not is_nil(i.published_revision))),
+      group_by: i.session_id,
+      select: {i.session_id, count(i.id)}
+  end
 
   defp count_options(opts) when is_list(opts) do
     if Keyword.keyword?(opts), do: :ok, else: {:error, :invalid_options}

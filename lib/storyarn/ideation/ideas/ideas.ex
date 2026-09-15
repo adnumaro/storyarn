@@ -79,6 +79,10 @@ defmodule Storyarn.Ideation.Ideas do
 
   defdelegate create_canvas_idea(scope, project_id, session_id, attrs), to: Commands.Create, as: :run_canvas
 
+  defdelegate bring_idea_forward(scope, project_id, session_id, idea_id, attrs),
+    to: Commands.BringForward,
+    as: :run
+
   defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs),
     to: Commands.Update,
     as: :run_canvas

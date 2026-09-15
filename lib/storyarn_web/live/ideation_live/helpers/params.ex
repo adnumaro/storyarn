@@ -31,6 +31,9 @@ defmodule StoryarnWeb.IdeationLive.Helpers.Params do
 
   def creation(_), do: {:error, :invalid_parameters}
 
+  def bring(params) when is_map(params), do: {:ok, fields(params, [:request_key, :canvas])}
+  def bring(_), do: {:error, :invalid_parameters}
+
   defp creation_round(%{"round_id" => nil}), do: {:ok, %{"round_id" => nil}}
 
   defp creation_round(%{"round_id" => value}) do

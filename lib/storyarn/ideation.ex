@@ -277,6 +277,9 @@ defmodule Storyarn.Ideation do
   @doc "Creates a canvas contribution under the current session visibility mode."
   @spec create_canvas_idea(map(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
   defdelegate create_canvas_idea(scope, project_id, session_id, attrs), to: Ideas
+  @doc "Brings a readable note into the round in progress as the actor's own copy, linked to the revision it copied."
+  @spec bring_idea_forward(map(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate bring_idea_forward(scope, project_id, session_id, idea_id, attrs), to: Ideas
   @doc "Saves a canvas note and publishes that revision atomically in shared mode."
   @spec update_canvas_idea(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
   defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas

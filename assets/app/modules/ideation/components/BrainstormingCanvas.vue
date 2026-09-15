@@ -2,23 +2,24 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useElementSize } from "@vueuse/core";
 import {
-  MessageSquarePlus,
-  MousePointer2,
-  Hand,
-  StickyNote,
-  Cable,
-  Minus,
-  Plus,
-  Maximize,
-  List,
-  Search,
-  X,
-  ArrowRight,
+  ArrowDownToLine,
   ArrowLeft,
   ArrowLeftRight,
+  ArrowRight,
   Bookmark,
+  Cable,
   CircleX,
+  Hand,
+  List,
+  Maximize,
+  MessageSquarePlus,
+  Minus,
+  MousePointer2,
+  Plus,
   RotateCcw,
+  Search,
+  StickyNote,
+  X,
 } from "@lucide/vue";
 import {
   ContextMenu,
@@ -164,16 +165,20 @@ const emit = defineEmits<{
   closeRound: [id: number];
   updatePrompt: [id: number, prompt: string];
   changeState: [id: number, state: IdeaState];
+  bringForward: [id: number, point: Point];
 }>();
 const commentTarget = ref<BrainstormingCommentTarget | null>(null);
 // The author's own note under the pointer: its states are one right-click away.
 const noteTarget = ref<{ id: number; state: IdeaState } | null>(null);
+// Any readable note of another round, to bring into the one in progress.
+const bringTarget = ref<{ id: number; point: Point } | null>(null);
 const canStartRound = computed(() => bands.canManage && permissions.edit);
 // The context menu serves comments, a note's states for its author and, for
 // the facilitator, the next round.
 function prepareComment(event: MouseEvent) {
   commentTarget.value = null;
   noteTarget.value = null;
+  bringTarget.value = null;
   const target = event.target instanceof Element ? event.target : null;
   if (
     !target ||
@@ -187,13 +192,27 @@ function prepareComment(event: MouseEvent) {
     ? { ...source, position: world(event.clientX, event.clientY) }
     : null;
   noteTarget.value = resolveNoteTarget(target);
-  if (!commentTarget.value && !noteTarget.value && !canStartRound.value) event.stopPropagation();
+  bringTarget.value = resolveBringTarget(target);
+  if (!commentTarget.value && !noteTarget.value && !bringTarget.value && !canStartRound.value)
+    event.stopPropagation();
 }
 function resolveNoteTarget(target: Element) {
   const id = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
   const note = notes.find((candidate) => candidate.id === id);
   if (!note || id <= 0 || !permissions.edit || note.author_id !== collaboration.userId) return null;
   return { id, state: note.state };
+}
+// The copy lands under the lowest content of the band in progress, at the
+// original's x, so it never covers what is already there.
+function resolveBringTarget(target: Element) {
+  const id = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
+  const note = notes.find((candidate) => candidate.id === id);
+  const active = bands.rounds.find((round) => round.status === "active");
+  if (!note || id <= 0 || !canCreate.value || !active || note.round_id === active.id) return null;
+  const top = bandTop(active.id)?.top ?? offsetOf(active.id);
+  const bottom = contentBottom(active.id);
+  const y = (bottom === null ? top : Math.max(top, offsetOf(active.id) + bottom)) + 24;
+  return { id, point: { x: position(note).x, y } };
 }
 function resolveCommentTarget(target: Element) {
   const noteId = Number(target.closest<HTMLElement>("[data-note-id]")?.dataset.noteId);
@@ -1747,7 +1766,7 @@ onUnmounted(() => {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent
-        v-if="commentTarget || noteTarget || canStartRound"
+        v-if="commentTarget || noteTarget || bringTarget || canStartRound"
         @close-auto-focus.prevent="root?.focus({ preventScroll: true })"
       >
         <ContextMenuItem
@@ -1780,6 +1799,13 @@ onUnmounted(() => {
             <CircleX class="size-4" />{{ t("ideation.canvas.discard") }}
           </ContextMenuItem>
         </template>
+        <ContextMenuItem
+          v-if="bringTarget"
+          id="brainstorming-note-context-bring"
+          @select="emit('bringForward', bringTarget.id, bringTarget.point)"
+        >
+          <ArrowDownToLine class="size-4" />{{ t("ideation.bringForward") }}
+        </ContextMenuItem>
         <ContextMenuItem
           v-if="canStartRound"
           id="brainstorming-round-context-new"

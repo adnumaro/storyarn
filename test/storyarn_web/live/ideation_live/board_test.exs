@@ -139,6 +139,37 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_reply(view, %{status: "ok", value: %{count: 2}})
   end
 
+  test "bringing a note forward answers with the linked copy in the round in progress and refuses readers", ctx do
+    original = idea_fixture(ctx)
+    {ctx, second} = new_round(ctx)
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+
+    render_hook(
+      view,
+      "bring_idea_forward",
+      payload(view, %{idea_id: original.id, request_key: Ecto.UUID.generate(), canvas: %{x: 12, y: 30}})
+    )
+
+    assert_reply(view, %{status: "ok", value: %{id: id, source_idea_id: source, round_id: round_id, canvas: canvas}})
+    assert id != original.id
+    assert source == original.id
+    assert round_id == second.id
+    assert {12, 30} == {canvas["x"], canvas["y"]}
+    assert_board_eventually(view, fn board -> assert length(board["ideas"]) == 2 end)
+
+    {:ok, viewer, _} = live(log_in_user(ctx.conn, ctx.viewer.user), board_path(ctx, ctx.session.id))
+
+    render_hook(
+      viewer,
+      "bring_idea_forward",
+      payload(viewer, %{idea_id: original.id, request_key: Ecto.UUID.generate()})
+    )
+
+    assert_reply(viewer, %{status: "error", code: "unauthorized"})
+    render_hook(view, "bring_idea_forward", payload(view, %{idea_id: "x", request_key: Ecto.UUID.generate()}))
+    assert_reply(view, %{status: "error", code: "invalid_parameters"})
+  end
+
   test "paste is sanitized on save and returned as inert content on reload", ctx do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
     render_hook(view, "create_idea", payload(view, idea_attrs(%{body: "<p>Hello<script>alert(1)</script></p>"})))

@@ -87,10 +87,20 @@ Existing request fingerprints without a round field remain compatible. The
 recovery compartment remaps round references, while receipt fingerprints retain
 the original request identity.
 
-Existing canvas links can connect readable notes across rounds without copying
-their content. They are visual relationships, not a new derivation workflow or
-a replacement for the retained source provenance in older notes. Link endpoints
-remain subject to the reader's current privacy rules.
+A note never changes round. **Bring to this round** (`bring_idea_forward/5`) is
+the only way an idea crosses rounds: a new note of the actor's own under the
+header in progress, copying the title, body and look of the revision the actor
+can read, linked to it through `source_idea_id`/`source_revision`. The original
+stays where it was, in its state; a parked original with a copy ahead no longer
+counts as waiting for later. The copy follows the canvas contribution policy
+(shared unless the round in progress is private), takes the placement the caller
+gives it inside the band (`y >= 0`, the original's look otherwise), needs open
+contributions, a readable source and a source outside the round in progress
+(`same_round`), and replays its request key like any creation.
+
+Existing canvas links can still connect readable notes across rounds without
+copying their content. They are visual relationships, not provenance. Link
+endpoints remain subject to the reader's current privacy rules.
 
 ## Reading and publication
 
