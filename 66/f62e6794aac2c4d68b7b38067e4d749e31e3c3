@@ -1,0 +1,44 @@
+assets/app/test/modules/ideation/timerControls.test.ts
+  s_02773c3f2b5565::t_bcdf1450736d69 162-163,174,176-179,183,185-186,199,243,296-297,306-310,316-317,326-330
+assets/app/modules/ideation/components/RoundTimer.vue
+  s_02773c3f2b5565::t_f3cb19854765fb 50,122
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_bcdf1450736d69 277-279
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_bb97a4aa365a69 243-244,261
+assets/app/test/modules/ideation/roundTimer.test.ts
+  s_02773c3f2b5565::t_bcdf1450736d69 47,54,77,104-105,119,121,145-147
+docs/reference/brainstorming-timer-contract.md
+  s_02773c3f2b5565::t_bcdf1450736d69 21
+assets/app/test/modules/ideation/sessionTimer.test.ts
+  s_02773c3f2b5565::t_bcdf1450736d69 39,50,52,62,70,79,94,96,105,107,110,115,123,132,137
+assets/app/modules/ideation/components/TimerDigits.vue
+  s_02773c3f2b5565::t_bb97a4aa365a69 2,5,7-8,20-25,29-30,33-49,51-65,74-110,116
+assets/app/test/modules/ideation/timerDigits.test.ts
+  s_02773c3f2b5565::t_bcdf1450736d69 4,8-14,17-26,28-32,39-40,42-43,45-56,59-60,63-67,69,71-73,77-85
+test/e2e/workspaces/projects/ideation/timer_test.exs
+  s_02773c3f2b5565::t_3c3dc793756050 158
+  s_02773c3f2b5565::t_bb97a4aa365a69 39,159-160
+assets/app/modules/ideation/composables/useSessionTimer.ts
+  s_02773c3f2b5565::t_46a3d99a032d7c 3,78
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_bb97a4aa365a69 243-244,261
+assets/app/modules/ideation/composables/useTimerWrites.ts
+  s_02773c3f2b5565::t_bb97a4aa365a69 23,26,29-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "66f62e6794aac2c4d68b7b38067e4d749e31e3c3",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
