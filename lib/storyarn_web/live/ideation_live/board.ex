@@ -635,10 +635,10 @@ defmodule StoryarnWeb.IdeationLive.Board do
   defp private_round?(_round), do: false
 
   # A round going private or being revealed changes what everyone may see. Open
-  # discussions, references and decision previews were built on the old view,
-  # and writes fenced to the old epoch must not land on the new one either.
-  # Canvases keep their selection, drafts and open editors: the new epoch
-  # arrives with the board, nothing is torn down under a writer's hands.
+  # discussions, references and decision previews were built on the old view
+  # and start over; their fresh contexts fence whatever was in flight for the
+  # old ones. The canvas keeps its epoch: selection, drafts and open editors
+  # stay under the writer's hands, and every read re-checks visibility anyway.
   defp fence_privacy_change(
          %{assigns: %{board: %{session: %{id: id}} = previous}} = socket,
          %{session: %{id: id}} = next
@@ -651,7 +651,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
       |> CommentHandlers.init()
       |> ReferenceHandlers.init()
       |> DecisionHandlers.init()
-      |> rotate_epoch()
     end
   end
 
@@ -661,11 +660,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
   defp privacy(_board), do: []
 
   defp reset_epoch(socket, reason) do
-    socket = rotate_epoch(socket)
-    push_event(socket, "brainstorming_reset", %{reason: reason, epoch: socket.assigns.epoch})
-  end
+    epoch = Ecto.UUID.generate()
 
-  defp rotate_epoch(socket), do: assign(socket, epoch: Ecto.UUID.generate(), refresh_running: nil, refresh_dirty: false)
+    socket
+    |> assign(epoch: epoch, refresh_running: nil, refresh_dirty: false)
+    |> push_event("brainstorming_reset", %{reason: reason, epoch: epoch})
+  end
 
   defp canvas_subscription(socket, id) do
     next = if id, do: {:ideation, id}
