@@ -35,6 +35,7 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
 
     manager =
       manager
+      |> press("#brainstorming-round-timer-minutes", "ControlOrMeta+a")
       |> type("#brainstorming-round-timer-minutes", "10")
       |> click("#brainstorming-round-timer-start:not([disabled])")
       |> assert_has("#brainstorming-round-timer-pause[aria-disabled=false]")

@@ -53,6 +53,12 @@ function select(field: HTMLInputElement | null) {
   field?.focus();
   field?.select();
 }
+// A click on two digits always takes both: the mouse-up would otherwise
+// collapse the selection made on focus to a caret.
+function selectAll(event: Event) {
+  event.preventDefault();
+  select(event.target as HTMLInputElement);
+}
 // Leaving the digits altogether settles them; moving between the two fields does not.
 function leave(event: FocusEvent) {
   if (!root.value?.contains(event.relatedTarget as Node | null)) commit();
@@ -86,6 +92,7 @@ function submit() {
         placeholder="00"
         :disabled="pending"
         @focus="($event.target as HTMLInputElement).select()"
+        @mouseup="selectAll"
         @input="typeMinutes"
         @keydown.enter.prevent="submit"
       />
@@ -103,6 +110,7 @@ function submit() {
         placeholder="00"
         :disabled="pending"
         @focus="($event.target as HTMLInputElement).select()"
+        @mouseup="selectAll"
         @input="typeSeconds"
         @keydown="backToMinutes"
         @keydown.enter.prevent="submit"

@@ -74,6 +74,17 @@ describe("timer digits", () => {
     expect(start().attributes("disabled")).toBeUndefined();
   });
 
+  it("takes both digits on a click, so typing replaces them", async () => {
+    wrapper = mount(TimerDigits, { props: { seconds: 300 }, attachTo: document.body });
+    const field = minutes().element as HTMLInputElement;
+    const event = new MouseEvent("mouseup", { bubbles: true, cancelable: true });
+    field.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe(0);
+    expect(field.selectionEnd).toBe(2);
+  });
+
   it("goes back to the minutes on backspace over empty seconds and freezes while a write is pending", async () => {
     wrapper = mount(TimerDigits, { props: { seconds: 60 }, attachTo: document.body });
     await seconds().setValue("");
