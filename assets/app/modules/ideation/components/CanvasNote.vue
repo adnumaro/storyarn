@@ -5,7 +5,7 @@ import { DOMParser } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useI18n } from "vue-i18n";
-import { Bookmark } from "@lucide/vue";
+import { Bookmark, CircleX } from "@lucide/vue";
 import { pasteContent } from "../lib/paste";
 import type { Idea } from "../types";
 import { noteFill, noteInk } from "../lib/noteColors";
@@ -140,9 +140,10 @@ const ink = computed(() => noteInk(note.canvas?.color) ?? undefined);
       <polygon v-else-if="shape === 'diamond'" points="50,0 100,50 50,100 0,50" />
       <rect v-else x="0" y="0" width="100" height="100" rx="2" />
     </svg>
-    <span v-if="parked" aria-hidden="true" class="note-tab"
-      ><Bookmark class="size-2.5" />{{ t("ideation.forLater") }}</span
-    >
+    <span v-if="parked || discarded" aria-hidden="true" class="note-tab">
+      <Bookmark v-if="parked" class="size-2.5" /><CircleX v-else class="size-2.5" />
+      {{ t(parked ? "ideation.forLater" : "ideation.discarded") }}
+    </span>
     <div class="note-content relative z-10 min-w-0">
       <p v-if="note.title" class="mb-1.5 text-[15px] font-semibold leading-snug">
         {{ note.title }}
@@ -282,8 +283,8 @@ const ink = computed(() => noteInk(note.canvas?.color) ?? undefined);
   left: 50%;
   transform: translate(-50%, -100%);
 }
-/* Discarded: faded behind the others and struck through, back to full
-   strength while it is being edited. */
+/* Discarded: the same tab, faded behind the others and struck through, back
+   to full strength while it is being edited. */
 .canvas-note--discarded {
   opacity: 0.55;
   filter: grayscale(1);

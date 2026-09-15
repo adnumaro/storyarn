@@ -229,8 +229,9 @@ state; a snapshot after deletion preserves the deletion.
 takes from the note toolbar or the note's context menu; **Bring back** returns a
 note to active. Both states stay on the canvas in place: a note kept for later
 wears a "For later" tab over its top edge and a dashed outline that follows its
-shape, and a discarded note fades behind the others in grey with its text struck
-through, back to full strength while it is being edited. The list keeps its
+shape, and a discarded note wears a "Discarded" tab and fades behind the others in
+grey with its text struck through, back to full strength while it is being
+edited. The list keeps its
 state filter. These states do not change the round's privacy.
 
 ## Persistence and collaboration

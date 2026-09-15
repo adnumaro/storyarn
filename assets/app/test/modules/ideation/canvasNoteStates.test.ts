@@ -45,10 +45,11 @@ describe("note states on the card", () => {
     expect(wrapper.find(".note-dash polygon").exists()).toBe(true);
   });
 
-  it("fades a discarded note behind the others until it is being edited", async () => {
+  it("fades a discarded note behind the others, under its own tab, until it is being edited", async () => {
     const wrapper = await note({ state: "discarded" });
     expect(wrapper.classes()).toContain("canvas-note--discarded");
-    expect(wrapper.find(".note-tab").exists()).toBe(false);
+    expect(wrapper.get(".note-tab").text()).toBe("Discarded");
+    expect(wrapper.find(".note-dash").exists()).toBe(false);
     await wrapper.setProps({ editing: true });
     expect(wrapper.classes()).toContain("canvas-note--discarded");
     expect(wrapper.classes()).toContain("canvas-note--editing");
