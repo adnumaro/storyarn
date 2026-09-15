@@ -556,6 +556,14 @@ async function revealNote(note: Idea) {
 function focus() {
   root.value?.focus({ preventScroll: true });
 }
+// The menu hands focus back to the canvas as it closes, unless a note or a
+// question is being written by then: a menu closing late must not take the caret.
+function focusAfterMenu() {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && active.matches("[contenteditable=true], input, textarea"))
+    return;
+  focus();
+}
 function summaryAnchor(id: number): Point | undefined {
   const frame = layouts.value.find((layout) => layout.group.id === id)?.bounds;
   return frame
@@ -1872,7 +1880,7 @@ onUnmounted(() => {
       </ContextMenuTrigger>
       <ContextMenuContent
         v-if="commentTarget || noteTarget || bringTarget || canStartRound"
-        @close-auto-focus.prevent="root?.focus({ preventScroll: true })"
+        @close-auto-focus.prevent="focusAfterMenu"
       >
         <ContextMenuItem
           v-if="commentTarget"

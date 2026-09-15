@@ -384,6 +384,29 @@ describe("round bands on the canvas", () => {
     expect(member.find("#brainstorming-band-21").exists()).toBe(true);
   });
 
+  it("hands focus back to the canvas when its menu closes, unless a note is being written", async () => {
+    const wrapper = canvas();
+    const root = wrapper.get("#brainstorming-canvas").element as HTMLElement;
+    const focusRoot = vi.spyOn(root, "focus");
+    const choose = async () => {
+      await wrapper.get('[data-note-id="10"]').trigger("contextmenu", { button: 2 });
+      await flushPromises();
+      document.querySelector<HTMLElement>("#brainstorming-note-context-bring")!.click();
+      await flushPromises();
+    };
+    // A note took the caret before the menu finished closing (jsdom closes it at
+    // once, so the caret is stood in for): the menu leaves it there.
+    const editor = document.createElement("div");
+    editor.setAttribute("contenteditable", "true");
+    Object.defineProperty(document, "activeElement", { get: () => editor, configurable: true });
+    await choose();
+    Reflect.deleteProperty(document, "activeElement");
+    expect(focusRoot).not.toHaveBeenCalled();
+    // Nothing being written: the canvas takes the focus back for its shortcuts.
+    await choose();
+    expect(focusRoot).toHaveBeenCalled();
+  });
+
   it("offers to bring a note of an earlier round into the one in progress, under its content", async () => {
     const bring = async (wrapper: VueWrapper, id: number) => {
       await wrapper.get(`[data-note-id="${id}"]`).trigger("contextmenu", { button: 2 });

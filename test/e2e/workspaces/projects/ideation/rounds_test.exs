@@ -11,24 +11,6 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
 
   @moduletag :e2e
 
-  # Temporary: CI alone reproduces the focus failure after the new round.
-  @diagnostic """
-  (() => {
-    const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; };
-    const desc = (el) => el ? el.tagName.toLowerCase() + '#' + (el.id || '-') + (el.isContentEditable ? '[ce]' : '') : null;
-    const canvas = document.querySelector('#brainstorming-canvas');
-    return JSON.stringify({
-      hasFocus: document.hasFocus(),
-      active: desc(document.activeElement),
-      canvas: rect(canvas),
-      bands: [...document.querySelectorAll('[data-round-header]')].map((el) => ({ id: el.dataset.roundHeader, top: el.style.top, pinned: el.dataset.pinned || null, status: el.querySelector('[data-status]')?.dataset.status, rect: rect(el) })),
-      notes: [...document.querySelectorAll('[data-note-id]')].map((el) => ({ id: el.dataset.noteId, rect: rect(el), editable: !!el.querySelector('[contenteditable=true]'), focused: !!el.querySelector('[contenteditable=true]:focus') })),
-      contributions: document.querySelector('#brainstorming-contributions-toggle')?.getAttribute('aria-checked') ?? null,
-      errors: [...document.querySelectorAll('[role=alert]')].map((el) => el.textContent.trim()),
-    });
-  })()
-  """
-
   test "a session starts quiet and the next round opens a new band below the notes without moving them",
        %{conn: conn} do
     ctx = ideation_fixture()
@@ -60,11 +42,8 @@ defmodule StoryarnWeb.E2E.IdeationRoundsTest do
       browser
       |> assert_has("#brainstorming-tree-round-#{second.id}[data-status=active]", text: "Round 2")
       |> assert_has("#brainstorming-band-#{second.id}")
-      |> PhoenixTest.Playwright.evaluate(@diagnostic, &IO.inspect(&1, label: "E2E_DIAG_BEFORE_N"))
+      # Written while the context menu is still closing: its focus return must not steal the editor.
       |> press("#brainstorming-canvas", "n")
-      |> PhoenixTest.Playwright.evaluate(@diagnostic, &IO.inspect(&1, label: "E2E_DIAG_AFTER_N"))
-      |> PhoenixTest.Playwright.evaluate("new Promise((resolve) => setTimeout(resolve, 600))")
-      |> PhoenixTest.Playwright.evaluate(@diagnostic, &IO.inspect(&1, label: "E2E_DIAG_AFTER_N_600MS"))
       |> assert_has("[data-note-id^='-']")
       |> assert_has("[data-note-id^='-'] [contenteditable=true]:focus")
       |> settled()
