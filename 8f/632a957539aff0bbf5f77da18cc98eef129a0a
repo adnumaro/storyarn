@@ -1,0 +1,41 @@
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_958b06fe90be51 232-233,250-251
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_02773c3f2b5565::t_958b06fe90be51 259-264,1742-1743,1783
+assets/app/modules/ideation/components/RoundTimer.vue
+  s_02773c3f2b5565::t_958b06fe90be51 7,15-22,28-29,76-81,102,108-111,121-122
+  s_02773c3f2b5565::t_3d4e17ac3978a6 127
+assets/app/modules/ideation/types.ts
+  s_02773c3f2b5565::t_9ee0b040cf1068 185-186
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_73b6dc345ea73f 393-407,416-425,428-429,431-435,438-439
+  s_02773c3f2b5565::t_958b06fe90be51 105-109
+assets/app/modules/ideation/components/RoundBar.vue
+  s_02773c3f2b5565::t_b488a775411679 363-366
+  s_02773c3f2b5565::t_d9e69f297988a6 173,176,178
+  s_02773c3f2b5565::t_9ee0b040cf1068 2-3,10-14,19,28-33,78-120,151,153,159,162-172,174,177,179-182,184-200,202,204,216,218,222-233,237-238,242,248,255,260-261,265,299,309-310,315,318,323-324,329-362,367-394
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_958b06fe90be51 232-233,250-251
+assets/app/test/modules/ideation/roundBarTiers.test.ts
+  s_02773c3f2b5565::t_cea1fa88c737a2 1-157
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_02773c3f2b5565::t_958b06fe90be51 1204,1212
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_f3b28ec41cc7c5 296-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8f632a957539aff0bbf5f77da18cc98eef129a0a",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
