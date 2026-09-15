@@ -49,7 +49,7 @@ describe("note states on the card", () => {
     const wrapper = await note({ state: "discarded" });
     expect(wrapper.classes()).toContain("canvas-note--discarded");
     expect(wrapper.get(".note-tab").text()).toBe("Discarded");
-    expect(wrapper.find(".note-dash").exists()).toBe(false);
+    expect(wrapper.find(".note-dash rect").exists()).toBe(true);
     await wrapper.setProps({ editing: true });
     expect(wrapper.classes()).toContain("canvas-note--discarded");
     expect(wrapper.classes()).toContain("canvas-note--editing");

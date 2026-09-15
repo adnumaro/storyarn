@@ -130,7 +130,7 @@ const ink = computed(() => noteInk(note.canvas?.color) ?? undefined);
     <span aria-hidden="true" class="note-outline" />
     <span aria-hidden="true" class="note-surface" />
     <svg
-      v-if="parked"
+      v-if="parked || discarded"
       aria-hidden="true"
       class="note-dash pointer-events-none absolute inset-0 h-full w-full overflow-visible"
       viewBox="0 0 100 100"
@@ -247,9 +247,17 @@ const ink = computed(() => noteInk(note.canvas?.color) ?? undefined);
 .canvas-note--parked .note-surface {
   background: transparent;
 }
+/* Each state colours its own frame and tab, so a note kept for later and a
+   discarded one read apart at a glance whatever the note's colour. */
+.canvas-note--parked {
+  --note-state: hsl(var(--primary));
+}
+.canvas-note--discarded {
+  --note-state: hsl(var(--muted-foreground));
+}
 .note-dash {
   fill: none;
-  stroke: var(--note-border);
+  stroke: var(--note-state);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
@@ -268,23 +276,23 @@ const ink = computed(() => noteInk(note.canvas?.color) ?? undefined);
   gap: 3px;
   padding: 0 7px 0 6px;
   transform: translateY(-100%);
-  border: 1.5px dashed var(--note-border);
+  border: 1.5px dashed var(--note-state);
   border-bottom: 0;
   border-radius: 4px 4px 0 0;
-  background: color-mix(in srgb, var(--note-color) 22%, hsl(var(--background)));
+  background: color-mix(in srgb, var(--note-state) 12%, hsl(var(--background)));
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  color: hsl(var(--foreground));
+  color: var(--note-state);
 }
 .canvas-note--ellipse .note-tab,
 .canvas-note--diamond .note-tab {
   left: 50%;
   transform: translate(-50%, -100%);
 }
-/* Discarded: the same tab, faded behind the others and struck through, back
-   to full strength while it is being edited. */
+/* Discarded: the same frame and tab in grey, faded behind the others and
+   struck through, back to full strength while it is being edited. */
 .canvas-note--discarded {
   opacity: 0.55;
   filter: grayscale(1);
