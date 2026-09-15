@@ -240,13 +240,14 @@
     },
     "timer": {
       "title": "Timer",
+      "minutes": "Minutes",
+      "seconds": "Seconds",
       "elapsed": "Time’s up",
       "paused": "Paused",
       "pause": "Pause",
       "resume": "Resume",
       "oneMinute": "1 min",
       "cancel": "Cancel timer",
-      "duration": "Duration",
       "start": "Start timer",
       "contributionsOpen": "New contributions are open.",
       "contributionsClosed": "New contributions are closed.",
@@ -257,8 +258,7 @@
         "skipped_authorization": "Time ended. Automatic actions were skipped because facilitator access changed.",
         "skipped_configuration": "Time ended. Automatic actions were skipped because the session settings changed.",
         "skipped_session": "Time ended. Automatic actions were skipped because the session is no longer open."
-      },
-      "placeholder": "m:ss"
+      }
     },
     "groups": {
       "untitled": "Untitled group",

@@ -274,8 +274,9 @@ remain readable. Group recovery is described in the
 
 The header of the round in progress carries the shared timer, and the board
 header keeps a compact chip with the same countdown. The digits are the input:
-the facilitator clicks them, types minutes, `m:ss` or `h:mm:ss`, from one second
-up to 24 hours, and presses play or Enter. Beside a running clock they can pause,
+the facilitator clicks them, types the minutes and the seconds (two digits each; the
+minutes move on to the seconds by themselves), from one second up to 99:59, and
+presses play or Enter. Beside a running clock they can pause,
 resume, add one minute or cancel; cancelling and starting again resets it at any
 moment while the round is in progress. Everyone sees the same countdown, and the
 line under the header fills as time passes. Reaching 0:00 is the whole message:

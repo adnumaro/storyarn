@@ -44,14 +44,14 @@ afterEach(() => {
 describe("timer on the round header", () => {
   it("shows the countdown to everyone and fills the line as time passes", async () => {
     bar(timer(), { canManage: false });
-    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("5:00");
+    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("05:00");
     expect(wrapper.find("#brainstorming-round-timer-pause").exists()).toBe(false);
     expect(wrapper.find("#brainstorming-round-timer-start").exists()).toBe(false);
     const fill = wrapper.get("#brainstorming-round-progress-21");
     expect(fill.attributes("style")).toContain("width: 0%");
     vi.advanceTimersByTime(60_000);
     await nextTick();
-    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("4:00");
+    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("04:00");
     expect(wrapper.get("#brainstorming-round-progress-21").attributes("style")).toContain(
       "width: 20%",
     );
@@ -74,7 +74,7 @@ describe("timer on the round header", () => {
         canEdit: true,
       },
     });
-    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("3:20");
+    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("03:20");
     expect(wrapper.text()).toContain("Paused");
     await wrapper.get("#brainstorming-round-timer-resume").trigger("click");
     expect(send).toHaveBeenLastCalledWith(
@@ -101,7 +101,8 @@ describe("timer on the round header", () => {
     const { send } = bar(null);
     expect(wrapper.find("#brainstorming-round-timer").exists()).toBe(false);
     expect(wrapper.find("#brainstorming-round-progress-21").exists()).toBe(false);
-    await wrapper.get("#brainstorming-round-timer-input").setValue("1:30");
+    await wrapper.get("#brainstorming-round-timer-minutes").setValue("01");
+    await wrapper.get("#brainstorming-round-timer-seconds").setValue("30");
     await wrapper.get("#brainstorming-round-timer-start").trigger("click");
     expect(send).toHaveBeenLastCalledWith(
       "start_timer",
@@ -115,9 +116,9 @@ describe("timer on the round header", () => {
   it("says time is up and fills the whole line, even on a quiet single round", async () => {
     bar(timer({ status: "elapsed", remaining_seconds: 0 }), { canManage: false, single: true });
     await nextTick();
-    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("0:00");
+    expect(wrapper.get("#brainstorming-round-timer").text()).toBe("00:00");
     expect(wrapper.text()).not.toContain("Time’s up");
-    expect(wrapper.find("#brainstorming-round-timer-input").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-round-timer-minutes").exists()).toBe(false);
     expect(wrapper.get("#brainstorming-round-progress-21").attributes("style")).toContain(
       "width: 100%",
     );
@@ -141,9 +142,9 @@ describe("timer on the round header", () => {
       },
     });
     await flushPromises();
-    const input = wrapper.get("#brainstorming-round-timer-input");
-    expect((input.element as HTMLInputElement).value).toBe("0:00");
-    await input.setValue("5:00");
+    const minutes = wrapper.get("#brainstorming-round-timer-minutes");
+    expect((minutes.element as HTMLInputElement).value).toBe("00");
+    await minutes.setValue("05");
     await wrapper.get("#brainstorming-round-timer-start").trigger("click");
     expect(send).toHaveBeenLastCalledWith("start_timer", expect.objectContaining({ seconds: 300 }));
   });

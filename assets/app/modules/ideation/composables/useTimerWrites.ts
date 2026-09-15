@@ -19,28 +19,20 @@ export interface TimerStart {
   close_contributions_on_expiry: boolean;
 }
 export const DEFAULT_TIMER_SECONDS = 300;
-export const MAX_TIMER_SECONDS = 86_400;
 
-/** m:ss, or h:mm:ss from an hour up. */
+/** mm:ss; minutes keep counting past 59, there are no hours on the board. */
 export function formatSeconds(value: number): string {
   const total = Math.max(0, Math.floor(value));
-  const minutes = Math.floor(total / 60);
-  const tail = String(total % 60).padStart(2, "0");
-  return total >= 3600
-    ? `${Math.floor(total / 3600)}:${String(minutes % 60).padStart(2, "0")}:${tail}`
-    : `${minutes}:${tail}`;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
-/** "5" is five minutes, "1:30" a minute and a half, "1:00:00" an hour; anything else is nothing. */
-export function parseDuration(text: string): number | null {
-  const parts = text.trim().split(":");
-  if (parts.length > 3 || parts.some((part) => !/^\d{1,5}$/.test(part))) return null;
-  const numbers = parts.map(Number);
-  if (parts.length > 1 && numbers.slice(1).some((part) => part > 59)) return null;
-  let seconds = numbers[0] * 60;
-  if (parts.length === 2) seconds = numbers[0] * 60 + numbers[1];
-  if (parts.length === 3) seconds = numbers[0] * 3600 + numbers[1] * 60 + numbers[2];
-  return seconds >= 1 && seconds <= MAX_TIMER_SECONDS ? seconds : null;
+/** Minutes and seconds as typed into the two fields ("", "7" or "07" each); at least one second. */
+export function joinDigits(minutes: string, seconds: string): number | null {
+  if (!/^\d{0,2}$/.test(minutes) || !/^\d{0,2}$/.test(seconds)) return null;
+  const tail = Number(seconds || 0);
+  if (tail > 59) return null;
+  const total = Number(minutes || 0) * 60 + tail;
+  return total >= 1 ? total : null;
 }
 export function activeTimer(timer: SessionTimer | null): boolean {
   return timer?.status === "running" || timer?.status === "paused";

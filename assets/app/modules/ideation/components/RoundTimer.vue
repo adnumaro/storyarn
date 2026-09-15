@@ -47,7 +47,7 @@ const fraction = computed(() => {
 });
 watch(fraction, (value) => emit("progress", value));
 onMounted(() => emit("progress", fraction.value));
-// What the digits show while nothing runs: 0:00 once time is up, else the last duration.
+// What the digits show while nothing runs: 00:00 once time is up, else the last duration.
 const draft = ref(DEFAULT_TIMER_SECONDS);
 const idle = computed(() => (elapsed.value ? 0 : draft.value));
 watch([() => epoch, () => session.id], () => {
@@ -119,7 +119,7 @@ function start(value: number) {
       role="status"
       class="text-[22px] font-semibold leading-none tabular-nums text-muted-foreground"
       :aria-label="`${t('ideation.timer.title')}: ${t('ideation.timer.elapsed')}`"
-      >0:00</span
+      >00:00</span
     >
     <p v-if="writes.failure.value" role="alert" class="text-xs text-destructive">
       {{ error(writes.failure.value) }}

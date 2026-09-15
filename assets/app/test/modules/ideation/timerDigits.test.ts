@@ -1,74 +1,88 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import TimerDigits from "@modules/ideation/components/TimerDigits.vue";
-import { formatSeconds, parseDuration } from "@modules/ideation/composables/useTimerWrites";
+import { formatSeconds, joinDigits } from "@modules/ideation/composables/useTimerWrites";
 
 describe("timer durations", () => {
   it.each([
-    ["5", 300],
-    [" 2 ", 120],
-    ["0:45", 45],
-    ["1:30", 90],
-    ["90:00", 5400],
-    ["1:00:00", 3600],
-    ["24:00:00", 86_400],
-  ])("reads %s as %i seconds", (text, seconds) => {
-    expect(parseDuration(text)).toBe(seconds);
+    ["05", "00", 300],
+    ["", "45", 45],
+    ["1", "30", 90],
+    ["99", "59", 5999],
+    ["0", "1", 1],
+  ])("joins minutes %s and seconds %s into %i seconds", (minutes, seconds, total) => {
+    expect(joinDigits(minutes, seconds)).toBe(total);
   });
 
-  it.each(["", "0", "0:00", "abc", "1:60", "-5", "1.5", "24:00:01", "1:2:3:4", "1440:01"])(
-    "refuses %s",
-    (text) => {
-      expect(parseDuration(text)).toBeNull();
-    },
-  );
+  it.each([
+    ["", ""],
+    ["00", "00"],
+    ["0", "60"],
+    ["1", "75"],
+    ["abc", "00"],
+    ["123", "00"],
+  ])("refuses minutes %s with seconds %s", (minutes, seconds) => {
+    expect(joinDigits(minutes, seconds)).toBeNull();
+  });
 
-  it("formats m:ss below an hour and h:mm:ss from an hour up", () => {
-    expect(formatSeconds(0)).toBe("0:00");
-    expect(formatSeconds(90)).toBe("1:30");
-    expect(formatSeconds(3600)).toBe("1:00:00");
-    expect(formatSeconds(86_400)).toBe("24:00:00");
+  it("formats mm:ss and keeps counting minutes past the hour", () => {
+    expect(formatSeconds(0)).toBe("00:00");
+    expect(formatSeconds(90)).toBe("01:30");
+    expect(formatSeconds(3600)).toBe("60:00");
+    expect(formatSeconds(86_400)).toBe("1440:00");
   });
 });
 
 describe("timer digits", () => {
   let wrapper: VueWrapper;
   afterEach(() => wrapper?.unmount());
-  const input = () => wrapper.get("#brainstorming-timer-input");
+  const minutes = () => wrapper.get("#brainstorming-timer-minutes");
+  const seconds = () => wrapper.get("#brainstorming-timer-seconds");
   const start = () => wrapper.get("#brainstorming-timer-start");
+  const value = (field: () => ReturnType<VueWrapper["get"]>) =>
+    (field().element as HTMLInputElement).value;
 
-  it("starts with what was typed, in seconds, on Enter or play", async () => {
-    wrapper = mount(TimerDigits, { props: { seconds: 300 } });
-    expect((input().element as HTMLInputElement).value).toBe("5:00");
-    await input().setValue("1:30");
-    await input().trigger("keydown", { key: "Enter" });
-    expect(wrapper.emitted("update:seconds")).toEqual([[90]]);
-    expect(wrapper.emitted("start")).toEqual([[90]]);
-    await input().setValue("7");
+  it("moves on to the seconds after two minute digits and starts on Enter or play", async () => {
+    wrapper = mount(TimerDigits, { props: { seconds: 300 }, attachTo: document.body });
+    expect(value(minutes)).toBe("05");
+    expect(value(seconds)).toBe("00");
+    await minutes().setValue("12");
+    expect(document.activeElement).toBe(seconds().element);
+    await seconds().setValue("30");
+    await seconds().trigger("keydown", { key: "Enter" });
+    expect(wrapper.emitted("update:seconds")?.at(-1)).toEqual([750]);
+    expect(wrapper.emitted("start")).toEqual([[750]]);
+    await minutes().setValue("7");
+    await seconds().setValue("");
     await start().trigger("click");
     expect(wrapper.emitted("start")?.[1]).toEqual([420]);
-    expect((input().element as HTMLInputElement).value).toBe("7:00");
+    expect(value(minutes)).toBe("07");
+    expect(value(seconds)).toBe("00");
   });
 
-  it("puts the last good value back when the text makes no sense, and disables play meanwhile", async () => {
-    wrapper = mount(TimerDigits, { props: { seconds: 300 } });
-    await input().setValue("abc");
+  it("keeps two digits per field, refuses an empty clock or 60 seconds, and settles on leaving", async () => {
+    wrapper = mount(TimerDigits, { props: { seconds: 300 }, attachTo: document.body });
+    await minutes().setValue("1234");
+    expect(value(minutes)).toBe("12");
+    await seconds().setValue("60");
     expect(start().attributes("disabled")).toBeDefined();
-    await input().trigger("keydown", { key: "Enter" });
+    await seconds().trigger("keydown", { key: "Enter" });
     expect(wrapper.emitted("start")).toBeUndefined();
-    await input().trigger("blur");
-    expect((input().element as HTMLInputElement).value).toBe("5:00");
+    await seconds().trigger("focusout");
+    expect(value(minutes)).toBe("05");
+    expect(value(seconds)).toBe("00");
     expect(start().attributes("disabled")).toBeUndefined();
   });
 
-  it("follows the seconds it is given and waits while a write is pending", async () => {
-    wrapper = mount(TimerDigits, { props: { seconds: 60, pending: true } });
-    expect(input().attributes("disabled")).toBeDefined();
+  it("goes back to the minutes on backspace over empty seconds and freezes while a write is pending", async () => {
+    wrapper = mount(TimerDigits, { props: { seconds: 60 }, attachTo: document.body });
+    await seconds().setValue("");
+    await seconds().trigger("keydown", { key: "Backspace" });
+    expect(document.activeElement).toBe(minutes().element);
+    await wrapper.setProps({ seconds: 3600, pending: true });
+    expect(value(minutes)).toBe("60");
+    expect(minutes().attributes("disabled")).toBeDefined();
+    expect(seconds().attributes("disabled")).toBeDefined();
     expect(start().attributes("disabled")).toBeDefined();
-    await wrapper.setProps({ seconds: 3600, pending: false });
-    expect((input().element as HTMLInputElement).value).toBe("1:00:00");
-    await start().trigger("click");
-    expect(wrapper.emitted("start")).toEqual([[3600]]);
-    expect(wrapper.emitted("update:seconds")).toBeUndefined();
   });
 });

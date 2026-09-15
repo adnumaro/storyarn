@@ -240,13 +240,14 @@
     },
     "timer": {
       "title": "Cronómetro",
+      "minutes": "Minutos",
+      "seconds": "Segundos",
       "elapsed": "Se acabó el tiempo",
       "paused": "En pausa",
       "pause": "Pausar",
       "resume": "Reanudar",
       "oneMinute": "1 min",
       "cancel": "Cancelar cronómetro",
-      "duration": "Duración",
       "start": "Iniciar cronómetro",
       "contributionsOpen": "Las nuevas aportaciones están abiertas.",
       "contributionsClosed": "Las nuevas aportaciones están cerradas.",
@@ -257,8 +258,7 @@
         "skipped_authorization": "Terminó el tiempo. No se aplicaron las acciones automáticas porque cambió el acceso del facilitador.",
         "skipped_configuration": "Terminó el tiempo. No se aplicaron las acciones automáticas porque cambió la configuración de la sesión.",
         "skipped_session": "Terminó el tiempo. No se aplicaron las acciones automáticas porque la sesión ya no está abierta."
-      },
-      "placeholder": "m:ss"
+      }
     },
     "groups": {
       "untitled": "Grupo sin título",
