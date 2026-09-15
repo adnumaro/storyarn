@@ -1,0 +1,28 @@
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_02773c3f2b5565::t_d73ddf7510c9fb 385-387,392-394,430,884,1297
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_a94c31339704a4 183-199
+docs/reference/brainstorming-rounds-contract.md
+  s_02773c3f2b5565::t_a94c31339704a4 1,5,7-11,15-22,24-26,68-78,81-83,124-125,137-141
+test/e2e/workspaces/projects/ideation/states_test.exs
+  s_02773c3f2b5565::t_b2feca2ded6bb8 39-41,77-84,109-114,116-126
+  s_02773c3f2b5565::t_625bc37419b0de 1-38,42-76,85-108,115,127-138
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_d73ddf7510c9fb 496-519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e5fbd8b85cf857ea1443f422655d49aed6242f80",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
