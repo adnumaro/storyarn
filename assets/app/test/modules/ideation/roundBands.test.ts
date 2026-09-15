@@ -152,7 +152,7 @@ describe("round bands on the canvas", () => {
     const wrapper = canvas();
     const first = wrapper.get("#brainstorming-band-20");
     // At the top of the canvas the first header already rests at its pin line.
-    expect(first.attributes("style")).toContain("top: 9px");
+    expect(first.attributes("style")).toContain("top: 0px");
     expect(wrapper.get("#brainstorming-band-21").attributes("style")).toContain("top: 500px");
     expect(first.text()).toContain("Round 1");
     expect(first.text()).toContain("First?");
@@ -448,7 +448,7 @@ describe("round bands on the canvas", () => {
     const wrapper = canvas();
     await nextTick();
     // The measured layout puts Round 2 at 320, whatever the props said.
-    expect(view.y).toBe(9 - 320);
+    expect(view.y).toBe(0 - 320);
     wrapper.unmount();
     mounted.splice(mounted.indexOf(wrapper), 1);
     Object.assign(view, { x: 0, y: 0, zoom: 1 });
@@ -472,10 +472,10 @@ describe("round bands on the canvas", () => {
     const style = (id: number) => wrapper.get(`#brainstorming-band-${id}`).attributes("style");
     const pinned = (id: number) =>
       wrapper.get(`#brainstorming-band-${id}`).attributes("data-pinned");
-    // The rest line is 60px, where a jump to a round also leaves its header.
+    // The rest line is the top edge, where a jump to a round also leaves its header.
     view.y = -100;
     await nextTick();
-    expect(style(20)).toContain("top: 9px");
+    expect(style(20)).toContain("top: 0px");
     expect(pinned(20)).toBe("true");
     expect(style(21)).toContain("top: 400px");
     expect(pinned(21)).toBeUndefined();
@@ -484,12 +484,12 @@ describe("round bands on the canvas", () => {
     expect(style(20)).toContain("top: -22px");
     view.y = -600;
     await nextTick();
-    expect(style(21)).toContain("top: 9px");
+    expect(style(21)).toContain("top: 0px");
     expect(pinned(21)).toBe("true");
     view.zoom = 0.5;
     view.y = -100;
     await nextTick();
-    expect(style(20)).toContain("top: 9px");
+    expect(style(20)).toContain("top: 0px");
     expect(style(21)).toContain("top: 150px");
   });
 
@@ -498,9 +498,9 @@ describe("round bands on the canvas", () => {
     const scroll = (wrapper.vm as unknown as { scrollToRound: (round: { id: number }) => void })
       .scrollToRound;
     scroll(round({ id: 21 }));
-    expect(view.y).toBe(9 - 320);
+    expect(view.y).toBe(0 - 320);
     view.zoom = 0.5;
     scroll(round({ id: 21 }));
-    expect(view.y).toBe(9 - 160);
+    expect(view.y).toBe(0 - 160);
   });
 });

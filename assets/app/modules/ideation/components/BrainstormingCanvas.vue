@@ -231,12 +231,11 @@ function ideaCommentTarget(noteId: number) {
 }
 
 const root = ref<HTMLElement | null>(null);
-// The floating chrome (search + references, `top-3` over a 36 px panel) owns the
-// top-left corner. A header rests centred on that row: jumping to a round brings
-// its header here, scrolling past it pins the header here, and the viewport
-// never scrolls above the first header. While a header is anywhere in the
-// chrome's zone it makes room for the panel on its left.
-const HEADER_REST = 9;
+// A header rests flush under the app bar: jumping to a round brings its header
+// here, scrolling past it pins the header here, and the viewport never scrolls
+// above the first header. The search and references controls share that row;
+// while a header is anywhere in the chrome's zone it makes room for them.
+const HEADER_REST = 0;
 const CHROME_ZONE = 60;
 // The header row in screen pixels: the bar's min height plus its line.
 const HEADER_HEIGHT = 42;
@@ -1659,7 +1658,7 @@ onUnmounted(() => {
           <div
             data-canvas-chrome
             class="absolute left-3 z-20"
-            :class="chromeFramed ? 'top-3' : 'top-[9px]'"
+            :class="chromeFramed ? 'top-3' : 'top-0'"
           >
             <div
               ref="chromePanel"
