@@ -30,7 +30,6 @@ defmodule Storyarn.Ideation.TimersTest do
     assert timer.actor_id == ctx.facilitator.user.id
     assert timer.configuration_version == 1
     assert timer.recovery_identity
-    refute timer.reveal_on_expiry
     refute timer.close_contributions_on_expiry
     assert current(ctx).configuration == ctx.session.configuration
     assert {:ok, [%{status: :active}]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
@@ -237,11 +236,11 @@ defmodule Storyarn.Ideation.TimersTest do
              })
 
     Idea |> Repo.get!(orphan.id) |> change(author_id: nil) |> Repo.update!()
-    timer = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+    timer = start(ctx, %{close_contributions_on_expiry: true})
     due(timer)
 
     assert {:ok, %{outcome: :completed}} = Ideation.expire_timer(timer.id, timer.version)
-    refute current(ctx).configuration.private_mode
+    refute Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
     refute current(ctx).contributions_open
 
     for note <- [notes.active, notes.parked] do
@@ -260,7 +259,7 @@ defmodule Storyarn.Ideation.TimersTest do
 
   test "changed configuration, manager replacement and missing actors cannot apply scheduled effects", ctx do
     private(ctx)
-    timer = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+    timer = start(ctx, %{close_contributions_on_expiry: true})
     session = current(ctx)
 
     assert {:ok, _} =
@@ -270,11 +269,11 @@ defmodule Storyarn.Ideation.TimersTest do
 
     due(timer)
     assert {:ok, %{outcome: :skipped_configuration}} = Ideation.expire_timer(timer.id, timer.version)
-    assert current(ctx).configuration.private_mode
+    assert Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert current(ctx).contributions_open
     assert Repo.aggregate(Reveal, :count) == 0
 
-    timer = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+    timer = start(ctx, %{close_contributions_on_expiry: true})
     session = current(ctx)
 
     assert {:ok, _} =
@@ -285,30 +284,33 @@ defmodule Storyarn.Ideation.TimersTest do
 
     due(timer)
     assert {:ok, %{outcome: :skipped_authorization}} = Ideation.expire_timer(timer.id, timer.version)
-    assert current(ctx).configuration.private_mode
+    assert Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert current(ctx).contributions_open
 
-    timer = start(ctx, %{reveal_on_expiry: true}, ctx.owner)
+    timer = start(ctx, %{}, ctx.owner)
     timer |> due() |> change(actor_id: nil) |> Repo.update!()
     assert {:ok, %{outcome: :skipped_authorization}} = Ideation.expire_timer(timer.id, timer.version)
-    assert current(ctx).configuration.private_mode
+    assert Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
   end
 
   test "resuming explicitly renews scheduler authority and configuration, and never reveals without private mode",
        ctx do
     private(ctx)
-    timer = start(ctx, %{reveal_on_expiry: true})
+    timer = start(ctx, %{})
 
     assert {:ok, _} =
              Ideation.pause_timer(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, timer.version)
 
     paused = timer(ctx)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, false)
 
-    assert {:error, :timer_reveal_requires_private} =
-             Ideation.resume_timer(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, paused.version)
-
-    private(ctx)
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.owner,
+               ctx.project.id,
+               ctx.session.id,
+               current(ctx).revision,
+               false
+             )
 
     assert {:ok, _} =
              Ideation.resume_timer(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, paused.version)
@@ -322,7 +324,7 @@ defmodule Storyarn.Ideation.TimersTest do
 
   test "archiving cancels timers and reopening never revives deadlines", ctx do
     private(ctx)
-    timer = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+    timer = start(ctx, %{close_contributions_on_expiry: true})
     assert {:ok, archived} = Ideation.archive_session(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision)
     cancelled = timer(ctx)
     assert cancelled.status == :cancelled
@@ -341,7 +343,7 @@ defmodule Storyarn.Ideation.TimersTest do
   end
 
   test "boundaries reject malformed options, overlong timers and elapsed pause or extension", ctx do
-    for seconds <- [nil, "60", 1.5, 0, 14, 86_401] do
+    for seconds <- [nil, "60", 1.5, 0, 86_401] do
       assert {:error, :invalid_timer_duration} =
                Ideation.start_timer(ctx.owner, ctx.project.id, ctx.session.id, 1, %{seconds: seconds})
     end
@@ -350,12 +352,9 @@ defmodule Storyarn.Ideation.TimersTest do
       assert {:error, :invalid_timer_options} =
                Ideation.start_timer(ctx.owner, ctx.project.id, ctx.session.id, 1, %{
                  seconds: 15,
-                 reveal_on_expiry: value
+                 close_contributions_on_expiry: value
                })
     end
-
-    assert {:error, :timer_reveal_requires_private} =
-             Ideation.start_timer(ctx.owner, ctx.project.id, ctx.session.id, 1, %{seconds: 15, reveal_on_expiry: true})
 
     timer = start(ctx, %{seconds: 86_400, actor_id: ctx.peer.user.id, status: :elapsed, version: 99})
     assert timer.version == 1
@@ -381,7 +380,7 @@ defmodule Storyarn.Ideation.TimersTest do
                body: "Private"
              })
 
-    timer = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+    timer = start(ctx, %{close_contributions_on_expiry: true})
     due(timer)
     Phoenix.PubSub.subscribe(Storyarn.PubSub, "ideation:timers")
 
@@ -393,7 +392,7 @@ defmodule Storyarn.Ideation.TimersTest do
 
     refute_receive :ideation_timers_changed
     assert timer(ctx).status == :running
-    assert current(ctx).configuration.private_mode
+    assert Storyarn.IdeationFixtures.private_round?(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert current(ctx).contributions_open
     assert {:error, :not_found} = Ideation.get_idea(ctx.viewer, ctx.project.id, ctx.session.id, idea.id)
     assert Repo.aggregate(Reveal, :count) == 0
@@ -458,8 +457,16 @@ defmodule Storyarn.Ideation.TimersTest do
     timer(ctx)
   end
 
+  # The round in progress goes private and asks to be revealed when time runs out.
   defp private(ctx) do
-    assert {:ok, _} = Ideation.set_private_mode(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, true)
+    {:ok, rounds} = Ideation.list_rounds(ctx.owner, ctx.project.id, ctx.session.id, status: :active)
+    [round] = rounds
+
+    assert {:ok, _} =
+             Ideation.set_round_privacy(ctx.owner, ctx.project.id, ctx.session.id, round.id, current(ctx).revision, %{
+               private: true,
+               reveal_on_expiry: true
+             })
   end
 
   defp due(timer), do: timer |> change(deadline_at: DateTime.shift(now(), second: -1)) |> Repo.update!()

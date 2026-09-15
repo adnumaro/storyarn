@@ -94,9 +94,11 @@ defmodule Storyarn.Ideation.Recovery.References do
     remap_target = fn target -> Map.update!(target, "idea_id", &lookup(maps, "ideas", &1)) end
 
     selection =
-      if row.selection["mode"] == "selected",
-        do: Map.update!(row.selection, "targets", &Enum.map(&1, remap_target)),
-        else: row.selection
+      case row.selection do
+        %{"mode" => "selected"} -> Map.update!(row.selection, "targets", &Enum.map(&1, remap_target))
+        %{"mode" => "round"} -> Map.update!(row.selection, "round_id", &lookup(maps, "rounds", &1))
+        _ -> row.selection
+      end
 
     %{row | selection: selection, manifest: Enum.map(row.manifest, remap_target)}
   end

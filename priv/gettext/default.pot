@@ -146,7 +146,7 @@ msgstr ""
 msgid "Untitled session"
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:317
+#: lib/storyarn_web/live/ideation_live/board.ex:292
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""

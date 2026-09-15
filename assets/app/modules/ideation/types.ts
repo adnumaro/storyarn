@@ -109,7 +109,6 @@ export interface EditReceipt {
   inserted_at: string;
 }
 export interface SessionConfiguration {
-  private_mode: boolean;
   default_visibility: Visibility;
   publication_policy: PublicationPolicy;
 }
@@ -149,17 +148,38 @@ export interface Member {
   display_name: string;
   avatar_url: string | null;
 }
+/** What the facilitator sets on the round in progress. */
+export interface RoundPrivacy {
+  private: boolean;
+  reveal_on_expiry: boolean;
+}
+/** Another person's note in a private round: where it is and how wide, nothing more. */
+export interface MaskedIdea {
+  id: number;
+  round_id: number;
+  canvas: { x?: number; y?: number; width?: number };
+}
 export interface Round {
   id: number;
   session_id: number;
   number: number;
   prompt: string | null;
   status: "active" | "closed";
+  private: boolean;
+  reveal_on_expiry: boolean;
+  revealed_at: string | null;
   /** Canvas y of the round header; note positions in the band are relative to it. */
   started_at: string | null;
   closed_at: string | null;
   inserted_at: string;
   updated_at: string;
+}
+/** The session timer as the round in progress shows it on its header. */
+export interface RoundTimerContext {
+  session: Session;
+  epoch: string;
+  timer: SessionTimer | null;
+  canEdit: boolean;
 }
 export interface SessionTimer {
   id: number;
@@ -168,7 +188,6 @@ export interface SessionTimer {
   deadline_at: string | null;
   remaining_seconds: number;
   duration_seconds: number;
-  reveal_on_expiry: boolean;
   close_contributions_on_expiry: boolean;
   outcome:
     | "completed"
@@ -192,6 +211,7 @@ export interface Board {
   rounds: Round[];
   active_round: Round | null;
   ideas: Idea[];
+  masked_ideas: MaskedIdea[];
   groups: IdeaGroup[];
   ideas_next: number | null;
   idea_before: number | null;

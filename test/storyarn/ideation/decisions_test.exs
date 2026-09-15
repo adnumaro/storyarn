@@ -285,19 +285,33 @@ defmodule Storyarn.Ideation.DecisionsTest do
     attrs = attrs(ctx)
     assert {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, attrs)
     assert {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, true)
 
+    assert {:ok, _} =
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               session.revision,
+               true
+             )
+
+    # A private round hides its notes, never the session's decisions.
     for actor <- [ctx.author, ctx.owner, ctx.viewer] do
-      assert {:error, :private_mode} = Ideation.get_decision(actor, ctx.project.id, ctx.session.id, decision.id)
-      assert {:error, :private_mode} = Ideation.list_decisions(actor, ctx.project.id, ctx.session.id)
-      assert {:error, :private_mode} = Ideation.decision_history(actor, ctx.project.id, ctx.session.id, decision.id)
+      assert {:ok, _} = Ideation.get_decision(actor, ctx.project.id, ctx.session.id, decision.id)
+      assert {:ok, _} = Ideation.list_decisions(actor, ctx.project.id, ctx.session.id)
+      assert {:ok, _} = Ideation.decision_history(actor, ctx.project.id, ctx.session.id, decision.id)
     end
 
-    assert {:error, :private_mode} = accept(ctx, decision)
     assert {:ok, private} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, private.revision, false)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               private.revision,
+               false
+             )
 
     assert {:ok, public} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert {:ok, _} = Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, public.revision)

@@ -3,7 +3,7 @@ import { shallowMount, flushPromises, type VueWrapper } from "@vue/test-utils";
 import { defineComponent, h } from "vue";
 import Workspace from "@modules/ideation/BrainstormingWorkspace.vue";
 import { createMockLive } from "../../setup";
-import { board, idea } from "./fixtures";
+import { board, idea, ideaGroup, round } from "./fixtures";
 import type { Board } from "@modules/ideation/types";
 const Canvas = defineComponent({
   name: "BrainstormingCanvas",
@@ -47,19 +47,19 @@ describe("decisions from the brainstorming canvas", () => {
       { idea_ids: [10], session_id: 1, epoch: "epoch-one" },
     ]);
   });
-  it("blocks a mixed shared/private selection and a private session", async () => {
+  it("blocks a mixed shared/private selection and a group of a private round", async () => {
     const { live, canvas, current } = workspace();
     canvas.vm.$emit("select", [10, 11]);
     await flushPromises();
     await wrapper.get("#brainstorming-propose-decision").trigger("click");
     expect(live.pushEvent).not.toHaveBeenCalled();
+    // The group's notes belong to a round that is still private.
     await wrapper.setProps({
       board: {
         ...current,
-        session: {
-          ...current.session!,
-          configuration: { ...current.session!.configuration, private_mode: true },
-        },
+        rounds: [round({ id: 20, private: true })],
+        ideas: current.ideas.map((idea) => ({ ...idea, round_id: 20 })),
+        groups: [ideaGroup()],
       },
     });
     canvas.vm.$emit("propose-group-decision", 40);

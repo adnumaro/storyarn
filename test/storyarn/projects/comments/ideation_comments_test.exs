@@ -96,7 +96,13 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
     refute inspect(visible) =~ "Secret unpublished"
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     for scope <- [ctx.owner, ctx.author, ctx.peer] do
       assert {:error, :not_found} = Projects.get_comment_thread(scope, ctx.project.id, discussion.thread.id)
@@ -214,7 +220,13 @@ defmodule Storyarn.Projects.IdeationCommentsTest do
     assert {:error, :invalid_position} = create(ctx, idea.id, Map.put(attrs(), :position, %{x: 10_000_001, y: 0}))
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     assert {:ok, []} = Projects.list_ideation_comment_pins(ctx.author, ctx.project.id, ctx.session.id)
 

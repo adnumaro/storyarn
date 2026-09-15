@@ -1,12 +1,13 @@
 # Optional brainstorming rounds
 
 > Owner: Engineering
-> Last reviewed: 2026-09-08
+> Last reviewed: 2026-09-15
 > Scope: ENG-136
 
 Sessions can receive ideas before, between and during rounds. Rounds are
-optional iterations within the same session; timers, private mode, publication
-and creative states remain independent controls.
+optional iterations within the same session; timers, publication and creative
+states remain independent controls. Privacy belongs to the round: the round in
+progress can be private, and nothing about it is inherited by the next round.
 
 ## Lifecycle and authority
 
@@ -36,6 +37,32 @@ Closing a round never reveals notes, prevents editing, changes creative state,
 starts a timer or creates another round. Archived/replaced sessions keep their
 existing lifecycle restrictions. All members with current read access can read
 round metadata; a prompt is shared session context, not a private draft.
+
+## Privacy
+
+Each round has two settings, `private` and `reveal_on_expiry`, both `false` by
+default and never copied from the previous round or from the session. The
+facilitator or project owner with current edit permission changes them through
+`set_round_privacy/6`, from the settings menu of the round in progress. The
+change requires the caller's session revision and records a `round_updated`
+session revision. A closed round can only be set to not private; a round that
+has already been revealed rejects `private: true` with `round_revealed`.
+
+While a round is private, its contributions stay with their authors. Every other
+participant, the facilitator included, reads that round's other notes as
+placeholders: identity, round and canvas position/width only, with no text,
+author or state. Groups, comments and decision sources of that round are
+unavailable until the reveal, and cursors are not shared while the round in
+progress is private. A canvas save in a private round does not publish; a save
+in a shared round publishes atomically as before.
+
+Setting `private: false` on a private round is the reveal, also exposed as
+`reveal_round/5`. It stamps `revealed_at` and, in the same transaction under the
+contribution lock, publishes the round's consenting, non-discarded contributions
+that still have an author. The timer performs the same reveal when it reaches
+0:00 and the round in progress has `reveal_on_expiry`. A reveal is irreversible.
+Archiving a session ends the mask of every private round without revealing
+anything, and reopening does not restore it.
 
 ## Contribution provenance
 
@@ -89,5 +116,8 @@ The encrypted Project snapshot inventory includes round records, prompts,
 lifecycle state/timestamps and idea membership/late markers. Reconstitution
 validates the graph before writing, remaps round IDs and preserves privacy.
 Repeated restoration reuses identical generations. Old inventories without
-rounds normalize to no rounds and unassigned contributions. See
+rounds normalize to no rounds and unassigned contributions. Inventories before
+version 8 carry no round privacy: normalization marks the active round of a
+session that used the former session-wide private mode as private, with no
+reveal-on-expiry and no reveal timestamp, and strips that session key. See
 [recovery](brainstorming-recovery-contract.md) for archive and retention details.

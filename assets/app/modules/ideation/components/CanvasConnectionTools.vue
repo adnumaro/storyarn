@@ -51,7 +51,7 @@ function connect(connected: boolean) {
 
 <template>
   <Popover v-if="selection.length >= 2 || (selection.length && canCreate)" v-model:open="open">
-    <ToolbarTooltip :label="t('ideation.canvas.connectionHelp')">
+    <ToolbarTooltip :label="t('ideation.canvas.connections')">
       <PopoverTrigger as-child>
         <button
           id="brainstorming-connection-tools"

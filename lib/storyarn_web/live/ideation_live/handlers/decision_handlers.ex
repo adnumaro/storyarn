@@ -57,7 +57,6 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     %{current_scope: scope, project: project, session_id: id} = socket.assigns
 
     with {:ok, session} <- Ideation.get_session(scope, project.id, id),
-         true <- session.configuration.private_mode != true,
          {:ok, _, membership} <- Projects.authorize(scope, project.id, :view),
          {:ok, members} <- Projects.list_editor_candidates(scope, project.id),
          {:ok, page} <- decision_pages(scope, project.id, id, socket.assigns.decision_cursor) do

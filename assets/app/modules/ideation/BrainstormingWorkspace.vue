@@ -11,6 +11,7 @@ import {
   Unplug,
   Link2,
   ListChecks,
+  Ban,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -48,8 +49,10 @@ import type {
   NoteShape,
   ConnectionChange,
   Round,
+  RoundPrivacy,
 } from "./types";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
+import { NOTE_COLOR_IDS, noteColor, noteSwatch } from "./lib/noteColors";
 const { board, baseUrl, comments } = defineProps<{
   board: Board;
   baseUrl: string;
@@ -75,7 +78,14 @@ const rounds = computed(() => {
   if (board.active_round) entries.set(board.active_round.id, board.active_round);
   return [...entries.values()].sort((a, b) => a.number - b.number);
 });
+const privateRounds = computed(
+  () => new Set(rounds.value.filter((round) => round.private).map((round) => round.id)),
+);
+const activeRoundPrivate = computed(() => !!board.active_round?.private);
 const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
+// Popovers under a tooltip anchor to their button explicitly, as the pickers do.
+const colorTrigger = ref<HTMLButtonElement>();
+const linksTrigger = ref<HTMLButtonElement>();
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
 async function createComment(target: BrainstormingCommentTarget) {
   const reply = await request("comments_open", {
@@ -90,22 +100,31 @@ async function useReferences(ideaId: number | null) {
   if (reply.status === "error") failure.value = reply.code;
 }
 const preparingDecision = ref(false);
-const decisionReady = computed(
-  () =>
-    !preparingDecision.value &&
-    online.value &&
-    writable.value &&
-    !board.session?.configuration.private_mode,
-);
+const decisionReady = computed(() => !preparingDecision.value && online.value && writable.value);
 watch(
   () => board.epoch,
   () => {
     preparingDecision.value = false;
   },
 );
+// A group of a private round is only visible to its members' authors; the
+// server would refuse the decision, so the proposal is not even sent.
+function groupInPrivateRound(groupId: number) {
+  const group = groups.groups.value.find((group) => group.id === groupId);
+  return (
+    group?.idea_ids.some((ideaId) => {
+      const note = board.ideas.find((idea) => idea.id === ideaId);
+      return note?.round_id != null && privateRounds.value.has(note.round_id);
+    }) ?? false
+  );
+}
+function decisionBlocked(groupId?: number) {
+  if (!decisionReady.value) return true;
+  if (groupId === undefined) return !decisionSelection.value;
+  return groupInPrivateRound(groupId);
+}
 async function proposeDecision(groupId?: number) {
-  if (!decisionReady.value) return;
-  if (groupId === undefined && !decisionSelection.value) return;
+  if (decisionBlocked(groupId)) return;
   const at = context();
   preparingDecision.value = true;
   const payload =
@@ -145,6 +164,31 @@ const notes = useCanvasNotes(
   (idea) => connections.created(idea),
   () => bandOffsets.value,
 );
+// Placeholders for other people's private notes, in canvas units like everything else.
+const masked = computed(() =>
+  board.masked_ideas.map((item) => ({
+    ...item,
+    canvas: {
+      ...item.canvas,
+      y: (item.canvas.y ?? 0) + (bandOffsets.value.get(item.round_id) ?? 0),
+    },
+  })),
+);
+// Notes per round for the headers: what this client holds plus what it cannot read.
+const roundCounts = computed(() => {
+  const counts = new Map<number, number>();
+  const bump = (roundId: number | null | undefined) => {
+    if (roundId != null) counts.set(roundId, (counts.get(roundId) ?? 0) + 1);
+  };
+  for (const note of notes.notes.value) if (note.id > 0) bump(note.round_id);
+  for (const item of board.masked_ideas) bump(item.round_id);
+  return counts;
+});
+const selectionPrivate = computed(() =>
+  selectedNotes(selectedIds.value).some(
+    (note) => note.round_id != null && privateRounds.value.has(note.round_id),
+  ),
+);
 const current = computed(() => notes.notes.value.find((n) => n.id === selected.value));
 const selectionShape = computed(() => {
   const shapes = new Set(
@@ -161,8 +205,7 @@ const decisionSelection = computed(() => {
     sources.length === selectedIds.value.length &&
     sources.every(
       (note) => note.id > 0 && note.visibility === "shared" && !!note.published_revision,
-    ) &&
-    !board.session?.configuration.private_mode
+    )
   );
 });
 const canCreate = computed(() => writable.value && board.session?.contributions_open !== false);
@@ -183,14 +226,6 @@ const listed = computed(() =>
 const statuses = computed(() =>
   Object.fromEntries([...notes.drafts.drafts.values()].map((d) => [d.idea.id, d.status])),
 );
-const colors = [
-  { id: "yellow", value: "#f5e6a8" },
-  { id: "coral", value: "#f8cbbd" },
-  { id: "mint", value: "#cbe8d5" },
-  { id: "blue", value: "#c9e2f5" },
-  { id: "violet", value: "#e2d5f4" },
-  { id: "paper", value: "#f4f1e9" },
-];
 const history = useCanvasHistory(
   () => {
     if (failure.value !== "unavailable")
@@ -532,6 +567,20 @@ watch(
   },
   { immediate: true },
 );
+async function updatePrivacy(id: number, attrs: RoundPrivacy) {
+  await roundWrite("set_round_privacy", { round_id: id, ...attrs });
+}
+async function revealRound(id: number) {
+  await roundWrite("reveal_round", { round_id: id });
+}
+async function roundWrite(event: string, payload: Record<string, unknown>) {
+  if (!board.can_manage || !board.session || roundPending.value) return;
+  failure.value = null;
+  roundPending.value = true;
+  const reply = await request(event, { revision: board.session.revision, ...payload });
+  roundPending.value = false;
+  if (reply.status !== "ok") failure.value = reply.status === "error" ? reply.code : "unavailable";
+}
 async function closeRound(id: number) {
   if (!board.can_manage || !board.session || roundPending.value) return;
   finish();
@@ -629,7 +678,7 @@ function move(moves: Array<{ id: number; point: Point }>) {
 }
 function color(value: string) {
   if (!current.value || mutationBusy.value) return;
-  const before = current.value.canvas?.color ?? "yellow";
+  const before = noteColor(current.value.canvas?.color);
   if (before === value) return;
   const id = current.value.id;
   notes.move(id, { color: value });
@@ -910,7 +959,7 @@ watch(
   },
 );
 watch(
-  () => board.session?.configuration.private_mode,
+  () => rounds.value.map((round) => `${round.id}:${round.private}`).join(),
   () => {
     cancelHistoryPreparation?.();
     history.clear();
@@ -1062,11 +1111,10 @@ onUnmounted(() => {
           edit: writable,
           create: canCreate,
           comment: board.can_edit && online,
-          privateMode: board.session.configuration.private_mode,
         }"
         :collaboration="{
           context: context(),
-          cursors: !board.session.configuration.private_mode,
+          cursors: !activeRoundPrivate,
           comments,
           baseUrl,
         }"
@@ -1077,8 +1125,20 @@ onUnmounted(() => {
           offsets: bandOffsets,
           canManage: board.can_manage,
           pending: roundPending,
+          timer: board.session
+            ? {
+                session: board.session,
+                epoch: board.epoch,
+                timer: board.timer,
+                canEdit: board.can_edit,
+              }
+            : null,
+          counts: roundCounts,
+          masked,
         }"
         @bands="measuredBands = $event"
+        @update-privacy="updatePrivacy"
+        @reveal="revealRound"
         @new-round="newRound"
         @close-round="closeRound"
         @update-prompt="updatePrompt"
@@ -1141,26 +1201,25 @@ onUnmounted(() => {
                 @click="proposeDecision()"
                 ><ListChecks class="size-4" /></Button
             ></ToolbarTooltip>
-            <Button
-              v-if="
-                current.visibility === 'shared' &&
-                current.published_revision &&
-                !board.session.configuration.private_mode
-              "
-              id="brainstorming-idea-references"
-              variant="ghost"
-              size="icon-sm"
-              :disabled="!online"
-              :aria-label="t('brainstormingReferences.ideaReferences')"
-              @click="useReferences(current.id)"
-              ><Link2 class="size-4"
-            /></Button>
+            <ToolbarTooltip
+              v-if="current.visibility === 'shared' && current.published_revision"
+              :label="t('brainstormingReferences.ideaReferences')"
+              ><Button
+                id="brainstorming-idea-references"
+                variant="ghost"
+                size="icon-sm"
+                :disabled="!online"
+                :aria-label="t('brainstormingReferences.ideaReferences')"
+                @click="useReferences(current.id)"
+                ><Link2 class="size-4"
+              /></Button>
+            </ToolbarTooltip>
 
             <GroupSelectionTools
               v-if="writable"
               :notes="selectedNotes(selectedIds)"
               :groups="groups.groups.value"
-              :private-mode="board.session.configuration.private_mode"
+              :private-round="selectionPrivate"
               :busy="mutationBusy"
               @create="createGroup()"
               @membership="groupMembership"
@@ -1176,28 +1235,57 @@ onUnmounted(() => {
             />
             <template v-if="writable"
               ><Popover
-                ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"
-                  ><span
-                    class="size-4 rounded-full border border-foreground/10"
-                    :style="{
-                      background: colors.find((c) => c.id === (current?.canvas?.color ?? 'yellow'))
-                        ?.value,
-                    }" /></PopoverTrigger
-                ><PopoverContent class="flex w-auto gap-2 p-2"
+                ><ToolbarTooltip :label="t('ideation.canvas.color')"
+                  ><PopoverTrigger as-child
+                    ><button
+                      ref="colorTrigger"
+                      type="button"
+                      class="toolbar-btn"
+                      :aria-label="t('ideation.canvas.color')"
+                    >
+                      <Ban
+                        v-if="noteColor(current.canvas?.color) === 'none'"
+                        class="size-4 text-muted-foreground"
+                      /><span
+                        v-else
+                        class="size-4 rounded-full border border-foreground/10"
+                        :style="{
+                          background: noteSwatch(current.canvas?.color, current.canvas?.shape),
+                        }"
+                      /></button></PopoverTrigger
+                ></ToolbarTooltip>
+                <PopoverContent :reference="colorTrigger" class="flex w-auto gap-2 p-2"
                   ><button
-                    v-for="item in colors"
-                    :key="item.id"
+                    v-for="id in NOTE_COLOR_IDS"
+                    :key="id"
                     type="button"
-                    class="size-6 rounded-full border border-black/10 ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-                    :style="{ background: item.value }"
-                    :aria-label="t(`ideation.canvas.colors.${item.id}`)"
-                    :aria-pressed="current.canvas?.color === item.id"
-                    @click="color(item.id)" /></PopoverContent></Popover
+                    class="flex size-6 items-center justify-center rounded-full border border-black/10 ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring aria-pressed:ring-2 aria-pressed:ring-ring"
+                    :style="
+                      id === 'none'
+                        ? undefined
+                        : { background: noteSwatch(id, current.canvas?.shape) }
+                    "
+                    :aria-label="t(`ideation.canvas.colors.${id}`)"
+                    :aria-pressed="noteColor(current.canvas?.color) === id"
+                    @click="color(id)"
+                  >
+                    <Ban
+                      v-if="id === 'none'"
+                      class="size-3.5 text-muted-foreground"
+                    /></button></PopoverContent></Popover
             ></template>
             <Popover v-if="current.canvas?.links?.length"
-              ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.connections')"
-                ><Unplug class="size-3.5" /></PopoverTrigger
-              ><PopoverContent class="w-64 space-y-1"
+              ><ToolbarTooltip :label="t('ideation.canvas.connections')"
+                ><PopoverTrigger as-child
+                  ><button
+                    ref="linksTrigger"
+                    type="button"
+                    class="toolbar-btn"
+                    :aria-label="t('ideation.canvas.connections')"
+                  >
+                    <Unplug class="size-3.5" /></button></PopoverTrigger
+              ></ToolbarTooltip>
+              <PopoverContent :reference="linksTrigger" class="w-64 space-y-1"
                 ><button
                   v-for="id in current.canvas.links"
                   :key="id"

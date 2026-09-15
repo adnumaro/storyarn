@@ -11,6 +11,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Update do
   alias Storyarn.Ideation.Ideas.Revision
   alias Storyarn.Ideation.Ideas.Rules.Input
   alias Storyarn.Ideation.Ideas.View
+  alias Storyarn.Ideation.Sessions
   alias Storyarn.Repo
 
   def run_canvas(scope, project_id, session_id, idea_id, revision, attrs) when is_map(attrs),
@@ -64,7 +65,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Update do
         updated = idea |> change(revision: idea.revision + 1, state: content.state) |> Repo.update!()
         revision = Revisions.insert(updated, content, access.user_id)
         Revisions.record_edit(updated, access, key, fingerprint, expected, :saved)
-        publish? = Input.get(attrs, :canvas_contribution) == true and access.configuration.private_mode != true
+        publish? = Input.get(attrs, :canvas_contribution) == true and not Sessions.round_private?(idea.round_id)
         updated = if publish?, do: Publication.publish_creation(updated, access.user_id), else: updated
 
         Transaction.success(

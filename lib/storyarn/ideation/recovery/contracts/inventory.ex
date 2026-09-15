@@ -10,9 +10,9 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"session_revisions", "ideation_session_revisions", :session_id,
      ~w(id recovery_identity session_id actor_id number action snapshot inserted_at)a},
     {"rounds", "ideation_rounds", :session_id,
-     ~w(id recovery_identity session_id number prompt status started_at closed_at inserted_at updated_at)a},
+     ~w(id recovery_identity session_id number prompt status private reveal_on_expiry revealed_at started_at closed_at inserted_at updated_at)a},
     {"timers", "ideation_timers", :session_id,
-     ~w(id recovery_identity session_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at reveal_on_expiry close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
+     ~w(id recovery_identity session_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
     {"ideas", "ideation_ideas", :session_id,
      ~w(id recovery_identity session_id author_id author_kind creation_key revision published_revision state publication_consent configuration_version creation_source_id source_idea_id source_revision canvas round_id late_contribution deleted_at inserted_at updated_at)a},
     {"revisions", "ideation_idea_revisions", :idea_id,
@@ -24,7 +24,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"publications", "ideation_idea_publications", :idea_id,
      ~w(id recovery_identity idea_id revision operation_id actor_id inserted_at)a},
     {"groups", "ideation_groups", :session_id,
-     ~w(id recovery_identity session_id author_id title synthesis version canvas deleted_at inserted_at updated_at)a},
+     ~w(id recovery_identity session_id author_id round_id title synthesis version canvas deleted_at inserted_at updated_at)a},
     {"group_memberships", "ideation_group_memberships", :group_id,
      ~w(id recovery_identity session_id group_id idea_id source_revision actor_id removed_at inserted_at)a},
     {"group_revisions", "ideation_group_revisions", :group_id,
@@ -42,7 +42,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   @reference_collections ~w(references reference_revisions)
   @decision_collections ~w(decisions decision_revisions)
   @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id responsible_id)a
-  @dates ~w(archived_at deleted_at removed_at inserted_at updated_at completed_at started_at closed_at deadline_at)a
+  @dates ~w(archived_at deleted_at removed_at inserted_at updated_at completed_at started_at closed_at deadline_at revealed_at)a
   @max_rows 100_000
 
   def tables, do: @tables
@@ -110,7 +110,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3, 4, 5, 6, 7] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3, 4, 5, 6, 7, 8] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -159,12 +159,62 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   def normalize(%{"version" => 6, "rows" => rows} = data) do
     rounds = Enum.filter(rows["rounds"], &(&1["status"] in ["active", "closed"]))
 
-    %{data | "version" => 7, "rows" => Map.put(rows, "rounds", rounds)}
+    normalize(%{data | "version" => 7, "rows" => Map.put(rows, "rounds", rounds)})
+  end
+
+  # Private mode moved from the session to the round in progress, and groups
+  # learned their round. A session that was private keeps hiding its active round.
+  def normalize(%{"version" => 7, "rows" => rows} = data) do
+    private_sessions =
+      for %{"id" => id, "configuration" => %{"private_mode" => true}} <- rows["sessions"], into: MapSet.new(), do: id
+
+    rounds =
+      Enum.map(rows["rounds"], fn round ->
+        private = round["status"] == "active" and MapSet.member?(private_sessions, round["session_id"])
+        Map.merge(round, %{"private" => private, "reveal_on_expiry" => false, "revealed_at" => nil})
+      end)
+
+    sessions =
+      Enum.map(rows["sessions"], fn session ->
+        Map.update(session, "configuration", %{}, &Map.delete(&1 || %{}, "private_mode"))
+      end)
+
+    groups = Enum.map(rows["groups"], &Map.put(&1, "round_id", nil))
+
+    # The clock no longer decides the reveal, so its flag leaves the rows and the audit snapshots.
+    rows =
+      rows
+      |> Map.put("rounds", rounds)
+      |> Map.put("sessions", sessions)
+      |> Map.put("groups", groups)
+      |> Map.update("timers", [], fn timers -> Enum.map(timers, &Map.delete(&1, "reveal_on_expiry")) end)
+      |> Map.update("session_revisions", [], fn revisions -> Enum.map(revisions, &strip_timer_reveal/1) end)
+
+    %{data | "version" => 8, "rows" => rows}
   end
 
   def normalize(data), do: data
 
-  defp tables_for(7), do: @tables
+  defp strip_timer_reveal(%{"snapshot" => %{"timer" => %{} = timer} = snapshot} = row),
+    do: %{row | "snapshot" => %{snapshot | "timer" => Map.delete(timer, "reveal_on_expiry")}}
+
+  defp strip_timer_reveal(row), do: row
+
+  defp tables_for(8), do: @tables
+
+  defp tables_for(7) do
+    for {collection, table, parent, fields} <- tables_for(8) do
+      fields =
+        case collection do
+          "rounds" -> fields -- [:private, :reveal_on_expiry, :revealed_at]
+          "groups" -> fields -- [:round_id]
+          "timers" -> fields ++ [:reveal_on_expiry]
+          _ -> fields
+        end
+
+      {collection, table, parent, fields}
+    end
+  end
 
   defp tables_for(6), do: tables_for(7)
 
@@ -207,9 +257,23 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     |> Enum.filter(&(&1 in @dates))
     |> Enum.all?(fn field ->
       case Map.get(row, Atom.to_string(field)) do
-        nil -> field in [:archived_at, :deleted_at, :removed_at, :completed_at, :started_at, :closed_at, :deadline_at]
-        value when is_binary(value) -> valid_timestamp?(value)
-        _ -> false
+        nil ->
+          field in [
+            :archived_at,
+            :deleted_at,
+            :removed_at,
+            :completed_at,
+            :started_at,
+            :closed_at,
+            :deadline_at,
+            :revealed_at
+          ]
+
+        value when is_binary(value) ->
+          valid_timestamp?(value)
+
+        _ ->
+          false
       end
     end)
   end

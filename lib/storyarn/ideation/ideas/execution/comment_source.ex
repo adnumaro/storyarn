@@ -20,12 +20,12 @@ defmodule Storyarn.Ideation.Ideas.Execution.CommentSource do
 
   defp source(session, nil, _opts), do: {:ok, session}
 
-  defp source(%{private_mode: true}, _idea_id, _opts), do: {:error, :not_found}
-
   defp source(session, idea_id, opts) do
     case from(i in Idea,
+           left_join: mask in subquery(Sessions.round_mask_query()),
+           on: mask.id == i.round_id,
            where: i.session_id == ^session.id and i.id == ^idea_id and is_nil(i.deleted_at),
-           where: not is_nil(i.published_revision)
+           where: not is_nil(i.published_revision) and not fragment("COALESCE(?, false)", mask.private)
          )
          |> maybe_lock(opts)
          |> Repo.one() do
@@ -44,6 +44,7 @@ defmodule Storyarn.Ideation.Ideas.Execution.CommentSource do
   end
 
   defp maybe_lock(query, opts) do
-    if opts[:lock] == :share, do: lock(query, "FOR SHARE"), else: query
+    # The round mask is an outer join; only the idea row itself is locked.
+    if opts[:lock] == :share, do: from(i in query, lock: fragment("FOR SHARE OF ?", i)), else: query
   end
 end

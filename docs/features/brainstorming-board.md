@@ -1,6 +1,6 @@
 # Brainstorming canvas
 
-> Last reviewed: 2026-09-13
+> Last reviewed: 2026-09-15
 > Scope: ENG-134, ENG-136, ENG-137, ENG-138, ENG-165, ENG-166, ENG-182, ENG-191 and the decision-recording slice of ENG-141
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
@@ -102,7 +102,7 @@ Command/Ctrl+D duplicates the selection. Command/Ctrl+C, X and V copy, cut and
 paste through the native clipboard. Copies retain note content and appearance;
 connections within the copied selection are remapped to the new note identities.
 They do not copy authorship, publication receipts or publication metadata. New
-notes belong to the acting participant and follow the session's current mode.
+notes belong to the acting participant and follow the privacy of their round.
 
 Select two or more notes and press `L` to associate the first selected note with
 the others. New relations use a simple line. `Shift+L` removes only the connections
@@ -150,19 +150,30 @@ so old actions cannot be replayed against a different board state.
 
 ## Facilitation and visibility
 
-The facilitator (or project owner acting in that role) controls **private mode
-for the whole session**, from the common header. Participants cannot opt an
-individual note in or out. New canvas contributions follow the mode at commit;
-shared-mode saves publish their exact revision in the same transaction.
+Privacy is a setting of each round. The facilitator (or project owner acting in
+that role) chooses it from the settings menu on the header of the round in
+progress: **Private round** and **Reveal when time is up**. Both start off for
+every new round; nothing is inherited from the previous round or the session.
+Participants cannot opt an individual note in or out. New canvas contributions
+follow the privacy of their round at commit; saves in a shared round publish
+their exact revision in the same transaction.
 
-In private mode, each participant sees only their own notes. The facilitator
-cannot read other people's private text or previews while it is active.
-Ending private mode publishes the saved heads of consenting contributions in the
-same session transaction as the mode change. Discarded notes and legacy author-only
-drafts are excluded; selecting a discarded contribution for publication is an
-explicit action. An overlapping save either precedes that reveal or follows
-shared-mode behavior. No round or timer is forced. Archiving ends the private
-visibility mask without publishing drafts, leaving prior publications readable.
+The header of a private round shows a lock badge beside the question, status and
+note count, which counts hidden notes too. Each participant sees their own notes
+of that round; everyone else's, the facilitator included, appear as grey
+placeholders that keep only position and width, with no text or author. Groups,
+comments and decisions cannot use notes of a private round, and cursors are not
+shared while the round in progress is private. The timer stays visible.
+
+**Reveal** on the round header publishes the saved heads of the round's
+consenting contributions in the same transaction as the change; with **Reveal
+when time is up**, the timer does the same when it reaches 0:00. Discarded notes
+and legacy author-only drafts are excluded; selecting a discarded contribution
+for publication is an explicit action. An overlapping save either precedes that
+reveal or follows shared-round behavior. A reveal is irreversible: a revealed
+round cannot be made private again, and a closed round can only stop being
+private. Archiving ends the visibility mask of every private round without
+publishing drafts, leaving prior publications readable.
 
 Authorship is retained. Editing content and marking creative state remain author
 operations. Other editors can arrange or connect shared notes and duplicate
@@ -216,7 +227,7 @@ state; a snapshot after deletion preserves the deletion.
 
 **Mark as discarded** is a separate creative-state action. Discarded and parked
 ideas remain inspectable through the state filter and can be returned to active.
-These states do not change the session's visibility mode.
+These states do not change the round's privacy.
 
 ## Persistence and collaboration
 
@@ -229,8 +240,8 @@ endpoints never reach another participant's props.
 
 LiveView coalesces invalidations and rereads authorized projections. Committed
 membership and ownership changes invalidate access without polling. Cursor
-presence uses the authorized board without per-movement queries, is hidden in
-private mode and expires locally. Reconnection or returning to a hidden tab
+presence uses the authorized board without per-movement queries, is hidden while
+the round in progress is private and expires locally. Reconnection or returning to a hidden tab
 refreshes the board; an idle tab does not repeatedly fetch it. A project
 restore or reconnect invalidates pending requests. Unsaved text can be retained
 as unbound buffers, never automatically attached to restored or reused IDs.
@@ -243,7 +254,7 @@ They are not exposed as a card-history feature. Provenance already stored in old
 capsules remains recoverable; no API creates new derived ideas.
 
 The encrypted project recovery inventory includes canvas geometry, connections,
-deletions, session mode, rounds and contribution provenance. Restoring remaps
+deletions, round privacy, rounds and contribution provenance. Restoring remaps
 connection and round IDs. Old capsules without canvas/deletion or round fields
 remain readable. Group recovery is described in the
 [group contract](../reference/brainstorming-groups-contract.md).
@@ -261,12 +272,20 @@ remain readable. Group recovery is described in the
 
 ## Independent countdown
 
-The existing header includes a shared timer. Managers can choose a duration,
-pause, resume, add time or cancel. Everyone sees the same countdown. Finishing
-only notifies by default; ending private mode and closing new contributions are
-separate opt-in actions. Closing new contributions preserves edits and undo on
-existing notes, and a manager can reopen them. Rounds and timers never control
-each other automatically. See the
+The header of the round in progress carries the shared timer, and the board
+header keeps a compact chip with the same countdown. The digits are the input:
+the facilitator clicks them, types the minutes and the seconds (two digits each; the
+minutes move on to the seconds by themselves), from one second up to 99:59, and
+presses play or Enter. Beside a running clock they can pause,
+resume, add one minute or cancel; cancelling and starting again resets it at any
+moment while the round is in progress. Everyone sees the same countdown, and the
+line under the header fills as time passes. Reaching 0:00 is the whole message:
+the digits stay at 0:00, muted, and become editable again.
+
+Whether the round is revealed at 0:00 is the round's own setting, not a timer
+option. Closing new contributions is a session action offered in the timer chip;
+it preserves edits and undo on existing notes, and a manager can reopen them.
+Rounds and timers never control each other automatically. See the
 [timer contract](../reference/brainstorming-timer-contract.md).
 
 ## Groups and synthesis
@@ -287,8 +306,8 @@ change must not be overwritten by a stale undo or drag. When a state or round
 filter, or the loaded range, hides group members, the frame indicates the missing notes and
 offers a way to show them before moving the whole group.
 
-Groups organize shared contributions. They are hidden during private mode and
-cannot reveal unpublished sources. Other editors can organize shared groups and
+Groups organize shared contributions. A group belongs to the round of its notes;
+it is hidden while that round is private and cannot reveal unpublished sources. Other editors can organize shared groups and
 edit their synthesis; viewers can read them. A synthesis does not accept a
 decision or start a new round. Title and synthesis authorship, source references,
 and group recovery are covered by the [group contract](../reference/brainstorming-groups-contract.md).

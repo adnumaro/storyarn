@@ -36,7 +36,7 @@ describe("shared session timer clock", () => {
     const { current, expired } = clock();
     const original = current.value;
     await vi.advanceTimersByTimeAsync(61_000);
-    expect(wrapper.text()).toBe("3:59");
+    expect(wrapper.text()).toBe("03:59");
 
     applyPatch({ timer: current.value }, [
       { op: "replace", path: "/timer/status", value: "paused" },
@@ -47,9 +47,9 @@ describe("shared session timer clock", () => {
     ]);
     await nextTick();
     expect(current.value).toBe(original);
-    expect(wrapper.text()).toBe("3:59");
+    expect(wrapper.text()).toBe("03:59");
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(wrapper.text()).toBe("3:59");
+    expect(wrapper.text()).toBe("03:59");
 
     applyPatch({ timer: current.value }, [
       { op: "replace", path: "/timer/status", value: "running" },
@@ -59,7 +59,7 @@ describe("shared session timer clock", () => {
     ]);
     await nextTick();
     await vi.advanceTimersByTimeAsync(1_000);
-    expect(wrapper.text()).toBe("3:58");
+    expect(wrapper.text()).toBe("03:58");
 
     applyPatch({ timer: current.value }, [
       { op: "replace", path: "/timer/version", value: 4 },
@@ -67,7 +67,7 @@ describe("shared session timer clock", () => {
       { op: "replace", path: "/timer/server_now", value: "2026-09-08T12:00:01Z" },
     ]);
     await nextTick();
-    expect(wrapper.text()).toBe("4:58");
+    expect(wrapper.text()).toBe("04:58");
     expect(current.value).toBe(original);
     expect(expired).not.toHaveBeenCalled();
   });
@@ -76,7 +76,7 @@ describe("shared session timer clock", () => {
     const { current, expired } = clock(timer({ deadline_at: "2026-09-08T10:00:02Z" }));
     await vi.advanceTimersByTimeAsync(2_000);
     expect(expired).toHaveBeenCalledTimes(1);
-    expect(wrapper.text()).toBe("0:00");
+    expect(wrapper.text()).toBe("00:00");
 
     applyPatch({ timer: current.value }, [
       { op: "replace", path: "/timer/version", value: 2 },
@@ -91,9 +91,9 @@ describe("shared session timer clock", () => {
       { op: "replace", path: "/timer/server_now", value: "2026-09-08T10:00:02Z" },
     ]);
     await nextTick();
-    expect(wrapper.text()).toBe("0:15");
+    expect(wrapper.text()).toBe("00:15");
     await vi.advanceTimersByTimeAsync(14_000);
-    expect(wrapper.text()).toBe("0:01");
+    expect(wrapper.text()).toBe("00:01");
     expect(expired).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1_000);
     expect(expired).toHaveBeenCalledTimes(2);
@@ -102,17 +102,17 @@ describe("shared session timer clock", () => {
   it("uses the server deadline and monotonic time despite a skewed or changing wall clock", async () => {
     clock();
     vi.setSystemTime(new Date("2099-01-01T00:00:00Z"));
-    expect(wrapper.text()).toBe("5:00");
+    expect(wrapper.text()).toBe("05:00");
     await vi.advanceTimersByTimeAsync(62_000);
-    expect(wrapper.text()).toBe("3:58");
+    expect(wrapper.text()).toBe("03:58");
     vi.setSystemTime(new Date("2000-01-01T00:00:00Z"));
     await vi.advanceTimersByTimeAsync(1_000);
-    expect(wrapper.text()).toBe("3:57");
+    expect(wrapper.text()).toBe("03:57");
   });
   it("requests one sync at expiry, including repeated stale refreshes, and rearms after extension", async () => {
     const { current, expired } = clock(timer({ deadline_at: "2026-09-08T10:00:02Z" }));
     await vi.advanceTimersByTimeAsync(2_000);
-    expect(wrapper.text()).toBe("0:00");
+    expect(wrapper.text()).toBe("00:00");
     expect(expired).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(30_000);
     current.value = { ...current.value!, server_now: "2026-09-08T10:00:30Z" };
@@ -120,7 +120,7 @@ describe("shared session timer clock", () => {
     expect(expired).toHaveBeenCalledTimes(1);
     current.value = { ...current.value!, version: 2, deadline_at: "2026-09-08T10:00:32Z" };
     await nextTick();
-    expect(wrapper.text()).toBe("0:02");
+    expect(wrapper.text()).toBe("00:02");
     await vi.advanceTimersByTimeAsync(2_000);
     expect(expired).toHaveBeenCalledTimes(2);
   });
@@ -129,12 +129,12 @@ describe("shared session timer clock", () => {
       timer({ status: "paused", deadline_at: null, remaining_seconds: 3 }),
     );
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(wrapper.text()).toBe("0:03");
+    expect(wrapper.text()).toBe("00:03");
     expect(expired).not.toHaveBeenCalled();
     current.value = timer({ version: 2, deadline_at: "2026-09-08T10:00:03Z" });
     await nextTick();
     await vi.advanceTimersByTimeAsync(1_000);
-    expect(wrapper.text()).toBe("0:02");
+    expect(wrapper.text()).toBe("00:02");
   });
   it("stops the interval on cancellation and releases it on unmount", async () => {
     const { current, expired } = clock();

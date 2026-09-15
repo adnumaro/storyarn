@@ -156,7 +156,13 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
     assert :ok = Projects.subscribe_ideation_conversations(ctx.peer)
 
     assert {:ok, _} =
-             Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+             Storyarn.IdeationFixtures.set_private_mode(
+               ctx.facilitator,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.session.revision,
+               true
+             )
 
     project_id = ctx.project.id
     assert_receive {:ideation_comment_sources_changed, ^project_id}
@@ -464,13 +470,12 @@ defmodule Storyarn.Projects.IdeationCollaborationTest do
     end
   end
 
+  # Flip the round in progress under the reader's feet, as a concurrent facilitator would.
   defp set_source_private(session_id, private?) do
-    session = Repo.get!(Storyarn.Ideation.Sessions.Session, session_id)
-
-    session
-    |> Ecto.Changeset.change()
-    |> Ecto.Changeset.put_embed(:configuration, %{private_mode: private?})
-    |> Repo.update!()
+    Repo.update_all(
+      from(r in Storyarn.Ideation.Sessions.Round, where: r.session_id == ^session_id and r.status == :active),
+      set: [private: private?]
+    )
   end
 
   defp discuss(ctx, anchor \\ nil, mentions \\ []),

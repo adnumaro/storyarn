@@ -21,6 +21,34 @@ const NoteStub = defineComponent({
   props: ["note"],
   setup: (props) => () => h("article", { "data-test-note": props.note.id }, "Text"),
 });
+// reka's menu needs pointer geometry jsdom lacks; the settings are plain buttons here.
+const Passthrough = defineComponent({
+  name: "Passthrough",
+  setup:
+    (_props, { slots }) =>
+    () =>
+      h("div", slots.default?.()),
+});
+const CheckboxStub = defineComponent({
+  name: "DropdownMenuCheckboxItem",
+  props: {
+    modelValue: { type: Boolean, default: false },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ["update:modelValue"],
+  setup:
+    (props, { emit, slots }) =>
+    () =>
+      h(
+        "button",
+        {
+          type: "button",
+          disabled: props.disabled,
+          onClick: () => emit("update:modelValue", !props.modelValue),
+        },
+        slots.default?.(),
+      ),
+});
 const mounted: VueWrapper[] = [];
 async function pointer(target: Element, type: string, options: PointerEventInit = {}) {
   target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...options }));
@@ -66,7 +94,16 @@ function canvas(props = {}) {
       },
       ...props,
     },
-    global: { stubs: { CanvasNote: NoteStub, CanvasCursors: true } },
+    global: {
+      stubs: {
+        CanvasNote: NoteStub,
+        CanvasCursors: true,
+        DropdownMenu: Passthrough,
+        DropdownMenuTrigger: Passthrough,
+        DropdownMenuContent: Passthrough,
+        DropdownMenuCheckboxItem: CheckboxStub,
+      },
+    },
   });
   Object.assign(wrapper.element, capturing());
   mounted.push(wrapper);
@@ -241,6 +278,77 @@ describe("round bands on the canvas", () => {
     await input.trigger("blur");
     expect(wrapper.emitted("updatePrompt")).toEqual([[21, "Which ending lets the player choose?"]]);
     expect(wrapper.emitted("add")).toBeUndefined();
+  });
+
+  it("marks a private round with a lock, counts its notes, draws other people's notes as placeholders and lets the facilitator reveal it", async () => {
+    const wrapper = canvas({
+      bands: {
+        rounds: [
+          round({ id: 20, number: 1, status: "closed" }),
+          round({ id: 21, number: 2, status: "active", private: true }),
+        ],
+        offsets: measured(),
+        counts: new Map([
+          [20, 1],
+          [21, 2],
+        ]),
+        masked: [{ id: 99, round_id: 21, canvas: { x: 30, y: 40, width: 200 } }],
+        canManage: true,
+        pending: false,
+      },
+    });
+    expect(wrapper.find("#brainstorming-round-private-20").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-round-private-21").exists()).toBe(true);
+    expect(wrapper.get("#brainstorming-round-count-20").text()).toBe("1 note");
+    expect(wrapper.get("#brainstorming-round-count-21").text()).toBe("2 notes");
+    const placeholder = wrapper.get("#canvas-masked-99");
+    expect(placeholder.attributes("style")).toContain("width: 200px");
+    expect(placeholder.text()).toBe("");
+    await wrapper.get("#brainstorming-round-reveal-21").trigger("click");
+    expect(wrapper.emitted("reveal")).toEqual([[21]]);
+    await wrapper.get("#brainstorming-round-reveal-on-expiry-21").trigger("click");
+    expect(wrapper.emitted("updatePrivacy")).toEqual([
+      [21, { private: true, reveal_on_expiry: true }],
+    ]);
+    await wrapper.get("#brainstorming-round-private-toggle-21").trigger("click");
+    expect(wrapper.emitted("updatePrivacy")?.[1]).toEqual([
+      21,
+      { private: false, reveal_on_expiry: false },
+    ]);
+  });
+
+  it("keeps privacy controls from members, and settings from closed rounds", () => {
+    const member = canvas({
+      bands: {
+        rounds: [
+          round({ id: 20, number: 1, status: "closed", private: true }),
+          round({ id: 21, number: 2, status: "active", private: true }),
+        ],
+        offsets: measured(),
+        canManage: false,
+        pending: false,
+      },
+    });
+    expect(member.find("#brainstorming-round-private-21").exists()).toBe(true);
+    expect(member.find("#brainstorming-round-reveal-21").exists()).toBe(false);
+    expect(member.find("#brainstorming-round-settings-21").exists()).toBe(false);
+
+    const facilitator = canvas({
+      bands: {
+        rounds: [
+          round({ id: 20, number: 1, status: "closed", private: true }),
+          round({ id: 21, number: 2, status: "active" }),
+        ],
+        offsets: measured(),
+        canManage: true,
+        pending: false,
+      },
+    });
+    // A closed round can still be revealed, but nothing else about it changes.
+    expect(facilitator.find("#brainstorming-round-reveal-20").exists()).toBe(true);
+    expect(facilitator.find("#brainstorming-round-settings-20").exists()).toBe(false);
+    expect(facilitator.find("#brainstorming-round-settings-21").exists()).toBe(true);
+    expect(facilitator.find("#brainstorming-round-reveal-21").exists()).toBe(false);
   });
 
   it("keeps the last closed band able to start the next round and hides actions from members", () => {

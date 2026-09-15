@@ -280,7 +280,16 @@ defmodule Storyarn.Ideation do
   @doc "Saves a canvas note and publishes that revision atomically in shared mode."
   @spec update_canvas_idea(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
   defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
-  @doc "Lets the facilitator change private mode for everyone; ending it reveals current contributions atomically."
-  @spec set_private_mode(map(), integer(), integer(), integer(), boolean()) :: {:ok, map()} | {:error, term()}
-  defdelegate set_private_mode(scope, project_id, session_id, revision, enabled), to: Ideas
+
+  @doc "Makes the round in progress private or shared; ending its private mask reveals that round's contributions atomically."
+  @spec set_round_privacy(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate set_round_privacy(scope, project_id, session_id, round_id, revision, attrs), to: Ideas
+  @doc "Reveals a private round: publishes its consenting contributions and keeps it shared for good."
+  @spec reveal_round(map(), integer(), integer(), integer(), integer()) :: {:ok, map()} | {:error, term()}
+  def reveal_round(scope, project_id, session_id, round_id, revision),
+    do: Ideas.set_round_privacy(scope, project_id, session_id, round_id, revision, %{"private" => false})
+
+  @doc "Other people's notes in private rounds as placeholders: position and size only."
+  @spec list_masked_ideas(map(), integer(), integer()) :: {:ok, [map()]} | {:error, term()}
+  defdelegate list_masked_ideas(scope, project_id, session_id), to: Ideas
 end

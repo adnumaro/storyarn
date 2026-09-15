@@ -27,11 +27,8 @@ defmodule Storyarn.Ideation.Groups.Execution.Transaction do
       Input.fingerprint(command.operation, command.group_id, command.version, command.attrs)
 
     with {:ok, access} <- Sessions.lock_for_contribution(scope, project_id, session_id),
-         false <- access.configuration.private_mode do
+         :ok <- round_open(session_id, command.group_id) do
       execute(access, command.request_key, fingerprint, command.attrs, callback)
-    else
-      true -> {:error, :private_mode}
-      {:error, _} = error -> error
     end
   end
 
@@ -92,4 +89,14 @@ defmodule Storyarn.Ideation.Groups.Execution.Transaction do
   end
 
   defp complete({:error, reason}, _, _, _), do: {:error, reason}
+
+  # A group of a private round stays hidden, so nobody edits it until the reveal.
+  defp round_open(_session_id, nil), do: :ok
+
+  defp round_open(session_id, group_id) do
+    case Repo.one(from g in Group, where: g.session_id == ^session_id and g.id == ^group_id, select: g.round_id) do
+      nil -> :ok
+      round_id -> if Sessions.round_private?(round_id), do: {:error, :private_round}, else: :ok
+    end
+  end
 end

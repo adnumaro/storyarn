@@ -57,6 +57,9 @@ import type {
   ConnectionChange,
   LinkDirection,
   Round,
+  RoundTimerContext,
+  RoundPrivacy,
+  MaskedIdea,
 } from "../types";
 import BrainstormingCanvasComments from "../BrainstormingCanvasComments.vue";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "../commentTypes";
@@ -75,7 +78,15 @@ const {
   members,
   statuses,
   historyState,
-  bands = { rounds: [], offsets: new Map(), canManage: false, pending: false },
+  bands = {
+    rounds: [],
+    offsets: new Map(),
+    canManage: false,
+    pending: false,
+    timer: null,
+    counts: new Map(),
+    masked: [],
+  },
 } = defineProps<{
   notes: CanvasIdea[];
   groupState?: {
@@ -87,7 +98,7 @@ const {
   selectedIds: number[];
   historyState: HistoryState;
   editingId: number | null;
-  permissions: { edit: boolean; create: boolean; comment?: boolean; privateMode?: boolean };
+  permissions: { edit: boolean; create: boolean; comment?: boolean };
   collaboration: {
     context: BoardContext;
     cursors: boolean;
@@ -97,7 +108,15 @@ const {
   members: Member[];
   statuses: { [id: number]: string };
   /** Round bands in canvas order; their headers are drawn in screen space. */
-  bands?: { rounds: Round[]; offsets: BandOffsets; canManage: boolean; pending: boolean };
+  bands?: {
+    rounds: Round[];
+    offsets: BandOffsets;
+    canManage: boolean;
+    pending: boolean;
+    timer?: RoundTimerContext | null;
+    counts?: Map<number, number>;
+    masked?: MaskedIdea[];
+  };
 }>();
 const groups = computed(() => groupState?.groups ?? []);
 const selectedGroupId = computed(() => groupState?.selectedId ?? null);
@@ -134,6 +153,8 @@ const emit = defineEmits<{
   list: [];
   newRound: [];
   bands: [offsets: BandOffsets];
+  updatePrivacy: [id: number, attrs: RoundPrivacy];
+  reveal: [id: number];
   closeRound: [id: number];
   updatePrompt: [id: number, prompt: string];
 }>();
@@ -161,15 +182,13 @@ function resolveCommentTarget(target: Element) {
   const groupId = Number(target.closest<HTMLElement>("[data-group-id]")?.dataset.groupId);
   if (noteId) return ideaCommentTarget(noteId);
   if (groupId) {
-    return !permissions.privateMode && groups.value.some((group) => group.id === groupId)
-      ? { ideaId: null, groupId }
-      : null;
+    return groups.value.some((group) => group.id === groupId) ? { ideaId: null, groupId } : null;
   }
   return { ideaId: null, groupId: null };
 }
 function ideaCommentTarget(noteId: number) {
   const note = notes.find((note) => note.id === noteId);
-  return !permissions.privateMode && note?.visibility === "shared" && note.published_revision
+  return note?.visibility === "shared" && note.published_revision
     ? { ideaId: noteId, groupId: null }
     : null;
 }
@@ -305,6 +324,9 @@ function contentBottom(roundId: number): number | null {
     if (layout.group.members[0]?.round_id !== roundId) continue;
     bottoms.push(layout.bounds.y + layout.bounds.height - top);
   }
+  for (const item of bands.masked ?? []) {
+    if (item.round_id === roundId) bottoms.push((item.canvas.y ?? 0) + MASKED_HEIGHT - top);
+  }
   return bottoms.length ? Math.max(...bottoms) : null;
 }
 const bandLayout = computed(() => bandOffsets(bands.rounds, contentBottom));
@@ -332,6 +354,8 @@ function openView() {
 }
 // The header row a band keeps free under its offset, in canvas units.
 const HEADER_STRIP = 44;
+// Placeholders share one height: what hides in a private round has no measured card.
+const MASKED_HEIGHT = 96;
 function headerShown(round: Round) {
   return multiRound.value || !!round.prompt || (bands.canManage && round.status === "active");
 }
@@ -1396,6 +1420,20 @@ onUnmounted(() => {
               />
             </div>
             <div
+              v-for="item in bands.masked ?? []"
+              :key="`masked-${item.id}`"
+              :id="`canvas-masked-${item.id}`"
+              data-masked-note
+              role="img"
+              :aria-label="t('ideation.rounds.hiddenNote')"
+              class="pointer-events-none absolute left-0 top-0 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/60"
+              :style="{
+                transform: `translate(${item.canvas.x ?? 0}px, ${item.canvas.y ?? 0}px)`,
+                width: `${item.canvas.width ?? 280}px`,
+                height: `${MASKED_HEIGHT}px`,
+              }"
+            />
+            <div
               v-if="tool === 'note' && ghost"
               class="pointer-events-none absolute h-12 w-40 rounded-md border border-dashed border-primary/70 bg-primary/5"
               :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
@@ -1415,7 +1453,11 @@ onUnmounted(() => {
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
                 :contact="contact.has(round.id)"
+                :timer="round.status === 'active' ? (bands.timer ?? null) : null"
+                :count="bands.counts?.get(round.id) ?? 0"
                 @close="emit('closeRound', $event)"
+                @update-privacy="(id, attrs) => emit('updatePrivacy', id, attrs)"
+                @reveal="emit('reveal', $event)"
                 @new-round="emit('newRound')"
                 @update-prompt="(id, prompt) => emit('updatePrompt', id, prompt)"
               />

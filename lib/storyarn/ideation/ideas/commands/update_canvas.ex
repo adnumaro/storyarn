@@ -9,6 +9,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.UpdateCanvas do
   alias Storyarn.Ideation.Ideas.Rules.Canvas
   alias Storyarn.Ideation.Ideas.Rules.Input
   alias Storyarn.Ideation.Ideas.View
+  alias Storyarn.Ideation.Sessions
   alias Storyarn.Repo
 
   def run(scope, project_id, session_id, idea_id, expected, attrs)
@@ -54,7 +55,12 @@ defmodule Storyarn.Ideation.Ideas.Commands.UpdateCanvas do
   defp persist(idea, placement, expected, key, actor_id) do
     canvas = Map.merge(Map.merge(idea.canvas, placement), %{"version" => expected + 1, "request_key" => key})
     updated = idea |> change(canvas: canvas) |> Repo.update!()
-    audiences = if idea.published_revision, do: [:shared, idea.author_id], else: [idea.author_id]
+
+    audiences =
+      if idea.published_revision || Sessions.round_private?(idea.round_id),
+        do: [:shared, idea.author_id],
+        else: [idea.author_id]
+
     Transaction.success(projection(updated, actor_id), Enum.reject(audiences, &is_nil/1))
   end
 

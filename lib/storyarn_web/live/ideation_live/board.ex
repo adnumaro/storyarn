@@ -25,7 +25,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
   @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas update_idea_connections prepare_reveal reveal_ideas)
-  @round_writes ~w(new_round update_round close_round)
+  @round_writes ~w(new_round update_round close_round set_round_privacy reveal_round)
   @timer_writes ~w(start_timer pause_timer resume_timer extend_timer cancel_timer set_contributions_open)
   @group_writes ~w(create_group update_group move_group delete_group restore_group)
 
@@ -275,31 +275,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
     else
       {:error, reason} -> {:reply, Replies.error(reason), socket}
     end
-  end
-
-  def handle_event("set_private_mode", params, socket) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      fn socket ->
-        with :ok <- current_session(params, socket),
-             {:ok, revision} <- Params.positive(params["revision"]) do
-          result =
-            Ideation.set_private_mode(
-              socket.assigns.current_scope,
-              socket.assigns.project.id,
-              socket.assigns.session_id,
-              revision,
-              params["enabled"]
-            )
-
-          {:reply, Replies.result(result), refresh(socket)}
-        else
-          {:error, reason} -> {:reply, Replies.error(reason), socket}
-        end
-      end,
-      fn socket, reason -> {:reply, Replies.error(reason), reload_access(socket)} end
-    )
   end
 
   def handle_event("canvas_cursor", %{"x" => x, "y" => y} = params, socket)
@@ -603,6 +578,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         }
 
         socket
+        |> fence_privacy_change(data)
         |> canvas_subscription(if(data.session, do: data.session.id))
         |> assign(board: data, board_error: nil, membership: membership, can_edit: can_edit, canvas_ready: true)
         |> CommentHandlers.refresh()
@@ -639,10 +615,39 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   defp cursors_enabled?(%{assigns: %{canvas_ready: true, board_error: nil, board: %{session: session}}} = socket)
        when not is_nil(session) do
-    socket.assigns.canvas_scope == {:ideation, session.id} and session.configuration.private_mode != true
+    socket.assigns.canvas_scope == {:ideation, session.id} and
+      not private_round?(Map.get(socket.assigns.board, :active_round))
   end
 
   defp cursors_enabled?(_socket), do: false
+
+  # Cursors would give away where people write while the round in progress is private.
+  defp private_round?(%{private: true}), do: true
+  defp private_round?(_round), do: false
+
+  # A round going private or being revealed changes what everyone may see. Open
+  # discussions, references and decision previews were built on the old view,
+  # and writes fenced to the old epoch must not land on the new one either.
+  defp fence_privacy_change(
+         %{assigns: %{board: %{session: %{id: id}} = previous}} = socket,
+         %{session: %{id: id}} = next
+       ) do
+    if privacy(previous) == privacy(next) do
+      socket
+    else
+      socket
+      |> ExplorationContextHandlers.init()
+      |> CommentHandlers.init()
+      |> ReferenceHandlers.init()
+      |> DecisionHandlers.init()
+      |> reset_epoch("privacy_changed")
+    end
+  end
+
+  defp fence_privacy_change(socket, _next), do: socket
+
+  defp privacy(%{rounds: rounds}) when is_list(rounds), do: for(round <- rounds, do: {round.id, round.private})
+  defp privacy(_board), do: []
 
   defp reset_epoch(socket, reason) do
     epoch = Ecto.UUID.generate()

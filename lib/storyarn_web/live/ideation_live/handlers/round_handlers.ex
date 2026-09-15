@@ -20,12 +20,22 @@ defmodule StoryarnWeb.IdeationLive.Handlers.RoundHandlers do
          do: Ideation.update_round(scope, project_id, session_id, id, revision, Params.fields(params, [:prompt]))
   end
 
+  defp execute("set_round_privacy", scope, project_id, session_id, revision, params) do
+    with {:ok, id} <- Params.positive(params["round_id"]) do
+      attrs = Params.fields(params, [:private, :reveal_on_expiry])
+      Ideation.set_round_privacy(scope, project_id, session_id, id, revision, attrs)
+    end
+  end
+
+  defp execute("reveal_round", scope, project_id, session_id, revision, params) do
+    with {:ok, id} <- Params.positive(params["round_id"]),
+         do: Ideation.reveal_round(scope, project_id, session_id, id, revision)
+  end
+
   defp execute("close_round", scope, project_id, session_id, revision, params) do
     with {:ok, id} <- Params.positive(params["round_id"]),
          do: Ideation.close_round(scope, project_id, session_id, id, revision)
   end
 
-  # The client measures the previous band and proposes the header offset; the
-  # command keeps bands ordered. A missing offset places an empty band.
   defp new_round_attrs(params), do: {:ok, Params.fields(params, [:prompt])}
 end

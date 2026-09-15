@@ -511,7 +511,7 @@ describe("contextual comments", () => {
         save: vi.fn(),
         move: vi.fn(),
       },
-      permissions: { edit: true, create: true, comment: true, privateMode: false },
+      permissions: { edit: true, create: true, comment: true },
     });
     const target = wrapper.get(selector);
     // A right click on the blank canvas hits the context trigger's full-size surface.
@@ -535,9 +535,8 @@ describe("contextual comments", () => {
     ]);
   });
   it.each([
-    { comment: false, privateMode: false, visibility: "shared" as const, published_revision: 1 },
-    { comment: true, privateMode: true, visibility: "shared" as const, published_revision: 1 },
-    { comment: true, privateMode: false, visibility: "private" as const, published_revision: null },
+    { comment: false, visibility: "shared" as const, published_revision: 1 },
+    { comment: true, visibility: "private" as const, published_revision: null },
   ])("keeps unavailable sources out of comment creation: %o", async (config) => {
     const wrapper = canvas({
       notes: [idea(config)],

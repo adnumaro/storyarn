@@ -2,7 +2,7 @@
 
 > Scope: decision recording slice of ENG-141
 >
-> Last reviewed: 2026-09-13
+> Last reviewed: 2026-09-15
 
 Decisions record a proposed conclusion, its reason, a responsible participant and
 the shared ideas or group synthesis supporting it. Acceptance is explicit.
@@ -61,8 +61,11 @@ agreement continues to cite the version actually reviewed. Missing, deleted,
 inaccessible or unpublished sources prevent acceptance and have their frozen
 details redacted in ordinary reads. Their historical pins remain intact.
 
-Current project access governs every query and command. Session private mode
-hides decisions before decryption and blocks shared decision mutations. Project
+Current project access governs every query and command. Decisions stay readable
+while a round is private, but sources belonging to that round are unavailable:
+they cannot be selected for a proposal, and an existing pin on them reads as
+inaccessible, so that proposal cannot be saved or accepted until the round is
+revealed. Project
 ownership, facilitation, decision authority and responsibility do not grant
 access to other authors' private notes. Readers can inspect readable decisions;
 mutations recheck current edit permission, session lifecycle and the authority
