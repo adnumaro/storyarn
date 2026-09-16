@@ -13,6 +13,8 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
 
   test "the facilitator controls a shared countdown while a viewer can only consult it", %{conn: conn} = test_context do
     ctx = ideation_fixture()
+    # A second round gives the header its Close/New round buttons; a single round stays quiet.
+    {ctx, round} = new_round(ctx, %{prompt: "What does the river remember?"})
     path = board_path(ctx)
 
     manager =
@@ -105,7 +107,6 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
 
     # The clock belongs to the round: starting the next round stops it, and the
     # new round offers fresh digits instead of the old remainder.
-    {:ok, [round]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
     assert restarted.round_id == round.id
 
     manager
