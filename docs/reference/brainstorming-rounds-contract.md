@@ -5,10 +5,10 @@
 > Scope: ENG-136, rounds redesign (PR #164)
 
 Every session has at least one round: Round 1 is born with the session. Rounds
-are horizontal bands of the session canvas, stacked in order; timers,
-publication and creative states remain independent controls. Privacy belongs to
-the round: the round in progress can be private, and nothing about it is
-inherited by the next round.
+are horizontal bands of the session canvas, stacked in order; publication and
+creative states remain independent controls. Privacy and the countdown belong
+to the round: the round in progress can be private and can run a clock, and
+nothing about either is inherited by the next round.
 
 ## Lifecycle and authority
 
@@ -34,10 +34,13 @@ Question editing retains the revision at which editing began. If the session
 changes meanwhile, the canvas preserves the draft and asks the facilitator to
 compare it with the current question before explicitly replacing it.
 
-Closing a round never reveals notes, prevents editing, changes creative state,
-starts a timer or creates another round. Archived/replaced sessions keep their
-existing lifecycle restrictions. All members with current read access can read
-round metadata; a prompt is shared session context, not a private draft.
+Closing a round never reveals notes, prevents editing, changes creative state
+or creates another round. It does end the round's clock: a running or paused
+timer is cancelled and recorded (`timer_cancelled`) before the `round_closed`
+revision, in the same transaction, whether the facilitator closes the round or
+starts the next one. Archived/replaced sessions keep their existing lifecycle
+restrictions. All members with current read access can read round metadata; a
+prompt is shared session context, not a private draft.
 
 ## Privacy
 
@@ -66,9 +69,9 @@ in a shared round publishes atomically as before.
 Setting `private: false` on a private round is the reveal, also exposed as
 `reveal_round/5`. It stamps `revealed_at` and, in the same transaction under the
 contribution lock, publishes the round's consenting, non-discarded contributions
-that still have an author. The timer performs the same reveal when it reaches
-0:00 for every private round with `reveal_on_expiry`: the round in progress and
-any round closed since the clock started. A reveal is irreversible. Archiving a
+that still have an author. The round's own clock performs the same reveal when
+it reaches 0:00 while the round is private with `reveal_on_expiry`; no other
+round is touched. A reveal is irreversible. Archiving a
 session ends the mask of every private round for good: each counts as revealed
 without publishing anything, and after reopening it cannot be made private again.
 

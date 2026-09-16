@@ -102,6 +102,21 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     assert restarted.version > cancelled.version
     assert restarted.remaining_seconds > 0
     assert_has(viewer, "#brainstorming-round-timer", text: format_seconds(restarted.remaining_seconds))
+
+    # The clock belongs to the round: starting the next round stops it, and the
+    # new round offers fresh digits instead of the old remainder.
+    {:ok, [round]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert restarted.round_id == round.id
+
+    manager
+    |> click("#brainstorming-round-new-#{round.id}:not([disabled])")
+    |> assert_has("#brainstorming-round-#{round.id}[data-status=closed]")
+    |> refute_has("#brainstorming-round-timer")
+    |> assert_has("#brainstorming-round-timer-start:not([disabled])")
+
+    assert {:ok, nil} = Ideation.get_timer(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert Repo.get!(Storyarn.Ideation.Sessions.Timer, restarted.id).status == :cancelled
+    refute_has(viewer, "#brainstorming-round-timer")
   end
 
   test "closing contributions preserves existing editing and reopening restores creation", %{conn: conn} do

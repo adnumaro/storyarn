@@ -184,7 +184,7 @@ export interface Round {
 }
 /** Width tiers of a round header, measured on the header itself. */
 export type HeaderTier = "xl" | "l" | "m" | "s" | "xs";
-/** The session timer as the round in progress shows it on its header. */
+/** The clock of the round in progress, as its header shows it. */
 export interface RoundTimerContext {
   session: Session;
   epoch: string;
@@ -193,6 +193,7 @@ export interface RoundTimerContext {
 }
 export interface SessionTimer {
   id: number;
+  round_id: number;
   version: number;
   status: "running" | "paused" | "elapsed" | "cancelled";
   deadline_at: string | null;

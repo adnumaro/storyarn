@@ -488,20 +488,18 @@ const clockShown = computed(() => {
   const status = bands.timer?.timer?.status;
   return status === "running" || status === "paused" || status === "elapsed";
 });
-// The clock lives on the header of the round in progress; closed without a
-// successor, the session's last band keeps it in reach.
-function clockRound(round: Round) {
-  return (
-    round.status === "active" ||
-    (!orderedRounds.value.some((candidate) => candidate.status === "active") &&
-      round.id === lastRound.value?.id)
-  );
+// The clock belongs to the round in progress; a closed round shows none. The
+// board only carries that round's timer, so another round's is a stale patch.
+function clockOf(round: Round): RoundTimerContext | null {
+  if (round.status !== "active" || !bands.timer) return null;
+  const clock = bands.timer.timer;
+  return clock && clock.round_id !== round.id ? { ...bands.timer, timer: null } : bands.timer;
 }
 function headerShown(round: Round) {
   return (
     multiRound.value ||
     !!round.prompt ||
-    (clockRound(round) && ((round.status === "active" && bands.canManage) || clockShown.value))
+    (round.status === "active" && (bands.canManage || clockShown.value))
   );
 }
 // Where a note of this round may start: under its header. Bands grow with
@@ -1637,7 +1635,7 @@ onUnmounted(() => {
                 :can-manage="bands.canManage"
                 :pending="bands.pending"
                 :contact="contact.has(round.id)"
-                :timer="clockRound(round) ? (bands.timer ?? null) : null"
+                :timer="clockOf(round)"
                 :count="bands.counts?.get(round.id) ?? 0"
                 @close="emit('closeRound', $event)"
                 @update-privacy="(id, attrs) => emit('updatePrivacy', id, attrs)"

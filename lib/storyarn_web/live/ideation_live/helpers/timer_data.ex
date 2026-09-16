@@ -8,6 +8,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.TimerData do
     timer
     |> Map.take([
       :id,
+      :round_id,
       :version,
       :status,
       :deadline_at,

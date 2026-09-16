@@ -11,6 +11,7 @@ defmodule Storyarn.Ideation.TimersTest do
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Reveal
   alias Storyarn.Ideation.Recovery.Capsule
+  alias Storyarn.Ideation.Sessions.Revision
   alias Storyarn.Ideation.Sessions.Timer
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
@@ -340,6 +341,51 @@ defmodule Storyarn.Ideation.TimersTest do
     assert {:ok, _} = Ideation.reopen_session(ctx.owner, ctx.project.id, ctx.session.id, archived.revision)
     assert timer(ctx).status == :cancelled
     assert current(ctx).contributions_open
+  end
+
+  test "a clock belongs to the round in progress and ends when the round does", ctx do
+    {:ok, [first]} = Ideation.list_rounds(ctx.owner, ctx.project.id, ctx.session.id)
+    timer = start(ctx)
+    assert timer.round_id == first.id
+
+    # Closing the round stops its clock and records the stop before the close.
+    ctx = close_round(ctx, first)
+    stopped = Repo.get!(Timer, timer.id)
+    assert stopped.status == :cancelled
+    assert stopped.version == timer.version + 1
+    assert stopped.remaining_seconds == 0
+    assert {:ok, nil} = Ideation.get_timer(ctx.owner, ctx.project.id, ctx.session.id)
+    assert {:ok, %{outcome: :stale}} = Ideation.expire_timer(timer.id, timer.version)
+
+    assert [%{action: :timer_cancelled, snapshot: %{"timer" => %{"round" => 1}}}, %{action: :round_closed}] =
+             from(r in Revision, where: r.session_id == ^ctx.session.id, order_by: [desc: r.number], limit: 2)
+             |> Repo.all()
+             |> Enum.reverse()
+
+    # Without a round in progress no clock can start; controls find none.
+    assert {:error, :round_not_active} =
+             Ideation.start_timer(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, %{seconds: 60})
+
+    assert {:error, :timer_not_found} =
+             Ideation.cancel_timer(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, stopped.version)
+
+    # The next round starts without a clock of its own, and its clock is a new row.
+    {ctx, second} = new_round(ctx)
+    assert {:ok, nil} = Ideation.get_timer(ctx.owner, ctx.project.id, ctx.session.id)
+    fresh = start(ctx, %{seconds: 30})
+    assert fresh.round_id == second.id
+    assert fresh.id != timer.id
+    assert fresh.version == 1
+    assert Repo.aggregate(Timer, :count) == 2
+
+    # A paused clock ends with its round too, and the session keeps one live clock at most.
+    assert {:ok, _} =
+             Ideation.pause_timer(ctx.owner, ctx.project.id, ctx.session.id, current(ctx).revision, fresh.version)
+
+    {ctx, _third} = new_round(ctx)
+    assert Repo.get!(Timer, fresh.id).status == :cancelled
+    assert Repo.aggregate(from(t in Timer, where: t.status in [:running, :paused]), :count) == 0
+    assert start(ctx, %{seconds: 45}).round_id != second.id
   end
 
   test "boundaries reject malformed options, overlong timers and elapsed pause or extension", ctx do

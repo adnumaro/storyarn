@@ -61,7 +61,9 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **8**. Version **7** inventories carry no round
+The inner inventory is version **9**. Version **8** inventories carry no timer
+round: normalization hands each clock to the round in progress of its session,
+or to its last round when every round is closed. Version **7** inventories carry no round
 privacy and no group round: normalization marks the active round of a session
 that used the former session-wide private mode as private, strips that session
 key and leaves groups without a round. Version **6** inventories additionally
@@ -77,8 +79,8 @@ The inventory covers:
   configuration, responsibilities and complete session revision history.
 - Active and closed rounds, their prompts, lifecycle timestamps and privacy:
   `private`, `reveal_on_expiry` and `revealed_at`.
-- Shared timer state, remaining duration, deadline, actor, persisted expiry flags
-  and outcome, plus the session contribution gate.
+- Each round's timer state, remaining duration, deadline, actor, persisted
+  expiry flag and outcome, plus the session contribution gate.
 - Every idea, current creative state, authorship, publication consent,
   configuration version, source idea/revision and immutable creation-request
   source identity, immutable round membership and late-contribution flag.
