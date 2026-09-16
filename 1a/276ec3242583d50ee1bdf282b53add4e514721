@@ -1,0 +1,126 @@
+test/storyarn_web/live/ideation_live/timer_board_test.exs
+  s_f378eeb3787880::t_f08e81ed96d08f 41
+assets/app/test/modules/ideation/fixtures.ts
+  s_f378eeb3787880::t_b13c5f1c5ae8ad 96
+test/storyarn/ideation/reference_recovery_test.exs
+  s_f378eeb3787880::t_bf1d24f1eb5d81 49,321
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_f378eeb3787880::t_885e3405b876dd 113
+  s_f378eeb3787880::t_15599e823285bd 206-219,224-227
+  s_f378eeb3787880::t_5d0da04f160323 324-330
+  s_f378eeb3787880::t_2a1608bf589f2c 15
+  s_99452c5813f264::t_b1b52d78caa1a3 228
+test/storyarn/ideation/timer_recovery_test.exs
+  s_f378eeb3787880::t_987152e1aafa10 41-43
+  s_f378eeb3787880::t_bf1d24f1eb5d81 150
+  s_f378eeb3787880::t_b4b8d4fd94adc8 247
+test/storyarn/ideation/group_recovery_test.exs
+  s_f378eeb3787880::t_bf1d24f1eb5d81 36,180
+test/storyarn/ideation/timers_test.exs
+  s_f378eeb3787880::t_2033fae7bf6ff3 14
+  s_f378eeb3787880::t_a60cb0052fc790 346-360,363-381,385-390
+  s_f378eeb3787880::t_d27a73e76d3406 361-362,382-384
+assets/app/modules/ideation/types.ts
+  s_f378eeb3787880::t_fb0a9648895fec 187,196
+test/storyarn/ideation/decision_recovery_test.exs
+  s_f378eeb3787880::t_bf1d24f1eb5d81 50,213
+docs/reference/brainstorming-rounds-contract.md
+  s_f378eeb3787880::t_02f232f9edeb74 8-11
+  s_f378eeb3787880::t_f0319f8429c6ae 72-74
+  s_f378eeb3787880::t_a0bc321560c97c 37-43
+test/e2e/workspaces/projects/ideation/timer_test.exs
+  s_f378eeb3787880::t_6fb666bbf4f4ce 105-119
+test/storyarn/ideation/round_recovery_test.exs
+  s_f378eeb3787880::t_bf1d24f1eb5d81 29,267,319
+  s_f378eeb3787880::t_d27a73e76d3406 122-125,166-169
+  s_f378eeb3787880::t_3b43e8046ffc48 343
+  s_f378eeb3787880::t_e9a52011adb834 141-165,170-173
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_f378eeb3787880::t_c8300046ccaf83 491-496,502
+  s_f378eeb3787880::t_6fd8175900c6d0 1638
+lib/storyarn/ideation/recovery/adapters/records.ex
+  s_f378eeb3787880::t_4a0dd369f8f277 30
+test/storyarn/ideation/round_privacy_test.exs
+  s_f378eeb3787880::t_f26beb00851c01 86,99,104,107-113,123-129,131,135,138-142
+lib/storyarn/ideation/README.md
+  s_f378eeb3787880::t_8eefff16725740 186-193,196-201
+test/storyarn/repo/migrations/ideation_round_timers_migration_test.exs
+  s_f378eeb3787880::t_60971b006ba4e9 1-8,10-45,51-88
+  s_f378eeb3787880::t_d27a73e76d3406 9,46-50
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_f378eeb3787880::t_300781df955d62 71-73,75
+  s_f378eeb3787880::t_1ce7c179f245f1 254-256
+  s_f378eeb3787880::t_afd6fe69089940 74
+  s_f378eeb3787880::t_ea91bd2ad7106d 48
+assets/app/modules/ideation/components/RoundBar.vue
+  s_f378eeb3787880::t_72f9c3641f9de0 55
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_f378eeb3787880::t_04e86666dcb3f9 505-517,519-522,527-530,535-536,541
+  s_f378eeb3787880::t_0886d6d2082ce8 7
+  s_f378eeb3787880::t_49c20dd64705c6 523-526,531-534,537-540,542-544
+docs/reference/brainstorming-timer-contract.md
+  s_f378eeb3787880::t_9383f1c7f8e670 1,5,7,11-20
+  s_f378eeb3787880::t_fe16e2ccf2fe69 127-134
+  s_f378eeb3787880::t_8f9bdd8f493420 36-39,45-49
+  s_f378eeb3787880::t_d1106aba41e2fd 66-78,80-81
+lib/storyarn/ideation/sessions/commands/expire_timer.ex
+  s_f378eeb3787880::t_9e33c534a10b15 116-124,126-128
+  s_f378eeb3787880::t_16716a8ec47df1 102
+docs/reference/brainstorming-recovery-contract.md
+  s_f378eeb3787880::t_8378eed2f7c133 82-83
+  s_f378eeb3787880::t_e4eba6883f2f49 64-66
+lib/storyarn/ideation/sessions/commands/cancel_timer.ex
+  s_f378eeb3787880::t_4d21c5df64224a 6,14-15
+lib/storyarn/ideation/sessions/commands/close_round.ex
+  s_f378eeb3787880::t_3a6e96dc251d6c 4,9-10,15,21-23
+lib/storyarn/ideation/sessions/commands/extend_timer.ex
+  s_f378eeb3787880::t_a27a2e9be1e716 7
+lib/storyarn/ideation/sessions/commands/new_round.ex
+  s_f378eeb3787880::t_35260efb91c908 6,12-14,16-17,21,26,31,33-34
+lib/storyarn/ideation/sessions/commands/pause_timer.ex
+  s_f378eeb3787880::t_02c22ba10bc82d 6
+lib/storyarn/ideation/sessions/commands/resume_timer.ex
+  s_f378eeb3787880::t_00082f63e4ab11 6
+lib/storyarn/ideation/sessions/commands/start_timer.ex
+  s_f378eeb3787880::t_c3085220b0bf10 7,9-11,14,35-36
+lib/storyarn/ideation/sessions/entities/timer.ex
+  s_f378eeb3787880::t_ca3c9f011fe21e 2,8
+lib/storyarn/ideation/sessions/execution/archive_timer.ex
+  s_f378eeb3787880::t_866d9736c0ccde 4,10,12-14
+lib/storyarn/ideation/sessions/execution/round_mutation.ex
+  s_f378eeb3787880::t_f0828e1df61677 7,9,28-46
+lib/storyarn/ideation/sessions/execution/timer_mutation.ex
+  s_f378eeb3787880::t_41bf38cac05e5f 4,9,14-15,19-24,29-31,58-67,86,89
+lib/storyarn/ideation/sessions/queries/canvas_context.ex
+  s_f378eeb3787880::t_41557ef051ae5c 6,11
+lib/storyarn/ideation/sessions/queries/timers.ex
+  s_f378eeb3787880::t_6b75e97e6ac9ee 6,13,17-26
+lib/storyarn_web/live/ideation_live/helpers/timer_data.ex
+  s_f378eeb3787880::t_60dfcdf08a1c6e 11
+priv/repo/migrations/20260916100000_ideation_round_timers.exs
+  s_f378eeb3787880::t_215a293888015d 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1a276ec3242583d50ee1bdf282b53add4e514721",
+  "prompts": {},
+  "sessions": {
+    "s_99452c5813f264": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a6f8-6beb-7f70-abef-5d80c11259cc",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_f378eeb3787880": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f1b7071-ba33-48b7-bf54-4b33bb30765f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
