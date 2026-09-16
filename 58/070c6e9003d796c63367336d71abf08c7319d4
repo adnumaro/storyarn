@@ -1,0 +1,620 @@
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 154-159,179,189,220,341,342-344,348
+  s_02773c3f2b5565::t_c0c70350507d74 345
+  s_02773c3f2b5565::t_ddcceff0082f7d 160,346
+  s_02773c3f2b5565::t_cddff9da4e52fc 315-317
+  s_02773c3f2b5565::t_03175476d42f54 161,163,172-178,181-187,265-314
+  s_02773c3f2b5565::t_4c0381da676776 318
+  s_02773c3f2b5565::t_d5a47a955b869d 167
+  s_93251447e419b7::t_6de0f1db936524 195,229-263
+  s_93251447e419b7::t_62cb434bfb5717 264
+  s_f378eeb3787880::t_885e3405b876dd 113
+  s_f378eeb3787880::t_15599e823285bd 206-219,224-227
+  s_f378eeb3787880::t_5d0da04f160323 324-330
+  s_f378eeb3787880::t_2a1608bf589f2c 15
+  s_99452c5813f264::t_b1b52d78caa1a3 228
+lib/storyarn/ideation/ideas/commands/create.ex
+  s_02773c3f2b5565::t_f1b5080c29d4d9 111
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_02773c3f2b5565::t_c0c70350507d74 157
+  s_02773c3f2b5565::t_f1b5080c29d4d9 275
+  s_02773c3f2b5565::t_32c6716ef11f05 128,133
+  s_02773c3f2b5565::t_dd80ad798273bd 276
+  s_02773c3f2b5565::t_06256ea78d3806 195
+  s_02773c3f2b5565::t_900e7ab97d8c3c 243
+assets/app/locales/es/ideation.json
+  s_02773c3f2b5565::t_e325f25ce07542 221-222,279-280
+  s_02773c3f2b5565::t_417be7945a7121 44
+  s_02773c3f2b5565::t_ca036038e2da3f 21-22
+  s_02773c3f2b5565::t_ec7ca769a904db 23
+  s_02773c3f2b5565::t_8cb240e3da7343 207-208
+  s_02773c3f2b5565::t_0f75176a4df611 121-126
+  s_02773c3f2b5565::t_d5a47a955b869d 196
+  s_02773c3f2b5565::t_958b06fe90be51 232-233,250-251
+lib/storyarn/ideation/sessions/queries/round_context.ex
+  s_02773c3f2b5565::t_82e45479b4c728 9-11,13,18-19,21,26,30,32,36
+  s_02773c3f2b5565::t_d5a47a955b869d 20,22-25,27-28
+lib/storyarn/ideation/sessions/commands/create.ex
+  s_02773c3f2b5565::t_44e01efe1c21e8 5,7,10-11,21-22,27-32,34
+  s_02773c3f2b5565::t_6b2f6007e340dc 35
+  s_02773c3f2b5565::t_ddcceff0082f7d 33
+test/storyarn/ideation/round_context_test.exs
+  s_02773c3f2b5565::t_d89c9e3771ee19 13-15,24,28-32,33,38-39,43-45,47-48,50-54,56-58,60-65,67,72-76,78-80,82-83,88
+  s_02773c3f2b5565::t_c0c70350507d74 34,68-70
+  s_02773c3f2b5565::t_bab0f6f2b49f4b 16
+lib/storyarn/ideation/ideas/commands/update.ex
+  s_02773c3f2b5565::t_f1b5080c29d4d9 79-83
+  s_02773c3f2b5565::t_5807d4230dbbc2 84
+lib/storyarn/ideation/ideas/commands/delete.ex
+  s_02773c3f2b5565::t_f1b5080c29d4d9 45-46
+test/storyarn/ideation/round_recovery_test.exs
+  s_02773c3f2b5565::t_bfb8fd979d725e 20-22,24,30,35-37,40-41,59,274,285-289,292-295,302,306-318,322-325,326-332,335,339,345-346,350-356,357-358,361-362,370-372,373,377-378,387,389,402,410-411,426
+  s_02773c3f2b5565::t_62beffef78643d 405
+  s_02773c3f2b5565::t_bab0f6f2b49f4b 19,23,303-305,320-321,340
+  s_02773c3f2b5565::t_55d97d45bc9dda 344
+  s_02773c3f2b5565::t_db189efacafdfe 62-121,126-140,238-239
+  s_02773c3f2b5565::t_cddff9da4e52fc 268-273,277,279
+  s_93251447e419b7::t_6de0f1db936524 8,176-239,437-476
+  s_93251447e419b7::t_2f74bb0fa125b4 477
+  s_f378eeb3787880::t_bf1d24f1eb5d81 29,267,319
+  s_f378eeb3787880::t_d27a73e76d3406 122-125,166-169
+  s_f378eeb3787880::t_3b43e8046ffc48 343
+  s_f378eeb3787880::t_e9a52011adb834 141-165,170-173
+test/storyarn/ideation/session_concurrency_test.exs
+  s_02773c3f2b5565::t_a187ae38ce6ad7 237,239,243,249,263-265,281
+lib/storyarn/ideation/ideas/commands/restore.ex
+  s_02773c3f2b5565::t_f1b5080c29d4d9 73,81-82
+lib/storyarn/ideation/sessions/commands/update_round.ex
+  s_02773c3f2b5565::t_74a1b743111643 8,19,29
+test/storyarn/ideation/groups_test.exs
+  s_02773c3f2b5565::t_62beffef78643d 67
+  s_02773c3f2b5565::t_546a143b856905 176-205
+assets/app/test/modules/ideation/brainstormingSidebar.test.ts
+  s_02773c3f2b5565::t_92eb39470c575e 2,29-30,41-42,86,106
+  s_02773c3f2b5565::t_9267766cd7469a 8-11
+  s_02773c3f2b5565::t_7f1c3a9d2152dc 1,3-7,12-28,31-40,43-47,49-59,61-66,85,87-89,91-105,107-111,113-122
+  s_02773c3f2b5565::t_005324495eb52e 48
+  s_02773c3f2b5565::t_59534655351745 90,112
+  s_02773c3f2b5565::t_726f648ca92b17 60,68
+  s_02773c3f2b5565::t_867c1a679976b6 67,69-84
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 67,69
+  s_02773c3f2b5565::t_ddcceff0082f7d 68
+  s_02773c3f2b5565::t_03175476d42f54 166,169-170,200-201,206-208,213-220
+  s_02773c3f2b5565::t_71dd897ac9d052 221
+  s_f378eeb3787880::t_300781df955d62 71-73,75
+  s_f378eeb3787880::t_1ce7c179f245f1 254-256
+  s_f378eeb3787880::t_afd6fe69089940 74
+  s_f378eeb3787880::t_ea91bd2ad7106d 48
+test/storyarn/ideation/connected_creation_test.exs
+  s_02773c3f2b5565::t_a187ae38ce6ad7 90
+test/storyarn/ideation/recovery_test.exs
+  s_02773c3f2b5565::t_a187ae38ce6ad7 249
+lib/storyarn/ideation/ideas/queries/group_sources.ex
+  s_02773c3f2b5565::t_a73cefc29c6aea 18
+assets/app/test/modules/ideation/roundBands.test.ts
+  s_02773c3f2b5565::t_eee55c90295242 1-2,4,8-24,53,72-87,93-97,113,115-117,123-127,155,157-158,160,162-164,172-174,267-276,360-365,368,370-381,384-388,389-391,406,480,546,556-557,561-563,613-614,616,621,624-625
+  s_02773c3f2b5565::t_59534655351745 5,54-66,88-92,114,128-154,156,161,165-166,168,170-171,176-180,182,185-193,195-197,199-202,277,366-367,382,481,559,615,617-619,622
+  s_02773c3f2b5565::t_8f512b125d98e2 194,198
+  s_02773c3f2b5565::t_0b9d466ab9597e 547-550,552-568
+  s_02773c3f2b5565::t_82cc38cd87e5bd 569
+  s_02773c3f2b5565::t_ff54a08eb258bc 249-268
+  s_02773c3f2b5565::t_91b4abadd36b1d 570-574,576-577,579-586,588-591,593-595
+  s_02773c3f2b5565::t_8c5dc64ce59196 159
+  s_02773c3f2b5565::t_8018b6451249c9 6,471-476
+  s_02773c3f2b5565::t_9c3d3eeffd624f 463,495-498,500-502
+  s_02773c3f2b5565::t_53db1cf288a4bd 3,442-449,451-459
+  s_02773c3f2b5565::t_a8ceaf468b9863 460-461
+  s_02773c3f2b5565::t_f5c95f282f4e9e 450
+  s_02773c3f2b5565::t_726f648ca92b17 175
+  s_02773c3f2b5565::t_6747a6f9dc4231 160,551,575,578,587,592,620,623
+  s_02773c3f2b5565::t_d73ddf7510c9fb 597-601,603-608,611-614
+  s_02773c3f2b5565::t_fdb28313fab955 596,602,609-610
+  s_02773c3f2b5565::t_9c928630cdf807 518
+  s_02773c3f2b5565::t_bf7454bdea3cbd 545-546
+  s_02773c3f2b5565::t_08743018322a99 493-494,499
+  s_02773c3f2b5565::t_3f8b824eb5d59d 392,408-409,410-415,426-427,430,436-437,440-441
+  s_02773c3f2b5565::t_73b6dc345ea73f 393-407,416-425,428-429,431-435,438-439
+  s_02773c3f2b5565::t_958b06fe90be51 105-109
+  s_f378eeb3787880::t_04e86666dcb3f9 505-517,519-522,527-530,535-536,541
+  s_f378eeb3787880::t_0886d6d2082ce8 7
+  s_f378eeb3787880::t_49c20dd64705c6 523-526,531-534,537-540,542-544
+lib/storyarn/ideation/ideas/queries/list.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 4,6,54-58,60-66
+  s_02773c3f2b5565::t_979774c081721d 67
+  s_02773c3f2b5565::t_fece57862682e7 59,70,71,73-75,77,81-83
+  s_02773c3f2b5565::t_1579793a5d7506 84
+  s_02773c3f2b5565::t_7632371b34c3b6 137-139,151
+  s_02773c3f2b5565::t_e298b69e3c4432 68-69,152-153
+  s_02773c3f2b5565::t_5ce8a6063b902a 72,76,78-80,85-102
+  s_02773c3f2b5565::t_d7d95686d02a01 103
+lib/storyarn/ideation/ideas/ideas.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 62
+  s_02773c3f2b5565::t_dc3f890df51eb2 82-85
+assets/app/locales/en/ideation.json
+  s_02773c3f2b5565::t_e325f25ce07542 221-222,279-280
+  s_02773c3f2b5565::t_417be7945a7121 44
+  s_02773c3f2b5565::t_ca036038e2da3f 21-22
+  s_02773c3f2b5565::t_463690cb025b00 23
+  s_02773c3f2b5565::t_8cb240e3da7343 207-208
+  s_02773c3f2b5565::t_0f75176a4df611 121-126
+  s_02773c3f2b5565::t_d5a47a955b869d 196
+  s_02773c3f2b5565::t_958b06fe90be51 232-233,250-251
+lib/storyarn/ideation/sessions/events/invalidation.ex
+  s_02773c3f2b5565::t_f1b5080c29d4d9 23-31
+lib/storyarn/ideation/sessions/queries/session_rounds.ex
+  s_02773c3f2b5565::t_6de5301641bf29 1-36
+lib/storyarn/ideation/ideas/events/invalidation.ex
+  s_02773c3f2b5565::t_f1b5080c29d4d9 4,17-19
+  s_02773c3f2b5565::t_0d17b99d698a35 20
+lib/storyarn/ideation/sessions/execution/round_contribution.ex
+  s_02773c3f2b5565::t_0602ed2d9544b5 9-10,23,38
+lib/storyarn/ideation/sessions/sessions.ex
+  s_02773c3f2b5565::t_3641766878010e 42,45,48
+  s_02773c3f2b5565::t_f1b5080c29d4d9 81
+test/storyarn/ideation/round_contributions_test.exs
+  s_02773c3f2b5565::t_f1b5080c29d4d9 230,232-274,277-278
+  s_02773c3f2b5565::t_1e3bf86ae54a61 4,15-16,22-27,31,33,57-58,62,74,77,90,108,111,143,150,167,170,174,190,193,202-224,228-229,336
+  s_02773c3f2b5565::t_a30ee1b3db5773 275-276
+  s_02773c3f2b5565::t_5af21913826c72 231
+lib/storyarn_web/live/ideation_live/sidebar.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 139
+assets/app/test/modules/ideation/canvasNotes.test.ts
+  s_02773c3f2b5565::t_9caf47c2e61c6d 443-444,446,449-451,453,464,469-471,473,484,486-500,503,511,513,516-518,520,523,528,533,540
+  s_02773c3f2b5565::t_59534655351745 8,23-24,437-442,445,452,463,472,485,501,512,519,529
+  s_02773c3f2b5565::t_53db1cf288a4bd 97-154
+  s_02773c3f2b5565::t_546a143b856905 62-96
+  s_93251447e419b7::t_6de0f1db936524 547-669
+test/e2e/workspaces/projects/ideation/rounds_test.exs
+  s_02773c3f2b5565::t_1e9bf18c5845b5 199-202
+  s_02773c3f2b5565::t_837490efd89899 14-15,17,23,35-36,38-39,43,57,62-63,67-69,94,103,124,127,155,157-158,161-164,167-173,175,177-180,185,187
+  s_02773c3f2b5565::t_bab0f6f2b49f4b 34,159
+  s_02773c3f2b5565::t_55d97d45bc9dda 4,33
+  s_02773c3f2b5565::t_b1697e6c97ef1c 51,110
+  s_02773c3f2b5565::t_dedcd4afda970f 50,109
+  s_02773c3f2b5565::t_06cc8cf84350a9 196-198
+  s_02773c3f2b5565::t_254cb1038239c4 48,107
+  s_02773c3f2b5565::t_8b83159f83bd20 31-32
+  s_02773c3f2b5565::t_b38f2b893ca0f0 49,108,191-198
+  s_02773c3f2b5565::t_af5a871bb67bf9 174
+  s_02773c3f2b5565::t_0a6e031a460ef6 165-166
+  s_02773c3f2b5565::t_311d47be9d101b 105
+  s_02773c3f2b5565::t_5bae74fd2be6e6 47
+  s_02773c3f2b5565::t_6349f3912264b9 44
+  s_02773c3f2b5565::t_9775049234a632 45
+assets/app/modules/ideation/components/RoundBar.vue
+  s_02773c3f2b5565::t_da9d089490f6cc 136,139-140
+  s_02773c3f2b5565::t_a544c4d9a24254 1,4-5,18,22-24,34-39,45-52,70,71-72,147-150,152,154-155,157,162-163,169-170,175,189,199,251,256-258,264,405,406-407
+  s_02773c3f2b5565::t_6db9de52567171 174
+  s_02773c3f2b5565::t_ff54a08eb258bc 25-27,254
+  s_02773c3f2b5565::t_91b4abadd36b1d 43,59-60,156
+  s_02773c3f2b5565::t_8cb240e3da7343 44,61-62,158,160-161
+  s_02773c3f2b5565::t_67c8420a5d9875 21
+  s_02773c3f2b5565::t_452a558eeafb3f 259,262-263,308,322,325-326
+  s_02773c3f2b5565::t_cf0d48e0e71b08 135,175,183,201,203-214,215,217-221,234-236,240-241,243-247,249-250,252-253,266-298,300-307,311-314,316-317,319-321,327-328,395
+  s_02773c3f2b5565::t_b488a775411679 363-366
+  s_02773c3f2b5565::t_d9e69f297988a6 173,176,178
+  s_02773c3f2b5565::t_9ee0b040cf1068 2-3,10-14,19,28-33,78-120,151,153,159,162-172,174,177,179-182,184-200,202,204,216,218,222-233,237-238,242,248,255,260-261,265,299,309-310,315,318,323-324,329-362,367-394
+  s_f378eeb3787880::t_72f9c3641f9de0 55
+assets/app/modules/ideation/BrainstormingSidebar.vue
+  s_02773c3f2b5565::t_6db9de52567171 74
+  s_02773c3f2b5565::t_3f7dadb9253fff 2-11,23,27-28,38,51-73,75,131-190,196,198-218
+  s_02773c3f2b5565::t_8cb240e3da7343 191-195,197
+priv/repo/migrations/20260914120000_ideation_round_bands.exs
+  s_02773c3f2b5565::t_bcd71561b696f6 1-5,9-18,20,21-31,32-35,37-40,42-45,47-48,51-64,65-73,76,78-79,81,83-96,97-107,121,128-129,133,135-136,137-139,140
+  s_02773c3f2b5565::t_ddcceff0082f7d 6-8,19,36,41,74-75,77,80,82,108-118,120-122,124
+  s_02773c3f2b5565::t_03175476d42f54 46,49-50,125-136
+lib/storyarn_web/live/ideation_live/helpers/board_data.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 102,107-108,123-143,172
+lib/storyarn_web/live/ideation_live/helpers/round_data.ex
+  s_02773c3f2b5565::t_6d488eca53b6cc 6-8,18,20-25,29-33
+lib/storyarn_web/live/ideation_live/board.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 148,168,172-178,416,552,556,558,561-562
+  s_02773c3f2b5565::t_7579d13aa51432 566-567
+  s_02773c3f2b5565::t_37f7164bc4d652 672
+  s_02773c3f2b5565::t_184090eabb02e0 98
+  s_02773c3f2b5565::t_417be7945a7121 58-59,99-102,139,166,188-194,318-319,321-325,327,329,623
+  s_02773c3f2b5565::t_165c69c7d50082 639-642,666,668-670
+  s_02773c3f2b5565::t_37346931eefd4f 671
+  s_02773c3f2b5565::t_dc3f890df51eb2 27
+  s_02773c3f2b5565::t_3f438851e78930 86,140,553-555,557,559-560,563-565
+  s_02773c3f2b5565::t_e298b69e3c4432 326,328,660-662
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_02773c3f2b5565::t_066ee70ec5e8df 224
+  s_02773c3f2b5565::t_979a4f79111294 1424
+  s_02773c3f2b5565::t_c6015b306a235e 502,505-507,539-540,549
+  s_02773c3f2b5565::t_a73cefc29c6aea 50,75-77,79,84,222-223,225-227,232,312-314,324-325,454-458,460,470,474,480,491,497,499-501,503-504,508-533,535-538,543-544,546-548,550,598-605,976,978-979,1173-1174,1423
+  s_02773c3f2b5565::t_ab632c8ec969f3 1037
+  s_02773c3f2b5565::t_005324495eb52e 2,142-160,170,534,542,1170
+  s_02773c3f2b5565::t_59534655351745 1154-1158,1169
+  s_02773c3f2b5565::t_417be7945a7121 71
+  s_02773c3f2b5565::t_bee958eab680c3 1150
+  s_02773c3f2b5565::t_ca036038e2da3f 758-760,1187,1342,1347
+  s_02773c3f2b5565::t_f4eacbb6d62627 6-7,12-15,228-231,233-237,752-755,757,1188,1422,1426,1428-1465
+  s_02773c3f2b5565::t_8e5b7404dbfdca 3,52,56-61,65,1019-1034
+  s_02773c3f2b5565::t_9307bf0fe483bf 275
+  s_02773c3f2b5565::t_bf7454bdea3cbd 607,610,1416
+  s_02773c3f2b5565::t_0f75176a4df611 278-279,741-751,756,1412
+  s_02773c3f2b5565::t_738b1f8274a751 1211,1213-1214
+  s_93251447e419b7::t_6de0f1db936524 630-637,640,651-652,659-660
+  s_02773c3f2b5565::t_958b06fe90be51 1204,1212
+lib/storyarn/ideation/sessions/queries/rounds.ex
+  s_02773c3f2b5565::t_3641766878010e 14
+test/storyarn/ideation/rounds_test.exs
+  s_02773c3f2b5565::t_1298e35094deb9 15-19,20-26,29,34-44,45-47,49-52,56-57,61-64,67-75,81,83,87-90,93-95,98-99,101-102,108,113,117-118,125,134-136,141-144,146,148-149,151-153,155-158,162-165,168,173,176,179-190,192,204,206-218,225,228,232-233,237,240,246,252,253,257,261,264,267,269,272,279,281,284-285,290
+  s_02773c3f2b5565::t_c0c70350507d74 105
+  s_02773c3f2b5565::t_a96bdcd5fabfa8 107
+  s_02773c3f2b5565::t_bab0f6f2b49f4b 78-79,82,84-86,191
+  s_02773c3f2b5565::t_6e4055fa5df92c 58-60
+lib/storyarn_web/live/ideation_live/handlers/round_handlers.ex
+  s_02773c3f2b5565::t_22e1a6c1fd3ac5 13-16,35,37
+  s_02773c3f2b5565::t_ddcceff0082f7d 40
+lib/storyarn/ideation.ex
+  s_02773c3f2b5565::t_32c6716ef11f05 235-238
+  s_02773c3f2b5565::t_3641766878010e 127,131-135,184-189,191
+  s_02773c3f2b5565::t_dc3f890df51eb2 280-282
+assets/app/modules/ideation/composables/useCanvasNotes.ts
+  s_02773c3f2b5565::t_e325f25ce07542 60,62-66,68-69,476-481
+  s_02773c3f2b5565::t_da9d089490f6cc 167-168,170-174,181-182,184,195-204
+  s_02773c3f2b5565::t_681e4b1117a68a 70,73
+  s_02773c3f2b5565::t_005324495eb52e 1,53,56,61,71-72
+  s_02773c3f2b5565::t_f4eacbb6d62627 28,224-238,264,284,629
+  s_02773c3f2b5565::t_3b4015f1d858f5 272,274-283
+  s_02773c3f2b5565::t_9307bf0fe483bf 25-26,262,265,291-294
+  s_93251447e419b7::t_6de0f1db936524 40-41,57-59,67,93,101,205-211,273,298,320,425-426,475,484-486,501,504-506,527,531,533,541,544
+test/support/fixtures/ideation_fixtures.ex
+  s_02773c3f2b5565::t_565ab291a008fb 51-71
+lib/storyarn/ideation/sessions/entities/round.ex
+  s_02773c3f2b5565::t_b25b280186bc3b 2-3,8,18
+  s_02773c3f2b5565::t_ddcceff0082f7d 4-5
+test/storyarn/ideation/timers_test.exs
+  s_02773c3f2b5565::t_a187ae38ce6ad7 36
+  s_f378eeb3787880::t_2033fae7bf6ff3 14
+  s_f378eeb3787880::t_a60cb0052fc790 346-360,363-381,385-390
+  s_f378eeb3787880::t_d27a73e76d3406 361-362,382-384
+test/storyarn/ideation/decision_recovery_test.exs
+  s_02773c3f2b5565::t_a187ae38ce6ad7 200-202,209,210
+  s_02773c3f2b5565::t_c0c70350507d74 199
+  s_f378eeb3787880::t_bf1d24f1eb5d81 50,213
+lib/storyarn/ideation/sessions/commands/new_round.ex
+  s_02773c3f2b5565::t_7f2bb030b8d65c 1-5,7-8,9-11,15,18-19,20,23-25,27-30,32,35-37,39-42,44-49
+  s_02773c3f2b5565::t_ddcceff0082f7d 22,38,43
+  s_f378eeb3787880::t_35260efb91c908 6,12-14,16-17,21,26,31,33-34
+assets/app/modules/ideation/types.ts
+  s_02773c3f2b5565::t_066ee70ec5e8df 109-110
+  s_02773c3f2b5565::t_e325f25ce07542 89-94,142-144,175,179
+  s_02773c3f2b5565::t_dca59c2bca7d88 48-53
+  s_02773c3f2b5565::t_9307bf0fe483bf 81-82
+  s_02773c3f2b5565::t_9ee0b040cf1068 185-186
+  s_f378eeb3787880::t_fb0a9648895fec 187,196
+assets/app/modules/ideation/components/BrainstormingCanvas.vue
+  s_02773c3f2b5565::t_066ee70ec5e8df 1557
+  s_02773c3f2b5565::t_681e4b1117a68a 46,72,126,174,405,416,464,540,586,1619,1621,1624,1628-1631,1634,1640,1645-1647
+  s_02773c3f2b5565::t_da9d089490f6cc 396-397,1618,1635-1636
+  s_02773c3f2b5565::t_005324495eb52e 170-171,395,398-404,406-408,410-411,415-416,424-431,433,1627,1643
+  s_02773c3f2b5565::t_59534655351745 184,199,1889,1925-1931
+  s_02773c3f2b5565::t_447ec1af0cedf5 1932
+  s_02773c3f2b5565::t_0b9d466ab9597e 472-474,477-479,1388
+  s_02773c3f2b5565::t_ff54a08eb258bc 47,536-540,883,1024,1282,1286,1309-1315
+  s_02773c3f2b5565::t_a9143a4c99e168 435-436,439,443,461-462
+  s_02773c3f2b5565::t_91b4abadd36b1d 432,437-438,441-442,444,453-460,1624-1626
+  s_02773c3f2b5565::t_bee958eab680c3 121-122,211
+  s_02773c3f2b5565::t_332f92515c9da9 485-490,499-503
+  s_02773c3f2b5565::t_4f8e2fb42893db 76
+  s_02773c3f2b5565::t_ca036038e2da3f 17,19,27,176,180-181,185-186,189,203,207-210,212,1560-1562,1895-1917
+  s_02773c3f2b5565::t_d00e23cb6e1aa6 1448-1451
+  s_02773c3f2b5565::t_f4eacbb6d62627 13,16,18,20-26,28-30,177,182-183,190,204-206,214-225,1885,1918-1924
+  s_02773c3f2b5565::t_8cb240e3da7343 248-250,254,256-258,282,445-447,1358-1363,1398,1632-1633
+  s_02773c3f2b5565::t_7468d5b4d37a4b 448-452,1738-1740,1742-1746,1749-1750
+  s_02773c3f2b5565::t_6747a6f9dc4231 243-247
+  s_02773c3f2b5565::t_e238e88fc4f70c 41,1747-1748,1751-1780
+  s_02773c3f2b5565::t_8b84321e86cedd 475
+  s_02773c3f2b5565::t_b8f06ad58f9256 251-253,255,417-423
+  s_02773c3f2b5565::t_fdb28313fab955 463,465-471,476
+  s_02773c3f2b5565::t_9307bf0fe483bf 44,409
+  s_02773c3f2b5565::t_cf0d48e0e71b08 2-10,265-281,440,481-482,511-512,1364-1374,1399,1622-1623
+  s_02773c3f2b5565::t_0f75176a4df611 497
+  s_02773c3f2b5565::t_3f8b824eb5d59d 566
+  s_02773c3f2b5565::t_7984f4f2207bb1 562-565,567-569,1886
+  s_02773c3f2b5565::t_958b06fe90be51 259-264,1740-1741,1781
+  s_f378eeb3787880::t_c8300046ccaf83 491-496,502
+  s_f378eeb3787880::t_6fd8175900c6d0 1638
+test/storyarn_web/live/ideation_live/board_test.exs
+  s_02773c3f2b5565::t_37e34e9fe8ac87 521,526,533,538-539,541-545,572,603,606-607,612,614,617,622-623,631,635,638-639,644-648,651-652,655,666-668,670,672,678-680,682-685,687-688,693-694,697-700,704-717
+  s_02773c3f2b5565::t_bab0f6f2b49f4b 529,534,540,681
+  s_02773c3f2b5565::t_b1697e6c97ef1c 735-736
+  s_02773c3f2b5565::t_8a0bd2f42fab3e 343
+  s_02773c3f2b5565::t_cb0ca3d7c2d058 367,369,371,373
+  s_02773c3f2b5565::t_648b8a5981d8bc 365-366,368,370,372,374-375,727
+  s_02773c3f2b5565::t_3efb0b14b02eae 142-172
+  s_02773c3f2b5565::t_1fb534854e8aea 690-691,696,701,726
+  s_02773c3f2b5565::t_e298b69e3c4432 173-181
+assets/app/modules/ideation/lib/bands.ts
+  s_02773c3f2b5565::t_005324495eb52e 1-48
+assets/app/modules/ideation/composables/useCanvasGroups.ts
+  s_02773c3f2b5565::t_59534655351745 3,62,65-68,70-77,205-207,209,263-268
+  s_02773c3f2b5565::t_9307bf0fe483bf 4,69,80-92
+  s_93251447e419b7::t_6de0f1db936524 78-79,96,165,180,200-202,208,212,299,304,312,328,336
+test/storyarn/projects/comments/ideation_conversation_events_test.exs
+  s_02773c3f2b5565::t_55d97d45bc9dda 148
+lib/storyarn/ideation/sessions/entities/session.ex
+  s_02773c3f2b5565::t_6a4e85609378aa 9
+  s_02773c3f2b5565::t_02a1e95f9e9cc6 10-14,35
+  s_02773c3f2b5565::t_fd8e9bac725468 36
+docs/features/brainstorming-board.md
+  s_02773c3f2b5565::t_417be7945a7121 309,319
+  s_02773c3f2b5565::t_4dd79506d4ba13 308
+  s_02773c3f2b5565::t_45d9524907ac2e 233-236
+  s_02773c3f2b5565::t_47617d10487b6a 237-238
+  s_02773c3f2b5565::t_45e87762ff5842 209-212,239-240,242
+  s_02773c3f2b5565::t_216091a6e31e2c 208,241
+  s_02773c3f2b5565::t_bc9fb43b0dc585 291-294
+  s_02773c3f2b5565::t_a5ed9690b56b4f 287-290
+  s_02773c3f2b5565::t_a94c31339704a4 183-199
+  s_02773c3f2b5565::t_d5a47a955b869d 205
+  s_02773c3f2b5565::t_f3b28ec41cc7c5 296-308
+assets/app/test/live/ideation/BoardHeaderContext.test.ts
+  s_02773c3f2b5565::t_648b8a5981d8bc 20,42-43,59-75
+  s_02773c3f2b5565::t_5700e4f7054fbf 76-77
+assets/app/modules/ideation/index.ts
+  s_02773c3f2b5565::t_417be7945a7121 4-12,14
+  s_02773c3f2b5565::t_6fc5a7d468951e 13
+assets/app/live/ideation/SessionPanel.vue
+  s_02773c3f2b5565::t_417be7945a7121 1-14,16-19,21-37,48-50,55-119,121-269
+  s_02773c3f2b5565::t_0b0975d5b032e4 15,20
+  s_02773c3f2b5565::t_af5a871bb67bf9 120
+  s_02773c3f2b5565::t_0f75176a4df611 38-47,51-54
+assets/app/live/ideation/BoardPanels.vue
+  s_02773c3f2b5565::t_417be7945a7121 4,7,9-18,22-26,31,34,36,38-42
+  s_02773c3f2b5565::t_0b0975d5b032e4 35,37
+assets/app/live/ideation/BoardHeader.vue
+  s_02773c3f2b5565::t_417be7945a7121 5,8,12-14,16,21,30,34,49,74
+test/storyarn_web/live/ideation_live/decisions_test.exs
+  s_02773c3f2b5565::t_e5d9dd3f81032d 255-256
+test/e2e/workspaces/projects/ideation/timer_test.exs
+  s_02773c3f2b5565::t_648b8a5981d8bc 39-44,54-61,63,68-69,71,79-83,85,95-98,104,139,143,159,162
+  s_02773c3f2b5565::t_a618d86aa4304d 38
+  s_02773c3f2b5565::t_af5a871bb67bf9 64
+  s_f378eeb3787880::t_6fb666bbf4f4ce 105-119
+assets/app/live/ideation/DecisionsPanel.vue
+  s_02773c3f2b5565::t_417be7945a7121 142
+assets/app/test/live/ideation/SessionPanel.test.ts
+  s_02773c3f2b5565::t_648b8a5981d8bc 1-17,25-53,55-63,65-66,88-91,95-102,109-123
+  s_02773c3f2b5565::t_539eac63fea426 54,64,92-94,103-108
+  s_02773c3f2b5565::t_0b0975d5b032e4 18-24
+  s_02773c3f2b5565::t_bf7454bdea3cbd 67-87
+docs/reference/brainstorming-timer-contract.md
+  s_02773c3f2b5565::t_417be7945a7121 23,61
+  s_f378eeb3787880::t_9383f1c7f8e670 1,5,7,11-20
+  s_f378eeb3787880::t_fe16e2ccf2fe69 127-134
+  s_f378eeb3787880::t_8f9bdd8f493420 36-39,45-49
+  s_f378eeb3787880::t_d1106aba41e2fd 66-78,80-81
+test/storyarn_web/live/ideation_live/timer_board_test.exs
+  s_02773c3f2b5565::t_cb0ca3d7c2d058 54
+  s_f378eeb3787880::t_f08e81ed96d08f 41
+assets/app/live/ideation/ReferencesPanel.vue
+  s_02773c3f2b5565::t_0b0975d5b032e4 192
+assets/app/test/modules/ideation/timerDigits.test.ts
+  s_02773c3f2b5565::t_a618d86aa4304d 77-87
+assets/app/modules/ideation/components/TimerDigits.vue
+  s_02773c3f2b5565::t_a618d86aa4304d 56-61,95,113
+assets/app/modules/ideation/components/CanvasNote.vue
+  s_02773c3f2b5565::t_ca036038e2da3f 99-103,117,121-126,132,134-142,246-249,258-259,261-278,280-281,283-286,288-293,296-306
+  s_02773c3f2b5565::t_92f302f112a906 8,143-146
+  s_02773c3f2b5565::t_47617d10487b6a 133,250-257,260,279,282,287,294-295
+assets/app/test/modules/ideation/canvasNoteStates.test.ts
+  s_02773c3f2b5565::t_97e69d77f91fbb 41,43,45
+  s_02773c3f2b5565::t_c1a9151088800b 1-40,42,44,46-47,49-50,53-57
+  s_02773c3f2b5565::t_bf7620e170e607 48,51
+  s_02773c3f2b5565::t_47617d10487b6a 52
+assets/app/test/modules/ideation/canvasInteractions.test.ts
+  s_02773c3f2b5565::t_c1a9151088800b 537,566
+  s_02773c3f2b5565::t_45d9524907ac2e 538-565
+assets/app/test/modules/ideation/workspaceLater.test.ts
+  s_02773c3f2b5565::t_34fe3f91c5da94 1-37,44-49,51-57,74,76-97
+  s_02773c3f2b5565::t_8761f4ef51e98a 38-43,50,75
+  s_02773c3f2b5565::t_bf7454bdea3cbd 58-73
+lib/storyarn/ideation/ideas/commands/bring_forward.ex
+  s_02773c3f2b5565::t_dc3f890df51eb2 1-21,23-82,84-85,92-96,98-99,101-120
+  s_02773c3f2b5565::t_568b9d76b07b69 83,86-91
+  s_02773c3f2b5565::t_a0d1f1ba2c4155 22
+  s_02773c3f2b5565::t_e298b69e3c4432 97,100
+docs/reference/brainstorming-ideas-contract.md
+  s_02773c3f2b5565::t_45e87762ff5842 175-181
+  s_02773c3f2b5565::t_abfc9c31734963 174
+lib/storyarn_web/live/ideation_live/handlers/idea_handlers.ex
+  s_02773c3f2b5565::t_dc3f890df51eb2 14-20
+lib/storyarn/ideation/README.md
+  s_02773c3f2b5565::t_45e87762ff5842 45-47
+  s_02773c3f2b5565::t_37d4ce4049e750 12
+  s_f378eeb3787880::t_8eefff16725740 186-193,196-201
+docs/reference/brainstorming-rounds-contract.md
+  s_02773c3f2b5565::t_45e87762ff5842 114-126
+  s_02773c3f2b5565::t_2e85ffefaf75f7 113
+  s_02773c3f2b5565::t_a94c31339704a4 1,5,7,15-22,24-26,78-88,91-92,135-136,148-152
+  s_02773c3f2b5565::t_68e50def1781ca 61-64,75-76
+  s_02773c3f2b5565::t_aeb425a06799df 53-56,93-94
+  s_f378eeb3787880::t_02f232f9edeb74 8-11
+  s_f378eeb3787880::t_f0319f8429c6ae 72-74
+  s_f378eeb3787880::t_a0bc321560c97c 37-43
+lib/storyarn_web/live/ideation_live/helpers/params.ex
+  s_02773c3f2b5565::t_dc3f890df51eb2 34-36
+test/storyarn/ideation/bring_forward_test.exs
+  s_02773c3f2b5565::t_ba1db2a8e3d5ff 25
+  s_02773c3f2b5565::t_b14339fc14f15e 1-24,26-69,72-73,79-86,92-97,121-130,140-148
+  s_02773c3f2b5565::t_bf7454bdea3cbd 71,74-77
+  s_02773c3f2b5565::t_e298b69e3c4432 87-91,131-139
+  s_02773c3f2b5565::t_095ab5f052b33a 70
+  s_02773c3f2b5565::t_7ff4001b19e470 78
+  s_02773c3f2b5565::t_aeb425a06799df 98-120
+assets/app/modules/ideation/composables/useCanvasViewport.ts
+  s_02773c3f2b5565::t_8cb240e3da7343 1,10-11,13,15-21,23-26
+  s_02773c3f2b5565::t_90e052baa4811a 12,22
+assets/app/test/modules/ideation/canvasViewport.test.ts
+  s_02773c3f2b5565::t_726f648ca92b17 109
+  s_02773c3f2b5565::t_867c1a679976b6 82-108,110-116
+assets/app/test/modules/ideation/canvasAreaSelection.test.ts
+  s_02773c3f2b5565::t_31697c94a4c130 379-380,382,384
+  s_02773c3f2b5565::t_aa948d9c53e7a9 354-367
+test/e2e/workspaces/projects/ideation/groups_test.exs
+  s_02773c3f2b5565::t_0a6e031a460ef6 191-193
+  s_02773c3f2b5565::t_cfacb2ac6d4b97 26-29
+test/e2e/workspaces/projects/ideation/shapes_test.exs
+  s_02773c3f2b5565::t_3017315bd93f0c 99-100
+  s_02773c3f2b5565::t_56c892e735c987 35
+test/e2e/workspaces/projects/ideation/states_test.exs
+  s_02773c3f2b5565::t_b2feca2ded6bb8 41-43,80-87,112-117,119-129
+  s_02773c3f2b5565::t_625bc37419b0de 1-3,5-25,27,29-31,33-35,37-40,44-72,74,76-79,88-108,110-111,118,130-131,134-142
+  s_02773c3f2b5565::t_9c50479eff6a7f 28,32,36,75,109,132-133
+  s_02773c3f2b5565::t_308e9a05d5ff26 4,26,73
+assets/app/live/ideation/BrainstormingBoard.vue
+  s_02773c3f2b5565::t_6a6440683917a6 2,4-9,12-17
+priv/gettext/es/LC_MESSAGES/default.po
+  s_02773c3f2b5565::t_4cb0c8858585f3 139,149
+priv/gettext/default.pot
+  s_02773c3f2b5565::t_4cb0c8858585f3 139,149
+priv/gettext/en/LC_MESSAGES/default.po
+  s_02773c3f2b5565::t_4cb0c8858585f3 139,149
+priv/repo/migrations/20260915100000_ideation_round_privacy.exs
+  s_02773c3f2b5565::t_03175476d42f54 20-21,25,31-38,78,86
+  s_93251447e419b7::t_6de0f1db936524 52-53,55-67
+assets/app/test/modules/ideation/canvasGroups.test.ts
+  s_02773c3f2b5565::t_546a143b856905 9,17-21,46,449-479,486-489,499-502,504,506-508,516-519,521,599-609
+  s_02773c3f2b5565::t_b97351dd9b51d4 610
+  s_93251447e419b7::t_6de0f1db936524 480-485,490-498,503,505,509-515,520,522-598
+lib/storyarn/ideation/groups/contracts/view.ex
+  s_02773c3f2b5565::t_290e02d0109ed0 6-17
+lib/storyarn/ideation/groups/execution/transaction.ex
+  s_02773c3f2b5565::t_9307bf0fe483bf 54-56
+assets/app/modules/ideation/lib/groups.ts
+  s_02773c3f2b5565::t_9307bf0fe483bf 17-23
+lib/storyarn/ideation/groups/execution/mutation.ex
+  s_02773c3f2b5565::t_290e02d0109ed0 39-44,122-124,127-137
+test/storyarn/ideation/round_privacy_test.exs
+  s_02773c3f2b5565::t_6394c602c365b8 95,97-98
+  s_02773c3f2b5565::t_57a39297de63d1 4,130,133-134
+  s_02773c3f2b5565::t_170d9fb830f0b6 1-3,5-7,9-37,41-60,65-70,76-79,82-83,87-94,96,100-103,136-137,151-170
+  s_02773c3f2b5565::t_97803fe1800314 8,61-64,73,75,84
+  s_02773c3f2b5565::t_aeb425a06799df 38-40
+  s_02773c3f2b5565::t_a0d1851415beaf 81
+  s_02773c3f2b5565::t_1737bd7125f6b1 80
+  s_02773c3f2b5565::t_a1cf47e3cf7aaf 71-72,74
+  s_02773c3f2b5565::t_21a6673aa9969d 85
+  s_93251447e419b7::t_6de0f1db936524 105-106,114-122,132,143-150
+  s_f378eeb3787880::t_f26beb00851c01 86,99,104,107-113,123-129,131,135,138-142
+lib/storyarn/ideation/groups/execution/comment_source.ex
+  s_02773c3f2b5565::t_7632371b34c3b6 24,26-35
+lib/storyarn/ideation/sessions/execution/round_privacy.ex
+  s_02773c3f2b5565::t_7632371b34c3b6 42-43,45-46,48-50
+  s_02773c3f2b5565::t_d5a47a955b869d 60
+lib/storyarn/ideation/sessions/commands/expire_timer.ex
+  s_02773c3f2b5565::t_a42b3173ef06c8 13
+  s_f378eeb3787880::t_9e33c534a10b15 116-124,126-128
+  s_f378eeb3787880::t_16716a8ec47df1 102
+assets/app/modules/ideation/components/RoundTimer.vue
+  s_02773c3f2b5565::t_452a558eeafb3f 117,123
+  s_02773c3f2b5565::t_958b06fe90be51 7,15-22,28-29,76-81,102,108-111,121-122
+  s_02773c3f2b5565::t_3d4e17ac3978a6 127
+lib/storyarn/ideation/ideas/queries/visible.ex
+  s_02773c3f2b5565::t_d5a47a955b869d 24-27,33-36
+lib/storyarn/ideation/sessions/execution/round_mutation.ex
+  s_02773c3f2b5565::t_d5a47a955b869d 55-58
+  s_f378eeb3787880::t_f0828e1df61677 7,9,28-46
+assets/app/test/modules/ideation/workspaceDecisions.test.ts
+  s_02773c3f2b5565::t_aeb425a06799df 79
+assets/app/test/modules/ideation/timerWrites.test.ts
+  s_02773c3f2b5565::t_8a08573ca94175 34,71,77-81
+  s_02773c3f2b5565::t_aeb425a06799df 1-33,35-70,72-76,82-120
+test/storyarn/ideation/canvas_mode_test.exs
+  s_02773c3f2b5565::t_a1cf47e3cf7aaf 33
+assets/app/test/modules/ideation/workspaceEditing.test.ts
+  s_93251447e419b7::t_6de0f1db936524 6,52-131
+test/storyarn/repo/migrations/ideation_round_privacy_migration_test.exs
+  s_93251447e419b7::t_6de0f1db936524 1-97
+assets/app/test/modules/ideation/roundBarTiers.test.ts
+  s_02773c3f2b5565::t_cea1fa88c737a2 1-157
+assets/app/test/modules/ideation/fixtures.ts
+  s_f378eeb3787880::t_b13c5f1c5ae8ad 96
+test/storyarn/ideation/reference_recovery_test.exs
+  s_f378eeb3787880::t_bf1d24f1eb5d81 49,321
+test/storyarn/ideation/timer_recovery_test.exs
+  s_f378eeb3787880::t_987152e1aafa10 41-43
+  s_f378eeb3787880::t_bf1d24f1eb5d81 150
+  s_f378eeb3787880::t_b4b8d4fd94adc8 247
+test/storyarn/ideation/group_recovery_test.exs
+  s_f378eeb3787880::t_bf1d24f1eb5d81 36,180
+lib/storyarn/ideation/recovery/adapters/records.ex
+  s_f378eeb3787880::t_4a0dd369f8f277 30
+test/storyarn/repo/migrations/ideation_round_timers_migration_test.exs
+  s_f378eeb3787880::t_60971b006ba4e9 1-8,10-45,51-88
+  s_f378eeb3787880::t_d27a73e76d3406 9,46-50
+docs/reference/brainstorming-recovery-contract.md
+  s_f378eeb3787880::t_8378eed2f7c133 82-83
+  s_f378eeb3787880::t_e4eba6883f2f49 64-66
+lib/storyarn/ideation/sessions/commands/cancel_timer.ex
+  s_f378eeb3787880::t_4d21c5df64224a 6,14-15
+lib/storyarn/ideation/sessions/commands/close_round.ex
+  s_f378eeb3787880::t_3a6e96dc251d6c 4,9-10,15,21-23
+lib/storyarn/ideation/sessions/commands/extend_timer.ex
+  s_f378eeb3787880::t_a27a2e9be1e716 7
+lib/storyarn/ideation/sessions/commands/pause_timer.ex
+  s_f378eeb3787880::t_02c22ba10bc82d 6
+lib/storyarn/ideation/sessions/commands/resume_timer.ex
+  s_f378eeb3787880::t_00082f63e4ab11 6
+lib/storyarn/ideation/sessions/commands/start_timer.ex
+  s_f378eeb3787880::t_c3085220b0bf10 7,9-11,14,35-36
+lib/storyarn/ideation/sessions/entities/timer.ex
+  s_f378eeb3787880::t_ca3c9f011fe21e 2,8
+lib/storyarn/ideation/sessions/execution/archive_timer.ex
+  s_f378eeb3787880::t_866d9736c0ccde 4,10,12-14
+lib/storyarn/ideation/sessions/execution/timer_mutation.ex
+  s_f378eeb3787880::t_41bf38cac05e5f 4,9,14-15,19-24,29-31,58-67,86,89
+lib/storyarn/ideation/sessions/queries/canvas_context.ex
+  s_f378eeb3787880::t_41557ef051ae5c 6,11
+lib/storyarn/ideation/sessions/queries/timers.ex
+  s_f378eeb3787880::t_6b75e97e6ac9ee 6,13,17-26
+lib/storyarn_web/live/ideation_live/helpers/timer_data.ex
+  s_f378eeb3787880::t_60dfcdf08a1c6e 11
+priv/repo/migrations/20260916100000_ideation_round_timers.exs
+  s_f378eeb3787880::t_215a293888015d 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "58070c6e9003d796c63367336d71abf08c7319d4",
+  "prompts": {},
+  "sessions": {
+    "s_02773c3f2b5565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3cc2c3c-0d85-48d5-a4fb-8695b7d138c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_93251447e419b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09690-e161-7403-be42-d1df684f0dc6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_99452c5813f264": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a6f8-6beb-7f70-abef-5d80c11259cc",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_f378eeb3787880": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f1b7071-ba33-48b7-bf54-4b33bb30765f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
