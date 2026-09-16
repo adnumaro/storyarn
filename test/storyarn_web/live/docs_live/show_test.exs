@@ -3,6 +3,50 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
 
   import Phoenix.LiveViewTest
 
+  describe "initial HTTP response" do
+    for {locale, prefix, title, paragraph} <- [
+          {"en", "", "Condition Editor", "Conditions only read variables."},
+          {"es", "/es", "Editor de Condiciones", "Las condiciones solo leen variables."}
+        ] do
+      test "serves the complete #{locale} guide and real navigation links before JavaScript", %{conn: conn} do
+        prefix = unquote(prefix)
+        path = prefix <> "/docs/narrative-design/condition-editor"
+        document = conn |> get(path) |> html_response(200) |> LazyHTML.from_document()
+
+        assert document |> LazyHTML.query("html") |> LazyHTML.attribute("lang") == [unquote(locale)]
+        assert document |> LazyHTML.query("h1") |> Enum.count() == 1
+
+        assert document |> LazyHTML.query("#docs-reading-title") |> LazyHTML.text() == unquote(title)
+
+        assert document |> LazyHTML.query("#docs-reading-body") |> LazyHTML.text() =~ unquote(paragraph)
+
+        assert document |> LazyHTML.query("#docs-reading-article") |> LazyHTML.attribute("lang") ==
+                 [unquote(locale)]
+
+        assert document
+               |> LazyHTML.query("#docs-reading-body a")
+               |> LazyHTML.attribute("href")
+               |> Enum.member?(prefix <> "/docs/narrative-design/instruction-editor")
+
+        navigation_links =
+          document
+          |> LazyHTML.query("#docs-reading-navigation a")
+          |> LazyHTML.attribute("href")
+
+        assert (prefix <> "/docs/narrative-design/node-types/dialogue") in navigation_links
+        assert Enum.all?(navigation_links, &String.starts_with?(&1, prefix <> "/docs/"))
+
+        assert document |> LazyHTML.query("#docs-reading-prev-link") |> LazyHTML.attribute("href") ==
+                 [prefix <> "/docs/narrative-design/flows-overview"]
+
+        assert document |> LazyHTML.query("#docs-reading-next-link") |> LazyHTML.attribute("href") ==
+                 [prefix <> "/docs/narrative-design/instruction-editor"]
+
+        assert document |> LazyHTML.query("#docs-reading-view[hidden], #docs-layout, #docs-show-vue") |> Enum.empty?()
+      end
+    end
+  end
+
   describe "Show" do
     test "renders docs through the LiveVue docs layout", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/docs/welcome/what-is-storyarn")
@@ -18,6 +62,8 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       assert content.props["guide-body"] =~ "narrative design platform"
       assert content.props["guide-body"] =~ "/images/docs/project-dashboard-current.png"
       assert content.props["guide-body"] =~ "/images/docs/scenes-dashboard.png"
+
+      refute has_element?(view, "#docs-reading-view")
     end
 
     test "renders start here as the first welcome guide", %{conn: conn} do
@@ -164,6 +210,7 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       assert search["query"] == "flow"
       assert is_list(search["results"])
       assert Enum.any?(search["results"], &(&1["title"] =~ "Flow"))
+      refute has_element?(view, "#docs-reading-view")
     end
 
     test "renders Spanish docs with localized navigation and canonical metadata", %{conn: conn} do
@@ -207,6 +254,7 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       assert metadata["locale"] == "es"
       assert URI.parse(metadata["canonical_url"]).path == "/es/docs/narrative-design/condition-editor"
       assert Enum.map(metadata["alternate_links"], & &1["hreflang"]) == ["en", "es", "x-default"]
+      refute has_element?(view, "#docs-reading-view")
     end
 
     test "does not serve an English guide under a missing Spanish URL", %{conn: conn} do

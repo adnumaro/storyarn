@@ -41,7 +41,9 @@ defmodule StoryarnWeb.Endpoint do
     at: "/",
     from: :storyarn,
     gzip: not code_reloading?,
-    only: StoryarnWeb.static_paths()
+    only: StoryarnWeb.static_paths(),
+    # Production static paths include content fingerprints before the extension.
+    only_matching: ~w(favicon- site-)
 
   if Mix.env() == :dev do
     plug Tidewave

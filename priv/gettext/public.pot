@@ -33,6 +33,7 @@ msgstr ""
 msgid "Create account"
 msgstr ""
 
+#: lib/storyarn_web/components/docs_reading_view.ex:53
 #: lib/storyarn_web/components/public_header.ex:82
 #: lib/storyarn_web/components/public_mobile_navigation.ex:115
 #, elixir-autogen
@@ -70,6 +71,7 @@ msgstr ""
 msgid "Footer navigation"
 msgstr ""
 
+#: lib/storyarn_web/components/docs_reading_view.ex:53
 #: lib/storyarn_web/components/public_header.ex:89
 #: lib/storyarn_web/components/public_mobile_navigation.ex:130
 #, elixir-autogen
@@ -111,6 +113,7 @@ msgstr ""
 msgid "Privacy"
 msgstr ""
 
+#: lib/storyarn_web/components/docs_reading_view.ex:26
 #: lib/storyarn_web/components/public_header.ex:32
 #: lib/storyarn_web/components/public_mobile_navigation.ex:43
 #, elixir-autogen
