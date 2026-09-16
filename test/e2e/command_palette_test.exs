@@ -12,6 +12,7 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
   import Storyarn.SheetsFixtures
   import StoryarnWeb.E2EHelpers
 
+  alias Storyarn.Ideation
   alias Storyarn.Repo
 
   @moduletag :e2e
@@ -79,6 +80,63 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
     |> assert_has("[data-slot='command-item']", text: "Run operation")
     |> click("[data-slot='command-item']", "Run operation")
     |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
+  end
+
+  test "searches for a Brainstorming session from Sheets and opens its board", %{conn: conn} do
+    user = user_fixture()
+    scope = user_scope_fixture(user)
+    project = user |> project_fixture(%{name: "Veilbreak"}) |> Repo.preload(:workspace)
+    base = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+    {:ok, session} = Ideation.create_session(scope, project.id, %{title: "The missing heir's motives"})
+
+    conn
+    |> authenticate(user)
+    |> visit("#{base}/sheets")
+    |> wait_for_palette()
+    |> evaluate(open_palette_expression())
+    |> refute_has("[data-slot='dialog-content'] [role='status']", timeout: 20_000)
+    |> PhoenixTest.Playwright.type("[data-slot='dialog-content'] [data-slot='command-input']", session.title)
+    |> assert_has("[data-slot='command-item']", text: session.title, timeout: 20_000)
+    |> click("[data-slot='command-item']", session.title)
+    |> assert_path("#{base}/brainstorming/#{session.id}")
+    |> assert_has("#brainstorming-canvas")
+    |> assert_has("a[href='#{base}/brainstorming/#{session.id}'][aria-current=page]", text: session.title)
+    |> wait_for_palette()
+    |> evaluate(open_palette_expression())
+    |> assert_has("[data-slot='command-item']", text: "New session")
+    |> assert_has("[data-slot='command-item']", text: "Fit notes · 1")
+  end
+
+  test "creates a Brainstorming session with its first round from settings after picking a project",
+       %{conn: conn} do
+    user = user_fixture()
+    scope = user_scope_fixture(user)
+    project = user |> project_fixture(%{name: "Veilbreak"}) |> Repo.preload(:workspace)
+
+    browser =
+      conn
+      |> authenticate(user)
+      |> visit("/users/settings")
+      |> wait_for_palette()
+      |> evaluate(open_palette_expression())
+      |> refute_has("[data-slot='dialog-content'] [role='status']", timeout: 20_000)
+      |> assert_has("[data-slot='command-item']", text: "New Brainstorming session", timeout: 20_000)
+      |> click("[data-slot='command-item']", "New Brainstorming session")
+      |> assert_has("[data-slot='command-input'][placeholder='Create in project…']")
+      |> assert_has("[data-slot='command-item']", text: project.name, timeout: 20_000)
+      |> click("[data-slot='command-item']", project.name)
+      |> assert_has("#brainstorming-canvas")
+      |> assert_has("a[aria-current=page]", text: "Untitled session")
+
+    assert {:ok, [session]} = Ideation.list_sessions(scope, project.id)
+    assert session.title == "Untitled session"
+    assert {:ok, [round]} = Ideation.list_rounds(scope, project.id, session.id)
+    assert round.number == 1
+    assert round.status == :active
+
+    browser
+    |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/brainstorming/#{session.id}")
+    |> assert_has("#brainstorming-round-prompt-#{round.id}", text: "Add a question")
   end
 
   defp wait_for_palette(conn) do

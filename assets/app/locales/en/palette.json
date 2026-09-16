@@ -133,7 +133,7 @@
     "operations": {
       "goto": {
         "label": "Go to…",
-        "description": "Open a workspace, project, sheet, flow or scene by name.",
+        "description": "Open a workspace, project, sheet, flow, scene or Brainstorming session by name.",
         "example": "Go to Chapter 2",
         "phrase": {
           "prefix": "Go to"
@@ -144,7 +144,7 @@
       },
       "create": {
         "label": "Create content…",
-        "description": "Create a sheet, flow or scene in a project you can edit.",
+        "description": "Create a sheet, flow, scene or Brainstorming session in a project you can edit.",
         "example": "Create a flow in Veilbreak",
         "phrase": {
           "prefix": "Create",
@@ -193,6 +193,7 @@
       "projects": "Projects",
       "workspace_settings": "Workspace settings",
       "entities": "Jump to"
-    }
+    },
+    "create_brainstorming_session": "New Brainstorming session"
   }
 }

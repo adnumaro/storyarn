@@ -141,6 +141,7 @@ msgstr ""
 msgid "Brainstorming"
 msgstr ""
 
+#: lib/storyarn_web/live/hooks/palette.ex:606
 #: lib/storyarn_web/live/ideation_live/sidebar.ex:118
 #, elixir-autogen, elixir-format
 msgid "Untitled session"

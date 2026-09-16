@@ -343,7 +343,7 @@ describe("CommandPalette", () => {
 
     expect(wrapper.text()).toContain("What Storyarn can do");
     expect(wrapper.find("[data-operation-id='goto']").text()).toContain(
-      "Open a workspace, project, sheet, flow or scene by name.",
+      "Open a workspace, project, sheet, flow, scene or Brainstorming session by name.",
     );
     expect(wrapper.find("[data-operation-id='goto']").text()).toContain("Go to Chapter 2");
 
@@ -1301,6 +1301,44 @@ describe("CommandPalette", () => {
     ).toHaveLength(0);
   });
 
+  it.each([
+    ["en", "New Brainstorming session"],
+    ["es", "Nueva sesión de Brainstorming"],
+  ])(
+    "creates a Brainstorming session through the guided operation in %s",
+    async (locale, label) => {
+      setTestLocale(locale as "en" | "es");
+      const { live, wrapper } = mountPalette([createOperation]);
+      const url = "/workspaces/acme/projects/veilbreak/brainstorming/42";
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_create_targets") {
+          callback?.({ token: payload?.token, projects: [{ id: 11, label: "Veilbreak" }] });
+        } else if (event === "palette_create") {
+          callback?.({ url });
+        }
+      });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "operation-create");
+      await nextTick();
+      expect(wrapper.text()).toContain(label);
+      selectItem(wrapper, "operation-option-entity-type:ideation_session");
+      await flushPromises();
+      selectItem(wrapper, "operation-option-project:11");
+      await nextTick();
+      selectItem(wrapper, "operation.execute");
+      await flushPromises();
+
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "palette_create",
+        expect.objectContaining({ type: "ideation_session", project_id: 11 }),
+        expect.any(Function),
+      );
+      expect(liveNavigate).toHaveBeenCalledWith(url);
+    },
+  );
+
   it("debounces server-backed operation completions at the root-search cadence", async () => {
     vi.useFakeTimers();
     const { live, wrapper } = mountPalette([gotoOperation]);
@@ -2183,43 +2221,53 @@ describe("CommandPalette", () => {
       });
     }
 
-    it("New Sheet opens the project picker, creates in the chosen project, and navigates", async () => {
-      const { live, wrapper } = mountPalette();
-      createReplyMock(live);
+    it.each([
+      { type: "sheet", label: "New Sheet", url: "/workspaces/acme/projects/veilbreak/sheets/42" },
+      {
+        type: "ideation_session",
+        label: "New Brainstorming session",
+        url: "/workspaces/acme/projects/veilbreak/brainstorming/42",
+      },
+    ])(
+      "$label creates in the chosen project and opens its editor",
+      async ({ type, label, url }) => {
+        const { live, wrapper } = mountPalette();
+        createReplyMock(live, { createReply: { url } });
 
-      pressPaletteShortcut();
-      await nextTick();
+        pressPaletteShortcut();
+        await nextTick();
 
-      selectItem(wrapper, "create.sheet");
-      await nextTick();
+        selectItem(wrapper, `create.${type}`);
+        await nextTick();
 
-      // Picker step: authorized projects with the pending action as heading.
-      const headings = wrapper
-        .findAll("[data-slot='command-group-heading']")
-        .map((heading) => heading.text());
-      expect(headings).toContain("New Sheet");
-      expect(document.activeElement?.getAttribute("data-slot")).toBe("command-input");
+        // Picker step: authorized projects with the pending action as heading.
+        const headings = wrapper
+          .findAll("[data-slot='command-group-heading']")
+          .map((heading) => heading.text());
+        expect(headings).toContain(label);
+        expect(document.activeElement?.getAttribute("data-slot")).toBe("command-input");
 
-      selectItem(wrapper, "create-target-11");
-      await nextTick();
+        selectItem(wrapper, "create-target-11");
+        await nextTick();
 
-      expect(live.pushEvent).toHaveBeenCalledWith(
-        "palette_create",
-        expect.objectContaining({
-          type: "sheet",
-          project_id: 11,
-          execution_id: expect.any(String),
-        }),
-        expect.any(Function),
-      );
-      expect(liveNavigate).toHaveBeenCalledWith("/workspaces/acme/projects/veilbreak/sheets/42");
-      expect(live.pushEvent).toHaveBeenCalledWith(
-        "palette_command_executed",
-        { command_id: "create.sheet", surface: "global" },
-        undefined,
-      );
-      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
-    });
+        expect(live.pushEvent).toHaveBeenCalledWith(
+          "palette_create",
+          expect.objectContaining({
+            type,
+            project_id: 11,
+            execution_id: expect.any(String),
+          }),
+          expect.any(Function),
+        );
+        expect(liveNavigate).toHaveBeenCalledWith(url);
+        expect(live.pushEvent).toHaveBeenCalledWith(
+          "palette_command_executed",
+          { command_id: `create.${type}`, surface: "global" },
+          undefined,
+        );
+        expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+      },
+    );
 
     it("hides create/delete actions when no project accepts content mutations", async () => {
       const { live, wrapper } = mountPalette();
@@ -2231,6 +2279,7 @@ describe("CommandPalette", () => {
       expect(itemValues(wrapper)).not.toContain("create.sheet");
       expect(itemValues(wrapper)).not.toContain("create.flow");
       expect(itemValues(wrapper)).not.toContain("create.scene");
+      expect(itemValues(wrapper)).not.toContain("create.ideation_session");
       expect(itemValues(wrapper)).not.toContain("palette.delete-entity");
     });
 

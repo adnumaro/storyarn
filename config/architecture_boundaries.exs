@@ -5507,6 +5507,13 @@ policy = %{
       reason: "Authenticated command palette coordinates Scene creation and deletion through the public facade"
     },
     %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason:
+        "Authenticated command palette creates sessions and publishes committed invalidation through the public Ideation facade"
+    },
+    %{
       source: "lib/storyarn_web/live/workspace_live/show.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
