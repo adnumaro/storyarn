@@ -1,0 +1,19 @@
+test/e2e/workspaces/projects/ideation/timer_test.exs
+  s_f378eeb3787880::t_a4933edcf3f26d 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d78cc660c4411812a74e895f422abfa7a497736f",
+  "prompts": {},
+  "sessions": {
+    "s_f378eeb3787880": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f1b7071-ba33-48b7-bf54-4b33bb30765f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
