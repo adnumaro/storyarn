@@ -35,6 +35,7 @@ msgstr "Cookies"
 msgid "Create account"
 msgstr "Crear cuenta"
 
+#: lib/storyarn_web/components/docs_reading_view.ex:53
 #: lib/storyarn_web/components/public_header.ex:82
 #: lib/storyarn_web/components/public_mobile_navigation.ex:115
 #, elixir-autogen
@@ -72,6 +73,7 @@ msgstr "Características"
 msgid "Footer navigation"
 msgstr "Navegación del pie"
 
+#: lib/storyarn_web/components/docs_reading_view.ex:53
 #: lib/storyarn_web/components/public_header.ex:89
 #: lib/storyarn_web/components/public_mobile_navigation.ex:130
 #, elixir-autogen
@@ -113,6 +115,7 @@ msgstr "Navegación principal"
 msgid "Privacy"
 msgstr "Privacidad"
 
+#: lib/storyarn_web/components/docs_reading_view.ex:26
 #: lib/storyarn_web/components/public_header.ex:32
 #: lib/storyarn_web/components/public_mobile_navigation.ex:43
 #, elixir-autogen

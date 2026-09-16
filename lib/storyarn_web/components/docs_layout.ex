@@ -2,13 +2,14 @@ defmodule StoryarnWeb.Components.DocsLayout do
   @moduledoc """
   LiveVue layout boundary for documentation pages.
 
-  Docs content remains owned by the docs context and DocsLive. This wrapper only
-  serializes the docs navigation/search state and mounts the public Vue layout
-  boundary.
+  Docs content remains owned by the docs context and DocsLive. Initial HTTP
+  responses include a complete reading view; connected LiveViews use the Vue
+  layout with interactive navigation and search.
   """
 
   use StoryarnWeb, :html
 
+  alias StoryarnWeb.Components.DocsReadingView
   alias StoryarnWeb.PublicLanguageMetadata
   alias StoryarnWeb.PublicURLs
 
@@ -31,19 +32,30 @@ defmodule StoryarnWeb.Components.DocsLayout do
   slot :inner_block, required: true
 
   def docs(assigns) do
-    assigns = assign(assigns, :docs_layout, docs_layout_props(assigns))
+    assigns =
+      assigns
+      |> assign(:docs_layout, docs_layout_props(assigns))
+      |> assign(:connected, Phoenix.LiveView.connected?(assigns.socket))
 
     ~H"""
     <div id="docs-layout-wrapper" class="h-screen overflow-hidden bg-surface text-foreground">
       <Layouts.live_seo metadata={@seo_metadata} />
-      <.vue
-        v-component="live/layouts/docs/Layout"
-        v-socket={@socket}
-        id="docs-layout"
-        docs={@docs_layout}
-      />
+      <%= if @connected do %>
+        <.vue
+          v-component="live/layouts/docs/Layout"
+          v-socket={@socket}
+          id="docs-layout"
+          docs={@docs_layout}
+        />
 
-      {render_slot(@inner_block)}
+        {render_slot(@inner_block)}
+      <% else %>
+        <DocsReadingView.reading
+          docs={@docs_layout}
+          guide={@guide}
+          language_links={@language_links}
+        />
+      <% end %>
 
       <Layouts.flash_group
         flash={@flash}

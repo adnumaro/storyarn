@@ -130,6 +130,7 @@ defmodule StoryarnWeb.DocsLive.Show do
       language_links={@language_links}
     >
       <.vue
+        :if={connected?(@socket)}
         v-component="live/docs/show/DocsContent"
         v-socket={@socket}
         v-inject="docs-layout"
