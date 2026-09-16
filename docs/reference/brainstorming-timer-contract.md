@@ -1,19 +1,23 @@
-# Independent brainstorming timer
+# Brainstorming round timer
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-15
+> Last reviewed: 2026-09-16
 >
-> Scope: ENG-137
+> Scope: ENG-137, rounds redesign (PR #164)
 
 ## Product behavior
 
-A session can have one shared countdown. It is independent of optional rounds and
-round privacy: starting, pausing, extending or cancelling the clock never creates,
-starts, closes or reveals a round on its own. A round never starts or stops a clock. Session archive
-cancels a running or paused timer; reopening does not restart it.
-Recovering a session replaced by a snapshot also cancels its old timer before
-archiving it. Reopening that generation cannot reactivate an old expiry job.
+The countdown belongs to the round in progress. A clock starts only while a
+round is in progress and stays with that round: it never creates, starts,
+closes or reveals another round on its own. Closing the round, by **Close
+round** or by starting the next one, cancels its running or paused clock in
+the same transaction and records the stop before the close; the next round
+starts without a clock. A closed round keeps its clock as history and offers no
+digits. Session archive cancels a running or paused timer; reopening does not
+restart it. Recovering a session replaced by a snapshot also cancels its old
+timer before archiving it. Reopening that generation cannot reactivate an old
+expiry job.
 
 The header of the round in progress shows the same digits to all participants,
 including viewers.
@@ -29,19 +33,20 @@ the facilitator.
 
 Expiry marks the clock finished and then applies what was asked of it:
 
-- If the round in progress is private and its own **Reveal when time is up**
-  setting is on, expiry reveals that round with the same publication policy as
-  the manual reveal. This is a round setting from the round header's settings
-  menu, not a timer option.
+- If the clock's round is private and its own **Reveal when time is up**
+  setting is on, expiry reveals that round, and only that round, with the same
+  publication policy as the manual reveal. This is a round setting from the
+  round header's settings menu, not a timer option.
 - If the timer was started with `close_contributions_on_expiry`, expiry closes
   new contributions. The current UI does not offer this option.
 
 `start_timer` accepts `seconds` (1–86,400) and the optional boolean
 `close_contributions_on_expiry`, `false` when omitted and rejected when not
-boolean. The timer row carries no reveal flag of its own: the reveal follows the
-round's setting. Recovery inventory version 8 drops the old timer flag from
-timer rows and from the timer snapshots of session revisions. The UI always
-sends `close_contributions_on_expiry` as `false`.
+boolean; without a round in progress it fails with `round_not_active`. The
+timer row carries no reveal flag of its own: the reveal follows the round's
+setting. Recovery inventory version 8 drops the old timer flag from timer rows
+and from the timer snapshots of session revisions. The UI always sends
+`close_contributions_on_expiry` as `false`.
 
 Revealing the round publishes the current heads of its consenting contributions,
 including notes created during the countdown. Discarded notes, missing authors
@@ -58,17 +63,22 @@ archive the session or change a round's state.
 
 ## Persisted state and execution
 
-Sessions owns `ideation_timers` and `sessions.contributions_open`. The timer row
-has a stable identity, monotonically increasing version, status, UTC deadline,
-last saved remaining duration, original duration plus extensions, initiating
-actor, configuration version and the two persisted expiry flags. A new start after
-completion reuses the timer row and increments its version. Terminal outcomes
-are completed, skipped authorization, skipped configuration or skipped session.
+Sessions owns `ideation_timers` and `sessions.contributions_open`. A timer row
+belongs to one round (`round_id`, unique per round) and has a stable identity,
+monotonically increasing version, status, UTC deadline, last saved remaining
+duration, original duration plus extensions, initiating actor, configuration
+version and the persisted contribution flag. A new start after completion in
+the same round reuses that round's row and increments its version; the next
+round starts a new row. A partial unique index keeps at most one running or
+paused clock per session. Terminal outcomes are completed, skipped
+authorization, skipped configuration or skipped session. Every timer audit
+snapshot names its round by number.
 
-Every control checks current Project edit access, current session management
+Every control reads the round in progress and its timer under the session lock,
+then checks current Project edit access, current session management
 responsibility and the caller's session revision. Controls on an existing timer
-also require its version. Pause, extension, cancellation, restart and expiry
-invalidate older scheduled messages. Resume renews the initiating actor and
+also require its version. Pause, extension, cancellation, restart, round
+closure and expiry invalidate older scheduled messages. Resume renews the initiating actor and
 configuration after current authorization; extension does not silently renew
 an actor or policy that has changed since the timer was started.
 
@@ -114,10 +124,14 @@ Oban polling or keep an otherwise idle database awake with timer polls.
 
 ## Snapshots
 
-The inner recovery inventory is version 8; timers joined it in version 3. It
-includes the timer, its persisted flags, outcome, contribution gate and session
-audit. Version 1 and 2 inventories remain accepted, normalizing to no timer and
-open contributions. Timer validation accepts durations from 1 to 86,400 seconds.
+The inner recovery inventory is version 9; timers joined it in version 3 and
+learnt their round in version 9. It includes the timer, its round, its
+persisted flags, outcome, contribution gate and session audit. Version 1 and 2
+inventories remain accepted, normalizing to no timer and open contributions;
+version 8 clocks join the round in progress of their session, or its last round
+when every round is closed. A clock whose round belongs to another session, or
+two clocks for one round, are rejected. Timer validation accepts durations from
+1 to 86,400 seconds.
 
 Capture uses persisted values only. It does not rewrite remaining duration from
 the wall clock, which would make an unchanged project's canonical digest vary

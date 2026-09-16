@@ -38,7 +38,7 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
 
     assert Enum.sort(Map.keys(timer)) ==
              Enum.sort(
-               ~w(id version status deadline_at remaining_seconds duration_seconds close_contributions_on_expiry outcome server_now)
+               ~w(id round_id version status deadline_at remaining_seconds duration_seconds close_contributions_on_expiry outcome server_now)
              )
 
     assert timer["duration_seconds"] == 600

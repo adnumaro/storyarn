@@ -47,7 +47,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 8, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 9, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -210,7 +210,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 8
+    assert normalized["version"] == 9
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)

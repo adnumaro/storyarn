@@ -3,7 +3,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ResumeTimer do
   alias Storyarn.Ideation.Sessions.Execution.TimerMutation
 
   def run(scope, project_id, session_id, revision, version) do
-    TimerMutation.run(scope, project_id, session_id, revision, fn session, access, timer ->
+    TimerMutation.run(scope, project_id, session_id, revision, fn session, access, _round, timer ->
       with {:ok, timer} <- TimerMutation.current(timer, version),
            :ok <- paused(timer) do
         TimerMutation.save(
