@@ -48,7 +48,10 @@ defmodule Storyarn.Repo.Migrations.RebuildIdeationDecisions do
       add :session_id, references(:ideation_sessions, on_delete: :delete_all), null: false
 
       add :decision_id,
-          references(:ideation_decisions, with: [session_id: :session_id], on_delete: :delete_all),
+          references(:ideation_decisions,
+            with: [session_id: :session_id],
+            on_delete: :delete_all
+          ),
           null: false
 
       add :number, :integer, null: false
@@ -65,9 +68,16 @@ defmodule Storyarn.Repo.Migrations.RebuildIdeationDecisions do
       add :target_context, :binary, null: false
       add :next_action, :binary
       add :next_action_owner_id, references(:users, on_delete: :nilify_all)
-      add :round_id, references(:ideation_rounds, with: [session_id: :session_id], on_delete: :nothing)
-      add :replaces_id, references(:ideation_decisions, with: [session_id: :session_id], on_delete: :nothing)
-      add :superseded_by_id, references(:ideation_decisions, with: [session_id: :session_id], on_delete: :nothing)
+
+      add :round_id,
+          references(:ideation_rounds, with: [session_id: :session_id], on_delete: :nothing)
+
+      add :replaces_id,
+          references(:ideation_decisions, with: [session_id: :session_id], on_delete: :nothing)
+
+      add :superseded_by_id,
+          references(:ideation_decisions, with: [session_id: :session_id], on_delete: :nothing)
+
       add :request_key, :uuid, null: false
       add :fingerprint, :binary, null: false
       timestamps(type: :utc_datetime_usec, updated_at: false)
@@ -110,7 +120,10 @@ defmodule Storyarn.Repo.Migrations.RebuildIdeationDecisions do
       add :session_id, references(:ideation_sessions, on_delete: :delete_all), null: false
 
       add :decision_id,
-          references(:ideation_decisions, with: [session_id: :session_id], on_delete: :delete_all),
+          references(:ideation_decisions,
+            with: [session_id: :session_id],
+            on_delete: :delete_all
+          ),
           null: false
 
       add :agreement, :integer, null: false
@@ -127,7 +140,8 @@ defmodule Storyarn.Repo.Migrations.RebuildIdeationDecisions do
     create unique_index(:ideation_decision_applications, [:session_id, :actor_id, :request_key])
 
     create constraint(:ideation_decision_applications, :ideation_decision_applications_valid,
-             check: "state IN (#{@states}) AND agreement BETWEEN 1 AND 100 AND octet_length(fingerprint) = 32"
+             check:
+               "state IN (#{@states}) AND agreement BETWEEN 1 AND 100 AND octet_length(fingerprint) = 32"
            )
 
     execute("""
@@ -138,6 +152,7 @@ defmodule Storyarn.Repo.Migrations.RebuildIdeationDecisions do
 
   def down do
     raise Ecto.MigrationError,
-      message: "RebuildIdeationDecisions is irreversible: decisions from the earlier model cannot be expressed."
+      message:
+        "RebuildIdeationDecisions is irreversible: decisions from the earlier model cannot be expressed."
   end
 end
