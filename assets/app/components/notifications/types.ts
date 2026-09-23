@@ -8,7 +8,11 @@ export interface NotificationItem {
     | "content_deleted"
     | "comment_mention"
     | "comment_reply"
-    | "comment_followed";
+    | "comment_followed"
+    | "decision_to_accept"
+    | "decision_accepted"
+    | "decision_next_action"
+    | "decision_applied";
   entityType: string | null;
   entityName: string | null;
   status: "success" | "failure" | null;

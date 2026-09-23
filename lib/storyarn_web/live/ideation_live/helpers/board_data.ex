@@ -3,11 +3,14 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
   alias Storyarn.Ideation
   alias Storyarn.Projects
   alias StoryarnWeb.IdeationLive.Helpers.RoundData
+  alias StoryarnWeb.Live.Shared.IdeationDecisionData
 
   @page_size 50
   @empty_counts %{active: 0, parked: 0, discarded: 0}
 
-  def load(scope, project_id, session_id, filters) do
+  # The dashboard (no session) also reads every decision of the project; the
+  # sidebar, which reuses this read, passes `decisions: false`.
+  def load(scope, project_id, session_id, filters, opts \\ []) do
     with {:ok, project, membership} <- Projects.authorize(scope, project_id, :view),
          {:ok, sessions} <-
            Ideation.list_sessions(scope, project_id,
@@ -30,8 +33,33 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
          is_owner: owner?,
          current_user_id: scope.user.id,
          members: members,
-         can_manage: can_edit and content.session != nil and (owner? or content.session.facilitator_id == scope.user.id)
+         can_manage:
+           can_edit and content.session != nil and (owner? or content.session.facilitator_id == scope.user.id),
+         decision_sessions:
+           if(is_nil(session_id) and Keyword.get(opts, :decisions, true),
+             do: project_decisions(scope, project_id, members),
+             else: []
+           )
        })}
+    end
+  end
+
+  # The dashboard reads every decision of the project, grouped by session.
+  defp project_decisions(scope, project_id, members) do
+    with {:ok, groups} <- Ideation.list_project_decisions(scope, project_id),
+         {:ok, rounds} <- Ideation.list_session_rounds(scope, project_id, Enum.map(groups, & &1.session.id)) do
+      Enum.map(groups, fn %{session: session, decisions: decisions} ->
+        board = %{members: members, rounds: Map.get(rounds, session.id, [])}
+
+        %{
+          id: session.id,
+          title: session.title,
+          status: session.status,
+          decisions: Enum.map(decisions, &IdeationDecisionData.decision(&1, board))
+        }
+      end)
+    else
+      _ -> []
     end
   end
 
@@ -56,7 +84,8 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       can_manage: false,
       is_owner: false,
       current_user_id: nil,
-      members: []
+      members: [],
+      decision_sessions: []
     }
   end
 

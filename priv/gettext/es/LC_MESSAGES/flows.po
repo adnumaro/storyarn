@@ -173,7 +173,7 @@ msgstr "Esto crearía una referencia circular."
 
 #: lib/storyarn_web/live/flow_sidebar_live.ex:86
 #: lib/storyarn_web/live/flow_sidebar_live.ex:102
-#: lib/storyarn_web/live/hooks/palette.ex:591
+#: lib/storyarn_web/live/hooks/palette.ex:642
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"

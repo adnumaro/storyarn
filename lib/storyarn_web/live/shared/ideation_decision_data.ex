@@ -1,9 +1,12 @@
-defmodule StoryarnWeb.IdeationLive.Helpers.DecisionData do
+defmodule StoryarnWeb.Live.Shared.IdeationDecisionData do
   @moduledoc false
 
+  # `board` holds the session's rounds and the project's members; when it also
+  # holds an `href` function, available targets link to their editor.
   def decision(value, board) do
     %{
       id: value.id,
+      sessionId: value.session_id,
       version: value.version,
       status: value.status,
       proposal: revision(value.proposal, board),
@@ -77,9 +80,13 @@ defmodule StoryarnWeb.IdeationLive.Helpers.DecisionData do
       name: value.name,
       isNew: value.new,
       available: value.available,
+      href: href(board, value),
       application: declaration(Map.get(value, :application), board)
     }
   end
+
+  defp href(%{href: href}, %{available: true, id: id, type: type}) when is_integer(id), do: href.(%{type: type, id: id})
+  defp href(_board, _target), do: nil
 
   defp records([], _board), do: []
 

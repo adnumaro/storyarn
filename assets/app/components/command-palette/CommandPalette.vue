@@ -6,6 +6,7 @@ import {
   Folder,
   GitBranch,
   History,
+  ListChecks,
   LoaderCircle,
   Map as MapIcon,
   Play,
@@ -183,6 +184,7 @@ const navIcons: Record<string, LucideIcon> = {
   sheet: FileText,
   flow: GitBranch,
   scene: MapIcon,
+  decision: ListChecks,
 };
 
 const entityTypes: EntityType[] = ["sheet", "flow", "scene"];

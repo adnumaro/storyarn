@@ -22,7 +22,9 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
       )
 
     comment_ids = for %{entity_type: "comment", entity_id: id} <- notifications, do: id
-    destinations = Projects.comment_destinations(scope, comment_ids)
+
+    destinations =
+      Map.merge(Projects.comment_destinations(scope, comment_ids), decision_destinations(scope, notifications))
 
     %{
       filter: Atom.to_string(filter),
@@ -65,7 +67,38 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
     end
   end
 
+  defp destination(%{entity_type: "decision", entity_id: id, project_id: project_id}, destinations) do
+    case destinations[{:decision_project, project_id}] do
+      %{workspace_slug: workspace, project_slug: project} ->
+        ~p"/workspaces/#{workspace}/projects/#{project}/brainstorming?#{%{decision: id}}"
+
+      nil ->
+        nil
+    end
+  end
+
   defp destination(_notification, _scope), do: nil
+
+  # A decision link opens its session through the project's brainstorming route,
+  # which rechecks access before naming the session.
+  defp decision_destinations(scope, notifications) do
+    notifications
+    |> Enum.flat_map(fn
+      %{entity_type: "decision", project_id: project_id} -> [project_id]
+      _other -> []
+    end)
+    |> Enum.uniq()
+    |> Enum.flat_map(fn project_id ->
+      case Projects.reload_project(scope, project_id) do
+        {:ok, project, _membership} ->
+          [{{:decision_project, project_id}, %{workspace_slug: project.workspace.slug, project_slug: project.slug}}]
+
+        {:error, _reason} ->
+          []
+      end
+    end)
+    |> Map.new()
+  end
 
   defp actor_name(%{display_name: name}) when is_binary(name) and name != "", do: name
   defp actor_name(_actor), do: nil

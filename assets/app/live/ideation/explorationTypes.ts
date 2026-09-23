@@ -1,4 +1,5 @@
 import type { ReferenceTarget } from "./referenceTypes";
+import type { DecisionBannerState, DecisionRecord } from "./decisionTypes";
 
 export interface ExplorationSession {
   id: number;
@@ -21,6 +22,20 @@ export interface ExplorationLauncherState {
   availableCursor: number | null;
   canEdit: boolean;
   error: string | null;
+  /** Decisions about this content: all of them, and those still to apply here. */
+  decisions?: { total: number; toApply: number; name: string | null };
+  about?: DecisionAbout[];
+  banner?: DecisionBannerState | null;
+}
+
+/** A decision about the content, with the key this content has in it. */
+export interface DecisionAbout {
+  decision: DecisionRecord;
+  targetKey: string | null;
+  sessionId: number;
+  sessionTitle: string;
+  sessionUrl: string;
+  toApply: boolean;
 }
 
 export type ExplorationAction =
@@ -31,4 +46,8 @@ export type ExplorationAction =
   | "load_previous"
   | "create"
   | "link"
-  | "resume";
+  | "resume"
+  | "decision_apply"
+  | "decision_declare"
+  | "decision_undo"
+  | "decision_dismiss";

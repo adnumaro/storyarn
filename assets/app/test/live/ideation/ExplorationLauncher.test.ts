@@ -3,6 +3,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import Launcher from "@app/live/ideation/ExplorationLauncher.vue";
 import type { ExplorationLauncherState } from "@app/live/ideation/explorationTypes";
 import { setTestLocale } from "../../setup";
+import { accepted } from "./decisionFixtures";
 
 const state: ExplorationLauncherState = {
   open: true,
@@ -403,5 +404,50 @@ describe("Contextual exploration launcher", () => {
     expect(document.querySelector("#exploration-dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger.element);
     wrapper.unmount();
+  });
+});
+
+describe("decisions about the content", () => {
+  it("counts what is still to apply on the lightbulb and names every decision in its label", () => {
+    const { wrapper } = launcher({
+      open: false,
+      decisions: { total: 2, toApply: 1, name: "Hero" },
+    });
+    expect(wrapper.get("#explore-changes-decisions").text()).toBe("1");
+    expect(wrapper.get("#explore-changes").attributes("title")).toBe(
+      "2 decisions about Hero · 1 to apply",
+    );
+  });
+
+  it("shows the plain lightbulb when nothing is left to apply", () => {
+    const { wrapper } = launcher({
+      open: false,
+      decisions: { total: 1, toApply: 0, name: "Hero" },
+    });
+    expect(wrapper.find("#explore-changes-decisions").exists()).toBe(false);
+  });
+
+  it("lists the decisions and sends Go apply for this content", async () => {
+    const item = {
+      decision: accepted({ id: 5, sessionId: 3 }),
+      targetKey: "target-mara",
+      sessionId: 3,
+      sessionTitle: "Endings",
+      sessionUrl: "/brainstorming/3?decision=5",
+      toApply: true,
+    };
+    const { wrapper, pushEvent } = launcher({
+      about: [item],
+      decisions: { total: 1, toApply: 1, name: "Hero" },
+    });
+    expect(wrapper.get("#exploration-decisions").text()).toContain("Decisions about Hero");
+    expect(wrapper.get("[data-decision-about='5']").text()).toContain("Endings");
+    await wrapper.get("#exploration-decision-apply-5").trigger("click");
+    expect(pushEvent.mock.calls.at(-1)?.[0]).toBe("exploration_decision_apply");
+    expect(pushEvent.mock.calls.at(-1)?.[1]).toMatchObject({
+      session_id: 3,
+      decision_id: 5,
+      source_key: "sheet:8",
+    });
   });
 });

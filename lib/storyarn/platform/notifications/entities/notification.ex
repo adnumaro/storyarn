@@ -15,7 +15,9 @@ defmodule Storyarn.Platform.Notifications.Notification do
   alias Storyarn.Platform.Notifications.Projections.ProjectRecord, as: Project
   alias Storyarn.Platform.Notifications.Projections.UserRecord, as: User
 
-  @kinds ~w(async_operation content_created content_deleted comment_mention comment_reply comment_followed)
+  @decision_kinds ~w(decision_to_accept decision_accepted decision_next_action decision_applied)
+  @kinds ~w(async_operation content_created content_deleted comment_mention comment_reply comment_followed) ++
+           @decision_kinds
   @entity_types ~w(
     project_snapshot
     workspace_snapshot_import
@@ -27,6 +29,7 @@ defmodule Storyarn.Platform.Notifications.Notification do
     scene
     localization_language
     comment
+    decision
   )
   @statuses ~w(success failure)
   @project_scoped_entity_types ~w(
@@ -38,6 +41,7 @@ defmodule Storyarn.Platform.Notifications.Notification do
     scene
     localization_language
     comment
+    decision
   )
 
   @type t :: %__MODULE__{
@@ -134,7 +138,8 @@ defmodule Storyarn.Platform.Notifications.Notification do
       kind == "async_operation" and is_nil(status) ->
         add_error(changeset, :status, "is required for asynchronous operations")
 
-      kind in ~w(content_created content_deleted comment_mention comment_reply comment_followed) and not is_nil(status) ->
+      kind in (~w(content_created content_deleted comment_mention comment_reply comment_followed) ++ @decision_kinds) and
+          not is_nil(status) ->
         add_error(changeset, :status, "is only valid for asynchronous operations")
 
       true ->

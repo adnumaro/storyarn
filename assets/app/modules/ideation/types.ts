@@ -1,3 +1,4 @@
+import type { DecisionSessionGroup } from "@app/live/ideation/decisionDashboard";
 export type IdeaState = "active" | "parked" | "discarded";
 export type Visibility = "private" | "shared";
 export type PublicationPolicy = "author_only" | "facilitator_assisted";
@@ -231,6 +232,8 @@ export interface Board {
   is_owner: boolean;
   current_user_id: number | null;
   members: Member[];
+  /** The dashboard's decisions, grouped by session. */
+  decision_sessions?: DecisionSessionGroup[];
 }
 export interface BoardContext {
   epoch: string;

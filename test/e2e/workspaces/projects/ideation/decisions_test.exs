@@ -292,6 +292,53 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
     |> assert_has("#decision-discussion", text: "Does the keeper still leave?")
   end
 
+  test "Go apply opens the content with the decision and marking it is reflected in the decision",
+       %{conn: conn} do
+    ctx = ideation_fixture()
+    mara = Storyarn.SheetsFixtures.sheet_fixture(ctx.project, %{name: "Mara"})
+
+    idea =
+      idea_fixture(ctx, %{title: "A quieter ending", body: "<p>The player chooses to stay.</p>", visibility: :shared})
+
+    {:ok, [source]} =
+      Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [%{type: "idea", id: idea.id}])
+
+    {:ok, decision} =
+      Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, %{
+        title: "Mara stays",
+        conclusion: "Mara stays at the lighthouse.",
+        verb: "change",
+        targets: [%{type: "sheet", id: mara.id}],
+        responsible_id: ctx.author.user.id,
+        register: true,
+        sources: [Map.take(source, [:type, :id, :version, :identity])],
+        request_key: Ecto.UUID.generate()
+      })
+
+    [target] = decision.accepted.targets
+
+    browser =
+      conn
+      |> authenticate(ctx.author.user)
+      |> visit(path(ctx) <> "?decision=#{decision.id}")
+      |> assert_has("#decision-status", text: "1 of 1 to apply")
+      |> click("#decision-go-apply-#{target.key}")
+      |> assert_has("#decision-banner", text: "Mara stays")
+      |> assert_has("#explore-changes-decisions", text: "1")
+
+    capture(browser, "decisions-apply-banner")
+
+    browser
+    |> click("#decision-banner-applied")
+    |> type("#decision-banner-mark-note", "Her sheet says she stays.")
+    |> click("#decision-banner-mark-confirm")
+    |> assert_has("#decision-banner", text: "Marked applied")
+    |> refute_has("#explore-changes-decisions")
+
+    assert {:ok, current} = Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id)
+    assert [%{application: %{state: "applied", note: "Her sheet says she stays."}}] = current.application.targets
+  end
+
   # Fixture members all read "Member"; the responsible person needs a name to be picked.
   defp member_name(_ctx, actor) do
     actor.user |> Ecto.Changeset.change(display_name: "Fern Facilitator") |> Repo.update!()

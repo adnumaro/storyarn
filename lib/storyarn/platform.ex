@@ -110,6 +110,12 @@ defmodule Storyarn.Platform do
   defdelegate deliver_comment_activity(actor_id, project_id, comment_id, recipients),
     to: Notifications
 
+  @doc "Persists decision activity for the recipients the decision owner selects."
+  @spec deliver_decision_activity(pos_integer(), pos_integer(), map(), [map()]) ::
+          {:ok, notification_delivery_outcome()} | {:error, term()}
+  defdelegate deliver_decision_activity(actor_id, project_id, decision, recipients),
+    to: Notifications
+
   @doc "Persists a requester-only async outcome from scalar context-owned identities."
   @spec deliver_async_result(integer() | nil, pos_integer(), map()) ::
           {:ok, notification_delivery_outcome()} | {:error, term()}

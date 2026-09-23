@@ -18,6 +18,9 @@ import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import DashboardContent from "@shell/DashboardContent.vue";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
+import DecisionsDashboard from "@app/live/ideation/DecisionsDashboard.vue";
+import { sessionSummary } from "@app/live/ideation/decisionDashboard";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
 import CanvasConnectionTools from "./components/CanvasConnectionTools.vue";
@@ -374,6 +377,26 @@ function select(ids: number[] | number | null) {
   selectedIds.value = next;
   focusedDecision.value = null;
 }
+// The dashboard summarizes each session's decisions and lists them all on a tab.
+const dashboardTab = ref("sessions");
+const decisionSummaries = computed(
+  () =>
+    new Map(
+      (board.decision_sessions ?? []).map((group) => {
+        const summary = sessionSummary(group.decisions);
+        const parts = [t("brainstormingDecisions.dashboard.summary", { count: summary.total })];
+        if (summary.waiting)
+          parts.push(
+            t("brainstormingDecisions.dashboard.summaryWaiting", { count: summary.waiting }),
+          );
+        if (summary.toApply)
+          parts.push(
+            t("brainstormingDecisions.dashboard.summaryToApply", { count: summary.toApply }),
+          );
+        return [group.id, parts.join(" · ")];
+      }),
+    ),
+);
 // A lane card selected on the board lights its sources; the panel's decision
 // does the same until the reader picks something else.
 const focusedDecision = ref<number | null>(null);
@@ -1125,22 +1148,42 @@ onUnmounted(() => {
       :empty-message="t('ideation.noSessions')"
       :empty-icon="StickyNote"
     >
-      <div class="space-y-2">
-        <LiveLink
-          v-for="session in board.sessions.filter((s) => !s.deleted_at)"
-          :key="session.id"
-          :to="`${baseUrl}/${session.id}`"
-          mode="patch"
-          class="flex items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-accent/40"
-          ><StickyNote class="size-5 text-muted-foreground" />
-          <div>
-            <p class="text-sm font-medium">{{ session.title }}</p>
-            <p v-if="session.objective" class="text-xs text-muted-foreground">
-              {{ session.objective }}
-            </p>
-          </div></LiveLink
-        >
-      </div>
+      <Tabs v-model="dashboardTab" class="gap-4">
+        <TabsList v-if="board.decision_sessions?.length">
+          <TabsTrigger data-dashboard-tab="sessions" value="sessions">{{
+            t("brainstormingDecisions.dashboard.tabs.sessions")
+          }}</TabsTrigger>
+          <TabsTrigger data-dashboard-tab="decisions" value="decisions">{{
+            t("brainstormingDecisions.dashboard.tabs.decisions")
+          }}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="sessions" class="space-y-2">
+          <LiveLink
+            v-for="session in board.sessions.filter((s) => !s.deleted_at)"
+            :key="session.id"
+            :to="`${baseUrl}/${session.id}`"
+            mode="patch"
+            class="flex items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-accent/40"
+            ><StickyNote class="size-5 text-muted-foreground" />
+            <div>
+              <p class="text-sm font-medium">{{ session.title }}</p>
+              <p v-if="session.objective" class="text-xs text-muted-foreground">
+                {{ session.objective }}
+              </p>
+              <p
+                v-if="decisionSummaries.get(session.id)"
+                :data-session-decisions="session.id"
+                class="mt-1 text-xs text-muted-foreground"
+              >
+                {{ decisionSummaries.get(session.id) }}
+              </p>
+            </div></LiveLink
+          >
+        </TabsContent>
+        <TabsContent value="decisions">
+          <DecisionsDashboard :groups="board.decision_sessions ?? []" :base-url="baseUrl" />
+        </TabsContent>
+      </Tabs>
       <template #supplementary
         ><Button v-if="board.can_edit" :disabled="starting" @click="startSession"
           ><Plus class="size-4" />{{ t("ideation.newSession") }}</Button
