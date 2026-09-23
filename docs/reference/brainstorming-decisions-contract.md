@@ -212,6 +212,39 @@ decision, and accepting, withdrawing or superseding the decision never resolves
 the thread. Mentions, replies and followers notify through the ordinary comment
 inbox, and a `?thread=` link opens the panel on the decision.
 
+## From the content
+
+A Sheet, Flow or Scene finds the decisions about it: those whose proposal or
+agreement names it in Affects (matched by its pinned identity, never by a
+recycled ID) and every decision of the sessions that explore it. Each session is
+read through its own catalog, so access and source visibility match the panel.
+
+- **Lightbulb.** The editor's Explorations button counts, in amber, the accepted
+  decisions with something still to apply on this content; its label names all
+  of them (`2 decisions about Mara · 1 to apply`).
+- **Explorations.** The dialog lists `Decisions about {name}`: still to apply
+  here, then proposals, then what is applied or needs no change. Rows open the
+  session on the decision; editors can `Go apply` or `Mark applied`.
+- **Apply banner.** `Go apply` opens the content with `?decision=&session=`; the
+  decision sits under the editor header for that visit, anchored to the header
+  as a non-modal reka popover. `Mark applied`, `Partially` and `No change
+needed` take an optional note; the confirmation offers `Undo` for five seconds,
+  which states the previous application again. Nothing is applied automatically,
+  and the banner only shows an accepted decision that names this content.
+- **Inbox.** Decision writes deliver, inside their transaction: `decision_to_accept`
+  to the responsible person of a proposal; `decision_accepted` to its proposer and
+  to everyone who started a thread about it; `decision_next_action` to the owner
+  of the agreement's next action; `decision_applied` to the responsible person
+  and the proposer when a target is marked applied. The actor is never told, and
+  the notification stores only the session title, never decision text. Its link
+  names the project and the decision; the brainstorming route resolves the
+  session after rechecking access.
+- **Dashboard.** Each session row summarizes `3 decisions · 1 waiting for you · 1
+to apply`; the `Decisions` tab lists every decision with Status and
+  Application filters and `Group by affected content`.
+- **Palette.** Under `Jump to`, the first matched Sheets, Flows and Scenes bring
+  the decisions that name them.
+
 ## Boundaries
 
 Decisions do not create Drafts, materialize authoring entities, apply proposals to

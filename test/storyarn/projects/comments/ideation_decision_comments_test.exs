@@ -144,7 +144,8 @@ defmodule Storyarn.Projects.IdeationDecisionCommentsTest do
       conclusion: "Keep the original direction",
       verb: "change",
       targets: [],
-      responsible_id: ctx.peer.user.id,
+      # The proposer is responsible, so proposing leaves nobody else a notification.
+      responsible_id: ctx.author.user.id,
       sources: Enum.map(sources, &Map.take(&1, [:type, :id, :version, :identity])),
       request_key: Ecto.UUID.generate()
     }

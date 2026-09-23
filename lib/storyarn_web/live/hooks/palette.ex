@@ -28,6 +28,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   alias Storyarn.AI
   alias Storyarn.Flows
+  alias Storyarn.Ideation
   alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.CommandPalette
@@ -63,7 +64,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                           )
                       )
 
-  @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.[1-9]\d{0,19}$/
+  @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene|decision)\.[1-9]\d{0,19}$/
   @operation_analytics_events ~w(palette_operation_selected palette_operation_completed
                                  palette_operation_abandoned)
   @operation_analytics_names %{
@@ -180,7 +181,12 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                 |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_general_settings))
                 |> Enum.map(&workspace_settings_item/1)
             },
-            %{key: "entities", items: Enum.map(destinations.entities, &nav_item/1)}
+            %{
+              key: "entities",
+              items:
+                Enum.map(destinations.entities, &nav_item/1) ++
+                  decision_items(socket.assigns.current_scope, destinations.entities)
+            }
           ],
           &(&1.items == [])
         )
@@ -543,6 +549,51 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
       url: entity_url(dest)
     }
   end
+
+  # Decisions rank with the content they name: the first few matches bring the
+  # decisions that affect them, read through Ideation's own access rules.
+  defp decision_items(scope, entities) do
+    entities
+    |> Enum.filter(&(&1.type in [:sheet, :flow, :scene]))
+    |> Enum.take(3)
+    |> Enum.flat_map(fn dest ->
+      case Ideation.list_decisions_about(scope, dest.project_id, Atom.to_string(dest.type), dest.id, explored: false) do
+        {:ok, items} -> items |> Enum.take(4) |> Enum.map(&decision_item(&1, dest))
+        {:error, _} -> []
+      end
+    end)
+    |> Enum.uniq_by(& &1.id)
+  end
+
+  defp decision_item(%{decision: decision, session: session}, dest) do
+    revision = decision.accepted || decision.proposal
+
+    %{
+      id: "nav.decision.#{decision.id}",
+      type: "decision",
+      label: revision.title,
+      context:
+        gettext("Decision · %{verb} %{name} · %{status} · %{session}",
+          verb: decision_verb(revision.verb),
+          name: dest.name,
+          status: decision_status(decision.status),
+          session: session.title
+        ),
+      url:
+        ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}/brainstorming/#{session.id}?#{%{decision: decision.id}}"
+    }
+  end
+
+  defp decision_verb("create"), do: gettext("Create")
+  defp decision_verb("change"), do: gettext("Change")
+  defp decision_verb("test"), do: gettext("Test")
+  defp decision_verb("keep"), do: gettext("Keep")
+  defp decision_verb("discard"), do: gettext("Discard")
+
+  defp decision_status(:proposed), do: gettext("Proposal")
+  defp decision_status(:accepted), do: gettext("Accepted")
+  defp decision_status(:withdrawn), do: gettext("Withdrawn")
+  defp decision_status(:superseded), do: gettext("Superseded")
 
   defp settings_item(%{type: :project} = dest) do
     %{

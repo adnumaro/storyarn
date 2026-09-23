@@ -136,7 +136,7 @@ msgstr "No se detectaron cambios"
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
-#: lib/storyarn_web/live/ideation_live/board.ex:140
+#: lib/storyarn_web/live/ideation_live/board.ex:138
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr "Brainstorming"
@@ -146,7 +146,7 @@ msgstr "Brainstorming"
 msgid "Untitled session"
 msgstr "Sesión sin título"
 
-#: lib/storyarn_web/live/ideation_live/board.ex:326
+#: lib/storyarn_web/live/ideation_live/board.ex:337
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr "Miembro"
@@ -170,3 +170,53 @@ msgstr "Esta conversación ha cambiado. Inténtalo de nuevo."
 #, elixir-autogen, elixir-format
 msgid "This conversation is no longer available or you do not have permission to change it."
 msgstr "Esta conversación ya no está disponible o no tienes permiso para modificarla."
+
+#: lib/storyarn_web/live/hooks/palette.ex:594
+#, elixir-autogen, elixir-format
+msgid "Accepted"
+msgstr "Aceptada"
+
+#: lib/storyarn_web/live/hooks/palette.ex:588
+#, elixir-autogen, elixir-format
+msgid "Change"
+msgstr "Cambiar"
+
+#: lib/storyarn_web/live/hooks/palette.ex:587
+#, elixir-autogen, elixir-format
+msgid "Create"
+msgstr "Crear"
+
+#: lib/storyarn_web/live/hooks/palette.ex:576
+#, elixir-autogen, elixir-format
+msgid "Decision · %{verb} %{name} · %{status} · %{session}"
+msgstr "Decisión · %{verb} %{name} · %{status} · %{session}"
+
+#: lib/storyarn_web/live/hooks/palette.ex:591
+#, elixir-autogen, elixir-format
+msgid "Discard"
+msgstr "Descartar"
+
+#: lib/storyarn_web/live/hooks/palette.ex:590
+#, elixir-autogen, elixir-format
+msgid "Keep"
+msgstr "Mantener"
+
+#: lib/storyarn_web/live/hooks/palette.ex:593
+#, elixir-autogen, elixir-format
+msgid "Proposal"
+msgstr "Propuesta"
+
+#: lib/storyarn_web/live/hooks/palette.ex:596
+#, elixir-autogen, elixir-format
+msgid "Superseded"
+msgstr "Sustituida"
+
+#: lib/storyarn_web/live/hooks/palette.ex:589
+#, elixir-autogen, elixir-format
+msgid "Test"
+msgstr "Probar"
+
+#: lib/storyarn_web/live/hooks/palette.ex:595
+#, elixir-autogen, elixir-format
+msgid "Withdrawn"
+msgstr "Retirada"

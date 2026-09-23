@@ -4188,6 +4188,37 @@ policy = %{
       reason: "Decision assignments retain Projects-owned editor eligibility locks until commit"
     },
     %{
+      source: "lib/storyarn/ideation/decisions/adapters/notifications.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Decision writes deliver their inbox notifications inside the source transaction through Platform"
+    },
+    %{
+      source: "lib/storyarn/ideation/decisions/adapters/notifications.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "An accepted decision tells the people who started its Projects-owned discussion"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "The palette lists the decisions that name matched content through the public Ideation facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/contextual_decisions.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason:
+        "The authoring tools read decisions about their content and declare their application through the public Ideation facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/contextual_decisions.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Decision cards name their people through the Projects-owned member list"
+    },
+    %{
       source: "lib/storyarn_web/live/shared/contextual_explorations.ex",
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],

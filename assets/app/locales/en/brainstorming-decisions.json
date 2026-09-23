@@ -19,6 +19,27 @@
     "discussion": "Discussion",
     "discussionHint": "Resolving does not accept; accepting does not resolve.",
     "comments": "{count} comment | {count} comments",
+    "banner": {
+      "actions": {
+        "applied": "Mark applied",
+        "partially_applied": "Partially",
+        "no_change_needed": "No change needed"
+      },
+      "marked": {
+        "applied": "Marked applied",
+        "partially_applied": "Marked partially applied",
+        "no_change_needed": "Marked no change needed"
+      },
+      "justNow": "just now",
+      "undo": "Undo",
+      "showMore": "Show more",
+      "close": "Close decision"
+    },
+    "about": {
+      "title": "Decisions about {name}",
+      "goApply": "Go apply",
+      "tooltip": "{count} decision about {name} · {pending} to apply | {count} decisions about {name} · {pending} to apply"
+    },
     "formerMember": "Unavailable member",
     "status": {
       "toApply": "{pending} of {total} to apply",
@@ -245,6 +266,31 @@
       "decision_history_limit": "This decision has reached its history limit.",
       "source_context_limit": "These sources contain too much text. Choose a smaller set.",
       "idempotency_conflict": "This request was already used for different changes. Review the saved decision before trying again."
+    },
+    "dashboard": {
+      "tabs": {
+        "sessions": "Sessions",
+        "decisions": "Decisions"
+      },
+      "status": {
+        "all": "Status · All",
+        "proposed": "Proposals",
+        "accepted": "Accepted",
+        "retired": "Withdrawn and superseded"
+      },
+      "application": {
+        "all": "Application · All",
+        "toApply": "Still to apply",
+        "applied": "Applied",
+        "noChange": "No change needed"
+      },
+      "groupByContent": "Group by affected content",
+      "groupSummary": "{count} decision · {pending} to apply | {count} decisions · {pending} to apply",
+      "noContent": "No affected content",
+      "empty": "No decision matches these filters.",
+      "summary": "{count} decision | {count} decisions",
+      "summaryWaiting": "{count} waiting for you",
+      "summaryToApply": "{count} to apply"
     }
   }
 }

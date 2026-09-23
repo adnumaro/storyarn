@@ -2,10 +2,12 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
   @moduledoc false
   import Ecto.Query
 
+  alias Storyarn.Ideation.Decisions.Adapters.Notifications
   alias Storyarn.Ideation.Decisions.Application
   alias Storyarn.Ideation.Decisions.Decision
   alias Storyarn.Ideation.Decisions.Events.Invalidation
   alias Storyarn.Ideation.Decisions.Execution.Mutation
+  alias Storyarn.Ideation.Decisions.Execution.Notification
   alias Storyarn.Ideation.Decisions.Queries.Catalog
   alias Storyarn.Ideation.Decisions.Revision
   alias Storyarn.Ideation.Decisions.Rules.Input
@@ -88,25 +90,31 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
       else: {:error, :idempotency_conflict}
   end
 
-  defp execute(_scope, _project_id, access, decision, nil, %{operation: "declare"} = command, fingerprint) do
-    with {:ok, decision} <- Mutation.declare(access, decision, command, fingerprint) do
-      {:ok, {decision.id, true}}
+  defp execute(scope, project_id, access, decision, nil, %{operation: "declare"} = command, fingerprint) do
+    with {:ok, decision} <- Mutation.declare(access, decision, command, fingerprint),
+         {:ok, delivery} <- Notification.notify(scope, project_id, access, decision, command) do
+      {:ok, {decision.id, true, delivery}}
     end
   end
 
   defp execute(scope, project_id, access, decision, nil, command, fingerprint) do
-    with {:ok, decision} <- Mutation.run(scope, project_id, access, decision, command, fingerprint) do
-      {:ok, {decision.id, true}}
+    with {:ok, decision} <- Mutation.run(scope, project_id, access, decision, command, fingerprint),
+         {:ok, delivery} <- Notification.notify(scope, project_id, access, current(decision), command) do
+      {:ok, {decision.id, true, delivery}}
     end
   end
 
   defp execute(_scope, _project_id, _access, _decision, %{fingerprint: fingerprint} = receipt, _command, fingerprint),
-    do: {:ok, {receipt.decision_id, false}}
+    do: {:ok, {receipt.decision_id, false, nil}}
 
   defp execute(_, _, _, _, _, _, _), do: {:error, :idempotency_conflict}
 
-  defp complete({:ok, {id, changed?}}, scope, project_id, session_id) do
+  # Register and supersede write more than one row; read the decision they left.
+  defp current(decision), do: Repo.get!(Decision, decision.id)
+
+  defp complete({:ok, {id, changed?, delivery}}, scope, project_id, session_id) do
     if changed?, do: Invalidation.broadcast(project_id, session_id)
+    Notifications.publish(delivery)
     Catalog.get(scope, project_id, session_id, id)
   end
 

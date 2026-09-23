@@ -159,6 +159,18 @@ defmodule StoryarnWeb.IdeationLive.Board do
   end
 
   @impl true
+  # A link that names only a decision (the inbox, the dashboard) opens its session.
+  def handle_params(%{"decision" => decision} = params, url, socket) when not is_map_key(params, "id") do
+    %{current_scope: scope, project: project, urls: urls} = socket.assigns
+
+    with {:ok, decision_id} <- Params.positive(decision),
+         {:ok, session_id} <- Ideation.get_decision_session_id(scope, project.id, decision_id) do
+      {:noreply, push_patch(socket, to: "#{urls.tools["brainstorming"]}/#{session_id}?decision=#{decision_id}")}
+    else
+      _ -> handle_params(Map.delete(params, "decision"), url, socket)
+    end
+  end
+
   def handle_params(params, _url, socket) do
     case Params.optional_id(params["id"]) do
       {:ok, id} ->
@@ -179,6 +191,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
          socket
          |> load_now()
          |> CommentHandlers.linked(params)
+         |> DecisionHandlers.linked(params)
          |> DecisionHandlers.discussed()
          |> discussion()
          |> ExplorationContextHandlers.linked(params)

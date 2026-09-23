@@ -7,9 +7,10 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.IdeationLive.Handlers.CommentHandlers
   alias StoryarnWeb.IdeationLive.Handlers.ReferenceHandlers
-  alias StoryarnWeb.IdeationLive.Helpers.DecisionData
   alias StoryarnWeb.IdeationLive.Helpers.Params
   alias StoryarnWeb.IdeationLive.Helpers.Replies
+  alias StoryarnWeb.Live.Shared.IdeationDecisionData
+  alias StoryarnWeb.Live.Shared.IdeationReferenceData
 
   @target_types ~w(sheet flow scene)
 
@@ -67,7 +68,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
       socket
       |> put(%{
-        items: Enum.map(decisions, &DecisionData.decision(&1, board(socket))),
+        items: Enum.map(decisions, &IdeationDecisionData.decision(&1, board(socket))),
         members: members,
         defaultOwnerId: if(Enum.any?(members, &(&1.id == session.decision_owner_id)), do: session.decision_owner_id),
         viewerId: scope.user.id,
@@ -94,7 +95,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
     case Ideation.list_decisions(scope, project.id, id) do
       {:ok, decisions} ->
-        assign(socket, :canvas_decisions, Enum.map(decisions, &DecisionData.decision(&1, board(socket))))
+        assign(socket, :canvas_decisions, Enum.map(decisions, &IdeationDecisionData.decision(&1, board(socket))))
 
       {:error, _} ->
         assign(socket, :canvas_decisions, [])
@@ -105,11 +106,20 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
   def focused(_state), do: nil
 
   # A link to a decision's discussion opens the panel on that decision.
-  def discussed(%{assigns: %{comments: %{decisionId: id}}} = socket) when is_integer(id) do
-    socket |> init() |> put(%{open: true, mode: "detail", selected: %{id: id}}) |> refresh()
+  def discussed(%{assigns: %{comments: %{decisionId: id}}} = socket) when is_integer(id), do: show(socket, id)
+  def discussed(socket), do: socket
+
+  # A link to a decision (from content, the inbox or the dashboard) opens it too.
+  def linked(socket, %{"decision" => id}) do
+    case Params.positive(id) do
+      {:ok, id} -> show(socket, id)
+      _ -> socket
+    end
   end
 
-  def discussed(socket), do: socket
+  def linked(socket, _params), do: socket
+
+  defp show(socket, id), do: socket |> init() |> put(%{open: true, mode: "detail", selected: %{id: id}}) |> refresh()
 
   defp dispatch("open", %{"from_header" => true}, %{assigns: %{decisions: %{open: true}}} = socket), do: ok(socket)
 
@@ -195,7 +205,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
          {:ok, decision} <- Ideation.get_decision(scope, project.id, id, decision_id),
          true <- decision.version == version,
          true <- decision.can_revise do
-      selected = DecisionData.decision(decision, board(socket))
+      selected = IdeationDecisionData.decision(decision, board(socket))
 
       socket
       |> put(%{
@@ -232,7 +242,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
       socket
       |> assign(:decision_source_query, %{type: params["type"], search: params["search"] || "", before_id: before_id})
       |> put(%{
-        sourceResults: Enum.map(page.sources, &DecisionData.source(&1, board(socket))),
+        sourceResults: Enum.map(page.sources, &IdeationDecisionData.source(&1, board(socket))),
         sourceNextCursor: page.next_cursor,
         searched: true,
         error: nil
@@ -269,7 +279,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     with {:ok, decision_id} <- Params.positive(params["decision_id"]),
          true <- state.selected != nil and state.selected.id == decision_id,
          {:ok, history} <- Ideation.decision_history(scope, project.id, id, decision_id) do
-      socket |> put(%{history: DecisionData.history(history, board(socket)), error: nil}) |> ok()
+      socket |> put(%{history: IdeationDecisionData.history(history, board(socket)), error: nil}) |> ok()
     else
       {:error, reason} -> failure(refresh(socket), reason)
       _ -> failure(socket, :invalid_parameters)
@@ -382,7 +392,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
   defp preview_source(current, previous, socket) do
     case Enum.find(previous, &(&1.identity == current.identity)) do
-      nil -> DecisionData.source(current, board(socket))
+      nil -> IdeationDecisionData.source(current, board(socket))
       saved -> restore_source(saved, current, socket)
     end
   end
@@ -395,7 +405,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     case Ideation.get_decision(scope, project.id, id, state.selected.id) do
       {:ok, decision} ->
         socket
-        |> put(%{selected: DecisionData.decision(decision, board(socket))})
+        |> put(%{selected: IdeationDecisionData.decision(decision, board(socket))})
         |> refresh_history()
 
       {:error, _} ->
@@ -409,7 +419,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     %{current_scope: scope, project: project, session_id: id, decisions: state} = socket.assigns
 
     case Ideation.decision_history(scope, project.id, id, state.selected.id) do
-      {:ok, history} -> put(socket, %{history: DecisionData.history(history, board(socket))})
+      {:ok, history} -> put(socket, %{history: IdeationDecisionData.history(history, board(socket))})
       {:error, _} -> init(socket)
     end
   end
@@ -423,7 +433,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     case Ideation.search_decision_sources(scope, project.id, id, Map.to_list(query)) do
       {:ok, page} ->
         put(socket, %{
-          sourceResults: Enum.map(page.sources, &DecisionData.source(&1, board(socket))),
+          sourceResults: Enum.map(page.sources, &IdeationDecisionData.source(&1, board(socket))),
           sourceNextCursor: page.next_cursor,
           searched: true
         })
@@ -461,7 +471,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     base =
       cond do
         source.available -> source
-        current.version == source.version -> DecisionData.source(current, board(socket))
+        current.version == source.version -> IdeationDecisionData.source(current, board(socket))
         pinned != nil -> pinned
         true -> nil
       end
@@ -542,7 +552,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
   defp field(_, _), do: nil
 
   defp close_other_panels(socket), do: socket |> CommentHandlers.close() |> ReferenceHandlers.init()
-  defp board(socket), do: socket.assigns.board
+  defp board(socket), do: Map.put(socket.assigns.board, :href, &IdeationReferenceData.destination(&1, socket))
   defp opened(%{assigns: %{decisions: %{open: true}}} = socket), do: ok(socket)
   defp opened(socket), do: failure(socket, :not_found)
   defp ok(socket), do: {:reply, %{status: "ok"}, socket}

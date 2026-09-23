@@ -424,6 +424,26 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert board(view)["comments"]["presentation"] == "canvas"
   end
 
+  test "the dashboard lists every decision and a link naming only a decision opens its session", ctx do
+    {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, direct_proposal(ctx))
+    base = "/workspaces/#{ctx.project.workspace.slug}/projects/#{ctx.project.slug}/brainstorming"
+    {:ok, dashboard, _} = live(log_in_user(ctx.conn, ctx.peer.user), base)
+    render_async(dashboard)
+
+    assert [%{"id" => session_id, "decisions" => [%{"id" => id}]}] = board(dashboard)["board"]["decision_sessions"]
+    assert {session_id, id} == {ctx.session.id, decision.id}
+
+    conn = log_in_user(ctx.conn, ctx.peer.user)
+    assert {:error, {:live_redirect, %{to: to}}} = live(conn, "#{base}?decision=#{decision.id}")
+    assert to == "#{base}/#{ctx.session.id}?decision=#{decision.id}"
+    {:ok, view, _} = live(conn, to)
+    assert state(view)["open"]
+    assert state(view)["selected"]["id"] == decision.id
+
+    {:ok, missing, _} = live(log_in_user(ctx.conn, ctx.peer.user), "#{base}?decision=#{decision.id + 1_000_000}")
+    refute state(missing)["open"]
+  end
+
   defp open_board(ctx, actor) do
     {:ok, view, _} = live(log_in_user(ctx.conn, actor.user), path(ctx))
     view

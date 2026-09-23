@@ -47,6 +47,8 @@ export interface DecisionTarget {
   name: string;
   isNew: boolean;
   available: boolean;
+  /** Its editor, when the reader can open it. */
+  href?: string | null;
   application: DecisionDeclaration | null;
 }
 export interface DecisionNextAction {
@@ -87,6 +89,7 @@ export interface DecisionApplication {
 }
 export interface DecisionRecord {
   id: number;
+  sessionId?: number;
   version: number;
   status: DecisionStatus;
   proposal: DecisionRevision;
@@ -152,6 +155,15 @@ export interface DecisionDraftInput {
 export interface DecisionDiscussionState {
   state: BrainstormingCommentsState | null;
   counts: Record<string, number>;
+}
+/** A decision brought to the content it affects, under the editor header. */
+export interface DecisionBannerState {
+  decision: DecisionRecord;
+  targetKey: string;
+  sessionTitle: string;
+  sessionUrl: string;
+  marked: { state: Exclude<ApplicationState, "not_applied"> } | null;
+  error: string | null;
 }
 export interface DecisionsPanelState {
   open: boolean;

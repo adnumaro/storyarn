@@ -96,6 +96,15 @@ defmodule Storyarn.Ideation do
   @doc "Resolves a shared group comment source without publishing group text or member revisions."
   defdelegate group_comment_source(scope, project_id, session_id, group_id, opts \\ []), to: Groups, as: :comment_source
 
+  @doc "Decisions about a Sheet, Flow or Scene: those naming it in Affects and those of the sessions exploring it."
+  defdelegate list_decisions_about(scope, project_id, type, id, opts \\ []), to: Decisions, as: :about
+
+  @doc "Every decision of the project's readable sessions, grouped by session."
+  defdelegate list_project_decisions(scope, project_id), to: Decisions, as: :list_project
+
+  @doc "The readable session holding a decision, for links that name only the decision."
+  defdelegate get_decision_session_id(scope, project_id, decision_id), to: Decisions, as: :session
+
   @doc "Resolves a decision's discussion anchor; decisions are readable by every project reader."
   defdelegate decision_comment_source(scope, project_id, session_id, decision_id, opts \\ []),
     to: Decisions,

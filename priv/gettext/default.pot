@@ -136,7 +136,7 @@ msgstr ""
 msgid "You don't have permission to perform this action."
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:140
+#: lib/storyarn_web/live/ideation_live/board.ex:138
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr ""
@@ -146,7 +146,7 @@ msgstr ""
 msgid "Untitled session"
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:326
+#: lib/storyarn_web/live/ideation_live/board.ex:337
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""
@@ -169,4 +169,54 @@ msgstr ""
 #: lib/storyarn_web/live/comment_live/overlay.ex:570
 #, elixir-autogen, elixir-format
 msgid "This conversation is no longer available or you do not have permission to change it."
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:594
+#, elixir-autogen, elixir-format
+msgid "Accepted"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:588
+#, elixir-autogen, elixir-format
+msgid "Change"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:587
+#, elixir-autogen, elixir-format
+msgid "Create"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:576
+#, elixir-autogen, elixir-format
+msgid "Decision · %{verb} %{name} · %{status} · %{session}"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:591
+#, elixir-autogen, elixir-format
+msgid "Discard"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:590
+#, elixir-autogen, elixir-format
+msgid "Keep"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:593
+#, elixir-autogen, elixir-format
+msgid "Proposal"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:596
+#, elixir-autogen, elixir-format
+msgid "Superseded"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:589
+#, elixir-autogen, elixir-format
+msgid "Test"
+msgstr ""
+
+#: lib/storyarn_web/live/hooks/palette.ex:595
+#, elixir-autogen, elixir-format
+msgid "Withdrawn"
 msgstr ""
