@@ -26,19 +26,31 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
     idea =
       idea_fixture(ctx, %{title: "A quieter ending", body: "<p>The player chooses to stay.</p>", visibility: :shared})
 
+    facilitator = member_name(ctx, ctx.facilitator)
     author = conn |> authenticate(ctx.author.user) |> visit(path(ctx)) |> assert_has("#brainstorming-canvas")
     author = author |> press("#brainstorming-canvas", "1") |> click("#canvas-note-#{idea.id}")
     author = author |> click("#brainstorming-propose-decision") |> assert_has("#decision-proposal-form")
 
     author =
       author
-      |> type("#decision-title", "Keep the ending quiet")
-      |> type("#decision-conclusion", "Let the player choose to stay.")
+      |> type("#decision-conclusion", "Let the player choose to stay. The keeper leaves.")
+      |> click("#decision-verb-change")
       |> type("#decision-reason", "It resolves the character's promise.")
+      |> assert_has("#decision-title", value: "Let the player choose to stay")
+      |> assert_has("#decision-save-proposal", text: "Register decision")
+
+    # Someone else accepts it, so it becomes a proposal.
+    author =
+      author
+      |> click("#decision-owner")
+      |> click("[role=option]:has-text('#{facilitator}')")
+      |> assert_has("#decision-save-proposal", text: "Propose")
 
     # Background controls cannot silently replace an unsaved proposal.
     author =
-      author |> click("#brainstorming-decisions-open") |> assert_has("#decision-title", value: "Keep the ending quiet")
+      author
+      |> click("#brainstorming-decisions-open")
+      |> assert_has("#decision-title", value: "Let the player choose to stay")
 
     author =
       author
@@ -46,7 +58,7 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
       |> refute_has("#decision-proposal-form")
       |> refute_has("#decision-accept")
 
-    assert {:ok, %{decisions: [proposed]}} = Ideation.list_decisions(ctx.author, ctx.project.id, ctx.session.id)
+    assert {:ok, [proposed]} = Ideation.list_decisions(ctx.author, ctx.project.id, ctx.session.id)
 
     config = context |> Map.take(Config.setup_keys()) |> Config.validate!()
     responsible = config |> Case.new_session(context) |> authenticate(ctx.facilitator.user) |> visit(path(ctx))
@@ -55,6 +67,7 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
       responsible
       |> click("#brainstorming-decisions-open")
       |> click("#decision-open-#{proposed.id}")
+      |> assert_has("#decision-status", text: "Waiting for you")
       |> click("#decision-accept")
       |> refute_has("#decision-accept")
 
@@ -79,13 +92,13 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
     author =
       author
       |> click("#decision-revise")
-      |> assert_has("#decision-previous-agreement")
       |> assert_has("#decision-refresh-sources")
 
     author =
       author
       |> press("#decision-conclusion", "ControlOrMeta+a")
       |> type("#decision-conclusion", "Let the player leave a final note.")
+      |> assert_has("#decision-owner-preview", text: "Waiting for #{facilitator} to accept")
 
     author =
       author
@@ -104,8 +117,8 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
 
     responsible =
       responsible
-      |> click("#decision-history")
-      |> assert_has("#brainstorming-decisions-panel", text: "Decision accepted")
+      |> click("#decision-history summary")
+      |> assert_has("#decision-history [data-operation=accept]")
 
     capture(responsible, "decisions-agreement-desktop")
 
@@ -160,11 +173,14 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
       |> click("#group-propose-decision-#{group.id}")
       |> assert_has("#decision-proposal-form")
 
+    # The group's words start the proposal.
     browser =
       browser
-      |> type("#decision-title", "Loyalty as repair")
+      |> assert_has("#decision-conclusion", value: "Her loyalty repairs the harm she caused.")
+      |> assert_has("#decision-title", value: "Guilt and loyalty")
+      |> press("#decision-conclusion", "ControlOrMeta+a")
       |> type("#decision-conclusion", "Her loyalty comes from regret.")
-      |> type("#decision-reason", "It connects the two shared motives.")
+      |> click("#decision-verb-keep")
 
     browser =
       browser
@@ -175,7 +191,7 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
 
     browser =
       browser
-      |> assert_has("#decision-title", value: "Loyalty as repair")
+      |> assert_has("#decision-title", value: "Guilt and loyalty")
       |> assert_has("#decision-conclusion", value: "Her loyalty comes from regret.")
 
     browser =
@@ -186,10 +202,25 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
       |> refute_has("[role=dialog]")
 
     capture(browser, "decisions-proposal-mobile")
-    browser = browser |> click("#decision-save-proposal") |> refute_has("#decision-proposal-form")
-    {:ok, %{decisions: [decision]}} = Ideation.list_decisions(ctx.author, ctx.project.id, ctx.session.id)
+
+    browser =
+      browser
+      |> assert_has("#decision-save-proposal", text: "Register decision")
+      |> click("#decision-save-proposal")
+      |> refute_has("#decision-proposal-form")
+      |> assert_has("#decision-status", text: "Accepted decision")
+
+    {:ok, [decision]} = Ideation.list_decisions(ctx.author, ctx.project.id, ctx.session.id)
+    assert decision.status == :accepted
+    assert decision.accepted.verb == "keep"
     assert Enum.map(decision.proposal.sources, & &1.type) == ["group", "idea"]
     capture(browser, "decisions-detail-mobile")
+  end
+
+  # Fixture members all read "Member"; the responsible person needs a name to be picked.
+  defp member_name(_ctx, actor) do
+    actor.user |> Ecto.Changeset.change(display_name: "Fern Facilitator") |> Repo.update!()
+    "Fern Facilitator"
   end
 
   defp click(browser, selector) do

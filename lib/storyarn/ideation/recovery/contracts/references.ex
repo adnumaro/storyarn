@@ -78,7 +78,15 @@ defmodule Storyarn.Ideation.Recovery.References do
         |> Map.update!("author_id", &Map.get(actors, &1))
       end)
 
-    %{row | sources: %{"items" => items}}
+    targets = Enum.map(row.targets["items"], &remap_decision_target(&1, maps))
+
+    %{
+      row
+      | sources: %{"items" => items},
+        targets: %{"items" => targets},
+        replaces_id: lookup(maps, "decisions", row.replaces_id),
+        superseded_by_id: lookup(maps, "decisions", row.superseded_by_id)
+    }
   end
 
   defp rewrite_payload(row, "session_revisions", actors, _) do
@@ -104,6 +112,28 @@ defmodule Storyarn.Ideation.Recovery.References do
   end
 
   defp rewrite_payload(row, _, _, _), do: row
+
+  # Affected content follows the same rules as a reference target: exact
+  # destinations are remapped, anything else stays named but unavailable.
+  defp remap_decision_target(%{"id" => nil} = target, _maps), do: target
+
+  defp remap_decision_target(target, maps) do
+    case maps["content_destinations"] do
+      destinations when is_map(destinations) ->
+        destination_target(target, get_in(destinations, [target["type"], target["id"]]))
+
+      _ ->
+        if maps["review_assisted_consent"], do: %{target | "id" => nil}, else: target
+    end
+  end
+
+  defp destination_target(target, %{id: id, identity: identity} = destination) do
+    if Map.get(destination, :source_identity, target["identity"]) == target["identity"],
+      do: %{target | "id" => id, "identity" => identity},
+      else: %{target | "id" => nil}
+  end
+
+  defp destination_target(target, _destination), do: %{target | "id" => nil}
 
   defp remap_content_target(row, target) do
     if Map.get(target, :source_identity, row.target_identity) == row.target_identity,

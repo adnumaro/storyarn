@@ -11,26 +11,29 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
   alias StoryarnWeb.IdeationLive.Helpers.Params
   alias StoryarnWeb.IdeationLive.Helpers.Replies
 
+  @target_types ~w(sheet flow scene)
+
   def init(socket) do
     assign(socket,
-      decision_cursor: nil,
       decision_source_query: nil,
-      decision_history_cursor: nil,
       decisions: %{
         open: false,
         context: Ecto.UUID.generate(),
         mode: "list",
         items: [],
-        nextCursor: nil,
         selected: nil,
         history: [],
-        historyNextCursor: nil,
         sources: [],
         sourceResults: [],
         sourceNextCursor: nil,
         searched: false,
+        targetSuggestions: [],
+        targetResults: [],
+        prefill: nil,
         members: [],
         defaultOwnerId: nil,
+        viewerId: nil,
+        rounds: [],
         canPropose: false,
         error: nil
       }
@@ -43,7 +46,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
          {:ok, id} <- Params.positive(params["session_id"]),
          true <- id == socket.assigns.session_id,
          true <-
-           action in ~w(open new) or
+           action in ~w(open new add_sources) or
              (socket.assigns.decisions.open and params["decision_context"] == socket.assigns.decisions.context) do
       dispatch(action, params, socket)
     else
@@ -59,15 +62,16 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     with {:ok, session} <- Ideation.get_session(scope, project.id, id),
          {:ok, _, membership} <- Projects.authorize(scope, project.id, :view),
          {:ok, members} <- Projects.list_editor_candidates(scope, project.id),
-         {:ok, page} <- decision_pages(scope, project.id, id, socket.assigns.decision_cursor) do
+         {:ok, decisions} <- Ideation.list_decisions(scope, project.id, id) do
       can_propose = session.status == :open and Projects.can?(membership.role, :edit_content)
 
       socket
       |> put(%{
-        items: Enum.map(page.decisions, &DecisionData.decision(&1, display_members(socket))),
-        nextCursor: page.next_cursor,
+        items: Enum.map(decisions, &DecisionData.decision(&1, board(socket))),
         members: members,
         defaultOwnerId: if(Enum.any?(members, &(&1.id == session.decision_owner_id)), do: session.decision_owner_id),
+        viewerId: scope.user.id,
+        rounds: Enum.map(board(socket).rounds, &%{number: &1.number, prompt: &1.prompt}),
         canPropose: can_propose,
         error: nil
       })
@@ -96,12 +100,26 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
     with true <- socket.assigns.decisions.open and socket.assigns.decisions.canPropose,
          {:ok, selection} <- initial_selection(params) do
-      if selection == [], do: ok(socket), else: preview(selection, socket)
+      socket = suggest_targets(socket)
+      if selection == [], do: ok(socket), else: selection |> preview(socket) |> prefill(params)
     else
       false -> failure(socket, :unauthorized)
       {:error, reason} -> failure(socket, reason)
     end
   end
+
+  # Selecting notes on the board while a proposal is open adds them to its sources.
+  defp dispatch("add_sources", params, %{assigns: %{decisions: %{open: true, mode: mode}}} = socket)
+       when mode in ~w(create revise) do
+    with %{"idea_ids" => _} <- params,
+         {:ok, selection} <- initial_selection(params) do
+      preview(socket.assigns.decisions.sources ++ selection, socket)
+    else
+      _ -> failure(socket, :invalid_parameters)
+    end
+  end
+
+  defp dispatch("add_sources", _, socket), do: failure(socket, :stale_board)
 
   defp dispatch("close", _, socket), do: ok(init(socket))
   defp dispatch("reload", _, socket), do: ok(refresh(socket))
@@ -115,6 +133,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
           selected: %{id: id},
           sources: [],
           history: [],
+          prefill: nil,
           context: Ecto.UUID.generate(),
           error: nil
         })
@@ -134,34 +153,27 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
          {:ok, decision} <- Ideation.get_decision(scope, project.id, id, decision_id),
          true <- decision.version == version,
          true <- decision.can_revise do
-      selected = DecisionData.decision(decision, display_members(socket))
+      selected = DecisionData.decision(decision, board(socket))
 
       socket
       |> put(%{
         mode: "revise",
         selected: selected,
-        sources: selected.sources,
+        sources: selected.proposal.sources,
         sourceResults: [],
         sourceNextCursor: nil,
         searched: false,
         history: [],
+        prefill: nil,
         context: Ecto.UUID.generate(),
         error: nil
       })
-      |> assign(decision_source_query: nil, decision_history_cursor: nil)
+      |> assign(decision_source_query: nil)
+      |> suggest_targets()
       |> ok()
     else
       {:error, reason} -> failure(refresh(socket), reason)
       _ -> failure(refresh(socket), :stale_decision)
-    end
-  end
-
-  defp dispatch("load_more", params, socket) do
-    with {:ok, cursor} <- Params.positive(params["cursor"]),
-         true <- cursor == socket.assigns.decisions.nextCursor do
-      socket |> assign(:decision_cursor, cursor) |> refresh() |> ok()
-    else
-      _ -> failure(socket, :invalid_parameters)
     end
   end
 
@@ -178,7 +190,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
       socket
       |> assign(:decision_source_query, %{type: params["type"], search: params["search"] || "", before_id: before_id})
       |> put(%{
-        sourceResults: Enum.map(page.sources, &DecisionData.source/1),
+        sourceResults: Enum.map(page.sources, &DecisionData.source(&1, board(socket))),
         sourceNextCursor: page.next_cursor,
         searched: true,
         error: nil
@@ -195,28 +207,34 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     preview(socket.assigns.decisions.sources, socket, true)
   end
 
+  defp dispatch("search_targets", %{"search" => search}, socket) when is_binary(search) and byte_size(search) <= 500 do
+    %{current_scope: scope, project: project, session_id: id} = socket.assigns
+
+    results =
+      Enum.flat_map(@target_types, fn type ->
+        case Ideation.search_reference_targets(scope, project.id, id, nil, type: type, search: search) do
+          {:ok, targets} -> targets |> Enum.take(8) |> Enum.map(&%{type: type, id: &1.id, name: &1.name})
+          {:error, _} -> []
+        end
+      end)
+
+    socket |> put(%{targetResults: results, error: nil}) |> ok()
+  end
+
   defp dispatch("history", params, socket) do
     %{current_scope: scope, project: project, session_id: id, decisions: state} = socket.assigns
 
     with {:ok, decision_id} <- Params.positive(params["decision_id"]),
          true <- state.selected != nil and state.selected.id == decision_id,
-         {:ok, cursor} <- Params.optional_id(params["before_id"]),
-         {:ok, page} <- history_pages(scope, project.id, id, decision_id, cursor) do
-      socket
-      |> assign(:decision_history_cursor, cursor)
-      |> put(%{
-        history: Enum.map(page.revisions, &DecisionData.history(&1, display_members(socket))),
-        historyNextCursor: page.next_cursor,
-        error: nil
-      })
-      |> ok()
+         {:ok, history} <- Ideation.decision_history(scope, project.id, id, decision_id) do
+      socket |> put(%{history: DecisionData.history(history, board(socket)), error: nil}) |> ok()
     else
       {:error, reason} -> failure(refresh(socket), reason)
       _ -> failure(socket, :invalid_parameters)
     end
   end
 
-  defp dispatch(action, params, socket) when action in ~w(create revise accept) do
+  defp dispatch(action, params, socket) when action in ~w(create revise accept withdraw declare) do
     Authorize.with_authorization(socket, :edit_content, &mutate(action, params, &1), fn current, reason ->
       failure(refresh(current), reason)
     end)
@@ -226,8 +244,21 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
   defp mutate("create", params, socket) do
     %{current_scope: scope, project: project, session_id: id} = socket.assigns
-    attrs = proposal_attrs(params)
-    result(Ideation.propose_decision(scope, project.id, id, attrs), socket)
+    result(Ideation.propose_decision(scope, project.id, id, proposal_attrs(params)), socket)
+  end
+
+  # A declaration keeps the reader where they are: the detail refreshes in place.
+  defp mutate("declare", params, socket) do
+    %{current_scope: scope, project: project, session_id: id} = socket.assigns
+
+    with {:ok, decision_id} <- Params.positive(params["decision_id"]),
+         {:ok, agreement} <- Params.positive(params["agreement"]),
+         attrs = Map.take(params, ~w(target_key state note request_key)),
+         {:ok, _decision} <- Ideation.declare_decision_application(scope, project.id, id, decision_id, agreement, attrs) do
+      socket |> refresh() |> ok()
+    else
+      {:error, reason} -> failure(refresh(socket), reason)
+    end
   end
 
   defp mutate(action, params, socket) do
@@ -235,10 +266,14 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
     with {:ok, decision_id} <- Params.positive(params["decision_id"]),
          {:ok, version} <- Params.positive(params["revision"]) do
+      key = params["request_key"]
+
       response =
-        if action == "accept",
-          do: Ideation.accept_decision(scope, project.id, id, decision_id, version, params["request_key"]),
-          else: Ideation.revise_decision(scope, project.id, id, decision_id, version, proposal_attrs(params))
+        case action do
+          "accept" -> Ideation.accept_decision(scope, project.id, id, decision_id, version, key)
+          "withdraw" -> Ideation.withdraw_decision(scope, project.id, id, decision_id, version, key)
+          "revise" -> Ideation.revise_decision(scope, project.id, id, decision_id, version, proposal_attrs(params))
+        end
 
       result(response, socket)
     else
@@ -248,7 +283,9 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
   defp proposal_attrs(params) do
     params
-    |> Map.take(~w(title conclusion reason sources request_key))
+    |> Map.take(
+      ~w(title conclusion reason verb targets next_action next_action_owner_id replaces_id register sources request_key)
+    )
     |> Map.put("responsible_id", params["owner_id"])
   end
 
@@ -259,6 +296,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
       mode: "detail",
       sources: [],
       history: [],
+      prefill: nil,
       context: Ecto.UUID.generate(),
       error: nil
     })
@@ -280,7 +318,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
       {:ok, sources} ->
         previous = if replace, do: [], else: socket.assigns.decisions.sources
 
-        updated = Enum.map(sources, &preview_source(&1, previous, socket.assigns.decisions))
+        updated = Enum.map(sources, &preview_source(&1, previous, socket))
 
         # A recycled numeric ID cannot silently replace a previously selected source.
         changed_identity? =
@@ -300,10 +338,10 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
   defp preview(_, socket, _replace), do: failure(socket, :invalid_parameters)
 
-  defp preview_source(current, previous, state) do
+  defp preview_source(current, previous, socket) do
     case Enum.find(previous, &(&1.identity == current.identity)) do
-      nil -> DecisionData.source(current)
-      saved -> restore_source(saved, current, state)
+      nil -> DecisionData.source(current, board(socket))
+      saved -> restore_source(saved, current, socket)
     end
   end
 
@@ -315,7 +353,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     case Ideation.get_decision(scope, project.id, id, state.selected.id) do
       {:ok, decision} ->
         socket
-        |> put(%{selected: DecisionData.decision(decision, display_members(socket))})
+        |> put(%{selected: DecisionData.decision(decision, board(socket))})
         |> refresh_history()
 
       {:error, _} ->
@@ -328,15 +366,9 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
   defp refresh_history(socket) do
     %{current_scope: scope, project: project, session_id: id, decisions: state} = socket.assigns
 
-    case history_pages(scope, project.id, id, state.selected.id, socket.assigns.decision_history_cursor) do
-      {:ok, page} ->
-        put(socket, %{
-          history: Enum.map(page.revisions, &DecisionData.history(&1, display_members(socket))),
-          historyNextCursor: page.next_cursor
-        })
-
-      {:error, _} ->
-        init(socket)
+    case Ideation.decision_history(scope, project.id, id, state.selected.id) do
+      {:ok, history} -> put(socket, %{history: DecisionData.history(history, board(socket))})
+      {:error, _} -> init(socket)
     end
   end
 
@@ -349,7 +381,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     case Ideation.search_decision_sources(scope, project.id, id, Map.to_list(query)) do
       {:ok, page} ->
         put(socket, %{
-          sourceResults: Enum.map(page.sources, &DecisionData.source/1),
+          sourceResults: Enum.map(page.sources, &DecisionData.source(&1, board(socket))),
           sourceNextCursor: page.next_cursor,
           searched: true
         })
@@ -370,7 +402,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
         case Ideation.preview_decision_sources(scope, project.id, id, [Map.take(candidate, [:type, :id])]) do
           {:ok, [current]} when current.identity == source.identity ->
-            restore_source(source, current, state)
+            restore_source(source, current, socket)
 
           _ ->
             %{source | available: false, title: "", preview: "", changed: false, currentVersion: nil}
@@ -380,13 +412,14 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     put(socket, %{sources: sources})
   end
 
-  defp restore_source(source, current, state) do
+  defp restore_source(source, current, socket) do
+    state = socket.assigns.decisions
     pinned = pinned_source(state, source)
 
     base =
       cond do
         source.available -> source
-        current.version == source.version -> DecisionData.source(current)
+        current.version == source.version -> DecisionData.source(current, board(socket))
         pinned != nil -> pinned
         true -> nil
       end
@@ -401,7 +434,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     })
   end
 
-  defp pinned_source(%{mode: "revise", selected: %{sources: sources}}, source) do
+  defp pinned_source(%{mode: "revise", selected: %{proposal: %{sources: sources}}}, source) do
     Enum.find(sources, fn pinned ->
       pinned.available and pinned.type == source.type and pinned.identity == source.identity and
         pinned.version == source.version
@@ -409,6 +442,41 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
   end
 
   defp pinned_source(_, _), do: nil
+
+  # The session's origin and references come first in the Affects picker; the
+  # project search covers anything else.
+  defp suggest_targets(socket) do
+    %{current_scope: scope, project: project, session_id: id} = socket.assigns
+
+    suggestions =
+      case Ideation.list_references(scope, project.id, id, nil, limit: 50) do
+        {:ok, %{references: references}} ->
+          references
+          |> Enum.filter(&(&1.target_type in @target_types and &1.current != nil))
+          |> Enum.sort_by(&if(&1.relation == "origin", do: 0, else: 1))
+          |> Enum.uniq_by(&{&1.target_type, &1.target_id})
+          |> Enum.map(&%{type: &1.target_type, id: &1.target_id, name: &1.current.name, relation: &1.relation})
+
+        {:error, _} ->
+          []
+      end
+
+    put(socket, %{targetSuggestions: suggestions, targetResults: []})
+  end
+
+  # "Turn into decision" starts from the group's own words: its synthesis is the
+  # conclusion and its title names the decision.
+  defp prefill({:reply, %{status: "ok"} = reply, socket}, %{"group_id" => _}) do
+    case socket.assigns.decisions.sources do
+      [%{type: "group", title: title, preview: synthesis}] ->
+        {:reply, reply, put(socket, %{prefill: %{title: title, conclusion: synthesis, fromGroup: title}})}
+
+      _ ->
+        {:reply, reply, socket}
+    end
+  end
+
+  defp prefill(reply, _params), do: reply
 
   defp initial_selection(%{"group_id" => id}) do
     with {:ok, id} <- Params.positive(id), do: {:ok, [%{type: "group", id: id}]}
@@ -427,34 +495,12 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     if Map.has_key?(params, "idea_ids"), do: {:error, :invalid_parameters}, else: {:ok, []}
   end
 
-  # Lists are capped by domain limits. Re-read every displayed page rather than
-  # retaining formerly authorized rows when the user loads more.
-  defp decision_pages(scope, project_id, id, through, cursor \\ nil, rows \\ []) do
-    with {:ok, page} <- Ideation.list_decisions(scope, project_id, id, before_id: cursor) do
-      rows = rows ++ page.decisions
-
-      if through && page.next_cursor && page.next_cursor >= through,
-        do: decision_pages(scope, project_id, id, through, page.next_cursor, rows),
-        else: {:ok, %{page | decisions: rows}}
-    end
-  end
-
-  defp history_pages(scope, project_id, id, decision_id, through, cursor \\ nil, rows \\ []) do
-    with {:ok, page} <- Ideation.decision_history(scope, project_id, id, decision_id, before_id: cursor) do
-      rows = rows ++ page.revisions
-
-      if through && page.next_cursor && page.next_cursor >= through,
-        do: history_pages(scope, project_id, id, decision_id, through, page.next_cursor, rows),
-        else: {:ok, %{page | revisions: rows}}
-    end
-  end
-
   defp source_identity(source), do: %{type: field(source, :type), id: field(source, :id)}
   defp field(source, key) when is_map(source), do: Map.get(source, key, Map.get(source, Atom.to_string(key)))
   defp field(_, _), do: nil
 
   defp close_other_panels(socket), do: socket |> CommentHandlers.close() |> ReferenceHandlers.init()
-  defp display_members(socket), do: socket.assigns.board.members
+  defp board(socket), do: socket.assigns.board
   defp opened(%{assigns: %{decisions: %{open: true}}} = socket), do: ok(socket)
   defp opened(socket), do: failure(socket, :not_found)
   defp ok(socket), do: {:reply, %{status: "ok"}, socket}

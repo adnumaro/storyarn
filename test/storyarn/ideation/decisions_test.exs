@@ -1,12 +1,15 @@
 defmodule Storyarn.Ideation.DecisionsTest do
   use Storyarn.DataCase, async: true
 
+  import Storyarn.FlowsFixtures
   import Storyarn.IdeationFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Ideation
   alias Storyarn.Ideation.Decisions.Decision
   alias Storyarn.Ideation.Decisions.Revision
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Sheets
 
   setup do
     ctx = ideation_fixture()
@@ -326,7 +329,7 @@ defmodule Storyarn.Ideation.DecisionsTest do
     assert {:error, _} = Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id)
   end
 
-  test "lists, history and source search retain bounded cursors", ctx do
+  test "lists and history are read whole while source search keeps bounded cursors", ctx do
     attrs = attrs(ctx)
 
     decisions =
@@ -342,21 +345,13 @@ defmodule Storyarn.Ideation.DecisionsTest do
         decision
       end
 
-    assert {:ok, first} = Ideation.list_decisions(ctx.viewer, ctx.project.id, ctx.session.id, limit: 2)
-    expected_ids = decisions |> Enum.reverse() |> Enum.take(2) |> Enum.map(& &1.id)
-    assert Enum.map(first.decisions, & &1.id) == expected_ids
+    assert {:ok, listed} = Ideation.list_decisions(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert Enum.map(listed, & &1.id) == decisions |> Enum.reverse() |> Enum.map(& &1.id)
 
-    assert {:ok, %{decisions: [last], next_cursor: nil}} =
-             Ideation.list_decisions(ctx.viewer, ctx.project.id, ctx.session.id, limit: 2, before_id: first.next_cursor)
-
-    assert last.id == hd(decisions).id
-
-    assert {:ok, accepted} = accept(ctx, last)
-    assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, ctx.session.id, accepted.id, limit: 1)
-    assert history.next_cursor == 2
-
-    assert {:ok, %{revisions: [%{number: 1}], next_cursor: nil}} =
-             Ideation.decision_history(ctx.viewer, ctx.project.id, ctx.session.id, accepted.id, before_id: 2)
+    assert {:ok, accepted} = accept(ctx, hd(decisions))
+    assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, ctx.session.id, accepted.id)
+    assert Enum.map(history.revisions, & &1.number) == [2, 1]
+    assert history.applications == []
 
     assert {:ok, sources} = Ideation.search_decision_sources(ctx.viewer, ctx.project.id, ctx.session.id, limit: 1)
     assert length(sources.sources) == 1
@@ -370,11 +365,180 @@ defmodule Storyarn.Ideation.DecisionsTest do
 
     assert id == ctx.first.id
 
-    assert {:error, :invalid_pagination} =
-             Ideation.list_decisions(ctx.viewer, ctx.project.id, ctx.session.id, limit: 51)
-
     assert {:error, :invalid_decision_sources} =
              Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, %{attrs | sources: []})
+  end
+
+  test "registering records a proposal and its acceptance by the responsible proposer", ctx do
+    attrs = fresh(attrs(ctx), %{responsible_id: ctx.author.user.id, register: true, reason: nil})
+    assert {:ok, registered} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, attrs)
+    assert registered.status == :accepted
+    assert registered.accepted_version == 2
+    assert registered.accepted.reason == nil
+    assert registered.accepted.round_id == first_round(ctx).id
+    assert {:ok, ^registered} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, attrs)
+
+    assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, ctx.session.id, registered.id)
+
+    assert Enum.map(history.revisions, &{&1.operation, &1.actor_id}) == [
+             {"register", ctx.author.user.id},
+             {"propose", ctx.author.user.id}
+           ]
+
+    assert {:error, :not_decision_responsible} =
+             Ideation.propose_decision(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               fresh(attrs, %{responsible_id: ctx.peer.user.id})
+             )
+
+    assert Repo.aggregate(Decision, :count) == 1
+  end
+
+  test "affected content is pinned by identity and free labels wait to be created", ctx do
+    sheet = sheet_fixture(ctx.project, %{name: "Mara"})
+    flow = flow_fixture(ctx.project, %{name: "Act 3 endings"})
+
+    targets = [%{type: "sheet", id: sheet.id}, %{type: "flow", id: flow.id}, %{type: "scene", label: "The lighthouse"}]
+    assert {:ok, decision} = propose(ctx, %{targets: targets})
+    assert decision.proposal.verb == "change"
+
+    assert Enum.map(decision.proposal.targets, &{&1.type, &1.name, &1.new, &1.available}) == [
+             {"sheet", "Mara", false, true},
+             {"flow", "Act 3 endings", false, true},
+             {"scene", "The lighthouse", true, true}
+           ]
+
+    assert decision.application == nil
+    assert {:ok, _} = Sheets.delete_sheet(ctx.author, sheet)
+    assert {:ok, view} = Ideation.get_decision(ctx.viewer, ctx.project.id, ctx.session.id, decision.id)
+    assert [%{name: "Mara", available: false, id: nil} | _] = view.proposal.targets
+
+    assert {:error, :targets_unavailable} = propose(ctx, %{targets: [%{type: "sheet", id: sheet.id}]})
+
+    assert {:error, :invalid_decision_targets} =
+             propose(ctx, %{targets: List.duplicate(%{type: "flow", id: flow.id}, 2)})
+
+    assert {:error, :invalid_decision_targets} = propose(ctx, %{targets: [%{type: "asset", id: flow.id}]})
+    assert {:error, :invalid_decision} = propose(ctx, %{verb: "maybe"})
+  end
+
+  test "application is declared per target of the agreement and a new agreement starts over", ctx do
+    sheet = sheet_fixture(ctx.project, %{name: "Mara"})
+    flow = flow_fixture(ctx.project, %{name: "Act 3 endings"})
+    targets = [%{type: "sheet", id: sheet.id}, %{type: "flow", id: flow.id}]
+    assert {:ok, proposed} = propose(ctx, %{targets: targets})
+    assert {:error, :not_applicable} = declare(ctx, proposed, nil, "applied")
+
+    assert {:ok, accepted} = accept(ctx, proposed)
+    assert %{pending: 2, total: 2} = accepted.application
+    assert accepted.can_declare
+    [mara, act] = accepted.application.targets
+
+    assert {:ok, marked} = declare(ctx, accepted, mara.key, "applied", "Changed her motivation")
+    assert %{pending: 1, total: 2} = marked.application
+
+    assert [%{application: %{state: "applied", note: "Changed her motivation"}}, %{application: nil}] =
+             marked.application.targets
+
+    assert {:ok, partial} = declare(ctx, marked, act.key, "partially_applied")
+    assert partial.application.pending == 1
+    assert {:ok, done} = declare(ctx, partial, act.key, "no_change_needed")
+    assert done.application.pending == 0
+
+    assert {:error, :invalid_application} = declare(ctx, done, Ecto.UUID.generate(), "applied")
+    assert {:error, :stale_decision} = declare(ctx, %{done | accepted_version: 1}, mara.key, "applied")
+    assert {:error, :unauthorized} = declare(ctx, done, mara.key, "applied", nil, ctx.viewer)
+
+    assert {:ok, revised} = revise(ctx, done, fresh(attrs(ctx), %{verb: "change", targets: targets}))
+    assert revised.application.pending == 0
+    assert {:ok, reaccepted} = accept(ctx, revised)
+    assert %{pending: 2, total: 2} = reaccepted.application
+
+    assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, ctx.session.id, reaccepted.id)
+
+    assert Enum.map(history.applications, &{&1.agreement, &1.state, &1.target.name}) == [
+             {2, "no_change_needed", "Act 3 endings"},
+             {2, "partially_applied", "Act 3 endings"},
+             {2, "applied", "Mara"}
+           ]
+  end
+
+  test "a decision without affected content declares its outcome on itself", ctx do
+    assert {:ok, decision} = propose(ctx, %{verb: "discard", responsible_id: ctx.author.user.id, register: true})
+    assert %{pending: 0, total: 0, decision: nil} = decision.application
+    assert {:error, :invalid_application} = declare(ctx, decision, Ecto.UUID.generate(), "no_change_needed")
+    assert {:ok, declared} = declare(ctx, decision, nil, "no_change_needed")
+    assert declared.application.decision.state == "no_change_needed"
+  end
+
+  test "the proposer or the project owner withdraws a proposal and a revision keeps its agreement", ctx do
+    assert {:ok, decision} = propose(ctx)
+    assert {:error, :cannot_withdraw} = withdraw(ctx, decision, ctx.peer)
+    assert {:ok, view} = Ideation.get_decision(ctx.owner, ctx.project.id, ctx.session.id, decision.id)
+    assert view.can_withdraw
+    assert {:ok, withdrawn} = withdraw(ctx, decision)
+    assert withdrawn.status == :withdrawn
+    assert withdrawn.withdrawn_by_id == ctx.author.user.id
+    refute withdrawn.can_revise
+    assert {:error, :decision_retired} = accept(ctx, withdrawn)
+    assert {:error, :decision_retired} = revise(ctx, withdrawn, fresh(attrs(ctx)))
+    assert {:error, :not_withdrawable} = withdraw(ctx, withdrawn)
+
+    assert {:ok, other} = propose(ctx)
+    assert {:ok, accepted} = accept(ctx, other)
+    assert {:ok, revised} = revise(ctx, accepted, fresh(attrs(ctx), %{conclusion: "A second thought"}))
+    assert {:ok, kept} = withdraw(ctx, revised, ctx.owner)
+    assert kept.status == :accepted
+    assert kept.accepted.number == 2
+    assert kept.accepted.conclusion == accepted.accepted.conclusion
+    assert {:ok, again} = revise(ctx, kept, fresh(attrs(ctx), %{conclusion: "A third thought"}))
+    assert again.status == :proposed
+  end
+
+  test "accepting a replacement supersedes the earlier agreement and links both ways", ctx do
+    assert {:ok, earlier} = propose(ctx)
+    assert {:error, :invalid_replacement} = propose(ctx, %{replaces_id: earlier.id})
+    assert {:ok, earlier} = accept(ctx, earlier)
+
+    assert {:ok, replacement} = propose(ctx, %{replaces_id: earlier.id, title: "Mara keeps the light"})
+    assert replacement.replaces.id == earlier.id
+    assert {:ok, competing} = propose(ctx, %{replaces_id: earlier.id})
+    assert {:ok, accepted} = accept(ctx, replacement)
+
+    assert accepted.supersedes == %{
+             id: earlier.id,
+             title: "Choose a direction",
+             status: :superseded,
+             replaceable: false
+           }
+
+    assert {:ok, superseded} = Ideation.get_decision(ctx.viewer, ctx.project.id, ctx.session.id, earlier.id)
+    assert superseded.status == :superseded
+    assert superseded.superseded_by.title == "Mara keeps the light"
+    refute superseded.can_revise
+    assert {:ok, peer_view} = Ideation.get_decision(ctx.peer, ctx.project.id, ctx.session.id, competing.id)
+    refute peer_view.can_accept
+    assert {:error, :replaced_decision_unavailable} = accept(ctx, competing)
+
+    assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, ctx.session.id, earlier.id)
+    assert hd(history.revisions).operation == "supersede"
+    assert hd(history.revisions).superseded_by_id == accepted.id
+  end
+
+  test "a next action names an editor who applies it and carries no authority", ctx do
+    assert {:ok, decision} =
+             propose(ctx, %{next_action: "Rewire the Act 3 choice", next_action_owner_id: ctx.facilitator.user.id})
+
+    assert decision.proposal.next_action == "Rewire the Act 3 choice"
+    assert decision.proposal.next_action_owner_id == ctx.facilitator.user.id
+    assert {:error, :not_decision_responsible} = accept(ctx, decision, ctx.facilitator)
+
+    assert {:error, :ineligible_next_action_owner} =
+             propose(ctx, %{next_action: "Review", next_action_owner_id: ctx.viewer.user.id})
+
+    assert {:error, :invalid_decision} = propose(ctx, %{next_action_owner_id: ctx.facilitator.user.id})
   end
 
   test "plaintext is encrypted at rest and failed writes or retries send no invalidation", ctx do
@@ -415,6 +579,8 @@ defmodule Storyarn.Ideation.DecisionsTest do
       title: "Choose a direction",
       conclusion: "Keep the original direction",
       reason: "It supports the intended character arc",
+      verb: "change",
+      targets: [],
       responsible_id: ctx.peer.user.id,
       sources: Enum.map(sources, &Map.take(&1, [:type, :id, :version, :identity])),
       request_key: Ecto.UUID.generate()
@@ -431,6 +597,31 @@ defmodule Storyarn.Ideation.DecisionsTest do
       decision.id,
       decision.version,
       Ecto.UUID.generate()
+    )
+  end
+
+  defp propose(ctx, changes \\ %{}),
+    do: Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, fresh(attrs(ctx), changes))
+
+  defp withdraw(ctx, decision, actor \\ nil) do
+    Ideation.withdraw_decision(
+      actor || ctx.author,
+      ctx.project.id,
+      ctx.session.id,
+      decision.id,
+      decision.version,
+      Ecto.UUID.generate()
+    )
+  end
+
+  defp declare(ctx, decision, key, state, note \\ nil, actor \\ nil) do
+    Ideation.declare_decision_application(
+      actor || ctx.peer,
+      ctx.project.id,
+      ctx.session.id,
+      decision.id,
+      decision.accepted_version || 1,
+      %{target_key: key, state: state, note: note, request_key: Ecto.UUID.generate()}
     )
   end
 

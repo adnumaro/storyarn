@@ -6,6 +6,7 @@ defineProps<{
   baseUrl: string;
   comments: BrainstormingCommentsState;
   linked?: BoardLink | null;
+  decisionDraft?: boolean;
 }>();
 </script>
 <template>
@@ -14,5 +15,6 @@ defineProps<{
     :comments="comments"
     :base-url="baseUrl"
     :linked="linked ?? null"
+    :decision-draft="decisionDraft ?? false"
   />
 </template>

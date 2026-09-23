@@ -14,14 +14,14 @@ const Canvas = defineComponent({
   },
 });
 let wrapper: VueWrapper;
-function workspace(overrides: Partial<Board> = {}) {
+function workspace(overrides: Partial<Board> = {}, decisionDraft = false) {
   const live = createMockLive();
   const current = board({
     ideas: [idea({ visibility: "shared", published_revision: 2 }), idea({ id: 11 })],
     ...overrides,
   });
   wrapper = shallowMount(Workspace, {
-    props: { board: current, baseUrl: "/brainstorming" },
+    props: { board: current, baseUrl: "/brainstorming", decisionDraft },
     global: {
       provide: { _live_vue: live },
       renderStubDefaultSlot: true,
@@ -44,6 +44,19 @@ describe("decisions from the brainstorming canvas", () => {
     expect(live.pushEvent).toHaveBeenCalledTimes(1);
     expect(vi.mocked(live.pushEvent).mock.calls[0].slice(0, 2)).toEqual([
       "decisions_new",
+      { idea_ids: [10], session_id: 1, epoch: "epoch-one" },
+    ]);
+  });
+  it("adds the selection to an open proposal instead of starting another", async () => {
+    const { live, canvas } = workspace({}, true);
+    canvas.vm.$emit("select", [10]);
+    await flushPromises();
+    expect(wrapper.get("#brainstorming-propose-decision").attributes("aria-label")).toBe(
+      "Add to the proposal",
+    );
+    await wrapper.get("#brainstorming-propose-decision").trigger("click");
+    expect(vi.mocked(live.pushEvent).mock.calls[0].slice(0, 2)).toEqual([
+      "decisions_add_sources",
       { idea_ids: [10], session_id: 1, epoch: "epoch-one" },
     ]);
   });

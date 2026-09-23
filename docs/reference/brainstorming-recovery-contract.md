@@ -38,6 +38,8 @@ Project policy.
 | Read shared decisions and their history                         | Current access                         | Current access                         | Same rule                                           | Same rule                                       |
 | Propose or revise a shared decision                             | Current edit access; shared sources    | Current edit access; shared sources    | Same rule                                           | Same rule                                       |
 | Accept a shared decision                                        | Only its responsible participant       | Only its responsible participant       | Only its responsible participant                    | Only its responsible participant                |
+| Withdraw a proposal                                             | Its proposer or the project owner      | Its proposer or the project owner      | Same rule                                           | Same rule                                       |
+| Declare how far a decision is applied                           | Current edit access                    | Current edit access                    | Same rule                                           | Same rule                                       |
 | Invoke shared AI or attach private files                        | Not implemented                        | Not implemented                        | Not implemented                                     | Not implemented                                 |
 
 All managerial actions remain subject to current project edit permission. The
@@ -61,7 +63,9 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **8**. Version **7** inventories carry no round
+The inner inventory is version **9**. Version **8** inventories carry decisions
+without a verb, affected content or application records; they normalize to no
+decisions, decision revisions or application declarations. Version **7** inventories carry no round
 privacy and no group round: normalization marks the active round of a session
 that used the former session-wide private mode as private, strips that session
 key and leaves groups without a round. Version **6** inventories additionally
@@ -102,9 +106,13 @@ The inventory covers:
   identity, relationship, removal marker and frozen overview context. Immutable
   create/refresh/remove revisions preserve actor and idempotent request receipts.
   Reference context is shared overview metadata, not a graph snapshot or a draft.
-- Decisions, current proposal and accepted-version pointers, immutable revisions,
-  authors, responsible participants, exact published idea/group source versions,
-  encrypted conclusion/reason and frozen source text, and durable write receipts.
+- Decisions, current proposal and accepted-version pointers, immutable revisions
+  (proposals, revisions, acceptances, registrations, withdrawals and
+  supersessions), authors, responsible participants and next-action owners,
+  exact published idea/group source versions, affected Sheets/Flows/Scenes by
+  creation identity, encrypted conclusion/reason/next action and frozen source
+  text and target names, per-target application declarations with their
+  encrypted notes, and durable write receipts.
 
 Ciphertext for title/body/conflicting input, group title/synthesis, and decision
 text and frozen source context is copied from persistence; it is
@@ -161,19 +169,26 @@ participate in generation matching, so repeated recovery reuses the same
 complete generation.
 
 Decisions are inserted after their idea and group sources, followed by their
-immutable revisions in the same transaction. Decision IDs, source IDs and direct
-or historical source-author IDs are remapped. Source recovery UUIDs and pinned
+immutable revisions and application declarations in the same transaction.
+Decision IDs, replacement links, round IDs, source IDs and direct or historical
+source-author IDs are remapped. Affected content follows the reference-target
+rules: exact destinations are remapped with their new identity, and anything
+without an exact destination keeps its frozen name but becomes unavailable. Source recovery UUIDs and pinned
 revision numbers remain unchanged; frozen source text is encrypted JSON indexed
 by those UUIDs and contains no database IDs. `accepted_version` is a stable
 revision number, so reconstitution preserves the recorded acceptance without
 invoking an acceptance command or changing a newer pending proposal.
 
-Decision validation requires 1–100 contiguous revisions, a coherent latest state
-and accepted-version pointer, unique durable receipts, and same-session sources
-with matching creation identities and published idea or group revisions. It also
-decrypts frozen source context to verify that it matches the cited shared
-revision. Acceptance cannot change the preceding proposal's content, sources or
-responsible participant. Every revision participates in generation matching;
+Decision validation replays each history: every record must be allowed from the
+state the previous records left, a registration must be accepted by the person
+who proposed it, a supersession must be claimed by an acceptance of the replacing
+decision, and the status and accepted-version pointer must follow from the
+history. It requires unique durable receipts, at most five affected targets,
+same-session sources with matching creation identities and published idea or
+group revisions, and declarations that name a target of an accepted agreement.
+It decrypts frozen source context to verify that it matches the cited shared
+revision. Acceptance, registration and withdrawal cannot change the content they
+close, and a supersession copies the agreement it retires. Every revision participates in generation matching;
 unavailable source tombstones, previous agreements and pending revisions remain
 recoverable. Sources of a round restored private stay unavailable to decisions
 after restoration. Versions before decisions normalize empty collections without

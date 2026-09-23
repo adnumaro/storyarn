@@ -1,8 +1,19 @@
 import type { Board } from "@modules/ideation";
 
 export type DecisionMember = Board["members"][number];
-
 export type DecisionSourceType = "idea" | "group";
+export type DecisionStatus = "proposed" | "accepted" | "withdrawn" | "superseded";
+export type DecisionVerb = "create" | "change" | "test" | "keep" | "discard";
+export type DecisionTargetType = "sheet" | "flow" | "scene";
+export type ApplicationState = "not_applied" | "partially_applied" | "applied" | "no_change_needed";
+export type DecisionOperation =
+  | "propose"
+  | "revise"
+  | "accept"
+  | "register"
+  | "withdraw"
+  | "supersede";
+
 export interface DecisionSourceIdentity {
   type: DecisionSourceType;
   id: number | null;
@@ -12,55 +23,142 @@ export interface DecisionSource extends DecisionSourceIdentity {
   version: number;
   title: string;
   preview: string;
+  authorName?: string | null;
+  roundNumber?: number | null;
+  state?: string | null;
   available: boolean;
   changed?: boolean;
   currentVersion?: number | null;
 }
-export interface DecisionDraftInput {
-  title: string;
-  conclusion: string;
-  reason: string;
-  owner_id: number;
-  revision?: number;
+export interface DecisionDeclaration {
+  state: ApplicationState;
+  note: string | null;
+  actorName: string | null;
+  at: string;
 }
-export interface DecisionAgreement {
-  revision: number;
-  title: string;
-  conclusion: string;
-  reason: string;
+export interface DecisionTarget {
+  key: string;
+  type: DecisionTargetType;
+  id: number | null;
+  name: string;
+  isNew: boolean;
+  available: boolean;
+  application: DecisionDeclaration | null;
+}
+export interface DecisionNextAction {
+  text: string;
   ownerId: number | null;
   ownerName: string | null;
-  acceptedAt: string | null;
-  sources: DecisionSource[];
 }
-export interface DecisionRecord extends DecisionAgreement {
+export interface DecisionRound {
+  number: number;
+  prompt: string | null;
+}
+export interface DecisionLink {
   id: number;
-  status: "proposed" | "accepted";
+  title: string;
+}
+export interface DecisionRevision {
+  revision: number;
+  operation: DecisionOperation;
+  verb: DecisionVerb;
+  title: string;
+  conclusion: string;
+  reason: string | null;
+  responsibleId: number | null;
+  responsibleName: string | null;
+  actorName: string | null;
+  nextAction: DecisionNextAction | null;
+  round: DecisionRound | null;
+  replacesId: number | null;
+  recordedAt: string;
+  sources: DecisionSource[];
+  targets: DecisionTarget[];
+}
+export interface DecisionApplication {
+  targets: DecisionTarget[];
+  decision: DecisionDeclaration | null;
+  pending: number;
+  total: number;
+}
+export interface DecisionRecord {
+  id: number;
+  version: number;
+  status: DecisionStatus;
+  proposal: DecisionRevision;
+  accepted: DecisionRevision | null;
+  application: DecisionApplication | null;
+  proposerName: string | null;
+  withdrawnByName: string | null;
+  replaces: DecisionLink | null;
+  supersedes: DecisionLink | null;
+  supersededBy: DecisionLink | null;
   canAccept: boolean;
   canRevise: boolean;
   canAssign: boolean;
-  previousAgreement?: DecisionAgreement | null;
+  canWithdraw: boolean;
+  canDeclare: boolean;
+  updatedAt: string;
 }
-export interface DecisionHistoryEntry extends DecisionAgreement {
-  operation: "proposed" | "revised" | "accepted" | "assigned";
+export interface DecisionHistoryEntry {
+  kind: "record" | "application";
+  id: string;
+  operation: DecisionOperation | "registered" | ApplicationState;
   actorName: string | null;
-  recordedAt: string;
+  responsibleName?: string | null;
+  title?: string;
+  targetName?: string | null;
+  targetType?: DecisionTargetType | null;
+  text: string | null;
+  at: string;
+}
+export interface DecisionTargetOption {
+  type: DecisionTargetType;
+  id: number;
+  name: string;
+  relation?: string;
+}
+export interface DecisionTargetInput {
+  type: DecisionTargetType;
+  id: number | null;
+  label?: string;
+}
+export interface DecisionPrefill {
+  title: string;
+  conclusion: string;
+  fromGroup: string;
+}
+export interface DecisionDraftInput {
+  title: string;
+  conclusion: string;
+  reason: string | null;
+  verb: DecisionVerb;
+  targets: DecisionTargetInput[];
+  next_action: string | null;
+  next_action_owner_id: number | null;
+  replaces_id: number | null;
+  owner_id: number;
+  register: boolean;
+  revision?: number;
 }
 export interface DecisionsPanelState {
   open: boolean;
   context: string;
   mode: "list" | "create" | "detail" | "revise";
   items: DecisionRecord[];
-  nextCursor: number | null;
   selected: DecisionRecord | null;
   history: DecisionHistoryEntry[];
-  historyNextCursor?: number | null;
   sources: DecisionSource[];
   sourceResults: DecisionSource[];
   sourceNextCursor: number | null;
   searched: boolean;
+  targetSuggestions: DecisionTargetOption[];
+  targetResults: DecisionTargetOption[];
+  prefill: DecisionPrefill | null;
   members: DecisionMember[];
   defaultOwnerId: number | null;
+  viewerId: number | null;
+  rounds: DecisionRound[];
   canPropose: boolean;
   error: string | null;
 }
