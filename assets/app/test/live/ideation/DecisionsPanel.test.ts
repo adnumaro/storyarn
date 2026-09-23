@@ -2,15 +2,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import Panel from "@app/live/ideation/DecisionsPanel.vue";
 import type { DecisionsPanelState } from "@app/live/ideation/decisionTypes";
+import type { BrainstormingCommentsState } from "@modules/ideation/commentTypes";
+import type { DecisionDiscussionState } from "@app/live/ideation/decisionTypes";
 import { accepted, decision, decisions, revision, source, target } from "./decisionFixtures";
 
 let wrapper: VueWrapper;
 const passthrough = { template: "<div><slot /></div>" };
-function panel(overrides: Partial<DecisionsPanelState> = {}, disconnected = false) {
+function panel(
+  overrides: Partial<DecisionsPanelState> = {},
+  disconnected = false,
+  discussion?: DecisionDiscussionState,
+) {
   const pushEvent = disconnected ? vi.fn().mockRejectedValue(new Error("Disconnected")) : vi.fn();
   wrapper = mount(Panel, {
     attachTo: document.body,
-    props: { state: decisions(overrides), epoch: "epoch-1", sessionId: 12 },
+    props: {
+      state: decisions(overrides),
+      epoch: "epoch-1",
+      sessionId: 12,
+      ...(discussion ? { discussion } : {}),
+    },
     global: {
       provide: {
         _live_vue: {
@@ -348,6 +359,72 @@ describe("reading and acting on a decision", () => {
     expect(wrapper.find("form").exists()).toBe(false);
     expect(wrapper.text()).not.toContain("Secret");
     expect(wrapper.text()).toContain("Source unavailable");
+  });
+});
+
+describe("discussing a decision", () => {
+  function discussion(
+    overrides: Partial<BrainstormingCommentsState> = {},
+  ): BrainstormingCommentsState {
+    return {
+      open: true,
+      presentation: "workspace",
+      pins: [],
+      threads: [],
+      nextCursor: null,
+      thread: null,
+      messages: [],
+      messageNextCursor: null,
+      members: [],
+      canComment: true,
+      selectedSourceId: 4,
+      error: null,
+      ideaId: null,
+      groupId: null,
+      decisionId: 4,
+      context: "discussion-1",
+      ...overrides,
+    };
+  }
+
+  it("counts each decision's discussion on its card", () => {
+    panel({ items: [decision({ id: 4 }), accepted({ id: 5 })] }, false, {
+      state: null,
+      counts: { "4": 3 },
+    });
+    expect(wrapper.get("[data-decision-card='4'] [data-decision-comments]").text()).toBe("3");
+    expect(wrapper.find("[data-decision-card='5'] [data-decision-comments]").exists()).toBe(false);
+  });
+
+  it("holds the shown decision's conversation between its application and its actions", async () => {
+    const pushEvent = panel({ mode: "detail", selected: decision({ id: 4 }) }, false, {
+      state: discussion(),
+      counts: {},
+    });
+    const section = wrapper.get("#decision-discussion");
+    expect(section.text()).toContain("Discussion");
+    expect(section.text()).toContain("Resolving does not accept; accepting does not resolve.");
+    await wrapper.get("#decision-discussion-comment-body").setValue("Does this hold in act two?");
+    await wrapper.get("#decision-discussion-comment-send").trigger("click");
+    await flushPromises();
+    const [event, payload] = pushEvent.mock.calls.at(-1) ?? [];
+    expect(event).toBe("comments_create");
+    expect(payload).toMatchObject({
+      body: "Does this hold in act two?",
+      epoch: "epoch-1",
+      session_id: 12,
+      comment_context: "discussion-1",
+      decision_id: 4,
+    });
+    expect(payload).not.toHaveProperty("position");
+  });
+
+  it("shows nothing of a conversation held for another decision", () => {
+    panel({ mode: "detail", selected: decision({ id: 4 }) }, false, {
+      state: discussion({ decisionId: 9 }),
+      counts: {},
+    });
+    expect(wrapper.find("#decision-discussion").exists()).toBe(false);
   });
 });
 

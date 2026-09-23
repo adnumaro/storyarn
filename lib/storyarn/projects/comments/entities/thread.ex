@@ -14,6 +14,7 @@ defmodule Storyarn.Projects.Comments.Thread do
     field :ideation_session_id, :integer
     field :ideation_idea_id, :integer
     field :ideation_group_id, :integer
+    field :ideation_decision_id, :integer
     field :source_recovery_identity, Ecto.UUID
     field :position_x, :float
     field :position_y, :float

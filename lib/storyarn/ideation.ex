@@ -91,9 +91,15 @@ defmodule Storyarn.Ideation do
   def comment_sources_query("ideation_session"), do: Sessions.comment_sources_query()
   def comment_sources_query("ideation_idea"), do: Ideas.comment_sources_query()
   def comment_sources_query("ideation_group"), do: Groups.comment_sources_query()
+  def comment_sources_query("ideation_decision"), do: Decisions.comment_sources_query()
 
   @doc "Resolves a shared group comment source without publishing group text or member revisions."
   defdelegate group_comment_source(scope, project_id, session_id, group_id, opts \\ []), to: Groups, as: :comment_source
+
+  @doc "Resolves a decision's discussion anchor; decisions are readable by every project reader."
+  defdelegate decision_comment_source(scope, project_id, session_id, decision_id, opts \\ []),
+    to: Decisions,
+    as: :comment_source
 
   @doc "Resolves a session or published idea comment anchor without exposing private revisions."
   defdelegate comment_source(scope, project_id, session_id, idea_id, opts \\ []),

@@ -85,10 +85,52 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
   def preserve_editor(socket), do: failure(socket, :proposal_in_progress)
 
+  # The board draws every decision in its band's lane, whether or not the panel
+  # is open. Reads recheck access and source visibility like the panel's.
+  def load_canvas(%{assigns: %{session_id: nil}} = socket), do: assign(socket, :canvas_decisions, [])
+
+  def load_canvas(socket) do
+    %{current_scope: scope, project: project, session_id: id} = socket.assigns
+
+    case Ideation.list_decisions(scope, project.id, id) do
+      {:ok, decisions} ->
+        assign(socket, :canvas_decisions, Enum.map(decisions, &DecisionData.decision(&1, board(socket))))
+
+      {:error, _} ->
+        assign(socket, :canvas_decisions, [])
+    end
+  end
+
+  def focused(%{mode: "detail", selected: %{id: id}}), do: id
+  def focused(_state), do: nil
+
+  # A link to a decision's discussion opens the panel on that decision.
+  def discussed(%{assigns: %{comments: %{decisionId: id}}} = socket) when is_integer(id) do
+    socket |> init() |> put(%{open: true, mode: "detail", selected: %{id: id}}) |> refresh()
+  end
+
+  def discussed(socket), do: socket
+
   defp dispatch("open", %{"from_header" => true}, %{assigns: %{decisions: %{open: true}}} = socket), do: ok(socket)
 
   defp dispatch("new", _, %{assigns: %{decisions: %{open: true, mode: mode}}} = socket) when mode in ~w(create revise),
     do: preserve_editor(socket)
+
+  # A lane card on the board opens the panel on its decision.
+  defp dispatch("open", %{"decision_id" => decision_id}, socket) do
+    case Params.positive(decision_id) do
+      {:ok, id} ->
+        socket
+        |> init()
+        |> put(%{open: true, mode: "detail", selected: %{id: id}})
+        |> refresh()
+        |> close_other_panels()
+        |> opened()
+
+      {:error, reason} ->
+        failure(socket, reason)
+    end
+  end
 
   defp dispatch("open", _params, socket) do
     socket = socket |> init() |> put(%{open: true}) |> refresh() |> close_other_panels()

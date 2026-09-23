@@ -12,7 +12,7 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
-  @types ~w(ideation_session ideation_idea ideation_group)
+  @types ~w(ideation_session ideation_idea ideation_group ideation_decision)
   @max_id 9_223_372_036_854_775_807
 
   def pins(scope, project_id, session_id) do
@@ -45,6 +45,7 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
       |> Ideation.comment_sources_query()
       |> union_all(^Ideation.comment_sources_query("ideation_idea"))
       |> union_all(^Ideation.comment_sources_query("ideation_group"))
+      |> union_all(^Ideation.comment_sources_query("ideation_decision"))
 
     from(t in Thread,
       as: :thread,
@@ -89,7 +90,8 @@ defmodule Storyarn.Projects.Comments.IdeationConversations do
       where:
         t.source_type == "ideation_session" or
           (t.source_type == "ideation_idea" and t.ideation_idea_id == t.source_id) or
-          (t.source_type == "ideation_group" and t.ideation_group_id == t.source_id)
+          (t.source_type == "ideation_group" and t.ideation_group_id == t.source_id) or
+          (t.source_type == "ideation_decision" and t.ideation_decision_id == t.source_id)
     )
   end
 

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, provide } from "vue";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import CommentPopover from "@components/comments/CommentPopover.vue";
 import type { CommentUiConfig } from "@components/comments/types";
-import { useLive, type LiveInterface } from "@shared/composables/useLive";
 import type { BrainstormingCommentsState } from "./commentTypes";
+import { useCommentBridge } from "./composables/useCommentBridge";
 
 const {
   state,
@@ -19,10 +19,11 @@ const {
   baseUrl: string;
   currentUserId?: number | null;
 }>();
-const live = useLive();
 const { t } = useI18n();
-const message = (code: unknown) =>
-  t(`brainstormingComments.${code === "stale" ? "stale" : "unavailable"}`);
+const { message } = useCommentBridge(
+  () => state,
+  () => ({ epoch, sessionId }),
+);
 const sourceLabel = computed(() => {
   if (state.groupId) return t("brainstormingComments.group_label");
   if (state.ideaId) return t("brainstormingComments.idea_label");
@@ -49,32 +50,6 @@ const ui: CommentUiConfig = {
   createSourceKey: "idea_id",
   mentionsEnabled: true,
 };
-// Shared components keep their ordinary event contract; this boundary binds
-// every request to the board generation and the selected discussion context.
-provide<LiveInterface>("_live_vue", {
-  ...live,
-  pushEvent(event, payload, callback, onError) {
-    live.pushEvent(
-      event,
-      {
-        ...payload,
-        epoch,
-        session_id: sessionId,
-        comment_context: state.context,
-        ...(event === "comments_open"
-          ? { idea_id: state.ideaId, group_id: state.groupId ?? null }
-          : {}),
-      },
-      (reply) =>
-        callback?.(
-          reply?.ok === false && !event.startsWith("comments_follow") && event !== "comments_read"
-            ? { ...reply, error: message(reply.error) }
-            : reply,
-        ),
-      onError,
-    );
-  },
-});
 </script>
 
 <template>

@@ -197,6 +197,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    comment_source: 4,
                    comment_source: 5,
                    comment_sources_query: 1,
+                   decision_comment_source: 4,
+                   decision_comment_source: 5,
                    group_comment_source: 4,
                    group_comment_source: 5,
                    capture_recovery: 1,

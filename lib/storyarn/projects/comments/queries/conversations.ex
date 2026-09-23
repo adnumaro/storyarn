@@ -19,7 +19,7 @@ defmodule Storyarn.Projects.Comments.Conversations do
     "flow" => ~w(flow_node flow_canvas),
     "sheet" => ~w(sheet_canvas),
     "scene" => ~w(scene_canvas),
-    "brainstorming" => ~w(ideation_session ideation_idea ideation_group)
+    "brainstorming" => ~w(ideation_session ideation_idea ideation_group ideation_decision)
   }
   @tool_of Map.new(for {tool, types} <- @tools, type <- types, do: {type, tool})
   @max_id 9_223_372_036_854_775_807

@@ -87,6 +87,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
         base-url={@urls.tools["brainstorming"]}
         comments={@comments}
         decision-draft={@decisions.open and @decisions.mode in ["create", "revise"]}
+        decisions={@canvas_decisions}
+        decision-focus={DecisionHandlers.focused(@decisions)}
       />
       <.vue
         v-component="live/ideation/BoardPanels"
@@ -95,6 +97,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         id="brainstorming-panels"
         references={@references}
         decisions={@decisions}
+        discussion={%{state: if(@comments.decisionId, do: @comments), counts: @comments.decisionCounts}}
         epoch={@epoch}
         session-id={@board.session && @session_id}
         session={@board.session}
@@ -134,6 +137,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> ExplorationContextHandlers.init()
      |> assign(:page_title, gettext("Brainstorming"))
      |> assign(:board, BoardData.empty())
+     |> assign(:canvas_decisions, [])
      |> assign(:board_error, nil)
      |> assign(:epoch, Ecto.UUID.generate())
      |> assign(:session_id, nil)
@@ -175,6 +179,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
          socket
          |> load_now()
          |> CommentHandlers.linked(params)
+         |> DecisionHandlers.discussed()
+         |> discussion()
          |> ExplorationContextHandlers.linked(params)
          |> linked_focus(params)}
 
@@ -191,6 +197,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
            session_panel: false,
            refresh_running: nil,
            board: BoardData.empty(),
+           canvas_decisions: [],
            board_error: "not_found"
          )}
     end
@@ -211,7 +218,17 @@ defmodule StoryarnWeb.IdeationLive.Board do
     end
   end
 
-  def handle_event("comments_" <> action, params, socket), do: CommentHandlers.handle(action, params, socket)
+  # Selecting a canvas thread from a decision's discussion hands comments back to
+  # the canvas, and the panel that held the discussion closes with it.
+  def handle_event("comments_" <> action, params, socket) do
+    result = CommentHandlers.handle(action, params, socket)
+    last = tuple_size(result) - 1
+    current = elem(result, last)
+
+    if socket.assigns.comments.decisionId != nil and current.assigns.comments.decisionId == nil,
+      do: put_elem(result, last, DecisionHandlers.init(current)),
+      else: result
+  end
 
   def handle_event("exploration_return", params, socket),
     do: ExplorationContextHandlers.return_to_source(params, socket)
@@ -225,7 +242,10 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   def handle_event("references_" <> action, params, socket), do: ReferenceHandlers.handle(action, params, socket)
 
-  def handle_event("decisions_" <> action, params, socket), do: DecisionHandlers.handle(action, params, socket)
+  def handle_event("decisions_" <> action, params, socket) do
+    {:reply, reply, socket} = DecisionHandlers.handle(action, params, socket)
+    {:reply, reply, discussion(socket)}
+  end
 
   def handle_event(event, params, socket)
       when event in @session_writes or event in @idea_writes or event in @round_writes or event in @timer_writes or
@@ -370,7 +390,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   def handle_info({:ideation_changed, id}, %{assigns: %{session_id: id}} = socket), do: {:noreply, refresh(socket)}
 
   def handle_info({:ideation_decisions_changed, id}, %{assigns: %{session_id: id}} = socket),
-    do: {:noreply, DecisionHandlers.refresh(socket)}
+    do: {:noreply, socket |> DecisionHandlers.load_canvas() |> DecisionHandlers.refresh() |> discussion()}
 
   def handle_info({:ideation_references_changed, id}, %{assigns: %{session_id: id}} = socket),
     do: {:noreply, socket |> ReferenceHandlers.refresh() |> ExplorationContextHandlers.refresh()}
@@ -416,6 +436,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       |> reset_epoch("project_restored")
       |> assign(:filters, %{socket.assigns.filters | idea_before: nil})
       |> assign(:board, BoardData.empty())
+      |> assign(:canvas_decisions, [])
       |> refresh()
 
     {:noreply, socket}
@@ -525,6 +546,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
     end
   end
 
+  defp discussion(socket),
+    do: CommentHandlers.follow_decision(socket, DecisionHandlers.focused(socket.assigns.decisions))
+
   defp current_epoch(%{"epoch" => epoch}, %{assigns: %{epoch: epoch}}), do: :ok
   defp current_epoch(_, _), do: {:error, :stale_board}
 
@@ -594,6 +618,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         |> assign(board: data, board_error: nil, membership: membership, can_edit: can_edit, canvas_ready: true)
         |> CommentHandlers.refresh()
         |> ReferenceHandlers.refresh()
+        |> DecisionHandlers.load_canvas()
         |> DecisionHandlers.refresh()
         |> ExplorationContextHandlers.refresh()
 
@@ -621,7 +646,13 @@ defmodule StoryarnWeb.IdeationLive.Board do
     |> DecisionHandlers.init()
     |> canvas_subscription(nil)
     |> reset_epoch("access_changed")
-    |> assign(board: BoardData.empty(), board_error: "unauthorized", canvas_ready: false, session_panel: false)
+    |> assign(
+      board: BoardData.empty(),
+      canvas_decisions: [],
+      board_error: "unauthorized",
+      canvas_ready: false,
+      session_panel: false
+    )
   end
 
   defp cursors_enabled?(%{assigns: %{canvas_ready: true, board_error: nil, board: %{session: session}}} = socket)

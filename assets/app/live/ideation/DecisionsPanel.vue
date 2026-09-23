@@ -7,6 +7,7 @@ import ConfirmDialog from "@components/ConfirmDialog.vue";
 import Sidebar from "@shell/Sidebar.vue";
 import DecisionCard from "./DecisionCard.vue";
 import DecisionDetail from "./DecisionDetail.vue";
+import DecisionDiscussion from "./DecisionDiscussion.vue";
 import DecisionForm from "./DecisionForm.vue";
 import DecisionSourcePicker from "./DecisionSourcePicker.vue";
 import { orderDecisions, replaceable, shownRevision } from "./decisionStatus";
@@ -17,13 +18,20 @@ import type {
   DecisionSource,
   DecisionSourceIdentity,
   DecisionSourceType,
+  DecisionDiscussionState,
   DecisionsPanelState,
 } from "./decisionTypes";
 
-const { state, epoch, sessionId } = defineProps<{
+const {
+  state,
+  epoch,
+  sessionId,
+  discussion = { state: null, counts: {} },
+} = defineProps<{
   state: DecisionsPanelState;
   epoch: string;
   sessionId: number;
+  discussion?: DecisionDiscussionState;
 }>();
 const { t, te } = useI18n();
 const { request, pending, notice } = useDecisionRequests(
@@ -262,7 +270,11 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
               :disabled="!!pending"
               @click="request('select', { decision_id: decision.id })"
             >
-              <DecisionCard :decision="decision" :round-count="roundCount" />
+              <DecisionCard
+                :decision="decision"
+                :round-count="roundCount"
+                :comments="discussion.counts[decision.id] ?? 0"
+              />
             </button>
           </li>
           <li v-if="ordered.retired.length" class="pt-1.5">
@@ -291,7 +303,11 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
                 :disabled="!!pending"
                 @click="request('select', { decision_id: decision.id })"
               >
-                <DecisionCard :decision="decision" :round-count="roundCount" />
+                <DecisionCard
+                  :decision="decision"
+                  :round-count="roundCount"
+                  :comments="discussion.counts[decision.id] ?? 0"
+                />
               </button>
             </li>
           </template>
@@ -342,7 +358,18 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
         @select="request('select', { decision_id: $event })"
         @load-history="request('history', { decision_id: state.selected?.id })"
         @declare="declare"
-      />
+      >
+        <template #discussion>
+          <DecisionDiscussion
+            v-if="discussion.state?.open && discussion.state.decisionId === state.selected.id"
+            :state="discussion.state"
+            :epoch="epoch"
+            :session-id="sessionId"
+            :title="shownRevision(state.selected).title"
+            :current-user-id="state.viewerId"
+          />
+        </template>
+      </DecisionDetail>
     </div>
   </Sidebar>
   <ConfirmDialog

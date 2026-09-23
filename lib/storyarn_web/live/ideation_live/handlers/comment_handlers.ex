@@ -26,11 +26,28 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
       error: nil,
       ideaId: nil,
       groupId: nil,
+      decisionId: nil,
+      decisionCounts: %{},
       context: Ecto.UUID.generate()
     })
   end
 
   def close(socket), do: socket |> init() |> refresh()
+
+  # A decision's discussion follows the decision shown in the panel: it opens on
+  # the newest thread about it, or on a composer that starts one.
+  def follow_decision(%{assigns: %{comments: %{open: true, decisionId: id}}} = socket, id) when is_integer(id),
+    do: socket
+
+  def follow_decision(%{assigns: %{comments: %{decisionId: id}}} = socket, nil) when is_integer(id), do: close(socket)
+  def follow_decision(socket, nil), do: socket
+
+  def follow_decision(socket, decision_id) do
+    socket
+    |> init()
+    |> put(%{open: true, presentation: "workspace", decisionId: decision_id})
+    |> refresh()
+  end
 
   def handle(action, params, socket) do
     with true <- socket.assigns.session_id != nil,
@@ -115,11 +132,22 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     socket = if socket.assigns.comments.open, do: load_context(socket), else: socket
 
     socket =
-      if socket.assigns.comments.open && socket.assigns.comments.thread,
-        do: detail(socket, socket.assigns.comments.thread.id),
-        else: socket
+      case socket.assigns.comments do
+        %{open: true, thread: %{id: id}} -> detail(socket, id)
+        %{open: true, decisionId: id} when is_integer(id) -> newest_discussion(socket)
+        _ -> socket
+      end
 
     refresh_pins(socket)
+  end
+
+  defp newest_discussion(socket) do
+    %{current_scope: scope, project: project, session_id: session_id, comments: state} = socket.assigns
+
+    case Projects.list_ideation_comment_threads(scope, project.id, session_id, {:decision, state.decisionId}, limit: 1) do
+      {:ok, %{threads: [%{id: id} | _]}} -> detail(socket, id)
+      _ -> socket
+    end
   end
 
   defp refresh_pins(socket) do
@@ -131,8 +159,15 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
         _ -> []
       end
 
+    # Discussions about decisions are not placed on the canvas; their cards count them.
+    {discussions, pins} = Enum.split_with(pins, &(&1.source.type == "ideation_decision"))
+
     put(socket, %{
       pins: pins,
+      decisionCounts:
+        discussions
+        |> Enum.group_by(& &1.source.id, & &1.message_count)
+        |> Map.new(fn {id, counts} -> {id, Enum.sum(counts)} end),
       canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content))
     })
   end
@@ -149,7 +184,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   def linked(socket, _), do: socket
 
   defp mutate("place", params, socket) do
-    with %{open: true, thread: nil, canComment: true} <- socket.assigns.comments,
+    with %{open: true, thread: nil, canComment: true, decisionId: nil} <- socket.assigns.comments,
          {:ok, position} <- position(params) do
       {:reply, %{ok: true}, put(socket, %{draftPosition: position})}
     else
@@ -233,19 +268,23 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   defp select(socket, id) do
     case current_thread(socket, id) do
       {:ok, %{thread: %{source: source}}} ->
+        state = socket.assigns.comments
         idea_id = if source.type == "ideation_idea", do: source.id
         group_id = if source.type == "ideation_group", do: source.id
+        decision_id = if source.type == "ideation_decision", do: source.id
 
         context =
-          if idea_id == socket.assigns.comments.ideaId and group_id == socket.assigns.comments.groupId,
-            do: socket.assigns.comments.context,
+          if {idea_id, group_id, decision_id} == {state.ideaId, state.groupId, state.decisionId},
+            do: state.context,
             else: Ecto.UUID.generate()
 
         socket
         |> put(%{
           open: true,
+          presentation: presentation(decision_id, state.presentation),
           ideaId: idea_id,
           groupId: group_id,
+          decisionId: decision_id,
           context: context,
           thread: nil,
           draftPosition: if(context == socket.assigns.comments.context, do: socket.assigns.comments.draftPosition),
@@ -264,16 +303,18 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     %{current_scope: scope, project: project, session_id: id, comments: state} = socket.assigns
 
     source =
-      if state.groupId,
-        do: Ideation.group_comment_source(scope, project.id, id, state.groupId),
-        else: Ideation.comment_source(scope, project.id, id, state.ideaId)
+      cond do
+        state.decisionId -> Ideation.decision_comment_source(scope, project.id, id, state.decisionId)
+        state.groupId -> Ideation.group_comment_source(scope, project.id, id, state.groupId)
+        true -> Ideation.comment_source(scope, project.id, id, state.ideaId)
+      end
 
     case source do
       {:ok, _source} ->
         put(socket, %{
           canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content)),
           members: members(scope, project.id),
-          selectedSourceId: state.groupId || state.ideaId || id,
+          selectedSourceId: state.decisionId || state.groupId || state.ideaId || id,
           selectedSourceLabel: nil
         })
 
@@ -298,15 +339,21 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     with {:ok, %{thread: %{source: %{type: type, session_id: session_id}}} = detail} <-
            Projects.get_comment_thread(socket.assigns.current_scope, socket.assigns.project.id, id, opts),
          true <-
-           type in ["ideation_session", "ideation_idea", "ideation_group"] and session_id == socket.assigns.session_id do
+           type in ~w(ideation_session ideation_idea ideation_group ideation_decision) and
+             session_id == socket.assigns.session_id do
       {:ok, detail}
     else
       _ -> {:error, :not_found}
     end
   end
 
+  defp anchor(%{decisionId: id}) when is_integer(id), do: {:decision, id}
   defp anchor(%{groupId: id}) when is_integer(id), do: {:group, id}
   defp anchor(state), do: state.ideaId
+
+  defp presentation(decision_id, _current) when is_integer(decision_id), do: "workspace"
+  defp presentation(nil, "workspace"), do: "canvas"
+  defp presentation(nil, current), do: current
 
   defp position(%{"position" => %{"x" => x, "y" => y}})
        when is_number(x) and is_number(y) and abs(x) <= 10_000_000 and abs(y) <= 10_000_000, do: {:ok, %{x: x, y: y}}

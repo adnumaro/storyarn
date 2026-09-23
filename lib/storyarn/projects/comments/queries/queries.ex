@@ -16,7 +16,9 @@ defmodule Storyarn.Projects.Comments.Queries do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
-  def ideation?(%{source_type: type}), do: type in ["ideation_session", "ideation_idea", "ideation_group"]
+  @ideation_types ~w(ideation_session ideation_idea ideation_group ideation_decision)
+
+  def ideation?(%{source_type: type}), do: type in @ideation_types
 
   def readable?(thread, scope) do
     not ideation?(thread) or not is_nil(available_source(thread, scope: scope))
@@ -91,7 +93,7 @@ defmodule Storyarn.Projects.Comments.Queries do
        when is_integer(id), do: sheet_source(thread.project_id, id, opts)
 
   defp anchored_source(%Thread{source_type: type, ideation_session_id: session_id} = thread, opts)
-       when type in ["ideation_session", "ideation_idea", "ideation_group"] and is_integer(session_id) do
+       when type in @ideation_types and is_integer(session_id) do
     with true <- session_id == thread.container_id,
          {:ok, anchor} <- ideation_pointer(thread),
          {:ok, %{id: id} = source} when id == thread.source_id <-
@@ -112,10 +114,16 @@ defmodule Storyarn.Projects.Comments.Queries do
   defp ideation_pointer(%{source_type: "ideation_group", source_id: id, ideation_group_id: id}) when is_integer(id),
     do: {:ok, {:group, id}}
 
+  defp ideation_pointer(%{source_type: "ideation_decision", source_id: id, ideation_decision_id: id})
+       when is_integer(id), do: {:ok, {:decision, id}}
+
   defp ideation_pointer(_), do: {:error, :not_found}
 
   def ideation_source(scope, project_id, session_id, {:group, id}, opts),
     do: Storyarn.Ideation.group_comment_source(scope, project_id, session_id, id, opts)
+
+  def ideation_source(scope, project_id, session_id, {:decision, id}, opts),
+    do: Storyarn.Ideation.decision_comment_source(scope, project_id, session_id, id, opts)
 
   def ideation_source(scope, project_id, session_id, anchor, opts),
     do: Storyarn.Ideation.comment_source(scope, project_id, session_id, anchor, opts)
@@ -132,6 +140,7 @@ defmodule Storyarn.Projects.Comments.Queries do
     |> then(fn query ->
       case anchor do
         {:group, id} -> where(query, [t], t.ideation_group_id == ^id)
+        {:decision, id} -> where(query, [t], t.ideation_decision_id == ^id)
         nil -> query
         id -> where(query, [t], t.ideation_idea_id == ^id)
       end

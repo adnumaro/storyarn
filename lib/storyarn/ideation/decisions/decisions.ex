@@ -5,6 +5,12 @@ defmodule Storyarn.Ideation.Decisions do
   alias Storyarn.Ideation.Decisions.Queries.Catalog
   alias Storyarn.Ideation.Decisions.Queries.Sources
 
+  defdelegate comment_source(scope, project_id, session_id, decision_id, opts),
+    to: Storyarn.Ideation.Decisions.Execution.CommentSource,
+    as: :get
+
+  defdelegate comment_sources_query(), to: Storyarn.Ideation.Decisions.Queries.CommentSources, as: :query
+
   defdelegate preview_sources(scope, project_id, session_id, selections), to: Sources, as: :preview
   defdelegate search_sources(scope, project_id, session_id, opts), to: Sources, as: :search
   defdelegate list(scope, project_id, session_id), to: Catalog

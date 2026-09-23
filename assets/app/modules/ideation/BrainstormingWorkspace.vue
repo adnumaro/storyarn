@@ -52,6 +52,7 @@ import type {
   BoardLink,
 } from "./types";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
+import type { DecisionRecord } from "@app/live/ideation/decisionTypes";
 import { NOTE_COLOR_IDS, noteColor, noteSwatch } from "./lib/noteColors";
 const {
   board,
@@ -59,6 +60,8 @@ const {
   comments,
   linked = null,
   decisionDraft = false,
+  decisions = [],
+  decisionFocus = null,
 } = defineProps<{
   board: Board;
   baseUrl: string;
@@ -66,6 +69,10 @@ const {
   linked?: BoardLink | null;
   /** A decision proposal is open: selecting notes adds them to its sources. */
   decisionDraft?: boolean;
+  /** The session's decisions, for the lanes at the bottom of each band. */
+  decisions?: DecisionRecord[];
+  /** The decision the panel is showing; its sources light up on the board. */
+  decisionFocus?: number | null;
 }>();
 const { t, error, options, member } = useBoardText();
 const selectedIds = ref<number[]>([]);
@@ -365,6 +372,24 @@ function select(ids: number[] | number | null) {
   const next = typeof ids === "number" ? [ids] : (ids ?? []);
   if (next.length !== 1 || next[0] !== selected.value) finish();
   selectedIds.value = next;
+  focusedDecision.value = null;
+}
+// A lane card selected on the board lights its sources; the panel's decision
+// does the same until the reader picks something else.
+const focusedDecision = ref<number | null>(null);
+const decisionLane = computed(() => ({
+  decisions,
+  focusId: focusedDecision.value ?? decisionFocus,
+  comments: comments?.decisionCounts ?? {},
+}));
+function focusDecision(id: number) {
+  selectedIds.value = [];
+  focusedDecision.value = id;
+}
+async function openDecision(id: number) {
+  focusedDecision.value = id;
+  const reply = await request("decisions_open", { decision_id: id });
+  if (reply.status === "error") failure.value = reply.code;
 }
 function presenceCommand(
   id: number,
@@ -1170,6 +1195,7 @@ onUnmounted(() => {
             : null,
           counts: roundCounts,
           masked,
+          lanes: decisionLane,
         }"
         @bands="measuredBands = $event"
         @update-privacy="updatePrivacy"
@@ -1186,6 +1212,8 @@ onUnmounted(() => {
         @delete-group="groups.remove"
         @reveal-group="revealGroup"
         @propose-group-decision="proposeDecision"
+        @focus-decision="focusDecision"
+        @open-decision="openDecision"
         @edit="edit"
         @change="notes.change"
         @change-state="(id, state) => changeState(state, id)"

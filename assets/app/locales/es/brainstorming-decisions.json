@@ -13,6 +13,12 @@
     "empty": "Todavía no hay decisiones",
     "emptyHelp": "Selecciona ideas compartidas o un grupo para proponer una decisión. Podéis seguir explorando antes de acordar.",
     "retired": "Retiradas · {count}",
+    "lane": "Decisiones · {count}",
+    "laneRound": "Decisiones · Ronda {number} · {count}",
+    "supports": "Respalda {count} decisión | Respalda {count} decisiones",
+    "discussion": "Conversación",
+    "discussionHint": "Resolver no acepta; aceptar no resuelve.",
+    "comments": "{count} comentario | {count} comentarios",
     "formerMember": "Miembro no disponible",
     "status": {
       "toApply": "{pending} de {total} por aplicar",

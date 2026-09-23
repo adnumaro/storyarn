@@ -47,9 +47,11 @@ const drag = shallowRef<Drag | null>(null);
 let observer: ResizeObserver | null = null;
 let suppressedClick = false;
 let request = 0;
+// A decision's discussion is held by the decision panel, not the canvas.
+const canvasOpen = computed(() => state.open && state.presentation !== "workspace");
 const threads = computed(() => {
   const entries = new Map(state.pins.map((thread) => [thread.id, thread]));
-  if (state.thread) entries.set(state.thread.id, state.thread);
+  if (canvasOpen.value && state.thread) entries.set(state.thread.id, state.thread);
   return [...entries.values()];
 });
 function threadId(thread: CommentThread | null) {
@@ -247,9 +249,9 @@ watch(
   },
 );
 watch(
-  () => [state.open, state.thread?.id, state.context],
+  () => [canvasOpen.value, state.thread?.id, state.context],
   async () => {
-    if (!state.open) return;
+    if (!canvasOpen.value) return;
     await nextTick();
     const point = activePoint.value;
     if (point.x < 24 || point.y < 24 || point.x > view.width - 24 || point.y > view.height - 24)
@@ -257,7 +259,7 @@ watch(
   },
   { immediate: true },
 );
-watch([() => state.open, () => state.thread?.id], async ([open], [previousOpen, previousId]) => {
+watch([canvasOpen, () => state.thread?.id], async ([open], [previousOpen, previousId]) => {
   await nextTick();
   if (open) popup.value?.focus({ preventScroll: true });
   else if (previousOpen) {
@@ -301,14 +303,14 @@ onUnmounted(() => {
       :id="`brainstorming-comment-pin-${pin.thread.id}`"
       :key="pin.thread.id"
       :movable="state.canComment"
-      :selected="state.open && state.thread?.id === pin.thread.id"
+      :selected="canvasOpen && state.thread?.id === pin.thread.id"
       :unread="pin.thread.unread === true"
       :count="Math.max(0, pin.thread.message_count - 1)"
       :style="{ left: `${pin.point.x}px`, top: `${pin.point.y}px` }"
       :aria-label="
         $t('brainstormingComments.pin_label', { author: pin.thread.author.display_name })
       "
-      :aria-expanded="state.open && state.thread?.id === pin.thread.id"
+      :aria-expanded="canvasOpen && state.thread?.id === pin.thread.id"
       :aria-busy="pending && optimistic?.id === pin.thread.id"
       aria-describedby="brainstorming-comment-move-help"
       @click.stop="select(pin.thread, $event)"
@@ -327,7 +329,7 @@ onUnmounted(() => {
       @focus="hoverId = pin.thread.id"
     />
     <CommentPin
-      v-if="state.open && !state.thread"
+      v-if="canvasOpen && !state.thread"
       id="brainstorming-comment-draft-pin"
       draft
       :movable="state.canComment"
@@ -347,7 +349,7 @@ onUnmounted(() => {
       {{ $t("brainstormingComments.keyboard_move_hint") }}
     </p>
     <CommentPinPreview
-      v-if="hovered && !state.open && !drag"
+      v-if="hovered && !canvasOpen && !drag"
       id="brainstorming-comment-preview"
       class="absolute w-64"
       :thread="hovered.thread"
@@ -358,7 +360,7 @@ onUnmounted(() => {
       }"
     />
     <div
-      v-if="state.open"
+      v-if="canvasOpen"
       id="brainstorming-comment-popover"
       ref="popup"
       tabindex="-1"

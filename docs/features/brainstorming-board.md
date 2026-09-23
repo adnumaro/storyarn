@@ -36,9 +36,10 @@ the writer to continue with their own text. Leaving a changed form requires
 confirming that those unsaved changes can be discarded.
 
 Decisions are optional and available in shared sessions, including after idea
-contributions close. Archived sessions remain readable. They record agreement;
-they do not create a Draft, modify production content, track application, or add
-a separate decision conversation. Those are subsequent slices of ENG-141.
+contributions close. Archived sessions remain readable. They record agreement and
+how far it has been applied; they do not create a Draft or modify production
+content. Each round band ends in a lane of its decisions, and each decision
+carries its own discussion in the panel.
 
 See the [decision contract](../reference/brainstorming-decisions-contract.md) for
 permissions, immutable history, recovery and bounded collection limits.
