@@ -75,17 +75,19 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
   defp accept_ready_user(socket, invitation, user) do
     case Workspaces.accept_invitation(invitation, user) do
       {:ok, _membership} ->
-        {:ok,
-         socket
-         |> put_flash(
-           :info,
-           dgettext(
-             "workspaces",
-             "Invitation accepted! Log in with %{email} to get started.",
-             email: invitation.email
+        if InvitationHelpers.signed_in_as?(socket, user) do
+          {:ok,
+           socket
+           |> put_flash(
+             :info,
+             dgettext("workspaces", "Invitation accepted! Welcome to %{workspace}.",
+               workspace: invitation.workspace.name
+             )
            )
-         )
-         |> redirect(to: ~p"/users/log-in")}
+           |> redirect(to: ~p"/workspaces/#{invitation.workspace.slug}")}
+        else
+          accepted_redirect_to_log_in(socket, invitation)
+        end
 
       {:error, :already_accepted} ->
         {:ok,
@@ -116,6 +118,20 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
           public_home_path(socket.assigns.locale)
         )
     end
+  end
+
+  defp accepted_redirect_to_log_in(socket, invitation) do
+    {:ok,
+     socket
+     |> put_flash(
+       :info,
+       dgettext(
+         "workspaces",
+         "Invitation accepted! Log in with %{email} to get started.",
+         email: invitation.email
+       )
+     )
+     |> redirect(to: ~p"/users/log-in")}
   end
 
   defp redirect_to_registration(socket, invitation, token, registration_token) do

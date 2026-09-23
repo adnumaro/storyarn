@@ -65,15 +65,18 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       assert {:error, {:redirect, %{to: registration_path}}} =
                live(conn, invitation_path)
 
-      {:ok, view, _html} = live(conn, registration_path)
+      {_registration, conn} =
+        register_through_session_handoff(conn, registration_path, %{"password" => password})
 
-      assert {:error, {:live_redirect, %{to: ^invitation_path}}} =
-               render_click(view, "save", %{"user" => %{"password" => password}})
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == invitation_path
 
-      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
-               live(conn, invitation_path)
+      workspace_path = ~p"/workspaces/#{workspace.slug}"
 
-      assert flash["info"] =~ "Invitation accepted"
+      assert {:error, {:redirect, %{to: ^workspace_path, flash: flash}}} =
+               live(recycle(conn), invitation_path)
+
+      assert flash["info"] == "Invitation accepted! Welcome to #{workspace.name}."
 
       user = Accounts.get_user_by_email(email)
       assert Accounts.get_user_by_email_and_password(email, password)
@@ -83,6 +86,23 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       assert invitation.accepted_at
 
       assert Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: user.id)
+    end
+
+    test "sends an invitee who is signed in as someone else to log in", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      invitee = user_fixture()
+      other_user = user_fixture()
+
+      {encoded_token, _invitation} =
+        workspace_invitation_fixture(workspace, owner, invitee.email)
+
+      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
+               conn
+               |> log_in_user(other_user)
+               |> live(~p"/workspaces/invitations/#{encoded_token}")
+
+      assert flash["info"] =~ invitee.email
     end
 
     test "shows error for already accepted invitation", %{conn: conn} do

@@ -18,17 +18,28 @@ defmodule StoryarnWeb.UserSessionController do
     end
   end
 
-  # Token-backed POST used by the LiveView login form after inline validation.
+  # Token-backed POST used by the LiveView login form after inline validation
+  # and by the registration form once the account exists.
   defp create(conn, %{"user" => %{"_login_token" => login_token} = user_params}, info)
        when is_binary(login_token) and login_token != "" do
     case user_from_login_token(conn, login_token) do
-      {:ok, user} ->
+      {:ok, user, :login} ->
         conn
         |> delete_session(:login_handoff_nonce)
         |> log_in_authenticated_user(user, user_params, info)
 
+      {:ok, user, {:registration, return_to}} ->
+        conn
+        |> delete_session(:login_handoff_nonce)
+        |> put_registration_return_to(return_to)
+        |> log_in_authenticated_user(
+          user,
+          user_params,
+          dgettext("identity", "Account created successfully! Welcome.")
+        )
+
       :error ->
-        create_with_password(conn, user_params, info)
+        rejected_login_token(conn, user_params, info)
     end
   end
 
@@ -68,6 +79,20 @@ defmodule StoryarnWeb.UserSessionController do
     |> UserAuth.log_in_user(user, user_params)
   end
 
+  defp put_registration_return_to(conn, nil), do: conn
+  defp put_registration_return_to(conn, return_to), do: put_session(conn, :user_return_to, return_to)
+
+  # The registration form posts only its handoff token, so a rejected token has
+  # no password to fall back to: the account exists and the person signs in.
+  defp rejected_login_token(conn, %{"_handoff" => "registration"} = user_params, _info) do
+    conn
+    |> put_flash(:info, dgettext("identity", "Your account was created. Log in to continue."))
+    |> put_flash(:email, String.slice(user_params["email"] || "", 0, 160))
+    |> redirect(to: ~p"/users/log-in")
+  end
+
+  defp rejected_login_token(conn, user_params, info), do: create_with_password(conn, user_params, info)
+
   defp invalid_credentials_redirect(conn, user_params) do
     email = user_params["email"] || ""
 
@@ -79,9 +104,9 @@ defmodule StoryarnWeb.UserSessionController do
 
   defp user_from_login_token(conn, token) do
     with session_nonce when is_binary(session_nonce) <- get_session(conn, :login_handoff_nonce),
-         {:ok, user_id} when is_integer(user_id) <- UserLoginToken.verify(token, session_nonce),
+         {:ok, user_id, handoff} <- UserLoginToken.verify(token, session_nonce),
          user when not is_nil(user) <- get_user(user_id) do
-      {:ok, user}
+      {:ok, user, handoff}
     else
       _ -> :error
     end

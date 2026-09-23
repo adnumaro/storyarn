@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import PasswordInput from "@components/forms/PasswordInput.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -19,11 +19,19 @@ const {
   form: formProp,
   userEmail,
   invited = false,
+  triggerSubmit = false,
+  loginToken = null,
+  csrfToken,
+  loginAction,
 } = defineProps<{
   form: SignUpForm;
   loginUrl: string;
   userEmail?: string | null;
   invited?: boolean;
+  triggerSubmit?: boolean;
+  loginToken?: string | null;
+  csrfToken: string;
+  loginAction: string;
 }>();
 
 const form = useLiveForm(() => formProp, {
@@ -139,6 +147,20 @@ function updatePasswordConfirmation(value: string | number): void {
   passwordConfirmationValue.value = String(value);
 }
 
+const hiddenFormRef = ref<HTMLFormElement | null>(null);
+const handoffEmail = computed(() => (invited ? userEmail || "" : emailValue.value));
+
+watch(
+  () => triggerSubmit,
+  async (value) => {
+    if (value && loginToken && hiddenFormRef.value) {
+      await nextTick();
+      hiddenFormRef.value.submit();
+    }
+  },
+  { flush: "post" },
+);
+
 onMounted(() => {
   emailInput.value?.focus();
 });
@@ -154,6 +176,13 @@ onMounted(() => {
         {{ $t(invited ? "auth.sign_up.invited_subtitle" : "auth.sign_up.subtitle") }}
       </p>
     </div>
+
+    <form ref="hiddenFormRef" :action="loginAction" method="post" class="hidden">
+      <input type="hidden" name="_csrf_token" :value="csrfToken" />
+      <input type="hidden" name="user[_login_token]" :value="loginToken || ''" />
+      <input type="hidden" name="user[_handoff]" value="registration" />
+      <input type="hidden" name="user[email]" :value="handoffEmail" />
+    </form>
 
     <form id="registration-form" class="space-y-4" novalidate @submit.prevent="form.submit()">
       <div class="space-y-1.5">

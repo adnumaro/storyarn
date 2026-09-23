@@ -19,6 +19,8 @@ defmodule StoryarnWeb.ConnCase do
 
   alias Storyarn.Accounts.Scope
 
+  @endpoint StoryarnWeb.Endpoint
+
   using do
     quote do
       use StoryarnWeb, :verified_routes
@@ -103,6 +105,38 @@ defmodule StoryarnWeb.ConnCase do
     |> Phoenix.ConnTest.init_test_session(%{})
     |> Plug.Conn.put_session(:locale, "en")
     |> Plug.Conn.put_session(:user_token, token)
+  end
+
+  @doc """
+  Submits the registration LiveView at `path` and follows the hidden session
+  form it arms, as the browser does.
+
+  The page is fetched with `get/2` first so the conn carries the session nonce
+  the handoff token is bound to. Returns the registration Vue component and the
+  conn after the session POST.
+  """
+  def register_through_session_handoff(conn, path, user_params) do
+    import Phoenix.ConnTest
+    import Phoenix.LiveViewTest
+
+    conn = get(conn, path)
+    {:ok, view, _html} = live(conn)
+
+    render_click(view, "save", %{"user" => user_params})
+
+    registration = LiveVue.Test.get_vue(view, name: "live/auth/registration/AuthRegistrationForm")
+
+    conn =
+      conn
+      |> recycle()
+      |> post(registration.props["login-action"], %{
+        "user" => %{
+          "_login_token" => registration.props["login-token"],
+          "_handoff" => "registration"
+        }
+      })
+
+    {registration, conn}
   end
 
   @doc """

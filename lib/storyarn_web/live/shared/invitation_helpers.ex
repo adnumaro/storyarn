@@ -24,4 +24,12 @@ defmodule StoryarnWeb.Live.Shared.InvitationHelpers do
     do: {:ok, socket}
 
   def handle_acceptance_error(socket, {:error, _reason}, _limit_message, _redirect_path), do: {:ok, socket}
+
+  @doc """
+  Whether the browser accepting the invitation is already signed in as the
+  invited user, as it is right after that user sets a password.
+  """
+  @spec signed_in_as?(Socket.t(), %{id: term()}) :: boolean()
+  def signed_in_as?(%Socket{assigns: %{current_scope: %{user: %{id: user_id}}}}, %{id: user_id}), do: true
+  def signed_in_as?(_socket, _user), do: false
 end
