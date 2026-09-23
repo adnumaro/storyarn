@@ -80,26 +80,35 @@ Recovery includes groups, memberships and revisions in its sealed inventory.
 
 ## Decisions capability
 
-Decisions owns proposed conclusions, responsibility, explicit acceptance and
-immutable history in `ideation_decisions` and `ideation_decision_revisions`.
-Sources pin shared idea or group revisions and their recovery identities. Frozen
-source text is encrypted separately from its remappable identity metadata.
-The source capability remains authoritative for visibility and published content.
+Decisions owns what a team agreed to do and how far it has been applied, in
+`ideation_decisions`, `ideation_decision_revisions` and
+`ideation_decision_applications`. A decision is an object: one verb (create,
+change, test, keep or discard), up to five affected Sheets, Flows or Scenes or
+free labels for something not yet created, a conclusion, an optional reason and
+an optional next action with its owner. Sources pin shared idea or group
+revisions and their recovery identities; affected content is pinned by type, ID
+and creation identity, with its name frozen in encrypted context so a replaced
+target reads as unavailable instead of silently pointing at a newcomer. The
+round of a decision is the newest round among its sources.
 
-Propose, revise and accept are distinct atomic commands with current Project and
-session authorization, optimistic decision versions and durable request receipts.
-Revising preserves the previously accepted agreement while producing a new
-proposal. Accepting records the exact proposal as a new revision; previous
-agreements and their sources remain in history. Responsibility is explicit and
-does not grant membership or private-content access. Sources of a private round
-are unavailable to decisions until the round is revealed.
+Propose, revise, accept, withdraw and declare are distinct atomic commands with
+current Project and session authorization, optimistic versions and durable
+request receipts. Registering is proposing and accepting in one command when the
+proposer is the responsible person; it writes two consecutive records. Accepting a
+proposal that names a decision it replaces supersedes that decision with a
+closing record on its own history. Withdrawing a revision keeps the earlier
+agreement in force; withdrawing a proposal without one retires it. Nothing is
+deleted and nothing is rejected.
 
-Decisions do not rewrite their source material, create Drafts, start conversations
-or apply changes to authoring tools. Recovery retains all revisions, accepted
-version numbers, sources and receipts, and never executes acceptance. Receipts in
-replaced generations of the same logical session prevent reexecuting commands
-after rollback; a new acceptance requires a fresh request key. This check exposes
-no historical content. See the
+Application is declared per target of the agreement in force, by any editor, as a
+statement rather than a verification. Declarations are append-only and belong to
+one agreement: accepting a revision starts over with every target not applied,
+while earlier declarations stay in the history. Decisions never read or write the
+affected content.
+
+Recovery retains every revision, declaration, supersession link and receipt, and
+never executes acceptance. Receipts in replaced generations of the same logical
+session prevent reexecuting commands after rollback. See the
 [decision contract](../../../docs/reference/brainstorming-decisions-contract.md).
 
 ## References capability
@@ -161,7 +170,7 @@ of the session transaction, not a background side effect. Queries and entities
 never write or acquire locks. Physical project deletion cascades its records;
 archive only changes the session lifecycle and records a revision.
 
-Recovery is the privileged reconstitution capability for the sixteen session/round/timer/idea/group/reference/decision
+Recovery is the privileged reconstitution capability for the seventeen session/round/timer/idea/group/reference/decision
 tables. Its closed inventory uses raw encrypted fields and owns the derived
 `ideation_recovery_captures` cache. `execution/` coordinates capture/reconstitution;
 `adapters/` handles bounded persistence and encryption; `contracts/` owns the

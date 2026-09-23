@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { Check, Search, X, Layers, StickyNote, Loader2 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
+import { sourceLabel } from "./decisionStatus";
 import type { DecisionSource, DecisionSourceType } from "./decisionTypes";
 const { sources, results, nextCursor, searched, pending } = defineProps<{
   sources: DecisionSource[];
@@ -42,6 +43,21 @@ function search(next: number | null = null, history: Array<number | null> = []) 
     cursor.value = next;
     applied.value = key;
   });
+}
+// Round, author and state place a note the reader cannot see on the board.
+function meta(source: DecisionSource) {
+  return [
+    source.roundNumber
+      ? t("brainstormingDecisions.sourceRound", { number: source.roundNumber })
+      : null,
+    source.authorName,
+    source.state === "parked" || source.state === "discarded"
+      ? t(`brainstormingDecisions.sourceStates.${source.state}`)
+      : null,
+    selected(source) ? t("brainstormingDecisions.alreadySource") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 function changeType(next: DecisionSourceType) {
   type.value = next;
@@ -110,7 +126,7 @@ onMounted(async () => {
         <button
           :id="`decision-source-option-${source.type}-${source.id ?? source.identity}`"
           type="button"
-          class="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent disabled:opacity-50"
+          class="flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent disabled:opacity-60"
           :aria-pressed="selected(source)"
           :disabled="pending || selected(source) || !source.available || sources.length >= 20"
           @click="emit('select', source)"
@@ -120,16 +136,12 @@ onMounted(async () => {
             class="mt-0.5 size-4 shrink-0 text-muted-foreground"
           /><StickyNote v-else class="mt-0.5 size-4 shrink-0 text-muted-foreground" /><span
             class="min-w-0"
-            ><span class="block break-words text-xs font-medium">{{
-              source.available
-                ? source.title || t("brainstormingDecisions.untitledSource")
-                : t("brainstormingDecisions.sourceUnavailable")
+            ><span class="block truncate text-[13px] leading-[18px]">{{
+              source.available ? sourceLabel(source) : t("brainstormingDecisions.sourceUnavailable")
             }}</span
-            ><span
-              v-if="source.available"
-              class="mt-0.5 line-clamp-2 block text-[11px] text-muted-foreground"
-              >{{ source.preview }}</span
-            ></span
+            ><span v-if="source.available" class="mt-0.5 block text-[11px] text-muted-foreground">{{
+              meta(source)
+            }}</span></span
           >
         </button>
       </li>

@@ -86,6 +86,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         linked={@linked}
         base-url={@urls.tools["brainstorming"]}
         comments={@comments}
+        decision-draft={@decisions.open and @decisions.mode in ["create", "revise"]}
       />
       <.vue
         v-component="live/ideation/BoardPanels"

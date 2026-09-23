@@ -27,7 +27,7 @@ defmodule Storyarn.Ideation.Recovery.Records do
       {:ok,
        %{
          "format" => "storyarn.ideation",
-         "version" => 8,
+         "version" => 9,
          "actors" => actors,
          "rows" =>
            Map.new(rows, fn {collection, entries} ->
@@ -47,7 +47,15 @@ defmodule Storyarn.Ideation.Recovery.Records do
   end
 
   def direct_reference_destinations(project_id, rows) do
-    targets = for row <- rows["references"], not is_nil(row["target_id"]), do: {row["target_type"], row["target_id"]}
+    references = for row <- rows["references"], not is_nil(row["target_id"]), do: {row["target_type"], row["target_id"]}
+
+    decisions =
+      for row <- Map.get(rows, "decision_revisions", []),
+          target <- Map.get(row, "targets", %{"items" => []})["items"],
+          not is_nil(target["id"]),
+          do: {target["type"], target["id"]}
+
+    targets = Enum.uniq(references ++ decisions)
 
     with {:ok, identities} <- Projects.ideation_recovery_target_identities(project_id, targets) do
       destinations =

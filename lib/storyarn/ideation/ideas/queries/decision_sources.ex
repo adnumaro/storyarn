@@ -32,6 +32,9 @@ defmodule Storyarn.Ideation.Ideas.Queries.DecisionSources do
         identity: i.recovery_identity,
         version: r.number,
         author_id: i.author_id,
+        state: i.state,
+        round_id: i.round_id,
+        round_number: mask.number,
         title: r.title,
         body: r.body
       }

@@ -27,11 +27,12 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
 
     act(view, ctx, "create", proposal(view, ctx))
     selected = state(view)["selected"]
-    assert selected["title"] == "Keep the ending quiet"
+    assert selected["proposal"]["title"] == "Keep the ending quiet"
+    assert selected["proposal"]["verb"] == "change"
     assert selected["status"] == "proposed"
     refute selected["canAccept"]
-    assert selected["ownerId"] == ctx.facilitator.user.id
-    assert selected["previousAgreement"] == nil
+    assert selected["proposal"]["responsibleId"] == ctx.facilitator.user.id
+    assert selected["accepted"] == nil
     assert {:ok, unchanged} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id)
     assert unchanged.body == ctx.idea.body
   end
@@ -63,7 +64,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     act(view, ctx, "accept", selected_request(view))
     accepted = state(view)["selected"]
     assert accepted["status"] == "accepted"
-    assert accepted["acceptedAt"]
+    assert accepted["accepted"]["operation"] == "accept"
 
     act(view, ctx, "begin_revision", selected_request(view))
     assert state(view)["mode"] == "revise"
@@ -71,22 +72,22 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     act(view, ctx, "revise", Map.put(attrs, :conclusion, "Let the player leave a final note."))
     revised = state(view)["selected"]
     assert revised["status"] == "proposed"
-    assert revised["conclusion"] == "Let the player leave a final note."
-    assert revised["previousAgreement"]["conclusion"] == accepted["conclusion"]
-    assert revised["previousAgreement"]["revision"] == accepted["revision"]
+    assert revised["proposal"]["conclusion"] == "Let the player leave a final note."
+    assert revised["accepted"]["conclusion"] == accepted["accepted"]["conclusion"]
+    assert revised["accepted"]["revision"] == accepted["accepted"]["revision"]
 
     act(view, ctx, "accept", selected_request(view))
     assert state(view)["selected"]["status"] == "accepted"
     act(view, ctx, "history", %{decision_id: revised["id"]})
-    assert Enum.map(state(view)["history"], & &1["operation"]) == ["accepted", "revised", "accepted", "proposed"]
-    assert Enum.at(state(view)["history"], 2)["conclusion"] == accepted["conclusion"]
+    assert Enum.map(state(view)["history"], & &1["operation"]) == ["accept", "revise", "accept", "propose"]
+    assert Enum.at(state(view)["history"], 2)["text"] == accepted["accepted"]["conclusion"]
   end
 
   test "revising a changed source keeps its discussed base until explicitly refreshed", ctx do
     view = open_board(ctx, ctx.facilitator)
     act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})
     act(view, ctx, "create", proposal(view, ctx))
-    original = hd(state(view)["selected"]["sources"])
+    original = hd(state(view)["selected"]["proposal"]["sources"])
 
     assert {:ok, edited} =
              Ideation.update_idea(
@@ -104,7 +105,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     act(view, ctx, "begin_revision", selected_request(view))
     assert [%{"changed" => true, "preview" => "The player chooses to stay."}] = state(view)["sources"]
     act(view, ctx, "revise", Map.merge(proposal(view, ctx), selected_request(view)))
-    assert hd(state(view)["selected"]["sources"])["version"] == original["version"]
+    assert hd(state(view)["selected"]["proposal"]["sources"])["version"] == original["version"]
 
     act(view, ctx, "begin_revision", selected_request(view))
     act(view, ctx, "refresh_sources")
@@ -175,7 +176,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     view = open_board(ctx, ctx.facilitator)
     act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})
     act(view, ctx, "create", proposal(view, ctx))
-    original = hd(state(view)["selected"]["sources"])
+    original = hd(state(view)["selected"]["proposal"]["sources"])
     shared = ctx |> edit_source(ctx.idea, "<p>A newer shared ending</p>") |> then(&publish_idea(ctx, &1))
     private = edit_source(ctx, shared, "<p>A newer private ending</p>")
     deleted = delete_source(ctx, private)
@@ -197,8 +198,8 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert source["id"] == ctx.idea.id
     assert state(view)["context"] == context
     act(view, ctx, "revise", Map.merge(proposal(view, ctx), selected_request(view)))
-    assert hd(state(view)["selected"]["sources"])["version"] == original["version"]
-    assert hd(state(view)["selected"]["sources"])["preview"] == original["preview"]
+    assert hd(state(view)["selected"]["proposal"]["sources"])["version"] == original["version"]
+    assert hd(state(view)["selected"]["proposal"]["sources"])["preview"] == original["preview"]
   end
 
   test "a viewer can read but cannot create, accept, or reassign a decision", ctx do
@@ -220,7 +221,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     attrs = author |> proposal(ctx) |> Map.merge(selected_request(author)) |> Map.put(:owner_id, ctx.author.user.id)
     act(author, ctx, "revise", attrs)
     assert state(author)["error"]
-    assert state(author)["selected"]["ownerId"] == ctx.facilitator.user.id
+    assert state(author)["selected"]["proposal"]["responsibleId"] == ctx.facilitator.user.id
   end
 
   test "privacy and access transitions clear every decision preview and old events are fenced", ctx do
@@ -259,7 +260,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert decisions.items == []
   end
 
-  test "loading more decisions retains and reauthorizes the displayed range", ctx do
+  test "the whole list is read at once and in the reader's order", ctx do
     {:ok, sources} =
       Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [%{type: "idea", id: ctx.idea.id}])
 
@@ -269,7 +270,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
                  Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, %{
                    title: "Proposal #{number}",
                    conclusion: "A shared alternative",
-                   reason: "It fits the scene",
+                   verb: "test",
                    responsible_id: ctx.facilitator.user.id,
                    sources: sources,
                    request_key: Ecto.UUID.generate()
@@ -280,12 +281,66 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
 
     view = open_board(ctx, ctx.viewer)
     act(view, ctx, "open")
-    assert length(state(view)["items"]) == 20
-    act(view, ctx, "load_more", %{cursor: state(view)["nextCursor"]})
-    assert length(state(view)["items"]) == 21
     assert Enum.map(state(view)["items"], & &1["id"]) == decisions |> Enum.reverse() |> Enum.map(& &1.id)
-    act(view, ctx, "reload")
-    assert length(state(view)["items"]) == 21
+    assert state(view)["viewerId"] == ctx.viewer.user.id
+  end
+
+  test "a responsible proposer registers in one step, declares application and withdraws a revision", ctx do
+    sheet = Storyarn.SheetsFixtures.sheet_fixture(ctx.project, %{name: "Mara"})
+    view = open_board(ctx, ctx.author)
+    act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})
+    act(view, ctx, "search_targets", %{search: "Mar"})
+    assert [%{"type" => "sheet", "id" => sheet_id, "name" => "Mara"}] = state(view)["targetResults"]
+    assert sheet_id == sheet.id
+
+    attrs =
+      view
+      |> proposal(ctx)
+      |> Map.merge(%{owner_id: ctx.author.user.id, register: true, targets: [%{type: "sheet", id: sheet.id}]})
+
+    act(view, ctx, "create", attrs)
+    registered = state(view)["selected"]
+    assert registered["status"] == "accepted"
+    assert [%{"key" => key, "name" => "Mara", "application" => nil}] = registered["application"]["targets"]
+
+    act(view, ctx, "declare", %{
+      decision_id: registered["id"],
+      agreement: registered["accepted"]["revision"],
+      target_key: key,
+      state: "applied",
+      note: "Rewrote her motivation",
+      request_key: Ecto.UUID.generate()
+    })
+
+    assert %{"pending" => 0, "targets" => [%{"application" => %{"state" => "applied"}}]} =
+             state(view)["selected"]["application"]
+
+    act(view, ctx, "history", %{decision_id: registered["id"]})
+    assert [%{"kind" => "application", "targetName" => "Mara"}, %{"operation" => "registered"}] = state(view)["history"]
+
+    act(view, ctx, "begin_revision", selected_request(view))
+    act(view, ctx, "revise", Map.merge(attrs, Map.put(selected_request(view), :register, false)))
+    assert state(view)["selected"]["status"] == "proposed"
+    act(view, ctx, "withdraw", selected_request(view))
+    assert state(view)["selected"]["status"] == "accepted"
+    assert state(view)["selected"]["accepted"]["revision"] == registered["accepted"]["revision"]
+  end
+
+  test "selecting notes while a proposal is open adds them to its sources", ctx do
+    other = idea_fixture(ctx, %{title: "Another ending", body: "<p>Leave at dawn.</p>", visibility: :shared})
+    view = open_board(ctx, ctx.author)
+    render_hook(view, "decisions_add_sources", payload(view, ctx, %{idea_ids: [other.id]}))
+    assert state(view)["error"] == "stale_board"
+    act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})
+    assert LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props["decision-draft"]
+
+    render_hook(
+      view,
+      "decisions_add_sources",
+      Map.delete(payload(view, ctx, %{idea_ids: [other.id]}), :decision_context)
+    )
+
+    assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id, other.id]
   end
 
   defp open_board(ctx, actor) do
@@ -380,6 +435,8 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
       title: "Keep the ending quiet",
       conclusion: "Let the player choose to stay.",
       reason: "It resolves the character's promise.",
+      verb: "change",
+      targets: [],
       owner_id: ctx.facilitator.user.id,
       sources: state(view)["sources"],
       request_key: Ecto.UUID.generate()
@@ -388,6 +445,6 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
 
   defp selected_request(view) do
     selected = state(view)["selected"]
-    %{decision_id: selected["id"], revision: selected["revision"], request_key: Ecto.UUID.generate()}
+    %{decision_id: selected["id"], revision: selected["version"], request_key: Ecto.UUID.generate()}
   end
 end

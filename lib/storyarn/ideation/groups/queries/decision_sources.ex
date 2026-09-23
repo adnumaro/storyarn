@@ -28,6 +28,9 @@ defmodule Storyarn.Ideation.Groups.Queries.DecisionSources do
         identity: g.recovery_identity,
         version: r.number,
         author_id: g.author_id,
+        state: nil,
+        round_id: g.round_id,
+        round_number: mask.number,
         title: r.title,
         body: r.synthesis
       }

@@ -23,16 +23,16 @@ defmodule Storyarn.Ideation do
   @doc "Searches shared idea and group sources with bounded cursor pagination."
   defdelegate search_decision_sources(scope, project_id, session_id, opts \\ []), to: Decisions, as: :search_sources
 
-  @doc "Lists readable decisions with their current proposal and last accepted agreement."
-  defdelegate list_decisions(scope, project_id, session_id, opts \\ []), to: Decisions, as: :list
+  @doc "Lists every readable decision of a session with its object, agreement and application."
+  defdelegate list_decisions(scope, project_id, session_id), to: Decisions, as: :list
 
   @doc "Reads a decision and its retained agreement using current session and source access."
   defdelegate get_decision(scope, project_id, session_id, id), to: Decisions, as: :get
 
-  @doc "Lists immutable authored proposals and explicit acceptances, with bounded pagination."
-  defdelegate decision_history(scope, project_id, session_id, id, opts \\ []), to: Decisions, as: :history
+  @doc "Lists a decision's immutable records and application declarations, newest first."
+  defdelegate decision_history(scope, project_id, session_id, id), to: Decisions, as: :history
 
-  @doc "Proposes a decision from exact shared source previews without publishing private content."
+  @doc "Proposes a decision, or registers it in one step when the proposer is responsible for it."
   defdelegate propose_decision(scope, project_id, session_id, attrs), to: Decisions, as: :propose
 
   @doc "Creates a revised proposal while preserving the last accepted agreement."
@@ -40,6 +40,14 @@ defmodule Storyarn.Ideation do
 
   @doc "Records explicit acceptance only by the assigned responsible editor."
   defdelegate accept_decision(scope, project_id, session_id, id, version, key), to: Decisions, as: :accept
+
+  @doc "Withdraws a proposal, or a revision while its earlier agreement stays in force."
+  defdelegate withdraw_decision(scope, project_id, session_id, id, version, key), to: Decisions, as: :withdraw
+
+  @doc "Declares how far one affected target of the agreement in force has been applied."
+  defdelegate declare_decision_application(scope, project_id, session_id, id, agreement, attrs),
+    to: Decisions,
+    as: :declare
 
   @doc "Opens an authorized editor context with linked explorations and available open sessions."
   defdelegate get_contextual_brainstorming(scope, project_id, type, id, opts \\ []),

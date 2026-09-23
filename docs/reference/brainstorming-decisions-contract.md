@@ -1,46 +1,93 @@
 # Brainstorming decisions
 
-> Scope: decision recording slice of ENG-141
+> Scope: the decision record and panel of ENG-141 (ENG-234)
 >
-> Last reviewed: 2026-09-15
+> Last reviewed: 2026-09-23
 
-Decisions record a proposed conclusion, its reason, a responsible participant and
-the shared ideas or group synthesis supporting it. Acceptance is explicit.
-Exploring content, grouping notes, writing synthesis and ending a round do not
-create or accept a decision automatically. A session can use decisions without
-using rounds or a timer, and can remain an exploration without any decisions.
+A decision records what a team agreed to do: one verb, the content it affects, a
+conclusion, and the shared ideas or group synthesis behind it. Acceptance is
+explicit. Exploring content, grouping notes, writing synthesis and ending a round
+do not create or accept a decision automatically. A session can use decisions
+without rounds or a timer, and can remain an exploration without any decisions.
+
+## The object
+
+A decision has exactly one verb: `create`, `change`, `test`, `keep` or
+`discard`. It affects zero to five targets. A target is an existing Sheet, Flow or
+Scene, pinned by type, ID and creation identity, or a free label and type for
+something that does not exist yet and will be created later by a person. The
+target's name is frozen in encrypted context; a target that is deleted or
+replaced reads as unavailable with that name rather than pointing at newer
+content.
+
+The conclusion is required. The reason and the next action are optional; a next
+action names what happens next in the editor and may name an editor who owns it.
+The owner carries no authority over the decision. The title is derived by the
+client from the first sentence of the conclusion until someone edits it; the
+server stores whatever title is sent. A decision's round is the newest round
+among its sources, recorded when the proposal is written.
 
 ## Proposal and agreement
 
-A proposal requires a title, conclusion, reason, responsible participant and at
-least one shared source from its own session. An editor selects published ideas
-or groups; the server prepares the exact identities and versions available to
-that editor. The responsible participant must have current project edit access.
+A proposal requires a conclusion, a verb, a responsible participant and at least
+one shared source from its own session. An editor selects published ideas or
+groups; the server prepares the exact identities and versions available to that
+editor. The responsible participant must have current project edit access.
 Assigning responsibility does not grant membership or publish private material.
 Only the proposal's responsible participant, with current edit access, can
 accept it. Project ownership, facilitation and the session's decision-owner
 assignment do not grant acceptance authority. An explicit revision can reassign
 responsibility only when submitted by the current responsible participant or
-the project owner; the owner can repair an unavailable assignment without
-accepting on that participant's behalf.
+the project owner.
 
-Each decision has one current proposal and may also have a previously accepted
-agreement. Creating the proposal writes revision 1. Every revision or acceptance
-adds an immutable numbered record with the acting participant, responsibility,
-text, sources, timestamp and durable request receipt.
+When the proposer is also the responsible participant, the proposal can be
+registered in one step. Registering writes two consecutive records, a proposal and
+its acceptance by the same person; saving as a proposal writes only the first.
 
-Acceptance preserves the proposal's content and records a new `accept` revision.
-`accepted_version` points to that revision number. Revising an accepted decision
-creates a new `proposed` revision and retains the previous accepted agreement.
-Accepting the new proposal updates the accepted pointer while all earlier
-agreements and their supporting sources remain in history. Revising a conclusion
-does not silently withdraw or replace the existing agreement.
+Each decision has one current proposal and may also have an agreement in force.
+Creating the proposal writes revision 1. Every revision, acceptance, withdrawal or
+supersession adds an immutable numbered record with the acting participant,
+responsibility, content, sources, targets, timestamp and durable request receipt.
+Records that close a proposal or an agreement copy the content they close.
 
-The two persisted statuses are `proposed` and `accepted`. A proposed decision
-with an accepted version has a pending revision alongside its earlier agreement.
-This slice has no rejection, deletion, automatic application or undo of agreement
-history. Responsibility changes are explicit revisions rather than mutable
-metadata outside the audit trail.
+Revising an accepted decision creates a new proposal and keeps the earlier
+agreement in force until the revision is accepted. Accepting it moves the
+agreement; earlier agreements and their sources remain in history.
+
+## Lifecycle
+
+The persisted statuses are `proposed`, `accepted`, `withdrawn` and `superseded`.
+A proposed decision with an agreement in force has a pending revision alongside
+it.
+
+- **Withdraw.** The person who wrote the current proposal, or the project owner,
+  can withdraw it. Withdrawing a revision keeps the earlier agreement in force and
+  the decision stays accepted; withdrawing a proposal without one retires the
+  decision as withdrawn. A withdrawn decision cannot be revised or accepted.
+- **Supersede.** A proposal may name one decision of the same session that it
+  replaces; that decision must have an agreement in force. When the proposal is
+  accepted or registered, the replaced decision receives a closing `supersede`
+  record that links to its replacement and becomes read-only. If the replaced
+  decision is no longer in force at that moment, acceptance fails with
+  `replaced_decision_unavailable` and nothing is written.
+
+There is no rejection and no deletion. Retired decisions stay readable with their
+history.
+
+## Application
+
+Application is declared per target of the agreement in force: `not_applied`
+(the default when nothing has been declared), `partially_applied`, `applied` or
+`no_change_needed`, with the declaring editor, a timestamp and an optional
+encrypted note. A decision without affected content declares on itself. A
+declaration is a statement, not a verification; it never reads or changes the
+affected content. The latest declaration per target counts, and the decision
+derives how many targets are still to apply.
+
+Declarations are append-only and belong to one agreement. Accepting a revision
+starts a new agreement in which every target is not applied again; the earlier
+declarations remain in the history. A superseded decision keeps its application
+records but accepts no new ones.
 
 ## Sources and visibility
 
@@ -74,50 +121,54 @@ participant, not a cached session role.
 
 ## Persistence, concurrency and limits
 
-Ideation owns the Decisions capability and both `ideation_decisions` and
-`ideation_decision_revisions`. External callers use `Storyarn.Ideation`; other
-capabilities supply shared sources through their own facades. Decisions never
-edit the original notes, group synthesis or referenced authoring tools.
+Ideation owns the Decisions capability and `ideation_decisions`,
+`ideation_decision_revisions` and `ideation_decision_applications`. External
+callers use `Storyarn.Ideation`; other capabilities supply shared sources and
+target names through their own facades. Decisions never edit the original notes,
+group synthesis or referenced authoring tools.
 
 Commands use the existing Project access locks, session lock and an optimistic
-decision version. A UUID request identity and content fingerprint make uncertain
-retries recognizable. A request cannot acquire a different meaning by reusing
-its key. Retry responses are subject to current access and do not execute a
-second acceptance or revise an agreement already retained in history.
+decision version; declarations check the agreement they were made against
+instead. A UUID request identity and content fingerprint make uncertain retries
+recognizable. A request cannot acquire a different meaning by reusing its key. A
+command that writes several records derives a receipt for each from its key.
+Retry responses are subject to current access and do not execute a second
+acceptance or revise an agreement already retained in history.
 
-Proposal and revision commands validate the responsible participant's effective
-membership with `FOR SHARE NOWAIT`. If a concurrent membership change holds that
-row, the command returns `responsible_busy` without writing a decision revision.
-The caller can retry after the change completes; eligibility is checked again.
-Successful membership locks remain held through commit. This bounded candidate
-check avoids waiting on a second participant while already holding the actor's
-membership lock; it does not change the existing blocking authorization port.
+Proposal and revision commands validate the responsible participant and any
+next-action owner with `FOR SHARE NOWAIT`. If a concurrent membership change
+holds that row, the command returns `responsible_busy` without writing. The
+caller can retry after the change completes; eligibility is checked again.
 
-A session permits at most 100 decisions, each with at most 100 revisions and
-1–20 sources per revision. Decision titles are limited to 160 characters;
-conclusions and reasons to 4,000 characters each. Frozen source context is capped
-at 256,000 encoded JSON bytes. Reaching a limit produces an explicit failure;
-history and provenance are not silently pruned. Events carry invalidation and
-identity information rather than creative text.
+A session permits at most 100 decisions, each with at most 100 records, 1–20
+sources and 0–5 targets per revision, and 500 application declarations. Titles
+are limited to 160 characters, conclusions and reasons to 4,000, next actions to
+500, target labels to 160 and declaration notes to 1,000. Frozen source context
+is capped at 256,000 encoded JSON bytes. Reaching a limit produces an explicit
+failure; history and provenance are not silently pruned. Events carry
+invalidation and identity information rather than creative text.
 
 ## Recovery
 
-The sealed Ideation inventory version 6 includes the decision records and every
-immutable revision, including all accepted versions and request receipts.
-Versions 1–5 normalize to empty decision collections. The Project snapshot
-format and the outer encrypted compartment format remain unchanged.
+The sealed Ideation inventory version 9 includes the decision records, every
+immutable revision and every application declaration, with their request
+receipts. Inventories before version 9 carry decisions of the earlier model and
+normalize to empty decision collections. The Project snapshot format and the
+outer encrypted compartment format remain unchanged.
 
-Recovery copies encrypted decision text and source context directly from
-persistence. Sessions, decisions, source IDs and actor IDs are remapped through
-their existing recovery identities. Revision numbers and recovery UUIDs remain
+Recovery copies encrypted decision text, source and target context and
+declaration notes directly from persistence. Sessions, decisions, replacement
+links, rounds, source IDs and actor IDs are remapped through their existing
+recovery identities; affected content follows the reference-target rules. Revision numbers and recovery UUIDs remain
 stable, so the frozen source text needs no ID rewriting. A missing actor becomes
 unavailable; no replacement owner or facilitator is credited with the agreement.
 
-Validation requires contiguous revision history, coherent current and accepted
-versions, unique receipts, same-session sources, and actual published idea or
-retained group revisions. Frozen source text must match the cited revision.
-An acceptance must retain the prior proposal's content, responsibility and
-sources. Malformed or undecryptable inventories fail before replacement.
+Validation replays each history against the lifecycle above, requires the status
+and accepted version to follow from it, unique receipts, same-session sources and
+actual published idea or retained group revisions, and declarations on targets of
+an accepted agreement. Frozen source text must match the cited revision. Closing
+records must retain the content they close. Malformed or undecryptable
+inventories fail before replacement.
 
 Every decision revision participates in session-generation matching. Restoring
 an identical generation reuses it; distinct historical generations remain
@@ -140,5 +191,6 @@ Accepting the restored proposal requires a fresh explicit request with a new key
 
 Decisions do not create Drafts, materialize authoring entities, apply proposals to
 Sheets, Flows or Scenes, create comment conversations, run AI, or send work to
-external tools. Those workflows must consume explicit decisions through their
+external tools. Naming a target never grants access to it, and declaring it
+applied never checks it. Those workflows must consume explicit decisions through their
 own authorization and provenance contracts when implemented.

@@ -6,14 +6,39 @@ defmodule Storyarn.Ideation.Decisions.Rules.Input do
   defguard valid_version(version) when is_integer(version) and version in 1..100
   def get(attrs, key), do: MapAccess.get_flexible(attrs, key)
 
+  @verbs ~w(create change test keep discard)
+  @target_types ~w(sheet flow scene)
+  @states ~w(not_applied partially_applied applied no_change_needed)
+
+  def verbs, do: @verbs
+  def states, do: @states
+
   def command(attrs) when is_map(attrs) do
     with {:ok, title} <- text(get(attrs, :title), 160),
          {:ok, conclusion} <- text(get(attrs, :conclusion), 4000),
-         {:ok, reason} <- text(get(attrs, :reason), 4000),
+         {:ok, reason} <- optional_text(get(attrs, :reason), 4000),
+         {:ok, verb} <- verb(get(attrs, :verb)),
+         {:ok, targets} <- targets(get(attrs, :targets)),
+         {:ok, next_action, owner_id} <- next_action(get(attrs, :next_action), get(attrs, :next_action_owner_id)),
          responsible when valid_id(responsible) <- get(attrs, :responsible_id),
+         {:ok, replaces_id} <- optional_id(get(attrs, :replaces_id)),
+         {:ok, register?} <- flag(get(attrs, :register)),
          {:ok, sources} <- selections(get(attrs, :sources), true),
          {:ok, key} <- request_key(get(attrs, :request_key)) do
-      {:ok, %{title: title, conclusion: conclusion, reason: reason, responsible_id: responsible, sources: sources}, key}
+      {:ok,
+       %{
+         title: title,
+         conclusion: conclusion,
+         reason: reason,
+         verb: verb,
+         targets: targets,
+         next_action: next_action,
+         next_action_owner_id: owner_id,
+         responsible_id: responsible,
+         replaces_id: replaces_id,
+         register: register?,
+         sources: sources
+       }, key}
     else
       {:error, _} = error -> error
       _ -> {:error, :invalid_decision}
@@ -21,6 +46,89 @@ defmodule Storyarn.Ideation.Decisions.Rules.Input do
   end
 
   def command(_), do: {:error, :invalid_decision}
+
+  def application(attrs) when is_map(attrs) do
+    with {:ok, target_key} <- optional_uuid(get(attrs, :target_key)),
+         state when state in @states <- get(attrs, :state),
+         {:ok, note} <- optional_text(get(attrs, :note), 1000),
+         {:ok, key} <- request_key(get(attrs, :request_key)) do
+      {:ok, %{target_key: target_key, state: state, note: note}, key}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_application}
+    end
+  end
+
+  def application(_), do: {:error, :invalid_application}
+
+  defp verb(verb) when verb in @verbs, do: {:ok, verb}
+  defp verb(_), do: {:error, :invalid_decision}
+
+  # Existing content is named by type and ID; something that does not exist yet
+  # is a label and a type, created later by a person.
+  defp targets(nil), do: {:ok, []}
+
+  defp targets(items) when is_list(items) and length(items) <= 5 do
+    normalized = Enum.map(items, &target/1)
+
+    if Enum.all?(normalized, &is_map/1) and
+         length(Enum.uniq_by(normalized, &target_identity/1)) == length(normalized),
+       do: {:ok, normalized},
+       else: {:error, :invalid_decision_targets}
+  end
+
+  defp targets(_), do: {:error, :invalid_decision_targets}
+
+  defp target(item) when is_map(item) do
+    type = get(item, :type)
+    id = get(item, :id)
+
+    cond do
+      type not in @target_types -> nil
+      valid_id(id) -> %{type: type, id: id}
+      is_nil(id) -> label_target(type, get(item, :label))
+      true -> nil
+    end
+  end
+
+  defp target(_), do: nil
+
+  defp label_target(type, label) do
+    case text(label, 160) do
+      {:ok, label} -> %{type: type, label: label}
+      _ -> nil
+    end
+  end
+
+  defp target_identity(%{id: id, type: type}), do: {type, id}
+  defp target_identity(%{label: label, type: type}), do: {type, String.downcase(label)}
+
+  defp next_action(text, owner_id) do
+    with {:ok, text} <- optional_text(text, 500),
+         {:ok, owner_id} <- optional_id(owner_id),
+         true <- not is_nil(text) or is_nil(owner_id) do
+      {:ok, text, owner_id}
+    else
+      _ -> {:error, :invalid_decision}
+    end
+  end
+
+  defp optional_id(nil), do: {:ok, nil}
+  defp optional_id(id) when valid_id(id), do: {:ok, id}
+  defp optional_id(_), do: {:error, :invalid_decision}
+
+  defp optional_uuid(nil), do: {:ok, nil}
+
+  defp optional_uuid(value) do
+    case Ecto.UUID.cast(value) do
+      {:ok, uuid} -> {:ok, uuid}
+      _ -> {:error, :invalid_application}
+    end
+  end
+
+  defp flag(nil), do: {:ok, false}
+  defp flag(value) when is_boolean(value), do: {:ok, value}
+  defp flag(_), do: {:error, :invalid_decision}
 
   def request_key(value) do
     case Ecto.UUID.cast(value) do
@@ -89,9 +197,24 @@ defmodule Storyarn.Ideation.Decisions.Rules.Input do
 
     :crypto.hash(
       :sha256,
-      :erlang.term_to_binary({:ideation_decision_v1, operation, session_identity, decision_identity, version, attrs})
+      :erlang.term_to_binary({:ideation_decision_v2, operation, session_identity, decision_identity, version, attrs})
     )
   end
+
+  def application_fingerprint(session_identity, decision_identity, agreement, attrs) do
+    :crypto.hash(
+      :sha256,
+      :erlang.term_to_binary({:ideation_decision_application_v1, session_identity, decision_identity, agreement, attrs})
+    )
+  end
+
+  defp optional_text(nil, _max), do: {:ok, nil}
+
+  defp optional_text(value, max) when is_binary(value) do
+    if String.trim(value) == "", do: {:ok, nil}, else: text(value, max)
+  end
+
+  defp optional_text(_, _), do: {:error, :invalid_decision}
 
   defp text(value, max) when is_binary(value) and byte_size(value) <= max * 4 do
     if String.valid?(value) and String.length(value) <= max and String.trim(value) != "",
