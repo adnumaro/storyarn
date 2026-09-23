@@ -269,6 +269,7 @@ const busy = computed(() => pending !== null);
       :pending="busy"
       @declare="(key, state, note) => emit('declare', key, state, note)"
     />
+    <slot name="discussion" />
     <div class="flex flex-col gap-2">
       <template v-if="decision.canAccept">
         <Button id="decision-accept" class="w-full" :disabled="busy" @click="emit('accept')"

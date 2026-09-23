@@ -539,7 +539,7 @@ defmodule Storyarn.Projects.Comments do
   end
 
   defp publish_change(project_id, %{source_type: type, container_id: session_id})
-       when type in ["ideation_session", "ideation_idea", "ideation_group"] do
+       when type in ["ideation_session", "ideation_idea", "ideation_group", "ideation_decision"] do
     invalidate_ideation_activity(project_id)
     publish_ideation_change(project_id, session_id)
   end
@@ -570,7 +570,8 @@ defmodule Storyarn.Projects.Comments do
     %{surface: "sheet", sheet_id: thread.container_id, thread_id: thread.id}
   end
 
-  defp destination(%{source_type: type} = thread) when type in ~w(ideation_session ideation_idea ideation_group) do
+  defp destination(%{source_type: type} = thread)
+       when type in ~w(ideation_session ideation_idea ideation_group ideation_decision) do
     %{surface: "brainstorming", session_id: thread.container_id, thread_id: thread.id}
   end
 

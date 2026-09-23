@@ -84,11 +84,13 @@ mode, including for the idea author and project owner. An unpublished edit is
 never used as the discussion label or preview. Active group discussions share
 the session audience outside private mode, independently of the current members
 of the group. Group labels are identity-only; no synthesis or private member
-revision is materialized. Decision anchors remain dependent on ENG-141.
+revision is materialized. `ideation_decision` anchors a decision's discussion:
+it is project-readable like the decision, never takes a canvas position (create
+with a position and move are refused), and is labelled by identity only.
 
 Projects owns threads/messages; Ideation's public `comment_source` port owns the
 source's current audience and identity. Writes lock project access, then session,
-idea/group and thread. Generic detail, reply, resolution and idempotency replay also
+idea/group/decision and thread. Generic detail, reply, resolution and idempotency replay also
 check this audience. Hiding/deleting the source hides the entire discussion;
 unlike a missing public editor context, it must not leave a readable preview.
 The nullable source pointers and immutable recovery UUID prevent rebinding to

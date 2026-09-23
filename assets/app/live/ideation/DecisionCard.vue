@@ -11,6 +11,7 @@ import {
   FileText,
   Layers,
   ListChecks,
+  MessageSquare,
   Pencil,
   Replace,
   StickyNote,
@@ -38,11 +39,14 @@ const {
   size = "row",
   roundCount = 1,
   selected = false,
+  comments = 0,
 } = defineProps<{
   decision: DecisionRecord;
   size?: "row" | "compact" | "canvas";
   roundCount?: number;
   selected?: boolean;
+  /** Messages in the decision's open discussion. */
+  comments?: number;
 }>();
 const { t, locale } = useI18n();
 
@@ -247,6 +251,12 @@ const responsible = computed(
             ><span v-if="revision.sources.length > 1" class="shrink-0">{{
               t("brainstormingDecisions.moreSources", { count: revision.sources.length - 1 })
             }}</span></span
+          ><span class="flex-1" /><span
+            v-if="comments > 0"
+            data-decision-comments
+            class="inline-flex shrink-0 items-center gap-1"
+            :aria-label="t('brainstormingDecisions.comments', { count: comments })"
+            ><MessageSquare class="size-3" />{{ comments }}</span
           >
         </div>
         <div
@@ -387,6 +397,12 @@ const responsible = computed(
           ><span v-if="revision.sources.length > 1" class="shrink-0">{{
             t("brainstormingDecisions.moreSources", { count: revision.sources.length - 1 })
           }}</span></span
+        ><span class="flex-1" /><span
+          v-if="comments > 0"
+          data-decision-comments
+          class="inline-flex shrink-0 items-center gap-1"
+          :aria-label="t('brainstormingDecisions.comments', { count: comments })"
+          ><MessageSquare class="size-[11px]" />{{ comments }}</span
         >
       </div>
     </div>

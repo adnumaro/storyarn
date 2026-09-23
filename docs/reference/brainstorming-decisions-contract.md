@@ -187,10 +187,34 @@ existence; it does not expose historical decision content or grant access to the
 replaced session. The same key in a different logical session is independent.
 Accepting the restored proposal requires a fresh explicit request with a new key.
 
+## On the board
+
+Each round band ends in a lane that holds the decisions whose newest source round
+is that band. A decision whose round no longer exists, or never had one, joins the
+last band. Cards read left to right in the order of the list, retired decisions
+last, and thin connectors rise to each source the reader can still see. The lane
+is not a note: it has no in-place editing, colour or shape, and grows its band
+like any other content. Selecting a card outlines its sources; double-click or
+Enter opens it in the panel, which keeps its sources outlined while it is shown.
+Resting the pointer on a note that a decision cites directly shows the compact
+cards of those decisions; choosing one opens it.
+
+## Discussion
+
+A decision's discussion is an ordinary Brainstorming comment thread anchored to
+the decision (`ideation_decision`), shown inline in its detail under the
+application. The panel opens the newest thread about the decision, or a composer
+that starts one. The thread never takes a canvas position and never appears as a
+canvas pin; cards count the messages of its open threads instead. Every project
+reader can read it, like the decision itself, for as long as the session and the
+decision's recovery identity survive. Resolving the thread never accepts the
+decision, and accepting, withdrawing or superseding the decision never resolves
+the thread. Mentions, replies and followers notify through the ordinary comment
+inbox, and a `?thread=` link opens the panel on the decision.
+
 ## Boundaries
 
 Decisions do not create Drafts, materialize authoring entities, apply proposals to
-Sheets, Flows or Scenes, create comment conversations, run AI, or send work to
-external tools. Naming a target never grants access to it, and declaring it
+Sheets, Flows or Scenes, run AI, or send work to external tools. Naming a target never grants access to it, and declaring it
 applied never checks it. Those workflows must consume explicit decisions through their
 own authorization and provenance contracts when implemented.

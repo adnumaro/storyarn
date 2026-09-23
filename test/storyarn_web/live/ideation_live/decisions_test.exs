@@ -231,6 +231,9 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     act(view, ctx, "history", %{decision_id: state(view)["selected"]["id"]})
     old = payload(view, ctx, %{})
 
+    assert [%{"proposal" => %{"sources" => [%{"available" => true}]}}] = board(view)["decisions"]
+    assert Jason.encode!(board(view)["decisions"]) =~ "The player chooses to stay."
+
     set_private_mode(ctx, true)
     await_privacy(view, true)
     act(view, ctx, "reload")
@@ -238,6 +241,8 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert state(view)["selected"] == nil
     assert state(view)["history"] == []
     assert state(view)["sources"] == []
+    # The lane reads like the panel: nothing of a private source reaches the board.
+    refute Jason.encode!(board(view)["decisions"]) =~ "The player chooses to stay."
 
     render_hook(
       view,
@@ -258,6 +263,7 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     decisions = :sys.get_state(view.pid).socket.assigns.decisions
     refute decisions.open
     assert decisions.items == []
+    assert :sys.get_state(view.pid).socket.assigns.canvas_decisions == []
   end
 
   test "the whole list is read at once and in the reader's order", ctx do
@@ -343,6 +349,81 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id, other.id]
   end
 
+  test "the board draws every decision and a lane card opens it with its discussion", ctx do
+    view = open_board(ctx, ctx.author)
+    act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})
+    act(view, ctx, "create", proposal(view, ctx))
+    decision_id = state(view)["selected"]["id"]
+    act(view, ctx, "close")
+
+    assert [%{"id" => ^decision_id}] = board(view)["decisions"]
+    assert board(view)["decision-focus"] == nil
+    assert panels(view)["discussion"]["state"] == nil
+
+    render_hook(view, "decisions_open", payload(view, ctx, %{decision_id: decision_id}))
+    assert state(view)["mode"] == "detail"
+    assert board(view)["decision-focus"] == decision_id
+    discussion = panels(view)["discussion"]["state"]
+    assert discussion["decisionId"] == decision_id
+    assert discussion["presentation"] == "workspace"
+    assert discussion["thread"] == nil
+
+    render_hook(
+      view,
+      "comments_create",
+      discussion_payload(view, ctx, %{body: "Does this hold?", client_request_id: Ecto.UUID.generate()})
+    )
+
+    thread = panels(view)["discussion"]["state"]["thread"]
+    assert thread["source"]["type"] == "ideation_decision"
+    assert thread["source"]["id"] == decision_id
+    assert panels(view)["discussion"]["counts"] == %{Integer.to_string(decision_id) => 1}
+    assert board(view)["comments"]["pins"] == []
+
+    act(view, ctx, "select", %{decision_id: decision_id})
+    assert panels(view)["discussion"]["state"]["thread"]["id"] == thread["id"]
+
+    act(view, ctx, "close")
+    assert panels(view)["discussion"]["state"] == nil
+    refute board(view)["comments"]["open"]
+    assert panels(view)["discussion"]["counts"] == %{Integer.to_string(decision_id) => 1}
+  end
+
+  test "a link to a decision's discussion opens the panel on that decision", ctx do
+    {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, direct_proposal(ctx))
+
+    assert {:ok, detail} =
+             Projects.create_ideation_comment(ctx.author, ctx.project.id, ctx.session.id, {:decision, decision.id}, %{
+               body: "Worth a second look",
+               client_request_id: Ecto.UUID.generate(),
+               mention_user_ids: []
+             })
+
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.peer.user), path(ctx) <> "?thread=#{detail.thread.id}")
+    assert state(view)["open"]
+    assert state(view)["selected"]["id"] == decision.id
+    assert panels(view)["discussion"]["state"]["thread"]["id"] == detail.thread.id
+    refute board(view)["comments"]["presentation"] == "canvas"
+  end
+
+  test "opening a canvas conversation hands comments back to the board and closes the panel", ctx do
+    {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, direct_proposal(ctx))
+    view = open_board(ctx, ctx.author)
+    render_hook(view, "decisions_open", payload(view, ctx, %{decision_id: decision.id}))
+    assert panels(view)["discussion"]["state"]["decisionId"] == decision.id
+
+    render_hook(view, "comments_open", %{
+      epoch: :sys.get_state(view.pid).socket.assigns.epoch,
+      session_id: ctx.session.id,
+      idea_id: ctx.idea.id
+    })
+
+    refute state(view)["open"]
+    assert panels(view)["discussion"]["state"] == nil
+    assert board(view)["comments"]["ideaId"] == ctx.idea.id
+    assert board(view)["comments"]["presentation"] == "canvas"
+  end
+
   defp open_board(ctx, actor) do
     {:ok, view, _} = live(log_in_user(ctx.conn, actor.user), path(ctx))
     view
@@ -397,7 +478,32 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
   defp path(ctx),
     do: "/workspaces/#{ctx.project.workspace.slug}/projects/#{ctx.project.slug}/brainstorming/#{ctx.session.id}"
 
-  defp state(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props["decisions"]
+  defp state(view), do: panels(view)["decisions"]
+  defp panels(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props
+  defp board(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props
+
+  defp discussion_payload(view, ctx, attrs) do
+    Map.merge(attrs, %{
+      epoch: :sys.get_state(view.pid).socket.assigns.epoch,
+      session_id: ctx.session.id,
+      comment_context: panels(view)["discussion"]["state"]["context"]
+    })
+  end
+
+  defp direct_proposal(ctx) do
+    {:ok, sources} =
+      Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [%{type: "idea", id: ctx.idea.id}])
+
+    %{
+      title: "Keep the ending quiet",
+      conclusion: "Let the player choose to stay.",
+      verb: "change",
+      targets: [],
+      responsible_id: ctx.facilitator.user.id,
+      sources: Enum.map(sources, &Map.take(&1, [:type, :id, :version, :identity])),
+      request_key: Ecto.UUID.generate()
+    }
+  end
 
   # The board learns about the round's privacy through PubSub and refreshes shortly after.
   defp await_privacy(view, private?) do

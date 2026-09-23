@@ -41,6 +41,17 @@ import { Input } from "@components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import CanvasNote from "./CanvasNote.vue";
 import CanvasGroup from "./CanvasGroup.vue";
+import CanvasDecisionLane from "./CanvasDecisionLane.vue";
+import CanvasDecisionHover from "./CanvasDecisionHover.vue";
+import type { DecisionRecord, DecisionSource } from "@app/live/ideation/decisionTypes";
+import {
+  LANE_CARD_HEIGHT,
+  decisionsByNote,
+  decisionsByRound,
+  laneBottom,
+  layoutLane,
+  type LaneLayout,
+} from "../lib/decisionLanes";
 import { groupBounds, groupVisibility, type MemberGeometry, groupRound } from "../lib/groups";
 import CanvasCursors from "./CanvasCursors.vue";
 import RoundBar from "./RoundBar.vue";
@@ -100,6 +111,7 @@ const {
     timer: null,
     counts: new Map(),
     masked: [],
+    lanes: undefined,
   },
 } = defineProps<{
   notes: CanvasIdea[];
@@ -132,8 +144,15 @@ const {
     timer?: RoundTimerContext | null;
     counts?: Map<number, number>;
     masked?: MaskedIdea[];
+    /** The session's decisions, drawn in a lane at the bottom of their band. */
+    lanes?: {
+      decisions: DecisionRecord[];
+      focusId: number | null;
+      comments?: Record<string, number>;
+    };
   };
 }>();
+const decisionLane = computed(() => bands.lanes);
 const groups = computed(() => groupState?.groups ?? []);
 const selectedGroupId = computed(() => groupState?.selectedId ?? null);
 const saveGroup = (id: number, text: GroupText, version: number) =>
@@ -175,6 +194,8 @@ const emit = defineEmits<{
   updatePrompt: [id: number, prompt: string];
   changeState: [id: number, state: IdeaState];
   bringForward: [id: number, point: Point];
+  focusDecision: [id: number];
+  openDecision: [id: number];
 }>();
 const commentTarget = ref<BrainstormingCommentTarget | null>(null);
 // The author's own note under the pointer: its states are one right-click away.
@@ -390,7 +411,7 @@ function bounds() {
   return notes.map(noteBounds);
 }
 function fitAll() {
-  fit([...bounds(), ...layouts.value.map((layout) => layout.bounds)]);
+  fit([...bounds(), ...layouts.value.map((layout) => layout.bounds), ...lanes.value]);
 }
 const orderedRounds = computed(() => orderRounds(bands.rounds));
 const multiRound = computed(() => orderedRounds.value.length > 1);
@@ -400,7 +421,7 @@ function offsetOf(roundId: number | null | undefined): number {
 }
 // A band is as tall as what it holds. Its lowest note or frame is measured on
 // live positions, so a drag past the bottom grows the band as it goes.
-function contentBottom(roundId: number): number | null {
+function contentOnlyBottom(roundId: number): number | null {
   const top = offsetOf(roundId);
   const bottoms = notes
     .filter((note) => note.round_id === roundId)
@@ -421,6 +442,55 @@ watch(
   },
   { immediate: true },
 );
+// Decisions close their band: its lane sits under the lowest note or frame
+// and the band grows around it.
+const laneCardHeight = ref(LANE_CARD_HEIGHT);
+const laneDecisions = computed(() =>
+  decisionsByRound(decisionLane.value?.decisions ?? [], bands.rounds),
+);
+function contentLeft(roundId: number) {
+  const top = offsetOf(roundId);
+  const lefts = notes.filter((note) => note.round_id === roundId).map((note) => position(note).x);
+  for (const layout of layouts.value)
+    if (groupRound(layout.group) === roundId && layout.bounds.y >= top) lefts.push(layout.bounds.x);
+  return lefts.length ? Math.min(...lefts) : 0;
+}
+function laneFor(roundId: number): LaneLayout | null {
+  const decisions = laneDecisions.value.get(roundId);
+  if (!decisions?.length) return null;
+  return layoutLane(roundId, decisions, {
+    top: offsetOf(roundId),
+    bottom: contentOnlyBottom(roundId),
+    left: contentLeft(roundId),
+    cardHeight: laneCardHeight.value,
+  });
+}
+function contentBottom(roundId: number): number | null {
+  const lane = laneFor(roundId);
+  return lane ? laneBottom(lane, offsetOf(roundId)) : contentOnlyBottom(roundId);
+}
+const lanes = computed(() =>
+  orderedRounds.value
+    .map((round) => laneFor(round.id))
+    .filter((lane): lane is LaneLayout => lane !== null),
+);
+const roundNumbers = computed(() => new Map(bands.rounds.map((round) => [round.id, round.number])));
+// A note that supports decisions shows them while the pointer rests on it.
+const noteDecisions = computed(() => decisionsByNote(decisionLane.value?.decisions ?? []));
+const hoveredNote = ref<{ id: number; element: HTMLElement } | null>(null);
+function hoverNote(id: number, event: PointerEvent) {
+  hoveredNote.value =
+    event.pointerType !== "touch" && editingId !== id && noteDecisions.value.has(id)
+      ? { id, element: event.currentTarget as HTMLElement }
+      : null;
+}
+function decisionAnchor(source: DecisionSource) {
+  if (source.id === null) return null;
+  if (source.type === "group")
+    return layouts.value.find((layout) => layout.group.id === source.id)?.bounds ?? null;
+  const note = notes.find((item) => item.id === source.id);
+  return note ? noteBounds(note) : null;
+}
 const bandLayout = computed(() => bandOffsets(bands.rounds, contentBottom));
 watch(
   bandLayout,
@@ -764,6 +834,7 @@ function selectNote(id: number, shift: boolean): number[] {
   return ids;
 }
 function pointerDown(event: PointerEvent) {
+  hoveredNote.value = null;
   if (ignorePointer(event)) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   const id = element ? Number(element.dataset.noteId) : null;
@@ -1478,6 +1549,25 @@ onUnmounted(() => {
               @reveal="emit('revealGroup', $event)"
               @propose-decision="emit('proposeGroupDecision', $event)"
             />
+            <CanvasDecisionLane
+              v-if="lanes.length"
+              :lanes="lanes"
+              :focus-id="decisionLane?.focusId ?? null"
+              :comments="decisionLane?.comments ?? {}"
+              :round-numbers="roundNumbers"
+              :round-count="orderedRounds.length"
+              :zoom="view.zoom"
+              :anchor="decisionAnchor"
+              @focus="emit('focusDecision', $event)"
+              @open="emit('openDecision', $event)"
+              @measure="(height) => (laneCardHeight = height || LANE_CARD_HEIGHT)"
+            />
+            <CanvasDecisionHover
+              :target="hoveredNote"
+              :decisions="hoveredNote ? (noteDecisions.get(hoveredNote.id) ?? []) : []"
+              :round-count="orderedRounds.length"
+              @open="emit('openDecision', $event)"
+            />
             <svg class="pointer-events-none absolute overflow-visible" width="1" height="1">
               <defs>
                 <marker
@@ -1559,6 +1649,8 @@ onUnmounted(() => {
               :key="note.key ?? String(note.id)"
               :data-note-id="note.id"
               class="pointer-events-none absolute left-0 top-0"
+              @pointerenter="hoverNote(note.id, $event)"
+              @pointerleave="hoveredNote = null"
               :class="
                 selectedIds.includes(note.id) ? 'z-10' : note.state === 'discarded' ? '-z-[1]' : ''
               "

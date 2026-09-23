@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
   use PhoenixTest.Playwright.Case, async: false
 
+  import Ecto.Query, only: [from: 2]
   import PhoenixTest.Playwright, only: [press: 3, type: 3]
   import Storyarn.IdeationFixtures
   import StoryarnWeb.E2EHelpers
@@ -215,6 +216,80 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
     assert decision.accepted.verb == "keep"
     assert Enum.map(decision.proposal.sources, & &1.type) == ["group", "idea"]
     capture(browser, "decisions-detail-mobile")
+  end
+
+  test "decisions close their band and each one carries its discussion", %{conn: conn} = context do
+    ctx = ideation_fixture()
+
+    idea =
+      idea_fixture(ctx, %{title: "A quieter ending", body: "<p>The player chooses to stay.</p>", visibility: :shared})
+
+    {:ok, [source]} =
+      Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [%{type: "idea", id: idea.id}])
+
+    {:ok, decision} =
+      Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, %{
+        title: "Keep the ending quiet",
+        conclusion: "Let the player choose to stay.",
+        verb: "keep",
+        targets: [],
+        responsible_id: ctx.author.user.id,
+        register: true,
+        sources: [Map.take(source, [:type, :id, :version, :identity])],
+        request_key: Ecto.UUID.generate()
+      })
+
+    author =
+      conn
+      |> authenticate(ctx.author.user)
+      |> visit(path(ctx))
+      |> assert_has("#brainstorming-canvas")
+      |> press("#brainstorming-canvas", "1")
+      |> assert_has("#decision-lane-card-#{decision.id}", text: "Keep the ending quiet")
+      |> assert_has("[data-decision-link='#{decision.id}']")
+
+    # Resting on a note that supports a decision shows it.
+    {:ok, _} = PlaywrightEx.Frame.hover(author.frame_id, selector: "#canvas-note-#{idea.id}", timeout: 10_000)
+
+    author =
+      author
+      |> assert_has("[data-decision-hover-card='#{decision.id}']")
+      |> click("[data-decision-hover-card='#{decision.id}']")
+
+    author =
+      author
+      |> assert_has("#decision-status", text: "Accepted decision")
+      |> assert_has("#decision-discussion", text: "Discussion")
+      |> type("#decision-discussion-comment-body", "Does the keeper still leave?")
+      |> click("#decision-discussion-comment-send")
+      |> assert_has("#decision-discussion", text: "Does the keeper still leave?")
+      |> assert_has("#decision-lane-card-#{decision.id} [data-decision-comments]", text: "1")
+      |> refute_has("#brainstorming-comment-popover")
+
+    capture(author, "decisions-discussion-desktop")
+
+    [thread] =
+      Repo.all(
+        from(t in Storyarn.Projects.Comments.Thread,
+          where: t.source_type == "ideation_decision" and t.source_id == ^decision.id
+        )
+      )
+
+    config = context |> Map.take(Config.setup_keys()) |> Config.validate!()
+
+    config
+    |> Case.new_session(context)
+    |> authenticate(ctx.peer.user)
+    |> visit(path(ctx) <> "?thread=#{thread.id}")
+    |> assert_has("#decision-status", text: "Accepted decision")
+    |> assert_has("#decision-discussion", text: "Does the keeper still leave?")
+
+    # The keyboard opens a lane card too, and leaving the detail ends its discussion.
+    author
+    |> click("#decisions-close")
+    |> refute_has("#decision-discussion")
+    |> press("#decision-lane-card-#{decision.id}", "Enter")
+    |> assert_has("#decision-discussion", text: "Does the keeper still leave?")
   end
 
   # Fixture members all read "Member"; the responsible person needs a name to be picked.

@@ -141,3 +141,24 @@ describe("Brainstorming canvas comments", () => {
     ]);
   });
 });
+
+describe("a conversation held by the decision panel", () => {
+  it("leaves the canvas without a popover or a draft pin", () => {
+    setup({
+      open: true,
+      presentation: "workspace",
+      decisionId: 4,
+      selectedSourceId: 4,
+      thread: {
+        ...thread,
+        id: 9,
+        position: null,
+        source: { ...thread.source, type: "ideation_decision", id: 4 },
+      },
+    });
+    expect(wrapper.find("#brainstorming-comment-popover").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-comment-draft-pin").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-comment-pin-9").exists()).toBe(false);
+    expect(wrapper.find("#brainstorming-comment-pin-7").exists()).toBe(true);
+  });
+});
