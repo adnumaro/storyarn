@@ -130,10 +130,7 @@ defmodule StoryarnWeb.ConnCase do
       conn
       |> recycle()
       |> post(registration.props["login-action"], %{
-        "user" => %{
-          "_login_token" => registration.props["login-token"],
-          "_handoff" => "registration"
-        }
+        "user" => %{"_login_token" => registration.props["login-token"]}
       })
 
     {registration, conn}

@@ -105,7 +105,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         conn
         |> init_test_session(login_handoff_nonce: session_nonce)
         |> post(~p"/users/log-in", %{
-          "user" => %{"_login_token" => login_token, "_handoff" => "registration"}
+          "user" => %{"_login_token" => login_token}
         })
 
       assert get_session(conn, :user_token)
@@ -124,8 +124,43 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         conn
         |> init_test_session(login_handoff_nonce: session_nonce)
         |> post(~p"/users/log-in", %{
-          "user" => %{"_login_token" => login_token, "_handoff" => "registration"}
+          "user" => %{"_login_token" => login_token}
         })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == "/workspaces/invitations/abc"
+    end
+
+    test "keeps the registration destination for the next login when the handoff has expired", %{
+      conn: conn,
+      user: user
+    } do
+      user = set_password(user)
+      session_nonce = "registering-browser-session"
+
+      # The payload shape StoryarnWeb.UserLoginToken signs, issued past its 60-second validity.
+      expired_token =
+        Phoenix.Token.sign(
+          StoryarnWeb.Endpoint,
+          "user login",
+          {user.id, session_nonce, {:registration, "/workspaces/invitations/abc"}},
+          signed_at: System.system_time(:second) - 61
+        )
+
+      conn =
+        conn
+        |> init_test_session(login_handoff_nonce: session_nonce)
+        |> post(~p"/users/log-in", %{"user" => %{"_login_token" => expired_token, "email" => user.email}})
+
+      refute get_session(conn, :user_token)
+      assert get_session(conn, :user_return_to) == "/workspaces/invitations/abc"
+      assert redirected_to(conn) == ~p"/users/log-in"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) == "Your account was created. Log in to continue."
+
+      conn =
+        conn
+        |> recycle()
+        |> post(~p"/users/log-in", %{"user" => %{"email" => user.email, "password" => valid_user_password()}})
 
       assert get_session(conn, :user_token)
       assert redirected_to(conn) == "/workspaces/invitations/abc"
@@ -141,7 +176,6 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         |> post(~p"/users/log-in", %{
           "user" => %{
             "_login_token" => login_token,
-            "_handoff" => "registration",
             "email" => user.email
           }
         })

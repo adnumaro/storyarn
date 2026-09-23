@@ -28,6 +28,19 @@ defmodule StoryarnWeb.UserLoginToken do
 
   def verify(_token, _session_nonce), do: :error
 
+  # A token that can no longer start a session (expired, or bound to another
+  # browser session) was still signed here, so its handoff stays trustworthy:
+  # a registration keeps its destination for the login that follows.
+  @spec rejected_handoff(term()) :: {:ok, handoff()} | :error
+  def rejected_handoff(token) when is_binary(token) do
+    case Phoenix.Token.verify(StoryarnWeb.Endpoint, @salt, token, max_age: :infinity) do
+      {:ok, {user_id, _session_nonce, handoff}} when is_integer(user_id) -> {:ok, handoff}
+      _other -> :error
+    end
+  end
+
+  def rejected_handoff(_token), do: :error
+
   defp sign(user, session_nonce, handoff) do
     Phoenix.Token.sign(StoryarnWeb.Endpoint, @salt, {user.id, session_nonce, handoff})
   end

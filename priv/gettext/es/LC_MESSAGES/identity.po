@@ -16,28 +16,28 @@ msgstr ""
 msgid "%{name}'s workspace"
 msgstr "Espacio de trabajo de %{name}"
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:204
+#: lib/storyarn_web/controllers/user_session_controller.ex:210
 #, elixir-autogen, elixir-format
 msgid "Failed to update password."
 msgstr "Error al actualizar la contraseña."
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:100
+#: lib/storyarn_web/controllers/user_session_controller.ex:106
 #: lib/storyarn_web/live/user_live/login.ex:137
 #, elixir-autogen, elixir-format
 msgid "Invalid email or password"
 msgstr "Email o contraseña inválidos"
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:211
+#: lib/storyarn_web/controllers/user_session_controller.ex:217
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr "Sesión cerrada exitosamente."
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:197
+#: lib/storyarn_web/controllers/user_session_controller.ex:203
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr "¡Contraseña actualizada exitosamente!"
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:177
+#: lib/storyarn_web/controllers/user_session_controller.ex:183
 #, elixir-autogen, elixir-format
 msgid "Please re-authenticate to change your password."
 msgstr "Re-autentícate para cambiar tu contraseña."
@@ -102,14 +102,14 @@ msgstr "No hemos podido crear tu espacio de trabajo. Inténtalo de nuevo."
 msgid "Your session has expired. Please log in again."
 msgstr "Tu sesión ha caducado. Vuelve a iniciar sesión."
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:143
-#: lib/storyarn_web/controllers/user_session_controller.ex:159
+#: lib/storyarn_web/controllers/user_session_controller.ex:149
+#: lib/storyarn_web/controllers/user_session_controller.ex:165
 #, elixir-autogen, elixir-format
 msgid "Your access confirmation has expired. Please try again."
 msgstr "La confirmación de acceso ha caducado. Inténtalo de nuevo."
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:89
-#: lib/storyarn_web/live/user_live/registration.ex:140
+#: lib/storyarn_web/controllers/user_session_controller.ex:93
+#: lib/storyarn_web/live/user_live/registration.ex:142
 #, elixir-autogen, elixir-format
 msgid "Your account was created. Log in to continue."
 msgstr "Tu cuenta se ha creado. Inicia sesión para continuar."

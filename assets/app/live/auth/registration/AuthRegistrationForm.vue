@@ -180,7 +180,6 @@ onMounted(() => {
     <form ref="hiddenFormRef" :action="loginAction" method="post" class="hidden">
       <input type="hidden" name="_csrf_token" :value="csrfToken" />
       <input type="hidden" name="user[_login_token]" :value="loginToken || ''" />
-      <input type="hidden" name="user[_handoff]" value="registration" />
       <input type="hidden" name="user[email]" :value="handoffEmail" />
     </form>
 

@@ -42,7 +42,7 @@ describe("AuthRegistrationForm", () => {
   });
 
   it("posts the registration handoff to the session endpoint once the account exists", async () => {
-    const submissions: Array<{ action: string; token: string; handoff: string }> = [];
+    const submissions: Array<{ action: string; token: string }> = [];
 
     vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(
       function (this: HTMLFormElement) {
@@ -52,7 +52,6 @@ describe("AuthRegistrationForm", () => {
         submissions.push({
           action: this.getAttribute("action") ?? "",
           token: field("user[_login_token]"),
-          handoff: field("user[_handoff]"),
         });
       },
     );
@@ -69,7 +68,6 @@ describe("AuthRegistrationForm", () => {
       {
         action: "/users/log-in?locale=en",
         token: "signed-registration-token",
-        handoff: "registration",
       },
     ]);
   });

@@ -39,7 +39,7 @@ defmodule StoryarnWeb.UserSessionController do
         )
 
       :error ->
-        rejected_login_token(conn, user_params, info)
+        rejected_login_token(conn, login_token, user_params, info)
     end
   end
 
@@ -82,16 +82,22 @@ defmodule StoryarnWeb.UserSessionController do
   defp put_registration_return_to(conn, nil), do: conn
   defp put_registration_return_to(conn, return_to), do: put_session(conn, :user_return_to, return_to)
 
-  # The registration form posts only its handoff token, so a rejected token has
-  # no password to fall back to: the account exists and the person signs in.
-  defp rejected_login_token(conn, %{"_handoff" => "registration"} = user_params, _info) do
-    conn
-    |> put_flash(:info, dgettext("identity", "Your account was created. Log in to continue."))
-    |> put_flash(:email, String.slice(user_params["email"] || "", 0, 160))
-    |> redirect(to: ~p"/users/log-in")
-  end
+  # A registration handoff that can no longer start a session has no password to
+  # fall back to: the account exists, so the person logs in and the login that
+  # follows resumes the destination the registration was heading to.
+  defp rejected_login_token(conn, login_token, user_params, info) do
+    case UserLoginToken.rejected_handoff(login_token) do
+      {:ok, {:registration, return_to}} ->
+        conn
+        |> put_registration_return_to(return_to)
+        |> put_flash(:info, dgettext("identity", "Your account was created. Log in to continue."))
+        |> put_flash(:email, String.slice(user_params["email"] || "", 0, 160))
+        |> redirect(to: ~p"/users/log-in")
 
-  defp rejected_login_token(conn, user_params, info), do: create_with_password(conn, user_params, info)
+      _login_or_invalid ->
+        create_with_password(conn, user_params, info)
+    end
+  end
 
   defp invalid_credentials_redirect(conn, user_params) do
     email = user_params["email"] || ""

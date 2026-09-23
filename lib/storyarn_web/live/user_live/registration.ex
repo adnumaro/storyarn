@@ -135,10 +135,14 @@ defmodule StoryarnWeb.UserLive.Registration do
     |> assign(:login_token, UserLoginToken.sign_registration(user, nonce, socket.assigns.return_to))
   end
 
+  # Without a session nonce there is nothing to bind a token to. The person logs
+  # in; an invitation destination is still visited so the invitation is accepted.
   defp hand_off_session(socket, _user) do
     socket
     |> put_flash(:info, dgettext("identity", "Your account was created. Log in to continue."))
-    |> push_navigate(to: PublicURLs.locale_handoff_path(~p"/users/log-in", socket.assigns.locale))
+    |> push_navigate(
+      to: socket.assigns.return_to || PublicURLs.locale_handoff_path(~p"/users/log-in", socket.assigns.locale)
+    )
   end
 
   defp assign_session_handoff(socket, session) do

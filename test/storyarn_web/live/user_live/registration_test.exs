@@ -95,7 +95,7 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
 
       conn =
         post(build_conn(), ~p"/users/log-in", %{
-          "user" => %{"_login_token" => login_token, "_handoff" => "registration", "email" => email}
+          "user" => %{"_login_token" => login_token, "email" => email}
         })
 
       refute get_session(conn, :user_token)
