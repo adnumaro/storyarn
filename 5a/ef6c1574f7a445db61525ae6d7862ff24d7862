@@ -1,0 +1,218 @@
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_b5abbfc6259d0c::t_f43e966e3685cf 127
+priv/repo/migrations/20260923120000_index_decision_revision_targets.exs
+  s_b5abbfc6259d0c::t_e0f8a66150b2af 1-12
+priv/gettext/default.pot
+  s_b5abbfc6259d0c::t_f43e966e3685cf 139,149,173-222
+assets/app/components/command-palette/CommandPalette.vue
+  s_b5abbfc6259d0c::t_df6eea5a9402dd 9,187
+test/storyarn/architecture/platform_facade_contract_test.exs
+  s_b5abbfc6259d0c::t_247d1de234b6b7 41-42,60,93,95-99,121,128-132,167,169-173,187-194
+priv/gettext/scenes.pot
+  s_b5abbfc6259d0c::t_f43e966e3685cf 455
+assets/app/live/ideation/DecisionMarkForm.vue
+  s_b5abbfc6259d0c::t_e30e6fcc89affe 61
+  s_b5abbfc6259d0c::t_62c972f621966f 1-60,62-80
+assets/app/live/ideation/explorationTypes.ts
+  s_b5abbfc6259d0c::t_b60f773daa7127 26
+  s_b5abbfc6259d0c::t_2065ebfc3ae34e 2,25,27-38,49-53
+assets/app/test/live/ideation/DecisionBanner.test.ts
+  s_b5abbfc6259d0c::t_dca8a9926d0f3c 1-64
+lib/storyarn_web/live/shared/ideation_decision_data.ex
+  s_b5abbfc6259d0c::t_9a353fe42269b7 4-5,9,83,87-89
+  s_b5abbfc6259d0c::t_f5720a96079f3b 1-3,6-8,10-82,84-86,90-186
+assets/app/components/notifications/NotificationBell.vue
+  s_b5abbfc6259d0c::t_58a53cd53d46b9 204-217,400-415
+  s_b5abbfc6259d0c::t_c0e319f778d887 3,8,13
+  s_b5abbfc6259d0c::t_3febcf384b07ad 218-222,227
+lib/storyarn/ideation/decisions/adapters/notifications.ex
+  s_b5abbfc6259d0c::t_63a55d1df4ecc7 1-22
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_b5abbfc6259d0c::t_f43e966e3685cf 176
+lib/storyarn/ideation/decisions/queries/project.ex
+  s_b5abbfc6259d0c::t_fc17d640ea0fa2 26-30
+  s_b5abbfc6259d0c::t_1ff348c7b21f40 12-25
+  s_b5abbfc6259d0c::t_6895bd1fa5118d 1-11,31-33,37-46
+  s_b5abbfc6259d0c::t_bc57d7436ee433 34-36
+assets/app/live/ideation/decisionTypes.ts
+  s_b5abbfc6259d0c::t_2065ebfc3ae34e 50-51
+  s_b5abbfc6259d0c::t_4ab9842091162a 92
+  s_b5abbfc6259d0c::t_4e900bfc9bca5d 159-167
+assets/app/live/ideation/DecisionBanner.vue
+  s_b5abbfc6259d0c::t_ae8fd711f81c70 1-27,42-48,52-58,60-73,75-86,88-101,103-148,150-164,166-185,187-192
+  s_b5abbfc6259d0c::t_4e900bfc9bca5d 37-41,149
+  s_b5abbfc6259d0c::t_7fcffe060ff054 87
+  s_b5abbfc6259d0c::t_745add16dd3dae 165
+  s_b5abbfc6259d0c::t_d399138814f00a 49-51
+  s_b5abbfc6259d0c::t_ef87351e721c5c 28-36,59,74,102,186
+lib/storyarn/platform/notifications/entities/notification.ex
+  s_b5abbfc6259d0c::t_b1ef33bc1bf438 18-20,32,44,141-142
+assets/app/locales/es/notifications.json
+  s_b5abbfc6259d0c::t_58a53cd53d46b9 54-58
+lib/storyarn_web/live/ideation_live/board.ex
+  s_b5abbfc6259d0c::t_645fc6e6c81668 194
+  s_b5abbfc6259d0c::t_1ff348c7b21f40 162-173
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_b5abbfc6259d0c::t_f43e966e3685cf 176
+priv/gettext/en/LC_MESSAGES/default.po
+  s_b5abbfc6259d0c::t_f43e966e3685cf 139,149,173-222
+lib/storyarn/ideation/README.md
+  s_b5abbfc6259d0c::t_90f5c4afdc87df 113-118
+lib/storyarn_web/live/shared/contextual_explorations.ex
+  s_b5abbfc6259d0c::t_dd0553ed711435 12,28,31-33,37-58,76,269-272,277-293,305-306
+  s_b5abbfc6259d0c::t_d54b9fa3cd54ef 307
+assets/app/live/ideation/DecisionsAbout.vue
+  s_b5abbfc6259d0c::t_d399138814f00a 44-48,59-62,75-77
+  s_b5abbfc6259d0c::t_0ce5d640d3e624 1-43,49-58,63-74,78-107
+lib/storyarn_web/live/ideation_live/helpers/board_data.ex
+  s_b5abbfc6259d0c::t_197f4896f6a06a 6,47-65,87-88
+  s_b5abbfc6259d0c::t_95e235c4779f02 11-13,36-42
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_b5abbfc6259d0c::t_247d1de234b6b7 202-203,205
+  s_b5abbfc6259d0c::t_df6eea5a9402dd 204
+priv/gettext/es/LC_MESSAGES/default.po
+  s_b5abbfc6259d0c::t_6d665a242aea03 177,182,187,192,197,202,207,212,217,222
+  s_b5abbfc6259d0c::t_f43e966e3685cf 139,149,173-176,178-181,183-186,188-191,193-196,198-201,203-206,208-211,213-216,218-221
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_b5abbfc6259d0c::t_f43e966e3685cf 455
+lib/storyarn/ideation/decisions/execution/notification.ex
+  s_b5abbfc6259d0c::t_63a55d1df4ecc7 1-68
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_b5abbfc6259d0c::t_5ed58e9cb6078f 85-100
+  s_b5abbfc6259d0c::t_85e5a32f7b6eda 70-79,82-84,101
+  s_b5abbfc6259d0c::t_bc57d7436ee433 25-27
+  s_b5abbfc6259d0c::t_69cbb0c55755cf 102
+assets/app/live/ideation/ExplorationLauncher.vue
+  s_b5abbfc6259d0c::t_44d5fdbd9973eb 24,26-27,29-34,65-86,92-110,167-168,176-182,184-205,267-274,279-281
+  s_b5abbfc6259d0c::t_d399138814f00a 87-91,275-278
+  s_b5abbfc6259d0c::t_8e47dc68ac3bd9 165
+lib/storyarn_web/live/shared/contextual_decisions.ex
+  s_b5abbfc6259d0c::t_1c9fd8873ea464 1-55,57,67-71,73-130,132-140,154-160,166-200,203-228,230-234,236-277
+  s_b5abbfc6259d0c::t_b60f773daa7127 56,58-66
+  s_b5abbfc6259d0c::t_2065ebfc3ae34e 72,229,235
+  s_b5abbfc6259d0c::t_d8384046fbef38 131,141-153,161-165,201-202
+test/storyarn/ideation/decision_notifications_test.exs
+  s_b5abbfc6259d0c::t_1d7027d06f6a45 34,51
+  s_b5abbfc6259d0c::t_2b2902cfc0f49d 1-33,35-40,49-50,52-124
+  s_b5abbfc6259d0c::t_adf06281eb110d 41-48
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_b5abbfc6259d0c::t_f43e966e3685cf 127
+lib/storyarn_web/live/hooks/palette.ex
+  s_b5abbfc6259d0c::t_29dc7b427be6f5 31,67,184-189,553-596
+  s_b5abbfc6259d0c::t_51cf73133c3325 597
+lib/storyarn/ideation/decisions/queries/about.ex
+  s_b5abbfc6259d0c::t_df6eea5a9402dd 23-25,28,37-38,40-46
+  s_b5abbfc6259d0c::t_78f7e1cc2b69e8 10-11,27,31,47-63,82
+  s_b5abbfc6259d0c::t_293401679d07f5 1-9,12-22,26,29-30,32-36,39,64-81,83-89
+lib/storyarn/ideation/decisions/execution/transaction.ex
+  s_b5abbfc6259d0c::t_165e4bdaa3ae27 5,10,93-96,101-103,108,112-115,117
+lib/storyarn/platform/notifications/notifications.ex
+  s_b5abbfc6259d0c::t_b1ef33bc1bf438 23-32
+  s_b5abbfc6259d0c::t_448865d3272aa4 22
+assets/app/locales/en/notifications.json
+  s_b5abbfc6259d0c::t_58a53cd53d46b9 54-58
+assets/app/test/live/ideation/decisionDashboard.test.ts
+  s_b5abbfc6259d0c::t_dca8a9926d0f3c 1-67,69-71
+  s_b5abbfc6259d0c::t_64560db105af84 68
+assets/app/locales/en/brainstorming-decisions.json
+  s_b5abbfc6259d0c::t_1e2649055868f4 269-293
+  s_b5abbfc6259d0c::t_4e900bfc9bca5d 22-37
+  s_b5abbfc6259d0c::t_8e47dc68ac3bd9 38-42
+config/architecture_boundaries.exs
+  s_b5abbfc6259d0c::t_f45769cc364df3 4191-4202
+  s_b5abbfc6259d0c::t_29dc7b427be6f5 4203-4208
+  s_b5abbfc6259d0c::t_6866de8825144e 4190,4209-4220
+test/storyarn/ideation/decisions_about_test.exs
+  s_b5abbfc6259d0c::t_d9346d215ec36f 1-21,24-26,31-97
+  s_b5abbfc6259d0c::t_33d828b91004ad 22-23,27-30
+assets/app/components/notifications/types.ts
+  s_b5abbfc6259d0c::t_58a53cd53d46b9 11-15
+lib/storyarn/ideation/decisions/decisions.ex
+  s_b5abbfc6259d0c::t_df6eea5a9402dd 19
+  s_b5abbfc6259d0c::t_1ff348c7b21f40 21
+  s_b5abbfc6259d0c::t_414eaa2561192f 5,7,20
+assets/app/live/ideation/DecisionsDashboard.vue
+  s_b5abbfc6259d0c::t_1321466f49eb2e 1-4,14-50,52-98,103-109,116-145,150-152,158-168
+  s_b5abbfc6259d0c::t_d399138814f00a 5-13,51,99-102,110-115,146-149,153-157
+assets/app/modules/ideation/types.ts
+  s_b5abbfc6259d0c::t_1e2649055868f4 1,235-236
+lib/storyarn/platform.ex
+  s_b5abbfc6259d0c::t_b1ef33bc1bf438 113-118
+test/e2e/workspaces/projects/ideation/decisions_test.exs
+  s_b5abbfc6259d0c::t_01906af512261a 295-332,334-341
+  s_b5abbfc6259d0c::t_e30e6fcc89affe 333
+test/storyarn/projects/comments/ideation_decision_comments_test.exs
+  s_b5abbfc6259d0c::t_ccb118807f1362 147-148
+test/storyarn_web/live/hooks/palette_test.exs
+  s_b5abbfc6259d0c::t_ac58d36dfc496c 184-219,221-226
+  s_b5abbfc6259d0c::t_dd64cc877d0b4b 220
+assets/app/locales/es/brainstorming-decisions.json
+  s_b5abbfc6259d0c::t_1e2649055868f4 269-291,293
+  s_b5abbfc6259d0c::t_8e47dc68ac3bd9 38-42
+  s_b5abbfc6259d0c::t_4e900bfc9bca5d 22-37
+  s_b5abbfc6259d0c::t_36cc104411d71f 292
+docs/reference/brainstorming-decisions-contract.md
+  s_b5abbfc6259d0c::t_90f5c4afdc87df 215-230,232-242,244-247
+  s_b5abbfc6259d0c::t_17ead6264901bc 231,243
+test/storyarn_web/live/ideation_live/contextual_decisions_test.exs
+  s_b5abbfc6259d0c::t_5714bc6c80da52 1-47,53-134
+  s_b5abbfc6259d0c::t_de154a88888d4d 48-52
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_b5abbfc6259d0c::t_d399138814f00a 389-391,393-395
+  s_b5abbfc6259d0c::t_1e2649055868f4 1151-1152,1154-1155,1157-1186
+  s_b5abbfc6259d0c::t_36cc104411d71f 21-23,380-388,392,396-399
+  s_b5abbfc6259d0c::t_da2bf9dc2fd345 1153,1156
+lib/storyarn_web/live/ideation_live/handlers/decision_handlers.ex
+  s_b5abbfc6259d0c::t_a30a8c261d7598 71,98,208,245,282,395,408,422,436,474
+  s_b5abbfc6259d0c::t_645fc6e6c81668 109-117,120-122
+  s_b5abbfc6259d0c::t_bc57d7436ee433 12-13,555
+lib/storyarn_web/live/ideation_live/sidebar.ex
+  s_b5abbfc6259d0c::t_95e235c4779f02 137-139
+assets/app/test/live/ideation/ExplorationLauncher.test.ts
+  s_b5abbfc6259d0c::t_dca8a9926d0f3c 6,409-452
+  s_b5abbfc6259d0c::t_245478fa0d21e0 453
+priv/gettext/sheets.pot
+  s_b5abbfc6259d0c::t_f43e966e3685cf 127
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_b5abbfc6259d0c::t_f43e966e3685cf 455
+assets/app/live/ideation/decisionDashboard.ts
+  s_b5abbfc6259d0c::t_3febcf384b07ad 2,81-93,98-104,112-114,117,121
+  s_b5abbfc6259d0c::t_83c951731b63e2 94-97,115
+  s_b5abbfc6259d0c::t_b94cf54e2e0b82 1,3-65,68-69,73-80,105-111,116,118-120,122
+  s_b5abbfc6259d0c::t_d399138814f00a 66-67,70-72
+assets/app/live/ideation/DecisionApplication.vue
+  s_b5abbfc6259d0c::t_d399138814f00a 181-183
+  s_b5abbfc6259d0c::t_7021fac681a06e 11,18,74-78,174-180,184-185
+  s_b5abbfc6259d0c::t_b86b6aa0f30a19 19,67-68,70-71,200-205,238
+lib/storyarn/ideation.ex
+  s_b5abbfc6259d0c::t_414eaa2561192f 99,101-104
+  s_b5abbfc6259d0c::t_df6eea5a9402dd 100
+  s_b5abbfc6259d0c::t_1ff348c7b21f40 105-107
+test/storyarn_web/live/ideation_live/decisions_test.exs
+  s_b5abbfc6259d0c::t_dd64cc877d0b4b 427-435,440-446
+  s_b5abbfc6259d0c::t_2b45d3b59dcad2 436-439
+priv/gettext/flows.pot
+  s_b5abbfc6259d0c::t_f43e966e3685cf 176
+priv/repo/migrations/20260923130000_extend_notifications_for_decisions.exs
+  s_b5abbfc6259d0c::t_b1ef33bc1bf438 1-29
+lib/storyarn/platform/notifications/execution/delivery.ex
+  s_b5abbfc6259d0c::t_b1ef33bc1bf438 30,74-104,505-517,520-537
+  s_b5abbfc6259d0c::t_bc57d7436ee433 518-519
+  s_b5abbfc6259d0c::t_b19541a2323ef1 538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5aef6c1574f7a445db61525ae6d7862ff24d7862",
+  "prompts": {},
+  "sessions": {
+    "s_b5abbfc6259d0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce0305-91ec-4116-b95d-80eb72980b92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
