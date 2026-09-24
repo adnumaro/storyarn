@@ -75,10 +75,12 @@
     "nothingToApply": "Nothing to apply for a decision with no affected content.",
     "declareNoChange": "Declare no change needed",
     "markApplied": "Mark applied",
+    "editApplication": "Update declaration",
     "markAs": "Mark {name} as {state}",
     "markConfirm": {
       "applied": "Mark applied",
       "partially_applied": "Mark partially applied",
+      "not_applied": "Mark not applied",
       "no_change_needed": "No change needed"
     },
     "markStatement": "A statement, not a verification. The note goes into the decision’s history.",

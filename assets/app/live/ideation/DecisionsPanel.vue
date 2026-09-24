@@ -131,6 +131,25 @@ function searchSources(
     onSuccess,
   );
 }
+let queuedTargetSearch: { query: string; context: string } | null = null;
+const targetSearchContext = () => JSON.stringify([epoch, sessionId, state.context, state.mode]);
+function flushTargetSearch() {
+  if (!queuedTargetSearch || pending.value) return;
+  const queued = queuedTargetSearch;
+  queuedTargetSearch = null;
+  if (queued.context !== targetSearchContext() || !editor.value) return;
+  request("search_targets", { search: queued.query });
+}
+function searchTargets(query: string) {
+  queuedTargetSearch = { query, context: targetSearchContext() };
+  flushTargetSearch();
+}
+watch(pending, (action) => {
+  if (!action) flushTargetSearch();
+});
+watch(targetSearchContext, () => {
+  queuedTargetSearch = null;
+});
 function save(input: DecisionDraftInput) {
   const action = state.mode === "revise" ? "revise" : "create";
   if (action === "revise" ? !state.selected?.canRevise : !state.canPropose) return;
@@ -312,7 +331,7 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
         @remove-source="removeSource"
         @refresh-sources="request('refresh_sources')"
         @browse-sources="picker = !picker"
-        @search-targets="request('search_targets', { search: $event })"
+        @search-targets="searchTargets"
         ><template #picker
           ><DecisionSourcePicker
             v-if="picker"

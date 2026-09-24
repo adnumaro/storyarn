@@ -49,7 +49,13 @@ const stateTones: Record<ApplicationState, string> = {
   not_applied: "text-amber-700 dark:text-amber-400",
   no_change_needed: "text-muted-foreground",
 };
-const choices: ApplicationState[] = ["applied", "partially_applied", "no_change_needed"];
+const choices: ApplicationState[] = [
+  "applied",
+  "partially_applied",
+  "not_applied",
+  "no_change_needed",
+];
+const noTargetChoices: ApplicationState[] = ["not_applied", "no_change_needed"];
 
 const application = computed(() => decision.application);
 const accepted = computed(() => decision.accepted !== null);
@@ -59,30 +65,33 @@ const rows = computed(() =>
     ? orderTargets(application.value.targets, decision.status !== "superseded")
     : [],
 );
-const nextAction = computed(() => (decision.accepted ?? decision.proposal).nextAction);
+const nextAction = computed(
+  () =>
+    (decision.status === "proposed" ? decision.proposal : (decision.accepted ?? decision.proposal))
+      .nextAction,
+);
 const marking = ref<string | null>(null);
 const choice = ref<ApplicationState>("applied");
 const note = ref("");
 
-function open(key: string | null, value: boolean) {
+function open(target: DecisionTarget | null, value: boolean) {
+  const key = target?.key ?? null;
   if (value) {
     marking.value = key ?? "decision";
-    choice.value = "applied";
-    note.value = "";
+    choice.value = target
+      ? (target.application?.state ?? "applied")
+      : (application.value?.decision?.state ?? "no_change_needed");
+    note.value = target
+      ? (target.application?.note ?? "")
+      : (application.value?.decision?.note ?? "");
   } else if (marking.value === (key ?? "decision")) marking.value = null;
 }
 function confirm(target: DecisionTarget | null) {
-  emit(
-    "declare",
-    target?.key ?? null,
-    target ? choice.value : "no_change_needed",
-    note.value.trim() || null,
-  );
+  emit("declare", target?.key ?? null, choice.value, note.value.trim() || null);
   marking.value = null;
 }
-function pendingRow(target: DecisionTarget) {
-  const state = targetState(target);
-  return state === "not_applied" || state === "partially_applied";
+function declareNoChange() {
+  emit("declare", null, "no_change_needed", null);
 }
 function when(declaration: DecisionDeclaration) {
   const parsed = new Date(declaration.at);
@@ -174,10 +183,10 @@ function when(declaration: DecisionDeclaration) {
         >
           “{{ target.application.note }}”
         </p>
-        <div v-if="decision.canDeclare && pendingRow(target)" class="mt-2 ml-[22px] flex gap-1.5">
+        <div v-if="decision.canDeclare" class="mt-2 ml-[22px] flex gap-1.5">
           <Popover
             :open="marking === target.key"
-            @update:open="(value: boolean) => open(target.key, value)"
+            @update:open="(value: boolean) => open(target, value)"
           >
             <PopoverTrigger as-child>
               <Button
@@ -185,7 +194,13 @@ function when(declaration: DecisionDeclaration) {
                 variant="ghost"
                 size="xs"
                 :disabled="pending"
-                >{{ t("brainstormingDecisions.markApplied") }}<ChevronDown class="size-3"
+                >{{
+                  t(
+                    target.application
+                      ? "brainstormingDecisions.editApplication"
+                      : "brainstormingDecisions.markApplied",
+                  )
+                }}<ChevronDown class="size-3"
               /></Button>
             </PopoverTrigger>
             <PopoverContent align="start" class="w-[300px] p-3">
@@ -200,7 +215,10 @@ function when(declaration: DecisionDeclaration) {
               <p class="mt-0.5 text-xs text-muted-foreground">
                 {{ t("brainstormingDecisions.markStatement") }}
               </p>
-              <div class="mt-2.5 flex rounded-md border border-border p-0.5" role="radiogroup">
+              <div
+                class="mt-2.5 grid grid-cols-2 rounded-md border border-border p-0.5"
+                role="radiogroup"
+              >
                 <button
                   v-for="option in choices"
                   :id="`decision-mark-${target.key}-${option}`"
@@ -243,18 +261,86 @@ function when(declaration: DecisionDeclaration) {
         </div>
       </div>
     </div>
-    <div
-      v-else-if="application?.decision?.state === 'no_change_needed'"
-      class="flex min-h-[26px] items-center gap-2 rounded-xl border border-border px-3 py-2.5"
-    >
-      <CircleCheck class="size-3.5 text-muted-foreground" />
-      <span class="text-[13px] font-medium">{{
-        t("brainstormingDecisions.states.no_change_needed")
-      }}</span>
-      <span class="text-xs text-muted-foreground"
-        >· {{ application.decision.actorName || t("brainstormingDecisions.formerMember") }} ·
-        {{ when(application.decision) }}</span
+    <div v-else-if="application?.decision" class="rounded-xl border border-border px-3 py-2.5">
+      <div class="flex min-h-[26px] flex-wrap items-center gap-2">
+        <component
+          :is="stateIcons[application.decision.state]"
+          class="size-3.5"
+          :class="stateTones[application.decision.state]"
+        />
+        <span class="text-[13px] font-medium">{{
+          t(`brainstormingDecisions.states.${application.decision.state}`)
+        }}</span>
+        <span class="text-xs text-muted-foreground"
+          >· {{ application.decision.actorName || t("brainstormingDecisions.formerMember") }} ·
+          {{ when(application.decision) }}</span
+        >
+        <span class="flex-1" />
+        <Popover
+          v-if="decision.canDeclare"
+          :open="marking === 'decision'"
+          @update:open="(value: boolean) => open(null, value)"
+        >
+          <PopoverTrigger as-child>
+            <Button id="decision-edit-no-change" variant="ghost" size="xs" :disabled="pending"
+              >{{ t("brainstormingDecisions.editApplication") }}<ChevronDown class="size-3"
+            /></Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" class="w-[300px] p-3">
+            <p class="text-[13px] font-medium">{{ t("brainstormingDecisions.editApplication") }}</p>
+            <p class="mt-0.5 text-xs text-muted-foreground">
+              {{ t("brainstormingDecisions.markStatement") }}
+            </p>
+            <div
+              class="mt-2.5 grid grid-cols-2 rounded-md border border-border p-0.5"
+              role="radiogroup"
+            >
+              <button
+                v-for="option in noTargetChoices"
+                :id="`decision-no-target-${option}`"
+                :key="option"
+                type="button"
+                role="radio"
+                :aria-checked="choice === option"
+                class="rounded-[5px] px-1.5 py-1 text-[11.5px]"
+                :class="
+                  choice === option
+                    ? 'bg-accent font-medium text-foreground'
+                    : 'text-muted-foreground'
+                "
+                @click="choice = option"
+              >
+                {{ t(`brainstormingDecisions.states.${option}`) }}
+              </button>
+            </div>
+            <Textarea
+              v-model="note"
+              class="mt-2.5"
+              :rows="2"
+              :maxlength="1000"
+              :placeholder="t('brainstormingDecisions.notePlaceholder')"
+            />
+            <div class="mt-2.5 flex justify-end gap-1.5">
+              <Button variant="ghost" size="sm" @click="marking = null">{{
+                t("brainstormingDecisions.cancel")
+              }}</Button>
+              <Button
+                id="decision-edit-no-change-confirm"
+                size="sm"
+                :disabled="pending"
+                @click="confirm(null)"
+                >{{ t(`brainstormingDecisions.markConfirm.${choice}`) }}</Button
+              >
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+      <p
+        v-if="application.decision.note"
+        class="mt-1 ml-[22px] text-xs text-muted-foreground italic"
       >
+        “{{ application.decision.note }}”
+      </p>
     </div>
     <div
       v-else
@@ -269,7 +355,7 @@ function when(declaration: DecisionDeclaration) {
         variant="outline"
         size="xs"
         :disabled="pending"
-        @click="confirm(null)"
+        @click="declareNoChange"
         >{{ t("brainstormingDecisions.declareNoChange") }}</Button
       >
     </div>

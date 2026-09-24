@@ -36,7 +36,7 @@ defmodule Storyarn.Ideation.Decisions.Execution.Mutation do
 
   def run(scope, project_id, access, decision, command, fingerprint) do
     if decision.version == command.version do
-      previous = Repo.get_by!(Revision, decision_id: decision.id, number: decision.version)
+      previous = Repo.get_by!(Revision, decision_id: decision.id, number: basis(decision))
       mutate(scope, project_id, access, decision, previous, command, fingerprint)
     else
       {:error, :stale_decision}
@@ -158,20 +158,36 @@ defmodule Storyarn.Ideation.Decisions.Execution.Mutation do
     end
   end
 
-  # Only an agreement in force can be replaced, and never by the decision itself.
+  # A later agreement of the replacement may keep the original link without
+  # closing the same decision twice.
   defp replaceable(_access, _self, nil), do: {:ok, nil}
   defp replaceable(_access, id, id), do: {:error, :invalid_replacement}
 
-  defp replaceable(access, _self, id) do
+  defp replaceable(access, self, id) do
     case Repo.get_by(Decision, id: id, session_id: access.session_id) do
       %Decision{status: status, accepted_version: agreement} = decision
       when status in [:accepted, :proposed] and not is_nil(agreement) ->
         {:ok, decision}
 
+      %Decision{status: :superseded} = decision when not is_nil(self) ->
+        if superseded_by?(decision, self), do: {:ok, nil}, else: {:error, :invalid_replacement}
+
       _ ->
         {:error, :invalid_replacement}
     end
   end
+
+  defp superseded_by?(decision, self) do
+    Repo.exists?(
+      from r in Revision,
+        where: r.decision_id == ^decision.id and r.number == ^decision.version and r.superseded_by_id == ^self
+    )
+  end
+
+  # A withdrawn revision has a closing record, but its agreement remains the
+  # authority and source context for the next revision.
+  defp basis(%Decision{status: :accepted, accepted_version: agreement}) when not is_nil(agreement), do: agreement
+  defp basis(decision), do: decision.version
 
   defp live(%Decision{status: status}) when status in [:proposed, :accepted], do: :ok
   defp live(_decision), do: {:error, :decision_retired}

@@ -497,6 +497,32 @@ defmodule Storyarn.Ideation.DecisionsTest do
     assert again.status == :proposed
   end
 
+  test "withdrawing a reassignment restores the agreement owner's authority and source pin", ctx do
+    assert {:ok, decision} = propose(ctx)
+    assert {:ok, accepted} = accept(ctx, decision)
+    original = hd(accepted.accepted.sources)
+
+    {:ok, [newer]} =
+      Ideation.preview_decision_sources(ctx.peer, ctx.project.id, ctx.session.id, [%{type: "idea", id: ctx.second.id}])
+
+    revised_attrs =
+      fresh(attrs(ctx), %{
+        responsible_id: ctx.facilitator.user.id,
+        sources: [Map.take(newer, [:type, :id, :version, :identity])]
+      })
+
+    assert {:ok, pending} = revise(ctx, accepted, revised_attrs, ctx.peer)
+    assert {:ok, kept} = withdraw(ctx, pending, ctx.peer)
+    assert kept.status == :accepted
+    assert kept.accepted.responsible_id == ctx.peer.user.id
+    assert kept.can_assign
+
+    next_attrs = fresh(attrs(ctx), %{conclusion: "Keep the existing agreement"})
+    assert {:ok, next} = revise(ctx, kept, next_attrs, ctx.peer)
+    assert next.proposal.responsible_id == ctx.peer.user.id
+    assert hd(next.proposal.sources).identity == original.identity
+  end
+
   test "accepting a replacement supersedes the earlier agreement and links both ways", ctx do
     assert {:ok, earlier} = propose(ctx)
     assert {:error, :invalid_replacement} = propose(ctx, %{replaces_id: earlier.id})
@@ -511,7 +537,8 @@ defmodule Storyarn.Ideation.DecisionsTest do
              id: earlier.id,
              title: "Choose a direction",
              status: :superseded,
-             replaceable: false
+             replaceable: false,
+             superseded_by_id: accepted.id
            }
 
     assert {:ok, superseded} = Ideation.get_decision(ctx.viewer, ctx.project.id, ctx.session.id, earlier.id)
@@ -525,6 +552,18 @@ defmodule Storyarn.Ideation.DecisionsTest do
     assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, ctx.session.id, earlier.id)
     assert hd(history.revisions).operation == "supersede"
     assert hd(history.revisions).superseded_by_id == accepted.id
+
+    assert {:ok, revised_replacement} =
+             revise(ctx, accepted, fresh(attrs(ctx), %{replaces_id: earlier.id, conclusion: "A better phrasing"}))
+
+    assert {:ok, responsible_view} =
+             Ideation.get_decision(ctx.peer, ctx.project.id, ctx.session.id, revised_replacement.id)
+
+    assert responsible_view.can_accept
+    assert {:ok, reaccepted} = accept(ctx, revised_replacement)
+    assert reaccepted.supersedes.id == earlier.id
+    assert {:ok, unchanged} = Ideation.get_decision(ctx.viewer, ctx.project.id, ctx.session.id, earlier.id)
+    assert unchanged.version == superseded.version
   end
 
   test "a next action names an editor who applies it and carries no authority", ctx do

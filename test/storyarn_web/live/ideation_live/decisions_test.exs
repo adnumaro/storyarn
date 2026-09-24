@@ -341,6 +341,27 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     )
 
     assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id, other.id]
+
+    # The board selection still includes the idea that opened this proposal.
+    act(view, ctx, "add_sources", %{idea_ids: [ctx.idea.id, other.id]})
+    assert state(view)["error"] == nil
+    assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id, other.id]
+  end
+
+  test "a new revision uses the accepted sources after another revision is withdrawn", ctx do
+    other = idea_fixture(ctx, %{title: "Discarded source", body: "<p>Not agreed.</p>", visibility: :shared})
+    view = open_board(ctx, ctx.facilitator)
+    act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})
+    act(view, ctx, "create", proposal(view, ctx))
+    act(view, ctx, "accept", selected_request(view))
+    act(view, ctx, "begin_revision", selected_request(view))
+    act(view, ctx, "preview_sources", %{sources: [%{type: "idea", id: other.id}]})
+    act(view, ctx, "revise", Map.merge(proposal(view, ctx), selected_request(view)))
+    act(view, ctx, "withdraw", selected_request(view))
+    assert state(view)["selected"]["status"] == "accepted"
+
+    act(view, ctx, "begin_revision", selected_request(view))
+    assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id]
   end
 
   defp open_board(ctx, actor) do

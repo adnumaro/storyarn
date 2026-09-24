@@ -113,7 +113,8 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
        when mode in ~w(create revise) do
     with %{"idea_ids" => _} <- params,
          {:ok, selection} <- initial_selection(params) do
-      preview(socket.assigns.decisions.sources ++ selection, socket)
+      sources = Enum.uniq_by(socket.assigns.decisions.sources ++ selection, &{field(&1, :type), field(&1, :id)})
+      preview(sources, socket)
     else
       _ -> failure(socket, :invalid_parameters)
     end
@@ -159,7 +160,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
       |> put(%{
         mode: "revise",
         selected: selected,
-        sources: selected.proposal.sources,
+        sources: revision_basis(selected).sources,
         sourceResults: [],
         sourceNextCursor: nil,
         searched: false,
@@ -434,14 +435,17 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     })
   end
 
-  defp pinned_source(%{mode: "revise", selected: %{proposal: %{sources: sources}}}, source) do
-    Enum.find(sources, fn pinned ->
+  defp pinned_source(%{mode: "revise", selected: %{} = selected}, source) do
+    Enum.find(revision_basis(selected).sources, fn pinned ->
       pinned.available and pinned.type == source.type and pinned.identity == source.identity and
         pinned.version == source.version
     end)
   end
 
   defp pinned_source(_, _), do: nil
+
+  defp revision_basis(%{status: :accepted, accepted: %{} = agreement}), do: agreement
+  defp revision_basis(selected), do: selected.proposal
 
   # The session's origin and references come first in the Affects picker; the
   # project search covers anything else.

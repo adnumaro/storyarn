@@ -24,8 +24,11 @@ defmodule Storyarn.Ideation.Decisions.View do
     }
     |> Map.merge(people(decision, head))
     |> Map.merge(links(decision, head, proposal, accepted, context))
-    |> Map.merge(permissions(decision, head, proposal, context, access))
+    |> Map.merge(permissions(decision, basis(decision, head, agreement), proposal, context, access))
   end
+
+  defp basis(%{status: :accepted}, _head, agreement) when not is_nil(agreement), do: agreement
+  defp basis(_decision, head, _agreement), do: head
 
   defp people(decision, head) do
     %{
@@ -64,7 +67,8 @@ defmodule Storyarn.Ideation.Decisions.View do
 
     access.open? and access.editor? and decision.status == :proposed and proposal.responsible_id == access.user_id and
       Enum.all?(proposal.sources, & &1.available) and
-      (is_nil(proposal.replaces_id) or (replaced && replaced.replaceable))
+      (is_nil(proposal.replaces_id) or
+         (replaced && (replaced.replaceable or replaced.superseded_by_id == decision.id)))
   end
 
   def revision(revision, context) do
@@ -170,7 +174,7 @@ defmodule Storyarn.Ideation.Decisions.View do
       key: target["key"],
       type: target["type"],
       id: if(available?, do: target["id"]),
-      name: if(available?, do: current.name, else: labels[target["key"]]["label"]),
+      name: if(available? and current.name != "", do: current.name, else: labels[target["key"]]["label"]),
       new: false,
       available: available?
     }

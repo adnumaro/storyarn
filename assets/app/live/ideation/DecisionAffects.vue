@@ -150,6 +150,7 @@ function remove(index: number) {
       </PopoverTrigger>
       <PopoverContent align="start" class="w-80 p-2">
         <Input
+          id="decision-target-search"
           v-model="query"
           :placeholder="t('brainstormingDecisions.searchTargets')"
           class="h-8 text-sm"

@@ -132,7 +132,8 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
          id: decision.id,
          title: current.title,
          status: decision.status,
-         replaceable: decision.status in [:accepted, :proposed] and not is_nil(decision.accepted_version)
+         replaceable: decision.status in [:accepted, :proposed] and not is_nil(decision.accepted_version),
+         superseded_by_id: heads[{decision.id, decision.version}].superseded_by_id
        }}
     end)
   end

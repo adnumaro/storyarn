@@ -15,6 +15,8 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Platform.Vault
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Projects.Versioning.SnapshotObjectFormat
+  alias Storyarn.Sheets
 
   setup do
     ctx = ideation_fixture()
@@ -376,6 +378,31 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Repo.aggregate(Application, :count) == 1
   end
 
+  test "a valid target name stripped to empty leaves a recoverable decision and future snapshots", ctx do
+    sheet = sheet_fixture(ctx.project, %{name: "<hero>"})
+
+    attrs =
+      ctx
+      |> Map.put(:sheet, sheet)
+      |> proposal_attrs([%{type: "idea", id: ctx.first.id}])
+      |> Map.put(:targets, [%{type: "sheet", id: sheet.id}])
+
+    assert {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, attrs)
+    [revision] = revisions(decision.id)
+    [target] = revision.targets["items"]
+
+    assert Jason.decode!(revision.target_context) == %{
+             target["key"] => %{"label" => "Sheet ##{sheet.id}"}
+           }
+
+    snapshot = snapshot(ctx)
+    assert :ok = SnapshotObjectFormat.validate_project(snapshot)
+    assert {:ok, _} = Capsule.open(snapshot["ideation"])
+
+    assert {:ok, _} = Sheets.update_sheet(sheet, %{name: "Hero"})
+    assert :ok = ctx |> snapshot() |> SnapshotObjectFormat.validate_project()
+  end
+
   test "an import into another project keeps affected content named but unavailable", ctx do
     capsule = capture(ctx)
     destination = project_fixture(ctx.owner.user)
@@ -442,13 +469,17 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
   defp revisions(id), do: Repo.all(from r in Revision, where: r.decision_id == ^id, order_by: r.number)
 
   defp capture(ctx) do
+    snapshot(ctx)["ideation"]
+  end
+
+  defp snapshot(ctx) do
     {:ok, snapshot} =
       Repo.transact(fn ->
         {:ok,
          ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
       end)
 
-    snapshot["ideation"]
+    snapshot
   end
 
   defp restore(ctx, capsule) do

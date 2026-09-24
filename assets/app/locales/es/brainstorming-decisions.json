@@ -75,10 +75,12 @@
     "nothingToApply": "No hay nada que aplicar en una decisión sin contenido afectado.",
     "declareNoChange": "Declarar que no hacen falta cambios",
     "markApplied": "Marcar como aplicada",
+    "editApplication": "Modificar declaración",
     "markAs": "Marcar {name} como {state}",
     "markConfirm": {
       "applied": "Marcar como aplicada",
       "partially_applied": "Marcar como aplicada en parte",
+      "not_applied": "Marcar como no aplicada",
       "no_change_needed": "Sin cambios necesarios"
     },
     "markStatement": "Es una declaración, no una verificación. La nota queda en el historial de la decisión.",
