@@ -46,7 +46,7 @@ defmodule Storyarn.Ideation.Decisions.Queries.Sources do
       encoded = Jason.encode!(context)
 
       if byte_size(encoded) <= 256_000,
-        do: {:ok, %{sources: sources, source_context: encoded}},
+        do: {:ok, %{sources: sources, source_context: encoded, round_id: newest_round(selections, current)}},
         else: {:error, :source_context_limit}
     end
   end
@@ -86,6 +86,15 @@ defmodule Storyarn.Ideation.Decisions.Queries.Sources do
       true ->
         {:ok, {metadata(row), %{"title" => row.title, "body" => row.body}}}
     end
+  end
+
+  # A decision belongs to the latest round its evidence comes from.
+  defp newest_round(selections, current) do
+    selections
+    |> Enum.map(&current[{&1.type, &1.id}])
+    |> Enum.filter(&(&1 && &1.round_id))
+    |> Enum.max_by(& &1.round_number, fn -> %{round_id: nil} end)
+    |> Map.fetch!(:round_id)
   end
 
   def current(session_id, items) do

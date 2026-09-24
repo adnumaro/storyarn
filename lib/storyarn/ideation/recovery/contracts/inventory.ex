@@ -36,12 +36,14 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"decisions", "ideation_decisions", :session_id,
      ~w(id recovery_identity session_id author_id version status accepted_version inserted_at updated_at)a},
     {"decision_revisions", "ideation_decision_revisions", :decision_id,
-     ~w(id recovery_identity session_id decision_id number operation actor_id responsible_id title conclusion reason sources source_context request_key fingerprint inserted_at)a}
+     ~w(id recovery_identity session_id decision_id number operation actor_id responsible_id verb title conclusion reason sources source_context targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id request_key fingerprint inserted_at)a},
+    {"decision_applications", "ideation_decision_applications", :decision_id,
+     ~w(id recovery_identity session_id decision_id agreement target_key state note actor_id request_key fingerprint inserted_at)a}
   ]
   @group_collections ~w(groups group_memberships group_revisions)
   @reference_collections ~w(references reference_revisions)
-  @decision_collections ~w(decisions decision_revisions)
-  @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id responsible_id)a
+  @decision_collections ~w(decisions decision_revisions decision_applications)
+  @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id responsible_id next_action_owner_id)a
   @dates ~w(archived_at deleted_at removed_at inserted_at updated_at completed_at started_at closed_at deadline_at revealed_at)a
   @max_rows 100_000
 
@@ -110,7 +112,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3, 4, 5, 6, 7, 8, 9] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -216,8 +218,13 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
         Map.put(timer, "round_id", clock_round(Map.get(rounds, timer["session_id"], [])))
       end)
 
-    %{data | "version" => 9, "rows" => Map.put(rows, "timers", timers)}
+    normalize(%{data | "version" => 9, "rows" => Map.put(rows, "timers", timers)})
   end
+
+  # Decisions became objects with a verb, affected content and application.
+  # Earlier decisions have no expression in that model and are not carried over.
+  def normalize(%{"version" => 9, "rows" => rows} = data),
+    do: %{data | "version" => 10, "rows" => Enum.reduce(@decision_collections, rows, &Map.put(&2, &1, []))}
 
   def normalize(data), do: data
 
@@ -321,7 +328,20 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   defp strip_timer_reveal(row), do: row
 
-  defp tables_for(9), do: @tables
+  defp tables_for(10), do: @tables
+
+  defp tables_for(9) do
+    for {collection, table, parent, fields} <- tables_for(10), collection != "decision_applications" do
+      fields =
+        if collection == "decision_revisions",
+          do:
+            fields --
+              ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)a,
+          else: fields
+
+      {collection, table, parent, fields}
+    end
+  end
 
   defp tables_for(8) do
     for {collection, table, parent, fields} <- tables_for(9) do
@@ -345,7 +365,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   defp tables_for(6), do: tables_for(7)
 
-  defp tables_for(5), do: Enum.reject(tables_for(6), &(elem(&1, 0) in @decision_collections))
+  defp tables_for(5), do: Enum.reject(tables_for(6), &(elem(&1, 0) in ~w(decisions decision_revisions)))
   defp tables_for(4), do: Enum.reject(tables_for(5), &(elem(&1, 0) in @reference_collections))
   defp tables_for(3), do: Enum.reject(tables_for(4), &(elem(&1, 0) in @group_collections))
 
@@ -418,6 +438,8 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     key in [:recovery_identity, :creation_key, :request_key, :fingerprint] or
       (collection in ["revisions", "edits"] and key in [:title, :body]) or
       (collection in ["groups", "group_revisions"] and key in [:title, :synthesis]) or
-      (collection == "decision_revisions" and key in [:title, :conclusion, :reason, :source_context])
+      (collection == "decision_revisions" and
+         key in [:title, :conclusion, :reason, :source_context, :target_context, :next_action]) or
+      (collection == "decision_applications" and key in [:target_key, :note])
   end
 end

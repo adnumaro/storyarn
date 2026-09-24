@@ -245,12 +245,14 @@ function keydown(event: KeyboardEvent) {
         data-canvas-chrome
         class="ml-auto flex items-center gap-0.5 rounded-md bg-background/85 p-0.5 shadow-xs"
       >
-        <ToolbarTooltip v-if="canProposeDecision" :label="t('brainstormingDecisions.propose')"
+        <ToolbarTooltip
+          v-if="canProposeDecision"
+          :label="t('brainstormingDecisions.turnIntoDecision')"
           ><button
             :id="`group-propose-decision-${group.id}`"
             type="button"
             class="toolbar-btn"
-            :aria-label="t('brainstormingDecisions.propose')"
+            :aria-label="t('brainstormingDecisions.turnIntoDecision')"
             :disabled="busy"
             @click="emit('proposeDecision', group.id)"
           >

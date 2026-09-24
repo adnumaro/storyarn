@@ -4,8 +4,10 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
   import Ecto.Query
   import Storyarn.IdeationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Ideation
+  alias Storyarn.Ideation.Decisions.Application
   alias Storyarn.Ideation.Decisions.Decision
   alias Storyarn.Ideation.Decisions.Revision
   alias Storyarn.Ideation.Recovery.Capsule
@@ -13,6 +15,8 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Platform.Vault
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Projects.Versioning.SnapshotObjectFormat
+  alias Storyarn.Sheets
 
   setup do
     ctx = ideation_fixture()
@@ -28,7 +32,8 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
         canvas: %{x: 40, y: 60, width: 600, height: 400}
       })
 
-    ctx = Map.merge(ctx, %{first: first, second: second, group: group})
+    sheet = sheet_fixture(ctx.project, %{name: "Mara"})
+    ctx = Map.merge(ctx, %{first: first, second: second, group: group, sheet: sheet})
     attrs = proposal_attrs(ctx, [%{type: "idea", id: first.id}, %{type: "group", id: group.id}])
     {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, attrs)
     Map.merge(ctx, %{decision: decision, proposal_attrs: attrs})
@@ -47,7 +52,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 9, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 10, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -204,13 +209,16 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
         ["rows", "rounds"],
         &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
       )
-      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(
+        ["rows", "timers"],
+        &Enum.map(&1, fn row -> row |> Map.put("reveal_on_expiry", false) |> Map.delete("round_id") end)
+      )
       |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
-      |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions)))
+      |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions decision_applications)))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 9
+    assert normalized["version"] == 10
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)
@@ -271,7 +279,25 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       fn data ->
         put_in(data, ["rows", "decision_revisions", Access.at(1), "conclusion"], encrypted("Changed by acceptance"))
       end,
-      fn data -> update_in(data, ["rows", "decision_revisions"], &tl/1) end
+      fn data -> update_in(data, ["rows", "decision_revisions"], &tl/1) end,
+      # Valid as an acceptance by a new responsible person; a registration
+      # must be accepted by the person who proposed it.
+      fn data ->
+        facilitator = ctx.facilitator.user.id
+
+        data
+        |> put_in(["rows", "decision_revisions", Access.at(0), "responsible_id"], facilitator)
+        |> put_in(["rows", "decision_revisions", Access.at(1), "responsible_id"], facilitator)
+        |> put_in(["rows", "decision_revisions", Access.at(1), "actor_id"], facilitator)
+        |> put_in(["rows", "decision_revisions", Access.at(1), "operation"], "register")
+      end,
+      fn data -> put_in(data, ["rows", "decision_revisions", Access.at(1), "verb"], "discard") end,
+      fn data -> put_in(data, ["rows", "decision_revisions", Access.at(0), "verb"], "maybe") end,
+      fn data ->
+        put_in(data, ["rows", "decision_revisions", Access.at(1), "targets", "items", Access.at(0), "type"], "asset")
+      end,
+      fn data -> put_in(data, ["rows", "decision_revisions", Access.at(1), "superseded_by_id"], ctx.decision.id) end,
+      fn data -> put_in(data, ["rows", "decisions", Access.at(0), "status"], "withdrawn") end
     ]
 
     for mutate <- mutations do
@@ -315,6 +341,139 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Repo.aggregate(Decision, :count) == 1
   end
 
+  test "physical recovery keeps affected content, declarations and a supersession", ctx do
+    assert {:ok, accepted} = accept(ctx, ctx.decision.id, 1, Ecto.UUID.generate())
+    [mara, _village] = accepted.application.targets
+    assert {:ok, _} = declare(ctx, accepted, mara.key, "applied", "Rewrote her motivation")
+
+    replacement_attrs =
+      Map.merge(ctx.proposal_attrs, %{request_key: Ecto.UUID.generate(), replaces_id: accepted.id, register: true})
+
+    assert {:ok, replacement} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, replacement_attrs)
+
+    capsule = capture(ctx)
+    assert {:ok, %{"rows" => rows}} = Capsule.open(capsule)
+    assert length(rows["decision_applications"]) == 1
+    refute Jason.encode!(rows) =~ "Rewrote her motivation"
+    refute Jason.encode!(rows) =~ "The village ending"
+
+    Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    earlier_id = maps["decisions"][ctx.decision.id]
+    replacement_id = maps["decisions"][replacement.id]
+
+    assert {:ok, earlier} = Ideation.get_decision(ctx.viewer, ctx.project.id, session_id, earlier_id)
+    assert earlier.status == :superseded
+    assert earlier.superseded_by.id == replacement_id
+
+    assert [
+             %{name: "Mara", id: sheet_id, available: true, application: %{state: "applied"}},
+             %{name: "The village ending", new: true}
+           ] =
+             earlier.application.targets
+
+    assert sheet_id == ctx.sheet.id
+    assert {:ok, restored} = Ideation.get_decision(ctx.viewer, ctx.project.id, session_id, replacement_id)
+    assert restored.supersedes.id == earlier_id
+    assert restored.accepted.operation == "register"
+    assert restore(ctx, capsule) == maps
+    assert Repo.aggregate(Application, :count) == 1
+  end
+
+  test "a valid target name stripped to empty leaves a recoverable decision and future snapshots", ctx do
+    sheet = sheet_fixture(ctx.project, %{name: "<hero>"})
+
+    attrs =
+      ctx
+      |> Map.put(:sheet, sheet)
+      |> proposal_attrs([%{type: "idea", id: ctx.first.id}])
+      |> Map.put(:targets, [%{type: "sheet", id: sheet.id}])
+
+    assert {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, attrs)
+    [revision] = revisions(decision.id)
+    [target] = revision.targets["items"]
+
+    assert Jason.decode!(revision.target_context) == %{
+             target["key"] => %{"label" => "Sheet ##{sheet.id}"}
+           }
+
+    snapshot = snapshot(ctx)
+    assert :ok = SnapshotObjectFormat.validate_project(snapshot)
+    assert {:ok, _} = Capsule.open(snapshot["ideation"])
+
+    assert {:ok, _} = Sheets.update_sheet(sheet, %{name: "Hero"})
+    assert :ok = ctx |> snapshot() |> SnapshotObjectFormat.validate_project()
+  end
+
+  test "an import into another project keeps affected content named but unavailable", ctx do
+    capsule = capture(ctx)
+    destination = project_fixture(ctx.owner.user)
+    maps = restore(%{ctx | project: destination}, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    decision_id = maps["decisions"][ctx.decision.id]
+
+    assert {:ok, view} = Ideation.get_decision(ctx.owner, destination.id, session_id, decision_id)
+
+    assert [%{name: "Mara", id: nil, available: false}, %{name: "The village ending", new: true}] =
+             view.proposal.targets
+  end
+
+  test "version-eight capsules restore without the decisions of the earlier model", ctx do
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+    stripped = ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)
+
+    legacy =
+      data
+      |> Map.put("version", 8)
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+      |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
+      |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
+
+    assert {:ok, capsule} = Capsule.seal(legacy)
+    assert {:ok, normalized} = Capsule.open(capsule)
+    assert normalized["version"] == 10
+    assert normalized["rows"]["decisions"] == []
+  end
+
+  test "version-nine capsules retain each timer's round while dropping the earlier decision model", ctx do
+    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+
+    {:ok, _} =
+      Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, %{seconds: 300})
+
+    {:ok, first_timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {ctx, second_round} = new_round(ctx)
+
+    {:ok, _} =
+      Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{seconds: 600})
+
+    {:ok, second_timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+    stripped = ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)
+
+    legacy =
+      data
+      |> Map.put("version", 9)
+      |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
+      |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
+
+    assert legacy["rows"]["decisions"] != []
+    assert legacy["rows"]["decision_revisions"] != []
+    assert {:ok, capsule} = Capsule.seal(legacy)
+    assert {:ok, normalized} = Capsule.open(capsule)
+    assert normalized["version"] == 10
+    assert normalized["rows"]["decisions"] == []
+    assert normalized["rows"]["decision_revisions"] == []
+    assert normalized["rows"]["decision_applications"] == []
+    assert normalized["rows"]["timers"] == data["rows"]["timers"]
+
+    assert Enum.map(normalized["rows"]["timers"], &{&1["id"], &1["round_id"], &1["status"]}) == [
+             {first_timer.id, first_timer.round_id, "cancelled"},
+             {second_timer.id, second_round.id, "running"}
+           ]
+  end
+
   defp proposal_attrs(ctx, selections) do
     {:ok, sources} = Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, selections)
 
@@ -323,6 +482,8 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       title: "Keep the village motivation",
       conclusion: "The hero stays with the village.",
       reason: "It connects both shared motives.",
+      verb: "change",
+      targets: [%{type: "sheet", id: ctx.sheet.id}, %{type: "flow", label: "The village ending"}],
       responsible_id: ctx.author.user.id,
       sources: Enum.map(sources, &Map.take(&1, [:type, :id, :version, :identity]))
     }
@@ -331,16 +492,36 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
   defp accept(ctx, id, version, key),
     do: Ideation.accept_decision(ctx.author, ctx.project.id, ctx.session.id, id, version, key)
 
+  defp declare(ctx, decision, key, state, note) do
+    Ideation.declare_decision_application(
+      ctx.author,
+      ctx.project.id,
+      ctx.session.id,
+      decision.id,
+      decision.accepted_version,
+      %{
+        target_key: key,
+        state: state,
+        note: note,
+        request_key: Ecto.UUID.generate()
+      }
+    )
+  end
+
   defp revisions(id), do: Repo.all(from r in Revision, where: r.decision_id == ^id, order_by: r.number)
 
   defp capture(ctx) do
+    snapshot(ctx)["ideation"]
+  end
+
+  defp snapshot(ctx) do
     {:ok, snapshot} =
       Repo.transact(fn ->
         {:ok,
          ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(ctx.project.id, localization_scope: :active)}
       end)
 
-    snapshot["ideation"]
+    snapshot
   end
 
   defp restore(ctx, capsule) do

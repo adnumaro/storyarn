@@ -60,7 +60,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
     assert Path.wildcard("#{@root}/decisions/*.ex") == ["#{@root}/decisions/decisions.ex"]
 
     assert "#{@root}/decisions/entities/*.ex" |> Path.wildcard() |> Enum.map(&Path.basename/1) ==
-             ~w(decision.ex revision.ex)
+             ~w(application.ex decision.ex revision.ex)
   end
 
   test "queries stay read-only and do not acquire locks or own transactions" do
@@ -227,13 +227,13 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    search_decision_sources: 3,
                    search_decision_sources: 4,
                    list_decisions: 3,
-                   list_decisions: 4,
                    get_decision: 4,
                    decision_history: 4,
-                   decision_history: 5,
                    propose_decision: 4,
                    revise_decision: 6,
-                   accept_decision: 6
+                   accept_decision: 6,
+                   withdraw_decision: 6,
+                   declare_decision_application: 6
                  ]
              )
 
@@ -299,7 +299,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       "references" => Storyarn.Ideation.References.Reference,
       "reference_revisions" => Storyarn.Ideation.References.Revision,
       "decisions" => Storyarn.Ideation.Decisions.Decision,
-      "decision_revisions" => Storyarn.Ideation.Decisions.Revision
+      "decision_revisions" => Storyarn.Ideation.Decisions.Revision,
+      "decision_applications" => Storyarn.Ideation.Decisions.Application
     }
 
     for {collection, table, _, fields} <- Storyarn.Ideation.Recovery.Inventory.tables() do

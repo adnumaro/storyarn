@@ -60,11 +60,14 @@ const {
   baseUrl,
   comments,
   linked = null,
+  decisionDraft = false,
 } = defineProps<{
   board: Board;
   baseUrl: string;
   comments?: BrainstormingCommentsState;
   linked?: BoardLink | null;
+  /** A decision proposal is open: selecting notes adds them to its sources. */
+  decisionDraft?: boolean;
 }>();
 const { t, error, options, member } = useBoardText();
 const selectedIds = ref<number[]>([]);
@@ -139,7 +142,8 @@ async function proposeDecision(groupId?: number) {
   preparingDecision.value = true;
   const payload =
     groupId === undefined ? { idea_ids: [...selectedIds.value] } : { group_id: groupId };
-  const reply = await request("decisions_new", payload);
+  const action = groupId === undefined && decisionDraft ? "decisions_add_sources" : "decisions_new";
+  const reply = await request(action, payload);
   if (at.epoch !== board.epoch || at.session_id !== board.session?.id) return;
   preparingDecision.value = false;
   if (reply.status === "error") failure.value = reply.code;
@@ -1249,9 +1253,11 @@ onUnmounted(() => {
               v-if="writable"
               :label="
                 t(
-                  decisionSelection
-                    ? 'brainstormingDecisions.propose'
-                    : 'brainstormingDecisions.sharedSourcesOnly',
+                  !decisionSelection
+                    ? 'brainstormingDecisions.sharedSourcesOnly'
+                    : decisionDraft
+                      ? 'brainstormingDecisions.addToProposal'
+                      : 'brainstormingDecisions.propose',
                 )
               "
               ><Button
@@ -1259,7 +1265,13 @@ onUnmounted(() => {
                 variant="ghost"
                 size="icon-sm"
                 :disabled="!decisionSelection || !online || mutationBusy || preparingDecision"
-                :aria-label="t('brainstormingDecisions.propose')"
+                :aria-label="
+                  t(
+                    decisionDraft
+                      ? 'brainstormingDecisions.addToProposal'
+                      : 'brainstormingDecisions.propose',
+                  )
+                "
                 @click="proposeDecision()"
                 ><ListChecks class="size-4" /></Button
             ></ToolbarTooltip>

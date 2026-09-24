@@ -2,6 +2,7 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
   @moduledoc false
   import Ecto.Query
 
+  alias Storyarn.Ideation.Decisions.Application
   alias Storyarn.Ideation.Decisions.Decision
   alias Storyarn.Ideation.Decisions.Events.Invalidation
   alias Storyarn.Ideation.Decisions.Execution.Mutation
@@ -23,36 +24,42 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
 
   defp locked(scope, project_id, session_id, command) do
     with {:ok, access} <- Sessions.lock_for_contribution(scope, project_id, session_id),
-         {:ok, receipt} <- receipt(access, command.key),
+         {:ok, receipt} <- receipt(access, command),
          {:ok, decision} <- locate(access, command.id, receipt) do
       identity = if decision, do: decision.recovery_identity
-
-      fingerprint =
-        Input.fingerprint(command.operation, access.session_identity, identity, command.version, command.attrs)
-
+      fingerprint = fingerprint(access, identity, command)
       execute(scope, project_id, access, decision, receipt, command, fingerprint)
     end
   end
 
-  defp receipt(access, key) do
+  defp fingerprint(access, identity, %{operation: "declare"} = command),
+    do: Input.application_fingerprint(access.session_identity, identity, command.agreement, command.attrs)
+
+  defp fingerprint(access, identity, command),
+    do: Input.fingerprint(command.operation, access.session_identity, identity, command.version, command.attrs)
+
+  # Declarations keep their own receipts; a key is scoped to the record it wrote.
+  defp receipt(access, command) do
+    schema = if command.operation == "declare", do: Application, else: Revision
+
     current =
       Repo.one(
-        from r in Revision,
-          where: r.session_id == ^access.session_id and r.actor_id == ^access.user_id and r.request_key == ^key,
+        from r in schema,
+          where: r.session_id == ^access.session_id and r.actor_id == ^access.user_id and r.request_key == ^command.key,
           select: %{decision_id: r.decision_id, fingerprint: r.fingerprint}
       )
 
-    if is_nil(current) and replaced_receipt?(access, key),
+    if is_nil(current) and replaced_receipt?(schema, access, command.key),
       do: {:error, :idempotency_conflict},
       else: {:ok, current}
   end
 
-  defp replaced_receipt?(access, key) do
+  defp replaced_receipt?(schema, access, key) do
     # Restoring an older generation must not replay writes that recovery rolled
     # back. Retained receipts only fence the same logical session; never expose
     # their decision, content, or fingerprint through ordinary authorization.
     Repo.exists?(
-      from r in Revision,
+      from r in schema,
         join: s in subquery(Sessions.receipt_generations_query()),
         on: s.id == r.session_id,
         where:
@@ -79,6 +86,12 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
     if decision && decision.recovery_identity == identity,
       do: {:ok, decision},
       else: {:error, :idempotency_conflict}
+  end
+
+  defp execute(_scope, _project_id, access, decision, nil, %{operation: "declare"} = command, fingerprint) do
+    with {:ok, decision} <- Mutation.declare(access, decision, command, fingerprint) do
+      {:ok, {decision.id, true}}
+    end
   end
 
   defp execute(scope, project_id, access, decision, nil, command, fingerprint) do

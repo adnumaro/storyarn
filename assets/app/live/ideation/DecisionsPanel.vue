@@ -1,25 +1,18 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import {
-  ArrowLeft,
-  Check,
-  History,
-  ListChecks,
-  Loader2,
-  Pencil,
-  Plus,
-  RefreshCw,
-  X,
-} from "@lucide/vue";
+import { ArrowLeft, ChevronDown, ChevronUp, ListChecks, Plus, RefreshCw, X } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import Sidebar from "@shell/Sidebar.vue";
-import DecisionEditor from "./DecisionEditor.vue";
+import DecisionCard from "./DecisionCard.vue";
+import DecisionDetail from "./DecisionDetail.vue";
+import DecisionForm from "./DecisionForm.vue";
 import DecisionSourcePicker from "./DecisionSourcePicker.vue";
-import DecisionSummary from "./DecisionSummary.vue";
+import { orderDecisions, replaceable, shownRevision } from "./decisionStatus";
 import { useDecisionRequests } from "./useDecisionRequests";
 import type {
+  ApplicationState,
   DecisionDraftInput,
   DecisionSource,
   DecisionSourceIdentity,
@@ -32,7 +25,7 @@ const { state, epoch, sessionId } = defineProps<{
   epoch: string;
   sessionId: number;
 }>();
-const { t, te, locale } = useI18n();
+const { t, te } = useI18n();
 const { request, pending, notice } = useDecisionRequests(
   () => state,
   () => sessionId,
@@ -42,6 +35,31 @@ const editor = computed(() => state.mode === "create" || state.mode === "revise"
 const editorContext = computed(() =>
   JSON.stringify([epoch, sessionId, state.context, state.mode, state.selected?.id]),
 );
+const ordered = computed(() => orderDecisions(state.items));
+const showRetired = ref(false);
+const roundCount = computed(() => state.rounds.length);
+const draft = computed(() => {
+  const selected = state.selected;
+  if (state.mode !== "revise" || !selected) return null;
+  return selected.status === "proposed" || !selected.accepted
+    ? selected.proposal
+    : selected.accepted;
+});
+const replacements = computed(() =>
+  replaceable(state.items, state.mode === "revise" ? (state.selected?.id ?? null) : null).map(
+    (item) => ({ id: item.id, title: shownRevision(item).title }),
+  ),
+);
+const formOptions = computed(() => ({
+  members: state.members,
+  defaultOwnerId: state.defaultOwnerId,
+  viewerId: state.viewerId,
+  prefill: state.prefill,
+  rounds: state.rounds,
+  suggestions: state.targetSuggestions,
+  results: state.targetResults,
+  replaceable: replacements.value,
+}));
 const dirty = ref(false);
 const picker = ref(false);
 const discard = ref(false);
@@ -65,10 +83,12 @@ watch(
     dirty.value = false;
     discard.value = false;
     picker.value = state.mode === "create" && !state.sources.length;
-    if (state.open && !editor.value) {
-      await nextTick();
-      heading.value?.focus({ preventScroll: true });
-    }
+    await nextTick();
+    // Each view starts at its top: the detail's status must not stay scrolled
+    // away behind the form it replaced.
+    const scroller = document.getElementById("brainstorming-decisions-panel")?.parentElement;
+    if (scroller) scroller.scrollTop = 0;
+    if (state.open && !editor.value) heading.value?.focus({ preventScroll: true });
   },
   { immediate: true },
 );
@@ -111,6 +131,25 @@ function searchSources(
     onSuccess,
   );
 }
+let queuedTargetSearch: { query: string; context: string } | null = null;
+const targetSearchContext = () => JSON.stringify([epoch, sessionId, state.context, state.mode]);
+function flushTargetSearch() {
+  if (!queuedTargetSearch || pending.value) return;
+  const queued = queuedTargetSearch;
+  queuedTargetSearch = null;
+  if (queued.context !== targetSearchContext() || !editor.value) return;
+  request("search_targets", { search: queued.query });
+}
+function searchTargets(query: string) {
+  queuedTargetSearch = { query, context: targetSearchContext() };
+  flushTargetSearch();
+}
+watch(pending, (action) => {
+  if (!action) flushTargetSearch();
+});
+watch(targetSearchContext, () => {
+  queuedTargetSearch = null;
+});
 function save(input: DecisionDraftInput) {
   const action = state.mode === "revise" ? "revise" : "create";
   if (action === "revise" ? !state.selected?.canRevise : !state.canPropose) return;
@@ -121,18 +160,23 @@ function save(input: DecisionDraftInput) {
   };
   request(action, payload, JSON.stringify([action, payload]));
 }
-function accept() {
-  if (!state.selected?.canAccept) return;
-  const payload = { decision_id: state.selected.id, revision: state.selected.revision };
-  request("accept", payload, JSON.stringify(["accept", payload]));
+function transition(action: "accept" | "withdraw") {
+  const selected = state.selected;
+  if (!selected || !(action === "accept" ? selected.canAccept : selected.canWithdraw)) return;
+  const payload = { decision_id: selected.id, revision: selected.version };
+  request(action, payload, JSON.stringify([action, payload]));
 }
-function date(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(
-        parsed,
-      );
+function declare(targetKey: string | null, stateValue: ApplicationState, note: string | null) {
+  const selected = state.selected;
+  if (!selected?.canDeclare || !selected.accepted) return;
+  const payload = {
+    decision_id: selected.id,
+    agreement: selected.accepted.revision,
+    target_key: targetKey,
+    state: stateValue,
+    note,
+  };
+  request("declare", payload, JSON.stringify(["declare", payload]));
 }
 </script>
 <template>
@@ -228,211 +272,96 @@ function date(value: string) {
           </p>
         </div>
         <ul v-else class="space-y-2">
-          <li v-for="decision in state.items" :key="decision.id">
+          <li v-for="decision in ordered.live" :key="decision.id">
             <button
               :id="`decision-open-${decision.id}`"
               type="button"
               :data-status="decision.status"
-              class="w-full rounded-xl border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              class="block w-full rounded-xl text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               :disabled="!!pending"
               @click="request('select', { decision_id: decision.id })"
             >
-              <span
-                class="mb-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                :class="
-                  decision.status === 'accepted'
-                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                    : 'bg-muted text-muted-foreground'
-                "
-                ><Check v-if="decision.status === 'accepted'" class="size-3" />{{
-                  t(`brainstormingDecisions.status.${decision.status}`)
-                }}</span
-              ><span class="block break-words text-sm font-medium">{{ decision.title }}</span
-              ><span
-                class="mt-1 line-clamp-2 block text-xs leading-relaxed text-muted-foreground"
-                >{{ decision.conclusion }}</span
-              ><span class="mt-3 block text-[11px] text-muted-foreground"
-                >{{ decision.ownerName || t("brainstormingDecisions.formerMember") }} ·
-                {{
-                  t("brainstormingDecisions.sourcesCount", { count: decision.sources.length })
-                }}</span
-              ><span
-                v-if="decision.status === 'proposed' && decision.previousAgreement"
-                class="mt-1 block text-[11px] text-muted-foreground"
-                >{{ t("brainstormingDecisions.agreementRemains") }}</span
-              >
+              <DecisionCard :decision="decision" :round-count="roundCount" />
             </button>
           </li>
-        </ul>
-        <Button
-          v-if="state.nextCursor !== null"
-          id="decisions-next"
-          variant="outline"
-          size="sm"
-          class="w-full"
-          :disabled="!!pending"
-          @click="request('load_more', { cursor: state.nextCursor })"
-          >{{ t("brainstormingDecisions.next") }}</Button
-        >
-      </template>
-      <template v-else>
-        <details
-          v-if="
-            (state.selected?.previousAgreement && state.selected.status === 'proposed') ||
-            (state.mode === 'revise' && state.selected?.status === 'accepted')
-          "
-          id="decision-previous-agreement"
-          class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3"
-        >
-          <summary
-            class="cursor-pointer text-xs font-medium text-emerald-800 dark:text-emerald-400"
-          >
-            {{ t("brainstormingDecisions.previousAgreement") }}
-          </summary>
-          <div class="mt-3">
-            <DecisionSummary
-              v-if="state.selected"
-              :agreement="state.selected.previousAgreement ?? state.selected"
-            />
-          </div>
-        </details>
-        <DecisionEditor
-          v-if="editor"
-          :context="editorContext"
-          :draft="state.mode === 'revise' ? state.selected : null"
-          :sources="state.sources"
-          :members="state.members"
-          :default-owner-id="state.defaultOwnerId"
-          :can-assign="state.mode === 'create' || !!state.selected?.canAssign"
-          :enabled="state.mode === 'create' ? state.canPropose : !!state.selected?.canRevise"
-          :pending="!!pending"
-          @dirty="dirty = $event"
-          @submit="save"
-          @remove-source="removeSource"
-          @refresh-sources="request('refresh_sources')"
-          @browse-sources="picker = !picker"
-          ><template #picker
-            ><DecisionSourcePicker
-              v-if="picker"
-              :sources="state.sources"
-              :results="state.sourceResults"
-              :next-cursor="state.sourceNextCursor"
-              :searched="state.searched"
-              :pending="!!pending"
-              @close="picker = false"
-              @search="searchSources"
-              @select="addSource" /></template
-        ></DecisionEditor>
-        <template v-else-if="state.selected">
-          <div
-            class="flex items-center gap-2 text-xs font-medium"
-            :class="
-              state.selected.status === 'accepted'
-                ? 'text-emerald-700 dark:text-emerald-400'
-                : 'text-muted-foreground'
-            "
-          >
-            <Check v-if="state.selected.status === 'accepted'" class="size-4" />{{
-              t(`brainstormingDecisions.status.${state.selected.status}`)
-            }}
-          </div>
-          <DecisionSummary :agreement="state.selected" />
-          <div class="space-y-2 border-t pt-4">
-            <Button
-              v-if="state.selected.canAccept"
-              id="decision-accept"
-              class="w-full"
-              :disabled="!!pending"
-              @click="accept"
-              ><Loader2 v-if="pending === 'accept'" class="size-4 animate-spin" /><Check
-                v-else
-                class="size-4"
-              />{{ t("brainstormingDecisions.accept") }}</Button
+          <li v-if="ordered.retired.length" class="pt-1.5">
+            <button
+              id="decisions-retired"
+              type="button"
+              class="flex w-full items-center gap-2.5 text-[11px] text-muted-foreground hover:text-foreground"
+              :aria-expanded="showRetired"
+              @click="showRetired = !showRetired"
             >
-            <p
-              v-if="state.selected.status === 'proposed'"
-              class="text-xs leading-relaxed text-muted-foreground"
-            >
-              {{
-                t(
-                  state.selected.canAccept
-                    ? "brainstormingDecisions.acceptHelp"
-                    : "brainstormingDecisions.waitingForOwner",
-                  { name: state.selected.ownerName || t("brainstormingDecisions.formerMember") },
-                )
-              }}
-            </p>
-            <Button
-              v-if="state.selected.canRevise"
-              id="decision-revise"
-              variant="outline"
-              class="w-full"
-              :disabled="!!pending"
-              @click="
-                request('begin_revision', {
-                  decision_id: state.selected.id,
-                  revision: state.selected.revision,
-                })
-              "
-              ><Pencil class="size-3.5" />{{
-                t(
-                  state.selected.status === "accepted"
-                    ? "brainstormingDecisions.revise"
-                    : "brainstormingDecisions.editProposal",
-                )
-              }}</Button
-            >
-          </div>
-          <details
-            id="decision-history"
-            class="border-t pt-3"
-            @toggle="
-              (event) => {
-                if ((event.target as HTMLDetailsElement).open && !state.history.length)
-                  request('history', { decision_id: state.selected?.id });
-              }
-            "
-          >
-            <summary class="cursor-pointer text-xs font-medium text-muted-foreground">
-              <History class="mr-1 inline size-3.5" />{{ t("brainstormingDecisions.history") }}
-            </summary>
-            <div class="mt-3 space-y-3">
-              <p v-if="pending === 'history'" class="text-xs text-muted-foreground">
-                {{ t("brainstormingDecisions.loading") }}
-              </p>
-              <details
-                v-for="entry in state.history"
-                :key="entry.revision"
-                class="rounded-lg border p-3"
-              >
-                <summary class="cursor-pointer text-xs leading-relaxed">
-                  <span class="font-medium">{{
-                    t(`brainstormingDecisions.historyActions.${entry.operation}`)
-                  }}</span>
-                  · {{ date(entry.recordedAt)
-                  }}<span class="mt-0.5 block text-[11px] text-muted-foreground">{{
-                    entry.actorName || t("brainstormingDecisions.formerMember")
-                  }}</span>
-                </summary>
-                <div class="mt-3"><DecisionSummary :agreement="entry" /></div>
-              </details>
-              <Button
-                v-if="state.historyNextCursor"
-                size="sm"
-                variant="outline"
+              <span class="h-px flex-1 bg-border" /><span class="inline-flex items-center gap-[5px]"
+                >{{ t("brainstormingDecisions.retired", { count: ordered.retired.length })
+                }}<ChevronUp v-if="showRetired" class="size-3" /><ChevronDown
+                  v-else
+                  class="size-3" /></span
+              ><span class="h-px flex-1 bg-border" />
+            </button>
+          </li>
+          <template v-if="showRetired">
+            <li v-for="decision in ordered.retired" :key="decision.id">
+              <button
+                :id="`decision-open-${decision.id}`"
+                type="button"
+                :data-status="decision.status"
+                class="block w-full rounded-xl text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 :disabled="!!pending"
-                @click="
-                  request('history', {
-                    decision_id: state.selected.id,
-                    before_id: state.historyNextCursor,
-                  })
-                "
-                >{{ t("brainstormingDecisions.olderHistory") }}</Button
+                @click="request('select', { decision_id: decision.id })"
               >
-            </div>
-          </details>
-        </template>
+                <DecisionCard :decision="decision" :round-count="roundCount" />
+              </button>
+            </li>
+          </template>
+        </ul>
       </template>
+      <DecisionForm
+        v-else-if="editor"
+        :context="editorContext"
+        :draft="draft"
+        :draft-version="state.mode === 'revise' ? (state.selected?.version ?? null) : null"
+        :sources="state.sources"
+        :can-assign="state.mode === 'create' || !!state.selected?.canAssign"
+        :enabled="state.mode === 'create' ? state.canPropose : !!state.selected?.canRevise"
+        :pending="!!pending"
+        :options="formOptions"
+        @dirty="dirty = $event"
+        @submit="save"
+        @remove-source="removeSource"
+        @refresh-sources="request('refresh_sources')"
+        @browse-sources="picker = !picker"
+        @search-targets="searchTargets"
+        ><template #picker
+          ><DecisionSourcePicker
+            v-if="picker"
+            :sources="state.sources"
+            :results="state.sourceResults"
+            :next-cursor="state.sourceNextCursor"
+            :searched="state.searched"
+            :pending="!!pending"
+            @close="picker = false"
+            @search="searchSources"
+            @select="addSource" /></template
+      ></DecisionForm>
+      <DecisionDetail
+        v-else-if="state.selected"
+        :decision="state.selected"
+        :history="state.history"
+        :round-count="roundCount"
+        :pending="pending"
+        @accept="transition('accept')"
+        @withdraw="transition('withdraw')"
+        @revise="
+          request('begin_revision', {
+            decision_id: state.selected.id,
+            revision: state.selected.version,
+          })
+        "
+        @select="request('select', { decision_id: $event })"
+        @load-history="request('history', { decision_id: state.selected?.id })"
+        @declare="declare"
+      />
     </div>
   </Sidebar>
   <ConfirmDialog

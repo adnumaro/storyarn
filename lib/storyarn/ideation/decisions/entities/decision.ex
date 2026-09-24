@@ -7,7 +7,7 @@ defmodule Storyarn.Ideation.Decisions.Decision do
     field :session_id, :id
     field :author_id, :id
     field :version, :integer, default: 1
-    field :status, Ecto.Enum, values: [:proposed, :accepted], default: :proposed
+    field :status, Ecto.Enum, values: [:proposed, :accepted, :withdrawn, :superseded], default: :proposed
     field :accepted_version, :integer
     timestamps(type: :utc_datetime_usec)
   end
