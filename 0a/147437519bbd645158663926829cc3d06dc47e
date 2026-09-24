@@ -1,0 +1,19 @@
+test/storyarn_web/live/hooks/palette_test.exs
+  s_b5abbfc6259d0c::t_06fd1183865981 253,256,264,267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0a147437519bbd645158663926829cc3d06dc47e",
+  "prompts": {},
+  "sessions": {
+    "s_b5abbfc6259d0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce0305-91ec-4116-b95d-80eb72980b92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
