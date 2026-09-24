@@ -35,9 +35,9 @@ Selecciona **Nueva sesión** en el dashboard de Brainstorming, o el **+** junto 
 
 Abre **Detalles y ajustes de la sesión** desde el icono de ajustes de la cabecera para darle un título, un objetivo y algo de contexto. El objetivo y el contexto son opcionales; ayudan a quien se incorpora más tarde a entender para qué es la sesión.
 
-También puedes empezar una sesión desde el contenido que quieres cambiar. **Explorar cambios** en una Ficha, un Flujo o una Escena crea una sesión con ese contenido como contexto de partida. Consulta [Decisiones en tu contenido](/docs/brainstorming/decisions-in-your-content).
+También puedes empezar una sesión desde el contenido que quieres cambiar. La bombilla **Explorar cambios** de la cabecera de una Ficha, un Flujo o una Escena crea una sesión con ese contenido como contexto de partida. Consulta [Decisiones en tu contenido](/docs/brainstorming/decisions-in-your-content).
 
-La paleta de comandos también sirve: busca una sesión por su título para abrirla, o ejecuta **Nueva sesión** desde cualquier parte de un proyecto que puedas editar.
+La paleta de comandos también sirve: busca una sesión por su título para abrirla, o ejecuta **Nueva sesión de Brainstorming** en cualquier proyecto que puedas editar.
 
 ## El dashboard de Brainstorming
 
@@ -51,10 +51,10 @@ La barra lateral muestra las mismas sesiones. Despliega una sesión para ver sus
 
 Una sesión tiene dos responsabilidades, ambas asignadas en **Detalles y ajustes de la sesión**. Solo pueden tenerlas personas que puedan editar el proyecto.
 
-| Responsabilidad               | Qué significa                                                                                                                                                                                                                                                                                            |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Facilitador**               | Dirige la sesión: edita su título y sus ajustes, escribe la pregunta de cada ronda, abre y cierra rondas, hace privada una ronda y la revela, maneja el temporizador y archiva la sesión. Quien crea una sesión es su primer facilitador; el papel se puede pasar a otra persona con permiso de edición. |
-| **Responsable de decisiones** | La persona que se propone por defecto como responsable de las decisiones nuevas. No da ningún permiso para gestionar la sesión.                                                                                                                                                                          |
+| Responsabilidad               | Qué significa                                                                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Facilitador**               | Dirige la sesión: edita su título y sus ajustes, asigna las dos responsabilidades, escribe la pregunta de cada ronda, abre y cierra rondas, hace privada una ronda y la revela, maneja el temporizador y archiva la sesión. Quien crea una sesión es su primer facilitador; el papel se puede pasar a otra persona con permiso de edición. |
+| **Responsable de decisiones** | La persona que se propone por defecto como responsable de las decisiones nuevas. No da ningún permiso para gestionar la sesión.                                                                                                                                                                                                            |
 
 El resto participa según su rol en el proyecto:
 
@@ -68,6 +68,6 @@ Los permisos se comprueban en el servidor en cada cambio; no basta con ocultar c
 
 ## Archiva una sesión
 
-Cuando una sesión ha terminado, el facilitador o el propietario del proyecto puede seleccionar **Archivar sesión** en **Detalles y ajustes de la sesión**. Una sesión archivada sigue siendo legible, con sus notas, grupos, decisiones e historial. Sus decisiones siguen apareciendo en el contenido al que afectan.
+Cuando una sesión ha terminado, el facilitador o el propietario del proyecto puede seleccionar **Archivar sesión** en **Detalles y ajustes de la sesión**. Una sesión archivada sigue siendo legible, con sus notas, grupos, decisiones e historial. Sus decisiones siguen apareciendo en el contenido al que afectan, pero no se pueden aceptar, revisar ni marcar como aplicadas hasta que se reabra la sesión.
 
-Archivar también pone fin a la privacidad de todas las rondas privadas: desde ese momento cuentan como reveladas, aunque las notas que nunca se compartieron no se publican. El facilitador puede **Reabrir sesión** más adelante para seguir trabajando.
+Archivar también pone fin a la privacidad de todas las rondas privadas: desde ese momento cuentan como reveladas, aunque las notas que nunca se compartieron no se publican. El facilitador o el propietario del proyecto pueden **Reabrir sesión** más adelante para seguir trabajando.

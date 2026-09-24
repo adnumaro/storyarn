@@ -53,7 +53,7 @@ Only notes that are already shared can be sources. Notes of a private round beco
 What the main button does depends on who is responsible:
 
 - **Register decision** appears when you are the responsible person. The decision is proposed and accepted in one step.
-- **Propose** appears when someone else is responsible. The decision waits for them, marked **Waiting for you** in their panel and in their inbox.
+- **Propose** appears when someone else is responsible. The decision waits for them, marked **Waiting for you** in their panel, and they get a notification in their inbox.
 
 If you are responsible but want the team to review first, choose **Save as proposal instead**. Registering or proposing never changes your content.
 

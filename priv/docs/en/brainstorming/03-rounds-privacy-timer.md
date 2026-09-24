@@ -23,12 +23,12 @@ The facilitator writes the question in place on the header of the round in progr
 
 These controls belong to the facilitator, or the project owner acting as one.
 
-- **New round** closes the round in progress and opens the next band below it, in one step. Write the new question on its header. It is also available from the canvas context menu.
+- **New round** closes the round in progress and opens the next band below it, in one step. Write the new question on its header. It is also in the canvas context menu, which is where you start Round 2: while a session has a single round, its header shows neither **New round** nor **Close round**.
 - **Close round** ends the round in progress without opening another. Use it at the end of a session, when the team moves on to grouping and deciding.
 
 Closing a round does not hide, freeze, or publish anything. Notes keep their author, state, and round, and can still be edited, grouped, and connected. Only one round is in progress at a time, and a closed round cannot be reopened.
 
-A note always belongs to the round in progress when its author started writing. If someone finishes a note after its round closed, it stays in its original round with the label **Added after closing**.
+A new note belongs to the round whose band it is placed in. A note placed in a closed round, or finished after its round closed, keeps that round and is labeled **Added after closing**.
 
 ## Private rounds
 
@@ -41,7 +41,7 @@ Privacy is a setting of each round. Open the settings menu on the header of the 
 While a round is private:
 
 - its notes cannot be grouped, used as decision sources, or commented on;
-- cursors are not shared, so nobody can follow someone else's writing;
+- while it is the round in progress, cursors are not shared, so nobody can follow someone else's writing;
 - the note count on the header includes the hidden notes, so everyone can see the round filling up.
 
 Nothing is carried over: a new round always starts shared, even if the previous one was private.
@@ -60,7 +60,7 @@ The header of the round in progress carries a countdown that everyone in the ses
 2. Press play or **Enter** to start.
 3. While it runs you can pause and resume it, add a minute with **+1 min**, or stop it. The line under the header fills as time passes.
 
-When the countdown reaches 0:00 the digits stay there, muted, and can be edited again. The timer never closes or starts a round on its own. Closing the round, or starting the next one, stops its timer.
+When the countdown reaches zero the digits stop there, and the facilitator can type a new time. The timer never closes or starts a round on its own. Closing the round, or starting the next one, stops its timer.
 
 ## Close new contributions
 

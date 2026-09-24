@@ -23,12 +23,12 @@ El facilitador escribe la pregunta directamente en la cabecera de la ronda en cu
 
 Estos controles son del facilitador, o del propietario del proyecto cuando actúa como tal.
 
-- **Nueva ronda** cierra la ronda en curso y abre la siguiente franja debajo, en un solo paso. Escribe la nueva pregunta en su cabecera. También está en el menú contextual del lienzo.
+- **Nueva ronda** cierra la ronda en curso y abre la siguiente franja debajo, en un solo paso. Escribe la nueva pregunta en su cabecera. También está en el menú contextual del lienzo, que es desde donde se empieza la Ronda 2: mientras una sesión tiene una sola ronda, su cabecera no muestra **Nueva ronda** ni **Cerrar ronda**.
 - **Cerrar ronda** termina la ronda en curso sin abrir otra. Úsalo al final de una sesión, cuando el equipo pasa a agrupar y decidir.
 
 Cerrar una ronda no oculta, congela ni publica nada. Las notas conservan su autor, su estado y su ronda, y se pueden seguir editando, agrupando y conectando. Solo hay una ronda en curso a la vez, y una ronda cerrada no se puede reabrir.
 
-Una nota siempre pertenece a la ronda que estaba en curso cuando su autor empezó a escribirla. Si alguien termina una nota después de que su ronda se cierre, la nota se queda en su ronda original con la etiqueta **Añadida tras el cierre**.
+Una nota nueva pertenece a la ronda de la franja donde se coloca. Una nota colocada en una ronda cerrada, o terminada después de que su ronda se cierre, conserva esa ronda y lleva la etiqueta **Añadida tras el cierre**.
 
 ## Rondas privadas
 
@@ -41,7 +41,7 @@ La privacidad es un ajuste de cada ronda. Abre el menú de ajustes en la cabecer
 Mientras una ronda es privada:
 
 - sus notas no se pueden agrupar, usar como fuentes de decisiones ni comentar;
-- los cursores no se comparten, así que nadie puede seguir lo que escribe otra persona;
+- mientras es la ronda en curso, los cursores no se comparten, así que nadie puede seguir lo que escribe otra persona;
 - el número de notas de la cabecera incluye las ocultas, para que todos vean cómo se va llenando la ronda.
 
 No se hereda nada: una ronda nueva siempre empieza compartida, aunque la anterior fuera privada.
@@ -60,7 +60,7 @@ La cabecera de la ronda en curso lleva una cuenta atrás que ve todo el mundo en
 2. Pulsa el botón de reproducir o **Enter** para empezar.
 3. Mientras corre, puedes pausarla y reanudarla, añadir un minuto con **+1 min** o pararla. La línea bajo la cabecera se va llenando a medida que pasa el tiempo.
 
-Cuando la cuenta atrás llega a 0:00, los dígitos se quedan ahí, atenuados, y se pueden volver a editar. El temporizador nunca cierra ni abre una ronda por su cuenta. Cerrar la ronda, o empezar la siguiente, detiene su temporizador.
+Cuando la cuenta atrás llega a cero, los dígitos se detienen ahí y el facilitador puede escribir un tiempo nuevo. El temporizador nunca cierra ni abre una ronda por su cuenta. Cerrar la ronda, o empezar la siguiente, detiene su temporizador.
 
 ## Cierra las nuevas aportaciones
 

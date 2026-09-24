@@ -35,9 +35,9 @@ Select **New session** on the Brainstorming dashboard, or the **+** next to **Se
 
 Open **Session details and settings** from the sliders icon in the header to give the session a title, an objective, and some context. The objective and context are optional; they help people who join later understand what the session is for.
 
-You can also start a session from the content you want to change. **Explore changes** in a Sheet, Flow, or Scene creates a session with that content as its starting context. See [Decisions in Your Content](/docs/brainstorming/decisions-in-your-content).
+You can also start a session from the content you want to change. The **Explore changes** lightbulb in the header of a Sheet, Flow, or Scene creates a session with that content as its starting context. See [Decisions in Your Content](/docs/brainstorming/decisions-in-your-content).
 
-The command palette also works here: search a session by its title to open it, or run **New session** from anywhere in a project you can edit.
+The command palette also works here: search a session by its title to open it, or run **New Brainstorming session** in any project you can edit.
 
 ## The Brainstorming dashboard
 
@@ -51,10 +51,10 @@ The sidebar shows the same sessions. Expand a session to see its rounds, named a
 
 A session has two responsibilities, both assigned in **Session details and settings**. Only people who can edit the project can hold them.
 
-| Role               | What it means                                                                                                                                                                                                                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Facilitator**    | Runs the session: edits its title and settings, writes each round's question, starts and closes rounds, makes a round private and reveals it, runs the timer, and archives the session. The person who creates a session is its first facilitator; the role can be handed to another editor. |
-| **Decision owner** | The person suggested by default as responsible for new decisions. It gives no rights to manage the session.                                                                                                                                                                                  |
+| Role               | What it means                                                                                                                                                                                                                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Facilitator**    | Runs the session: edits its title and settings, assigns both responsibilities, writes each round's question, starts and closes rounds, makes a round private and reveals it, runs the timer, and archives the session. The person who creates a session is its first facilitator; the role can be handed to another editor. |
+| **Decision owner** | The person suggested by default as responsible for new decisions. It gives no rights to manage the session.                                                                                                                                                                                                                 |
 
 Everyone else participates according to their project role:
 
@@ -68,6 +68,6 @@ Permissions are checked on the server for every change, not only hidden in the i
 
 ## Archive a session
 
-When a session is finished, the facilitator or the project owner can select **Archive session** in **Session details and settings**. An archived session stays readable, with its notes, groups, decisions, and history. Its decisions keep appearing in the content they affect.
+When a session is finished, the facilitator or the project owner can select **Archive session** in **Session details and settings**. An archived session stays readable, with its notes, groups, decisions, and history. Its decisions keep appearing in the content they affect, but they cannot be accepted, revised, or marked applied until the session is reopened.
 
-Archiving also ends the privacy of every private round: from then on each counts as revealed, although notes that were never shared are not published. A facilitator can **Reopen session** later to keep working.
+Archiving also ends the privacy of every private round: from then on each counts as revealed, although notes that were never shared are not published. The facilitator or the project owner can **Reopen session** later to keep working.

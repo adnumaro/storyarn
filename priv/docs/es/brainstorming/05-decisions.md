@@ -53,7 +53,7 @@ Solo las notas ya compartidas pueden ser fuentes. Las notas de una ronda privada
 Lo que hace el botón principal depende de quién es responsable:
 
 - **Registrar decisión** aparece cuando el responsable eres tú. La decisión se propone y se acepta en un solo paso.
-- **Proponer** aparece cuando el responsable es otra persona. La decisión queda a la espera, marcada como **Pendiente de ti** en su panel y en su bandeja de notificaciones.
+- **Proponer** aparece cuando el responsable es otra persona. La decisión queda a la espera, marcada como **Pendiente de ti** en su panel, y recibe un aviso en su bandeja de notificaciones.
 
 Si eres responsable pero quieres que el equipo la revise antes, elige **Guardar como propuesta**. Registrar o proponer nunca cambia tu contenido.
 
@@ -82,7 +82,7 @@ Una decisión aceptada registra, para cada contenido al que afecta, si el cambio
 | **Aplicada**               | El cambio está en el contenido.                            |
 | **Sin cambios necesarios** | El contenido ya encajaba, o no necesita nada.              |
 
-Cualquier editor puede declarar un estado con **Marcar como aplicada**, con una nota breve opcional como «Added trust_tobin as a three-state select.». **Ir a aplicar** abre el contenido afectado con la decisión al lado; consulta [Decisiones en tu contenido](/docs/brainstorming/decisions-in-your-content). Una decisión sin contenido afectado se puede cerrar con **Declarar que no hacen falta cambios**.
+Cualquier editor puede declarar un estado con **Marcar como aplicada**, con una nota breve opcional como «Added trust_tobin as a three-state select». **Ir a aplicar** abre el contenido afectado con la decisión al lado; consulta [Decisiones en tu contenido](/docs/brainstorming/decisions-in-your-content). Una decisión sin contenido afectado se puede cerrar con **Declarar que no hacen falta cambios**.
 
 <img src="/images/docs/brainstorming/brainstorming-decision-application.webp" alt="El bloque de aplicación con Act 3 endings sin aplicar, con Ir a aplicar y Marcar como aplicada, y Mara aplicada por Tomás Rivera con una nota; debajo, la siguiente acción y la conversación" loading="lazy">
 

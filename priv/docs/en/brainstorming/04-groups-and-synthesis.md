@@ -21,7 +21,7 @@ The frame surrounds the notes in their current positions. Nothing about the note
 
 ## Write a synthesis
 
-Select the group and choose **Write synthesis** on its header. The synthesis has its own space beside the notes, so writing it never covers what the notes say. A good synthesis states the idea the notes share in one or two sentences: "Guilt, not ambition. He wants Mara free of the harbor's debt, even if that means she leaves."
+Select the group and choose the synthesis button on its header. The synthesis has its own space beside the notes, so writing it never covers what the notes say. A good synthesis states the idea the notes share in one or two sentences: "Guilt, not ambition. He wants Mara free of the harbor's debt, even if that means she leaves."
 
 The synthesis is not a decision. It describes what the group found; a decision says what the team will do about it. When you are ready to agree on it, the group's synthesis can become the starting point of a decision. See [Decisions](/docs/brainstorming/decisions).
 
@@ -30,7 +30,7 @@ The synthesis is not a decision. It describes what the group found; a decision s
 - Drag the group's header to move the frame and all its notes together.
 - Double-click the title to rename the group, and use the pencil on the synthesis to rewrite it.
 - **Add to group** and **Remove from group** in the selection toolbar change which notes belong to it, without deleting any.
-- **Ungroup** separates the notes and keeps the synthesis on the canvas as a standalone card. **Delete group** removes the frame and its synthesis; the notes stay.
+- The ungroup button on the group's header separates the notes and keeps the synthesis on the canvas as a standalone card. The delete button removes the frame and its synthesis; the notes stay.
 
 Group changes are part of your undo history, like any other canvas action.
 

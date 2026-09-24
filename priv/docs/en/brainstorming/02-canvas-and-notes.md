@@ -11,12 +11,12 @@ The canvas is where a session's notes live. Notes are short, autosaved contribut
 
 ## Write a note
 
-- **Double-click** empty canvas, choose the note tool in the dock, or press **N**. The note opens for writing where you placed it.
+- **Double-click** empty canvas, or choose the note tool in the dock and click the canvas, to write a note where you want it. Press **N** to start one in the middle of the view.
 - Notes **save automatically** as you type. There is no save button.
 - **Double-click your own note** to edit it again. While writing, **Cmd/Ctrl+Enter** starts another, independent note.
 - A note grows with its text. Its author and round appear under it when you hover over it or select it.
 
-Every note belongs to the round in progress when you started writing it. Rounds are covered in [Rounds, Privacy, and Timer](/docs/brainstorming/rounds-privacy-timer).
+A new note belongs to the round whose band you place it in. Rounds are covered in [Rounds, Privacy, and Timer](/docs/brainstorming/rounds-privacy-timer).
 
 ## Shape and color
 
@@ -32,15 +32,15 @@ Shapes and colors carry no built-in meaning. Use them for your team's own conven
 
 ## Select, move, and connect
 
-| To...                      | Do this                                                                                                                      |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Select several notes       | Shift-click them, or drag a rectangle over empty canvas. **Cmd/Ctrl+A** selects every visible note.                          |
-| Move notes                 | Drag them, or use the arrow keys. Hold **Shift** for bigger steps.                                                           |
-| Connect notes              | Select two or more and press **L**: the first selected note connects to the others. You can also drag one note onto another. |
-| Remove connections         | **Shift+L** removes the connections between the selected notes.                                                              |
-| Change a connection        | Click it to choose a plain line, an arrow in either direction, or arrows at both ends. **Delete** removes it.                |
-| Add a connected note       | **Alt/Option+Shift+Arrow** creates a note in that direction, connected from every selected note.                             |
-| Duplicate, copy, and paste | **Cmd/Ctrl+D**, **Cmd/Ctrl+C**, **X**, and **V**. Copies keep their content and look, and become your notes.                 |
+| To...                           | Do this                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Select several notes            | Shift-click them, or drag a rectangle over empty canvas. **Cmd/Ctrl+A** selects every visible note.                            |
+| Move notes                      | Drag them, or use the arrow keys. Hold **Shift** for bigger steps.                                                             |
+| Connect notes                   | Select two or more and press **L**: the first selected note connects to the others. You can also drag one note onto another.   |
+| Remove connections              | **Shift+L** removes the connections between the selected notes.                                                                |
+| Change a connection             | Click it to choose a plain line, an arrow in either direction, or arrows at both ends. **Delete** removes it.                  |
+| Add a connected note            | **Alt/Option+Shift+Arrow** creates a note in that direction, connected from every selected note.                               |
+| Duplicate, cut, copy, and paste | **Cmd/Ctrl+D**, **Cmd/Ctrl+X**, **Cmd/Ctrl+C**, and **Cmd/Ctrl+V**. Copies keep their content and look, and become your notes. |
 
 With nothing selected, **L** switches to the connection tool, which shows a line from the pointer to the notes you can reach. Connections can link notes from different rounds.
 
@@ -57,9 +57,10 @@ Right-click a note to open its menu.
 - **For later** keeps a promising idea visible but parked. The note gets a "For later" tab and a dashed outline, and appears in the **For later** list in the sidebar.
 - **Mark as discarded** keeps the idea on the canvas, faded and struck through, so the team remembers it was considered.
 - **Bring back** returns a parked or discarded note to active.
-- **Delete** (the trash action, or **Delete**/**Backspace** outside the text editor) removes the note from the canvas, the list, and search. Use it for mistakes, not for ideas you ruled out.
 
-Only the author of a note can edit its text or change its state. Other editors can still move it, connect it, and group it.
+To delete a note, select it and press **Delete** or **Backspace** outside the text editor. Deleting removes the note from the canvas, the list, and search; use it for mistakes, not for ideas you ruled out. Undo brings it back.
+
+Only the author of a note can edit its text, change its state, or delete it. Other editors can still move it, connect it, and group it.
 
 ## Bring an idea into the current round
 

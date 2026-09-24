@@ -11,11 +11,11 @@ Brainstorming se conecta con el resto de tu proyecto en los dos sentidos. Puedes
 
 ## Explora cambios desde tu contenido
 
-Los editores de Fichas, Flujos y Escenas tienen un botón de **Exploraciones**, una bombilla en su cabecera. Abre un diálogo con tres partes:
+Los editores de Fichas, Flujos y Escenas tienen una bombilla a la izquierda de su cabecera, con la etiqueta **Explorar cambios**. Abre el diálogo de **Exploraciones**, que tiene tres partes:
 
 - **Contexto de partida**: un resumen del contenido, como su nombre, su shortcut y su descripción. Se guarda con la sesión como referencia; no es una copia editable y no cambia el original.
 - **Decisiones sobre** el contenido, cuando las hay. Consulta [más abajo](#decisiones-en-el-editor).
-- **Exploraciones vinculadas**: las sesiones que ya exploran este contenido. Selecciona **Retomar** para continuar una.
+- **Exploraciones vinculadas**: las sesiones que ya exploran este contenido. Selecciona **Retomar** para continuar una, o **Ver** si la sesión está archivada.
 
 <img src="/images/docs/brainstorming/brainstorming-explorations.webp" alt="El diálogo de Exploraciones abierto desde el Flujo Act 3 endings, con su contexto de partida, las decisiones sobre él y una exploración vinculada para retomar" loading="lazy">
 
@@ -27,21 +27,20 @@ Los lectores pueden abrir y retomar las exploraciones a las que tienen acceso, p
 
 ## Referencias dentro de una sesión
 
-Una sesión puede tener a mano más partes del proyecto que su contenido de partida. **Referencias de la sesión**, el icono de enlace de la esquina superior izquierda del lienzo, te permite vincular a la sesión Fichas, Flujos, Escenas, Recursos y textos localizados, cada uno con un propósito como **Referencia** o **Afecta a**.
+Una sesión puede tener a mano más partes del proyecto que su contenido de partida. **Referencias**, el botón de enlace de la esquina superior izquierda del lienzo, abre **Referencias de la sesión**, donde vinculas a la sesión Fichas, Flujos, Escenas, Recursos y textos localizados, cada uno con un propósito como **Referencia** o **Afecta a**. Una Ficha, un Flujo o una Escena vinculados así también muestran la sesión entre sus exploraciones vinculadas, con sus decisiones.
 
 <img src="/images/docs/brainstorming/brainstorming-references.webp" alt="El panel de referencias de la sesión con los selectores de tipo de contenido y propósito, y una Escena vinculada, The lighthouse, sin cambios en su resumen" loading="lazy">
 
-Cada referencia conserva el resumen que consultaste al vincularla. Si el contenido cambia después, la referencia lo indica, y **Abrir contenido actual** te lleva a su editor. Vincular nunca cambia el contenido original.
+Cada referencia conserva el resumen que consultaste al vincularla. Si el contenido cambia después, la referencia indica **Los metadatos generales cambiaron desde que se vinculó**, y **Abrir contenido actual** te lleva a su editor. Vincular nunca cambia el contenido original.
 
 ## Decisiones en el editor
 
-Cuando una Ficha, un Flujo o una Escena tiene decisiones aceptadas que aún no se han aplicado del todo, su bombilla muestra un contador ámbar. Pasa el cursor por encima para leer un resumen, como «2 decisiones sobre Mara · 1 por aplicar».
+Cuando hay decisiones aceptadas con algo por aplicar en una Ficha, un Flujo o una Escena, su bombilla muestra un contador ámbar. Pasa el cursor por encima para leer un resumen, como «2 decisiones sobre Mara · 1 por aplicar».
 
-El diálogo de **Exploraciones** lista las **Decisiones sobre** ese contenido: primero las que faltan por aplicar, después las propuestas abiertas y, por último, las ya aplicadas o que no necesitan cambios. La lista incluye las decisiones que nombran el contenido en **Afecta a** y todas las decisiones de las sesiones que lo exploran.
+El diálogo de **Exploraciones** lista las **Decisiones sobre** ese contenido: primero las que faltan por aplicar, después las propuestas abiertas, luego las ya aplicadas o que no necesitan cambios y, por último, las retiradas y las sustituidas. La lista incluye las decisiones que nombran el contenido en **Afecta a** y todas las decisiones de las sesiones que lo exploran.
 
-Desde cada decisión puedes:
+Puedes abrir cualquiera en su sesión. En una decisión que aún falta por aplicar aquí, los editores también pueden:
 
-- abrirla en su sesión;
 - seleccionar **Marcar como aplicada** para declarar su estado sin salir del diálogo;
 - seleccionar **Ir a aplicar** para trabajar en ella desde el editor.
 
@@ -51,7 +50,7 @@ Desde cada decisión puedes:
 
 <img src="/images/docs/brainstorming/brainstorming-apply-banner.webp" alt="El Flujo Act 3 endings abierto en su editor con la decisión The player chooses who keeps the light bajo la cabecera, con las opciones Marcar aplicada, Parcialmente y Sin cambios" loading="lazy">
 
-Haz tus cambios y después elige **Marcar aplicada**, **Parcialmente** o **Sin cambios**, con una nota breve si quieres. Durante cinco segundos después de marcarla puedes pulsar **Deshacer**, que restaura el estado anterior. El aviso desaparece cuando pasas a otro contenido.
+Haz tus cambios y después elige **Marcar aplicada**, **Parcialmente** o **Sin cambios**, con una nota breve si quieres. Durante cinco segundos después de marcarla puedes pulsar **Deshacer**, que restaura el estado anterior; después el aviso se cierra solo. También puedes cerrarlo, y desaparece cuando pasas a otro contenido.
 
 Storyarn nunca aplica una decisión por ti ni comprueba el contenido para saber si se ha aplicado. El estado es lo que declara tu equipo.
 
@@ -63,8 +62,8 @@ Las decisiones avisan a quien tiene que actuar, en la bandeja de notificaciones:
 | ------------------------------------------------ | --------------------------------------------------------------------- |
 | Se propone una decisión                          | Al responsable, que tiene que aceptarla                               |
 | Se acepta una decisión                           | A quien la propuso y a quien haya abierto una conversación sobre ella |
-| Una decisión aceptada tiene una siguiente acción | A la persona encargada de esa acción                                  |
-| Un contenido afectado se marca como aplicado     | Al responsable y a quien la propuso                                   |
+| Una decisión aceptada tiene una siguiente acción | A la persona encargada de esa acción, cuando se acepta la decisión    |
+| Un contenido afectado se marca como aplicado     | Al responsable y a quien propuso la decisión por primera vez          |
 
 Nunca recibes avisos de tus propias acciones. Las menciones y respuestas en la conversación de una decisión llegan como cualquier otra notificación de comentarios.
 

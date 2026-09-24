@@ -21,7 +21,7 @@ El marco rodea las notas en su posición actual. Las notas no cambian: conservan
 
 ## Escribe una síntesis
 
-Selecciona el grupo y elige **Escribir síntesis** en su cabecera. La síntesis tiene su propio espacio junto a las notas, así que escribirla nunca tapa lo que dicen. Una buena síntesis enuncia en una o dos frases la idea que comparten las notas: «Culpa, no ambición. Quiere que Mara se libre de la deuda del puerto, aunque eso signifique que se vaya».
+Selecciona el grupo y elige el botón de síntesis de su cabecera. La síntesis tiene su propio espacio junto a las notas, así que escribirla nunca tapa lo que dicen. Una buena síntesis enuncia en una o dos frases la idea que comparten las notas: «Culpa, no ambición. Quiere que Mara se libre de la deuda del puerto, aunque eso signifique que se vaya».
 
 La síntesis no es una decisión. Describe lo que el grupo ha encontrado; una decisión dice qué va a hacer el equipo al respecto. Cuando estéis listos para acordarlo, la síntesis del grupo puede ser el punto de partida de una decisión. Consulta [Decisiones](/docs/brainstorming/decisions).
 
@@ -30,7 +30,7 @@ La síntesis no es una decisión. Describe lo que el grupo ha encontrado; una de
 - Arrastra la cabecera del grupo para mover el marco y todas sus notas a la vez.
 - Haz doble clic en el título para renombrar el grupo, y usa el lápiz de la síntesis para reescribirla.
 - **Añadir a grupo** y **Sacar del grupo** en la barra de selección cambian qué notas le pertenecen, sin eliminar ninguna.
-- **Desagrupar** separa las notas y conserva la síntesis en el lienzo como una tarjeta independiente. **Eliminar grupo** quita el marco y su síntesis; las notas se quedan.
+- El botón de desagrupar de la cabecera del grupo separa las notas y conserva la síntesis en el lienzo como una tarjeta independiente. El botón de eliminar quita el marco y su síntesis; las notas se quedan.
 
 Los cambios en los grupos forman parte de tu historial de deshacer, como cualquier otra acción del lienzo.
 
