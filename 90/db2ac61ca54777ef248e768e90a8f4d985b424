@@ -1,0 +1,51 @@
+priv/docs/en/brainstorming/04-groups-and-synthesis.md
+  s_3815073ba3b4bc::t_60ce434dfd54e1 24,33
+priv/docs/es/brainstorming/01-brainstorming-overview.md
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 54-55,57
+  s_3815073ba3b4bc::t_189a28fdd665dd 38,40,56,71,73
+priv/docs/es/brainstorming/02-canvas-and-notes.md
+  s_3815073ba3b4bc::t_189a28fdd665dd 14,19,43,61-63
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 35-42
+priv/docs/en/brainstorming/06-decisions-in-your-content.md
+  s_3815073ba3b4bc::t_60ce434dfd54e1 14,18,30,38,40,42,53
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 61-66
+priv/docs/es/brainstorming/04-groups-and-synthesis.md
+  s_3815073ba3b4bc::t_189a28fdd665dd 24,33
+priv/docs/en/brainstorming/01-brainstorming-overview.md
+  s_3815073ba3b4bc::t_60ce434dfd54e1 38,40,56,71,73
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 54-55,57
+priv/docs/es/brainstorming/06-decisions-in-your-content.md
+  s_3815073ba3b4bc::t_189a28fdd665dd 14,18,30,34,38,40,42,53
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 65-66
+priv/docs/es/brainstorming/05-decisions.md
+  s_3815073ba3b4bc::t_189a28fdd665dd 56,85
+priv/docs/en/brainstorming/03-rounds-privacy-timer.md
+  s_3815073ba3b4bc::t_60ce434dfd54e1 26,31,44,63
+priv/docs/es/brainstorming/03-rounds-privacy-timer.md
+  s_3815073ba3b4bc::t_189a28fdd665dd 26,31,44,63
+priv/docs/en/brainstorming/05-decisions.md
+  s_3815073ba3b4bc::t_60ce434dfd54e1 56
+priv/docs/en/brainstorming/02-canvas-and-notes.md
+  s_3815073ba3b4bc::t_60ce434dfd54e1 14,19,43,61-63
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 35-42
+priv/blog/es/2026-09-24-lo-que-deja-una-lluvia-de-ideas.md
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 36,42,50,54
+priv/blog/en/2026-09-24-what-a-brainstorm-leaves-behind.md
+  s_3815073ba3b4bc::t_f7e1d172c96cb0 36,42,50,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "90db2ac61ca54777ef248e768e90a8f4d985b424",
+  "prompts": {},
+  "sessions": {
+    "s_3815073ba3b4bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21122dea-fa09-4921-93cc-f214032f86d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
