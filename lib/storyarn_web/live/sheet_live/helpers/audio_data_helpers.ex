@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
 
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Sheets
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.PrivateMedia
 
   def load_audio_data(socket) do
@@ -109,9 +110,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
 
       {:error, :limit_reached, _details} ->
         {:noreply,
-         put_flash(
+         PlanLimitFlash.put(
            socket,
-           :error,
+           socket.assigns.project.workspace_id,
            dgettext("sheets", "Storage limit reached. Upgrade your plan.")
          )}
 

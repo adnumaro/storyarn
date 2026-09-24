@@ -1,9 +1,13 @@
 defmodule Storyarn.Commercial.Billing.Plan do
   @moduledoc """
   Static plan configuration. Plans change rarely and live in code, not DB.
+
+  A limit is a non-negative integer or `:unlimited`. A resource a plan does
+  not define has no limit value, which callers treat as blocked.
   """
 
   @default_plan "free"
+  @gib 1024 * 1024 * 1024
 
   @plans %{
     "free" => %{
@@ -21,8 +25,52 @@ defmodule Storyarn.Commercial.Billing.Plan do
         # Trash retention for soft-deleted entities (sequences, flows).
         # After this window the retention worker hard-deletes the entity
         # (FK CASCADE drops its trash refs automatically). Free tier = 24h
-        # by decision 2026-04-21; paid tiers will extend up to 15-30 days.
+        # by decision 2026-04-21.
         trash_retention_hours: 24
+      }
+    },
+    # The free beta: Pro's limits with a cap on editors, since nobody pays for
+    # seats while it lasts.
+    "beta" => %{
+      name: "Beta",
+      limits: %{
+        projects_per_workspace: :unlimited,
+        members_per_workspace: 10,
+        items_per_project: :unlimited,
+        storage_bytes_per_workspace: 10 * @gib,
+        project_templates_per_workspace: 50,
+        project_template_versions_per_template: 100,
+        named_versions_per_project: :unlimited,
+        project_snapshots_per_project: 20,
+        trash_retention_hours: 30 * 24
+      }
+    },
+    "pro" => %{
+      name: "Pro",
+      limits: %{
+        projects_per_workspace: :unlimited,
+        members_per_workspace: :unlimited,
+        items_per_project: :unlimited,
+        storage_bytes_per_workspace: 10 * @gib,
+        project_templates_per_workspace: 50,
+        project_template_versions_per_template: 100,
+        named_versions_per_project: :unlimited,
+        project_snapshots_per_project: 20,
+        trash_retention_hours: 30 * 24
+      }
+    },
+    "studio" => %{
+      name: "Studio",
+      limits: %{
+        projects_per_workspace: :unlimited,
+        members_per_workspace: :unlimited,
+        items_per_project: :unlimited,
+        storage_bytes_per_workspace: 50 * @gib,
+        project_templates_per_workspace: :unlimited,
+        project_template_versions_per_template: :unlimited,
+        named_versions_per_project: :unlimited,
+        project_snapshots_per_project: 100,
+        trash_retention_hours: 90 * 24
       }
     }
   }
@@ -35,6 +83,7 @@ defmodule Storyarn.Commercial.Billing.Plan do
   @doc """
   Returns a specific limit for a plan.
   """
+  @spec limit(String.t(), atom()) :: non_neg_integer() | :unlimited | nil
   def limit(plan_key, resource) do
     case get(plan_key) do
       nil -> nil

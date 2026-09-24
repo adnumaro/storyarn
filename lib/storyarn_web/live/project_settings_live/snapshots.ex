@@ -231,7 +231,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   defp serialize_snapshot_limit(used, limit) do
     %{
       used: used,
-      limit: if(is_integer(limit) and limit >= 0, do: limit)
+      limit: serialize_count_limit(limit)
     }
   end
 

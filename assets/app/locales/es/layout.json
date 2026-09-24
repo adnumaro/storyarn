@@ -1,5 +1,8 @@
 {
   "layout": {
+    "flash": {
+      "view_plans": "Ver planes"
+    },
     "tools": {
       "brainstorming": "Brainstorming",
       "dashboard": "Dashboard",

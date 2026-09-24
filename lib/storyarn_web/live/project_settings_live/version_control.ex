@@ -3,6 +3,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.ProjectLive.Components.SettingsComponents, only: [serialize_count_limit: 1]
+
   alias Storyarn.Commercial
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
@@ -57,11 +59,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
     %{
       projectSnapshots: %{
         used: usage.project_snapshots.used,
-        limit: usage.project_snapshots.limit
+        limit: serialize_count_limit(usage.project_snapshots.limit)
       },
       namedVersions: %{
         used: usage.named_versions.used,
-        limit: usage.named_versions.limit
+        limit: serialize_count_limit(usage.named_versions.limit)
       }
     }
   end

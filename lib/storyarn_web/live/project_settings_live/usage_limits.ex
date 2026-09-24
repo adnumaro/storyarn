@@ -4,7 +4,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
   use StoryarnWeb, :live_view
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents,
-    only: [serialize_byte_count: 1, serialize_storage_bucket: 1, serialize_storage_usage: 2]
+    only: [
+      serialize_byte_count: 1,
+      serialize_count_limit: 1,
+      serialize_storage_bucket: 1,
+      serialize_storage_usage: 2
+    ]
 
   alias Storyarn.Commercial
   alias Storyarn.Projects
@@ -79,7 +84,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
   defp serialize_bucket(bucket) do
     %{
       used: bucket.used,
-      limit: bucket.limit
+      limit: serialize_count_limit(bucket.limit)
     }
   end
 

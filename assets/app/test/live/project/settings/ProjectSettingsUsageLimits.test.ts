@@ -80,6 +80,22 @@ describe("ProjectSettingsUsageLimits", () => {
     expect(wrapper.findAll('[role="progressbar"]')).toHaveLength(1);
   });
 
+  it("shows an unlimited quota without a limit or a bar", () => {
+    const base = usageLimits();
+    const wrapper = mountUsage({
+      usageLimits: {
+        ...base,
+        project: { ...base.project, items: { used: 900, limit: "unlimited" } },
+      },
+    });
+
+    const row = wrapper.get('[data-testid="project-usage-meter-items"]');
+    expect(row.attributes("data-meter-status")).toBe("unlimited");
+    expect(row.text()).toContain("No limit");
+    expect(row.text()).not.toContain("/");
+    expect(row.find('[role="progressbar"]').exists()).toBe(false);
+  });
+
   it("explains what to do when a quota is reached", () => {
     const base = usageLimits();
     const wrapper = mountUsage({

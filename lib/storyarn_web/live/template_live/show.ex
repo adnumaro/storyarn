@@ -9,6 +9,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
   alias Storyarn.Projects
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -456,7 +457,10 @@ defmodule StoryarnWeb.TemplateLive.Show do
        |> put_flash(:info, dgettext("projects", "Template installation started."))}
     else
       {:error, :limit_reached, _details} ->
-        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
+        {:ok, workspace_id} = parse_workspace_id(install_params["workspace_id"])
+
+        {:noreply,
+         PlanLimitFlash.put(socket, workspace_id, dgettext("workspaces", "Project limit reached for your plan"))}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("projects", "Template could not be installed."))}
@@ -515,10 +519,20 @@ defmodule StoryarnWeb.TemplateLive.Show do
             {:noreply, put_flash(socket, :error, dgettext("projects", "A template publication is already running."))}
 
           {:error, :limit_reached, %{resource: :project_template_versions_per_template}} ->
-            {:noreply, put_flash(socket, :error, dgettext("projects", "Template version limit reached for your plan."))}
+            {:noreply,
+             PlanLimitFlash.put(
+               socket,
+               template.source_project.workspace_id,
+               dgettext("projects", "Template version limit reached for your plan.")
+             )}
 
           {:error, :limit_reached, _details} ->
-            {:noreply, put_flash(socket, :error, dgettext("projects", "Template limit reached for your plan."))}
+            {:noreply,
+             PlanLimitFlash.put(
+               socket,
+               template.source_project.workspace_id,
+               dgettext("projects", "Template limit reached for your plan.")
+             )}
 
           {:error, _reason} ->
             {:noreply, put_flash(socket, :error, dgettext("projects", "Template publication could not be queued."))}

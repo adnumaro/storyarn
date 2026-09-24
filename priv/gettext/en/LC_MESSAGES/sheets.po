@@ -34,8 +34,8 @@ msgstr ""
 msgid "Could not create block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:101
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:118
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:102
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:119
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr ""
@@ -46,12 +46,12 @@ msgid "Could not delete block."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/index.ex:379
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:170
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:171
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:179
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:180
 #, elixir-autogen, elixir-format
 msgid "Could not move sheet."
 msgstr ""
@@ -76,12 +76,12 @@ msgstr ""
 msgid "Could not save shortcut."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:71
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:72
 #, elixir-autogen, elixir-format
 msgid "Could not update audio."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:119
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:120
 #, elixir-autogen, elixir-format
 msgid "Could not upload audio file."
 msgstr ""
@@ -93,7 +93,7 @@ msgstr ""
 msgid "Invalid file data."
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:108
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:109
 #, elixir-autogen, elixir-format
 msgid "New Sheet"
 msgstr ""
@@ -119,13 +119,13 @@ msgstr ""
 msgid "Shortcut %{error}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:108
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:109
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr ""
 
 #: lib/storyarn_web/live/hooks/palette.ex:647
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:92
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:93
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -216,7 +216,7 @@ msgid "Could not duplicate block."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/index.ex:378
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:169
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:170
 #, elixir-autogen, elixir-format
 msgid "Sheet moved to trash."
 msgstr ""
@@ -283,7 +283,7 @@ msgstr ""
 msgid "Removed %{type} block \"%{name}\""
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:115
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:116
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr ""
@@ -443,17 +443,17 @@ msgstr ""
 msgid "Block #%{n} — rich-text mention"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:100
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:101
 #, elixir-autogen, elixir-format
 msgid "Audio uploaded, but it could not be attached to the dialogue. It remains available in your assets."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:79
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:80
 #, elixir-autogen, elixir-format
 msgid "The selected audio is no longer available."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:64
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:65
 #, elixir-autogen, elixir-format
 msgid "This dialogue line is no longer available. Refresh and try again."
 msgstr ""

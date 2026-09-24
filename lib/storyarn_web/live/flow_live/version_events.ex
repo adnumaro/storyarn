@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.VersionEvents do
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.VersionHistory
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   def handle_create(%{"title" => title, "description" => description}, socket, config) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
@@ -154,7 +155,7 @@ defmodule StoryarnWeb.FlowLive.VersionEvents do
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
 
       {:error, :limit_reached, _metadata} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        {:noreply, put_named_version_limit_flash(socket)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
@@ -196,7 +197,7 @@ defmodule StoryarnWeb.FlowLive.VersionEvents do
          |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
 
       {:error, :limit_reached, _metadata} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+        {:noreply, put_named_version_limit_flash(socket)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
@@ -276,4 +277,12 @@ defmodule StoryarnWeb.FlowLive.VersionEvents do
   end
 
   defp entity(socket), do: Map.fetch!(socket.assigns, :flow)
+
+  defp put_named_version_limit_flash(socket) do
+    PlanLimitFlash.put(
+      socket,
+      socket.assigns.project.workspace_id,
+      dgettext("versioning", "Named version limit reached for your plan.")
+    )
+  end
 end

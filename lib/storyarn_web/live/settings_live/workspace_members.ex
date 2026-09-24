@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   @workspace_invite_roles ~w(admin member viewer)
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -269,7 +270,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   end
 
   defp handle_workspace_invitation_result({:error, :limit_reached, %{resource: :members_per_workspace}}, socket) do
-    {:noreply, put_flash(socket, :error, dgettext("workspaces", "Member limit reached for your plan."))}
+    {:noreply,
+     PlanLimitFlash.put(
+       socket,
+       socket.assigns.workspace.id,
+       dgettext("workspaces", "Member limit reached for your plan.")
+     )}
   end
 
   defp handle_workspace_invitation_result({:error, :unauthorized}, socket) do

@@ -17,7 +17,8 @@ import { useLive } from "@shared/composables/useLive";
 
 interface UsageBucket {
   used: number;
-  limit: number | null;
+  /** `null` when the plan does not define the limit. */
+  limit: number | "unlimited" | null;
 }
 
 interface VersionUsage {
@@ -131,7 +132,7 @@ interface Meter {
   label: string;
   hint: string;
   used: string;
-  limit: string;
+  limit: string | null;
   percent: number | null;
   status: SettingsMeterStatus;
 }
@@ -141,6 +142,7 @@ function formatCount(value: number): string {
 }
 
 function meterStatus(bucket: UsageBucket): SettingsMeterStatus {
+  if (bucket.limit === "unlimited") return "unlimited";
   if (bucket.limit === null) return "unknown";
   if (bucket.limit <= 0 || bucket.used >= bucket.limit) return "reached";
   if (bucket.used / bucket.limit >= 0.8) return "warning";
@@ -149,9 +151,16 @@ function meterStatus(bucket: UsageBucket): SettingsMeterStatus {
 }
 
 function meterPercent(bucket: UsageBucket): number | null {
-  if (bucket.limit === null || bucket.limit <= 0) return null;
+  if (bucket.limit === "unlimited" || bucket.limit === null || bucket.limit <= 0) return null;
 
   return Math.min(Math.round((bucket.used / bucket.limit) * 100), 100);
+}
+
+function meterLimit(bucket: UsageBucket): string | null {
+  if (bucket.limit === "unlimited") return null;
+  if (bucket.limit === null) return t("project_settings.usage_limits.status.unknown");
+
+  return formatCount(bucket.limit);
 }
 
 function meter(key: string, bucket: UsageBucket, label: string, hint: string): Meter {
@@ -160,10 +169,7 @@ function meter(key: string, bucket: UsageBucket, label: string, hint: string): M
     label,
     hint,
     used: formatCount(bucket.used),
-    limit:
-      bucket.limit === null
-        ? t("project_settings.usage_limits.status.unknown")
-        : formatCount(bucket.limit),
+    limit: meterLimit(bucket),
     percent: meterPercent(bucket),
     status: meterStatus(bucket),
   };

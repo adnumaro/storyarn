@@ -71,8 +71,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
   end
 
   defp serialize_count_bucket(bucket) do
-    %{used: bucket.used || 0, limit: bucket.limit}
+    %{used: bucket.used || 0, limit: serialize_count_limit(bucket.limit)}
   end
+
+  defp serialize_count_limit(:unlimited), do: "unlimited"
+  defp serialize_count_limit(limit) when is_integer(limit) and limit >= 0, do: limit
+  defp serialize_count_limit(_unknown_limit), do: nil
 
   # Workspace-owned copy of the storage serializers: the Project settings
   # components belong to another boundary, and the Plan page must not depend

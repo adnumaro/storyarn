@@ -55,10 +55,12 @@ defmodule Storyarn.Sheets.Editor.Commands.ItemCapacity do
     )
   end
 
+  defp check_capacity(_used, :unlimited, _requested), do: :ok
+
   defp check_capacity(used, nil, _requested),
     do: {:error, :limit_reached, %{resource: :items_per_project, used: used, limit: 0}}
 
-  defp check_capacity(used, limit, requested) when used + requested <= limit, do: :ok
+  defp check_capacity(used, limit, requested) when is_integer(limit) and used + requested <= limit, do: :ok
 
   defp check_capacity(used, limit, _requested),
     do: {:error, :limit_reached, %{resource: :items_per_project, used: used, limit: limit}}

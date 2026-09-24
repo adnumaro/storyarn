@@ -108,7 +108,8 @@ interface RestoreOperation {
 
 interface SnapshotLimit {
   used: number;
-  limit: number | null;
+  /** `null` when the plan does not define the limit. */
+  limit: number | "unlimited" | null;
 }
 
 const {
@@ -132,6 +133,8 @@ const description = ref("");
 const requestIdempotencyKey = ref(newIdempotencyKey());
 const isSubmitting = ref(false);
 const requestError = ref<string | null>(null);
+// The last refusal caused by a plan limit; the plan link shows only while it is the error on screen.
+const limitRequestError = ref<string | null>(null);
 const cancellingSnapshotIds = ref(new Set<number>());
 const deletingSnapshotIds = ref(new Set<number>());
 const snapshotToDelete = ref<Snapshot | null>(null);
@@ -154,10 +157,16 @@ const restoreDialogOpen = computed({
 });
 const restoreBusy = computed(() => restoreOperationActive || restoringSnapshotIds.value.size > 0);
 const snapshotLimitReached = computed(
-  () => snapshotLimit.limit !== null && snapshotLimit.used >= snapshotLimit.limit,
+  () => typeof snapshotLimit.limit === "number" && snapshotLimit.used >= snapshotLimit.limit,
 );
 
 const snapshotLimitLabel = computed(() => {
+  if (snapshotLimit.limit === "unlimited") {
+    return t("project_settings.snapshots.create.slot_usage_unlimited", {
+      used: formatCount(snapshotLimit.used),
+    });
+  }
+
   if (snapshotLimit.limit === null) {
     return t("project_settings.snapshots.create.slot_usage_unknown", {
       used: formatCount(snapshotLimit.used),
@@ -170,6 +179,8 @@ const snapshotLimitLabel = computed(() => {
   });
 });
 
+const limitReasons = new Set<unknown>(["storage_limit_reached", "snapshot_limit_reached"]);
+
 const serverEventRefs = [
   live.handleEvent("snapshot_request_accepted", () => {
     title.value = "";
@@ -180,6 +191,7 @@ const serverEventRefs = [
   }),
   live.handleEvent("snapshot_request_failed", (payload) => {
     requestError.value = snapshotRequestError(payload);
+    limitRequestError.value = limitReasons.has(payload.reason) ? requestError.value : null;
     isSubmitting.value = false;
   }),
   live.handleEvent("snapshot_cancel_accepted", (payload) => {
@@ -702,6 +714,14 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
             >
               {{ snapshotLimitLabel }}
             </span>
+            <LiveLink
+              v-if="snapshotLimitReached && workspacePlanPath"
+              :to="workspacePlanPath"
+              class="font-medium underline underline-offset-2"
+              data-testid="snapshot-slot-plan-link"
+            >
+              {{ $t("project_settings.snapshots.create.view_plans") }}
+            </LiveLink>
           </template>
           <Button type="submit" size="sm" :disabled="isSubmitting || snapshotLimitReached">
             <LoaderCircle v-if="isSubmitting" class="size-4 animate-spin" aria-hidden="true" />
@@ -721,6 +741,14 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
           class="mx-4 my-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
           {{ requestError }}
+          <LiveLink
+            v-if="workspacePlanPath && requestError === limitRequestError"
+            :to="workspacePlanPath"
+            class="ml-1 font-medium underline underline-offset-2"
+            data-testid="snapshot-request-plan-link"
+          >
+            {{ $t("project_settings.snapshots.create.view_plans") }}
+          </LiveLink>
         </p>
       </form>
     </SettingsSection>

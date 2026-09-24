@@ -224,6 +224,8 @@
         "reservation_note": "Includes every current asset. Storyarn measures the capture and reserves the storage it needs.",
         "slot_usage": "Backup slots: {used} of {limit} used",
         "slot_usage_unknown": "Backup slots used: {used} · limit unavailable",
+        "slot_usage_unlimited": "Backup slots used: {used} · no limit",
+        "view_plans": "View plans",
         "submit": "Create backup",
         "submitting": "Capturing…",
         "storage_limit_reached": "This snapshot requires {required}, but only {available} is available.",

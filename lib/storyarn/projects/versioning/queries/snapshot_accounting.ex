@@ -10,9 +10,9 @@ defmodule Storyarn.Projects.SnapshotAccounting do
           required(:snapshots) => [map()],
           required(:snapshot_reservations) => map(),
           required(:snapshot_slots_used) => non_neg_integer(),
-          required(:snapshot_slots_limit) => non_neg_integer() | nil,
+          required(:snapshot_slots_limit) => non_neg_integer() | :unlimited | nil,
           required(:storage_usage) => map(),
-          required(:storage_limit) => non_neg_integer() | nil
+          required(:storage_limit) => non_neg_integer() | :unlimited | nil
         }
 
   @spec read(map(), pos_integer()) :: {:ok, accounting()} | {:error, term()}

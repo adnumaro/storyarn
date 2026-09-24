@@ -6,6 +6,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlanTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Commercial.Billing.Subscription
+  alias Storyarn.Repo
+
+  defp subscribe!(workspace, plan) do
+    Subscription
+    |> Repo.get_by!(workspace_id: workspace.id)
+    |> Subscription.update_changeset(%{plan: plan, status: "active"})
+    |> Repo.update!()
+  end
+
   defp get_plan_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/workspace/settings/WorkspaceSettingsPlan")
   end
@@ -31,6 +41,28 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlanTest do
       assert is_binary(usage["storageBytes"]["used"])
       assert usage["storage"]["limitKind"] in ["limited", "unlimited", "unknown"]
       assert get_plan_vue(view).props["contact-path"] == "/contact"
+    end
+
+    test "sends Pro's unlimited quotas as \"unlimited\" and Beta's editor cap as a number", %{
+      conn: conn
+    } do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      conn = log_in_user(conn, owner)
+
+      subscribe!(workspace, "pro")
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/plan")
+      usage = get_plan_vue(view).props["usage"]
+
+      assert usage["plan"]["key"] == "pro"
+      assert usage["projects"] == %{"used" => 0, "limit" => "unlimited"}
+      assert usage["members"] == %{"used" => 1, "limit" => "unlimited"}
+      assert usage["storage"]["limitKind"] == "limited"
+
+      subscribe!(workspace, "beta")
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/plan")
+
+      assert get_plan_vue(view).props["usage"]["members"] == %{"used" => 1, "limit" => 10}
     end
 
     test "renders for an admin", %{conn: conn} do

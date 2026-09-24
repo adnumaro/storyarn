@@ -21,6 +21,40 @@ defmodule Storyarn.Commercial.Billing.PlanTest do
     end
   end
 
+  describe "catalog" do
+    @workspace_resources ~w(
+      projects_per_workspace members_per_workspace items_per_project storage_bytes_per_workspace
+      project_templates_per_workspace project_template_versions_per_template
+      named_versions_per_project project_snapshots_per_project
+    )a
+
+    test "every plan defines every workspace resource as a number or :unlimited" do
+      for {key, %{limits: limits}} <- Plan.all(), resource <- @workspace_resources do
+        limit = Map.fetch!(limits, resource)
+
+        assert limit == :unlimited or (is_integer(limit) and limit >= 0),
+               "#{key} has #{inspect(limit)} for #{resource}"
+      end
+    end
+
+    test "every plan keeps deleted items for a finite window" do
+      for {key, _plan} <- Plan.all() do
+        assert is_integer(Plan.retention_hours(key)) and Plan.retention_hours(key) > 0
+      end
+    end
+
+    test "the paid plans and the beta are in the catalog" do
+      assert %{name: "Beta"} = Plan.get("beta")
+      assert %{name: "Pro"} = Plan.get("pro")
+      assert %{name: "Studio"} = Plan.get("studio")
+    end
+
+    test "the beta caps editors where Pro does not" do
+      assert Plan.limit("beta", :members_per_workspace) == 10
+      assert Plan.limit("pro", :members_per_workspace) == :unlimited
+    end
+  end
+
   describe "get/1" do
     test "returns plan for valid key" do
       assert %{name: "Free"} = Plan.get("free")

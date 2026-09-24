@@ -3,6 +3,7 @@ defmodule Storyarn.Commercial.Queries.Subscriptions do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial.Billing.EffectivePlan
   alias Storyarn.Commercial.Billing.Plan
   alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Repo
@@ -11,13 +12,17 @@ defmodule Storyarn.Commercial.Queries.Subscriptions do
     Repo.get_by(Subscription, workspace_id: workspace_id)
   end
 
+  @doc """
+  Returns the plan the workspace is entitled to, which is the default plan
+  when its subscription's status does not grant the contracted one.
+  """
   def plan_for(%{id: _} = workspace) do
     plan_for_workspace_id(workspace.id)
   end
 
   def plan_for_workspace_id(workspace_id) do
     case get_subscription(workspace_id) do
-      %Subscription{plan: plan} -> plan
+      %Subscription{plan: plan, status: status} -> EffectivePlan.resolve(plan, status)
       nil -> Plan.default_plan()
     end
   end
@@ -32,9 +37,11 @@ defmodule Storyarn.Commercial.Queries.Subscriptions do
       else
         Subscription
         |> where([subscription], subscription.workspace_id in ^workspace_ids)
-        |> select([subscription], {subscription.workspace_id, subscription.plan})
+        |> select([subscription], {subscription.workspace_id, {subscription.plan, subscription.status}})
         |> Repo.all()
-        |> Map.new()
+        |> Map.new(fn {workspace_id, {plan, status}} ->
+          {workspace_id, EffectivePlan.resolve(plan, status)}
+        end)
       end
 
     Map.new(workspace_ids, fn workspace_id ->

@@ -19,7 +19,8 @@ import {
 
 interface CountBucket {
   used: number;
-  limit: number | null;
+  /** `null` when the plan does not define the limit. */
+  limit: number | "unlimited" | null;
 }
 
 interface StorageBucket {
@@ -59,25 +60,24 @@ const planName = computed(() => {
 
 function countMeter(key: string, bucket: CountBucket, hint: string): Meter {
   const format = new Intl.NumberFormat(locale.value);
-  let status: SettingsMeterStatus = "unlimited";
-  let percent: number | null = null;
-
-  if (bucket.limit !== null) {
-    percent = bucket.limit > 0 ? Math.min((bucket.used / bucket.limit) * 100, 100) : 100;
-    if (bucket.used >= bucket.limit) status = "reached";
-    else if (percent >= 90) status = "warning";
-    else status = "available";
-  }
-
-  return {
+  const meter = {
     key,
     label: t(`settings.workspace.plan.meters.${key}`),
     hint,
     used: format.format(bucket.used),
-    limit: bucket.limit === null ? null : format.format(bucket.limit),
-    percent,
-    status,
+    limit: null,
+    percent: null,
   };
+
+  if (bucket.limit === "unlimited") return { ...meter, status: "unlimited" };
+  if (bucket.limit === null) return { ...meter, status: "unknown" };
+
+  const percent = bucket.limit > 0 ? Math.min((bucket.used / bucket.limit) * 100, 100) : 100;
+  let status: SettingsMeterStatus = "available";
+  if (bucket.used >= bucket.limit) status = "reached";
+  else if (percent >= 90) status = "warning";
+
+  return { ...meter, limit: format.format(bucket.limit), percent, status };
 }
 
 function storageStatus(state: string, progressPercent: number): SettingsMeterStatus {

@@ -6,7 +6,9 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Commercial
   alias Storyarn.Commercial.Billing
+  alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
@@ -498,5 +500,131 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
       assert Billing.usage(workspace).members == %{used: 2, limit: 2}
       assert Billing.project_limits_usage(project).workspace.members == %{used: 2, limit: 2}
     end
+  end
+
+  describe "unlimited limits" do
+    setup %{workspace: workspace} do
+      subscribe!(workspace, "pro", "active")
+      :ok
+    end
+
+    test "a Pro workspace creates projects past the Free cap", %{user: user, workspace: workspace} do
+      scope = user_scope_fixture(user)
+
+      for _ <- 1..4 do
+        assert {:ok, _project} =
+                 Storyarn.Projects.create_project(scope, %{
+                   name: "P#{System.unique_integer([:positive])}",
+                   workspace_id: workspace.id,
+                   project_type: "game",
+                   project_subtype: "rpg"
+                 })
+      end
+
+      assert :ok = Billing.can_create_project?(workspace)
+      assert Billing.usage(workspace).projects == %{used: 4, limit: :unlimited}
+    end
+
+    test "every tool creates items past the Free cap", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Existing"})
+      insert_flow_nodes!(flow, 700)
+
+      assert Commercial.entitlement_limit(workspace.id, :items_per_project) == :unlimited
+      assert :ok = Billing.can_create_items?(project, 1_000_000)
+      assert {:ok, _flow} = Storyarn.Flows.create_flow(project, %{name: "Past the cap"})
+      assert {:ok, _sheet} = Storyarn.Sheets.create_sheet(project, %{name: "Past the cap"})
+      assert {:ok, _scene} = Storyarn.Scenes.create_scene(project, %{name: "Past the cap"})
+    end
+
+    test "every tool creates named versions past the Free cap", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+      sheet = project |> Storyarn.SheetsFixtures.sheet_fixture() |> Repo.preload(:blocks, force: true)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Versioned"})
+      {:ok, scene} = Storyarn.Scenes.create_scene(project, %{name: "Versioned"})
+
+      for i <- 1..10 do
+        {:ok, _version} = Storyarn.Sheets.create_version(sheet, user.id, title: "v#{i}")
+      end
+
+      assert :ok = Billing.can_create_named_version?(project.id, workspace.id)
+      assert {:ok, _version} = Storyarn.Sheets.create_version(sheet, user.id, title: "v11")
+      assert {:ok, _version} = Storyarn.Flows.create_version(flow, user.id, title: "v12")
+      assert {:ok, _version} = Storyarn.Scenes.create_version(scene, user.id, title: "v13")
+    end
+
+    test "a limit the plan caps still blocks", %{workspace: workspace} do
+      assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace}} =
+               Billing.can_upload_asset?(workspace, 11 * 1024 * 1024 * 1024)
+    end
+  end
+
+  describe "downgrading" do
+    test "blocks new work above the lower limits and keeps everything already stored", %{
+      user: user,
+      workspace: workspace
+    } do
+      subscription = subscribe!(workspace, "pro", "active")
+      scope = user_scope_fixture(user)
+
+      projects =
+        for _ <- 1..5 do
+          {:ok, project} =
+            Storyarn.Projects.create_project(scope, %{
+              name: "P#{System.unique_integer([:positive])}",
+              workspace_id: workspace.id,
+              project_type: "game",
+              project_subtype: "rpg"
+            })
+
+          project
+        end
+
+      project = hd(projects)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Big"})
+      insert_flow_nodes!(flow, 800)
+      items = Billing.count_project_items(project.id)
+
+      subscription |> Subscription.update_changeset(%{status: "canceled"}) |> Repo.update!()
+
+      assert {:error, :limit_reached, %{resource: :projects_per_workspace, used: 5, limit: 3}} =
+               Billing.can_create_project?(workspace)
+
+      assert {:error, :limit_reached, %{resource: :items_per_project}} =
+               Storyarn.Flows.create_flow(project, %{name: "Over the Free cap"})
+
+      assert Billing.usage(workspace).projects == %{used: 5, limit: 3}
+      assert Billing.count_project_items(project.id) == items
+
+      for project <- projects do
+        assert {:ok, _project, _membership} = Storyarn.Projects.reload_project(scope, project.id)
+      end
+    end
+  end
+
+  defp subscribe!(workspace, plan, status) do
+    Subscription
+    |> Repo.get_by!(workspace_id: workspace.id)
+    |> Subscription.update_changeset(%{plan: plan, status: status})
+    |> Repo.update!()
+  end
+
+  defp insert_flow_nodes!(flow, count) do
+    now = DateTime.utc_now(:second)
+
+    entries =
+      for i <- 1..count do
+        %{
+          flow_id: flow.id,
+          type: "dialogue",
+          position_x: i * 1.0,
+          position_y: 0.0,
+          data: %{},
+          inserted_at: now,
+          updated_at: now
+        }
+      end
+
+    Repo.insert_all("flow_nodes", entries)
   end
 end

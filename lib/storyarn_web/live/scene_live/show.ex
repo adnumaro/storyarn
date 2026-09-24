@@ -32,6 +32,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.ContextualExplorations, as: ExplorationHandlers
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
@@ -1025,7 +1026,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         )
       else
         {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, asset_storage_limit_message())}
+          {:noreply, PlanLimitFlash.put(socket, socket.assigns.project.workspace_id, asset_storage_limit_message())}
 
         {:error, message} when is_binary(message) ->
           {:noreply, put_flash(socket, :error, message)}
@@ -1080,7 +1081,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         )
       else
         {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, asset_storage_limit_message())}
+          {:noreply, PlanLimitFlash.put(socket, socket.assigns.project.workspace_id, asset_storage_limit_message())}
 
         {:error, message} when is_binary(message) ->
           {:noreply, put_flash(socket, :error, message)}
@@ -2018,7 +2019,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp handle_background_result([{:ok, asset}], socket), do: process_background_upload(socket, asset)
 
   defp handle_background_result([{:error, :limit_reached, _details}], socket) do
-    {:noreply, put_flash(socket, :error, asset_storage_limit_message())}
+    {:noreply, PlanLimitFlash.put(socket, socket.assigns.project.workspace_id, asset_storage_limit_message())}
   end
 
   defp handle_background_result(_results, socket),

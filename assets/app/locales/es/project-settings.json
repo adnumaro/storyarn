@@ -224,6 +224,8 @@
         "reservation_note": "Incluye todos los recursos actuales. Storyarn mide la captura y reserva el almacenamiento necesario.",
         "slot_usage": "Huecos de copia de seguridad: {used} de {limit} usados",
         "slot_usage_unknown": "Huecos de copia de seguridad usados: {used} · límite no disponible",
+        "slot_usage_unlimited": "Huecos de copia de seguridad usados: {used} · sin límite",
+        "view_plans": "Ver planes",
         "submit": "Crear copia de seguridad",
         "submitting": "Capturando…",
         "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles.",

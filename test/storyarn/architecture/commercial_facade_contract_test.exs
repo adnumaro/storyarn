@@ -58,9 +58,9 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
     storage_reservation_receipt
     storage_reservation_write_error
   )a
-  @docs_digest "261566d75cb1984f8cb7e752685054cb501f9f2bb0f77228e61415b990788d3b"
+  @docs_digest "2e50a2f6da17838b8c15a6f73b302f5dc865e07962c506e1be6bd7a008816bce"
   @types_digest "8989f40a036ba7d95841b2bd8b40e1f36b24504f12c8401f2f334488d90cb79f"
-  @specs_digest "b6a4002c664276eecf1fb57e76caf2d57fa5efc32be1432179cb21defaaa40b8"
+  @specs_digest "8345611dc2e81e5ec8ebdc51d01a97711abdd64c1c36887e4bb4e1113e7cb251"
 
   test "the root facade exposes the complete extracted commercial contract" do
     public_functions =

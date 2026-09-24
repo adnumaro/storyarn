@@ -327,22 +327,26 @@ defmodule Storyarn.Commercial.Billing.Limits do
     )
   end
 
+  defp check_limit(_resource, _used, :unlimited), do: :ok
+
   defp check_limit(resource, used, nil) do
     # Unknown plan/resource — default to blocking
     {:error, :limit_reached, %{resource: resource, used: used, limit: 0}}
   end
 
-  defp check_limit(_resource, used, limit) when used < limit, do: :ok
+  defp check_limit(_resource, used, limit) when is_integer(limit) and used < limit, do: :ok
 
   defp check_limit(resource, used, limit) do
     {:error, :limit_reached, %{resource: resource, used: used, limit: limit}}
   end
 
+  defp check_capacity(_resource, _used, :unlimited, _requested), do: :ok
+
   defp check_capacity(resource, used, nil, _requested) do
     {:error, :limit_reached, %{resource: resource, used: used, limit: 0}}
   end
 
-  defp check_capacity(_resource, used, limit, requested) when used + requested <= limit, do: :ok
+  defp check_capacity(_resource, used, limit, requested) when is_integer(limit) and used + requested <= limit, do: :ok
 
   defp check_capacity(resource, used, limit, _requested) do
     {:error, :limit_reached, %{resource: resource, used: used, limit: limit}}

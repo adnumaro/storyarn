@@ -298,7 +298,10 @@
         },
         "footer": "Los límites por proyecto (elementos, copias de seguridad, versiones con nombre) están en la página Uso de cada proyecto.",
         "plans": {
-          "free": "Free"
+          "free": "Free",
+          "beta": "Beta",
+          "pro": "Pro",
+          "studio": "Studio"
         }
       }
     },

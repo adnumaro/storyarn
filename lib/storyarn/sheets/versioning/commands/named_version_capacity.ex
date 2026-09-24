@@ -73,10 +73,12 @@ defmodule Storyarn.Sheets.Versioning.Commands.NamedVersionCapacity do
     check_limit(used, limit)
   end
 
+  defp check_limit(_used, :unlimited), do: :ok
+
   defp check_limit(used, nil),
     do: {:error, :limit_reached, %{resource: :named_versions_per_project, used: used, limit: 0}}
 
-  defp check_limit(used, limit) when used < limit, do: :ok
+  defp check_limit(used, limit) when is_integer(limit) and used < limit, do: :ok
 
   defp check_limit(used, limit),
     do: {:error, :limit_reached, %{resource: :named_versions_per_project, used: used, limit: limit}}
