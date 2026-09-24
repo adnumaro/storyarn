@@ -250,10 +250,10 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
       sheet = sheet_fixture(project, %{name: "Kael the Wanderer"})
       scope = Storyarn.Accounts.Scope.for_user(user)
-      {:ok, session} = Storyarn.Ideation.create_session(scope, project.id, %{title: "Endings"})
+      {:ok, session} = Ideation.create_session(scope, project.id, %{title: "Endings"})
 
       {:ok, idea} =
-        Storyarn.Ideation.create_idea(scope, project.id, session.id, %{
+        Ideation.create_idea(scope, project.id, session.id, %{
           request_key: Ecto.UUID.generate(),
           configuration_version: 1,
           visibility: :shared,
@@ -261,10 +261,10 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         })
 
       {:ok, [source]} =
-        Storyarn.Ideation.preview_decision_sources(scope, project.id, session.id, [%{type: "idea", id: idea.id}])
+        Ideation.preview_decision_sources(scope, project.id, session.id, [%{type: "idea", id: idea.id}])
 
       {:ok, decision} =
-        Storyarn.Ideation.propose_decision(scope, project.id, session.id, %{
+        Ideation.propose_decision(scope, project.id, session.id, %{
           title: "Kael leaves the order",
           conclusion: "He walks away before the siege.",
           verb: "change",
