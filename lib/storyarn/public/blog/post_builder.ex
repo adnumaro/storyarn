@@ -8,6 +8,7 @@ defmodule Storyarn.Public.Blog.PostBuilder do
   @words_per_minute 200
   @default_image "/images/landing/storyarn-lab-hero.webp"
   @translation_key_pattern ~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/
+  @public_locales Locales.locales()
 
   def build(filename, attrs, body) do
     {locale, published_on, slug} = publication_data!(filename)
@@ -82,7 +83,7 @@ defmodule Storyarn.Public.Blog.PostBuilder do
   end
 
   defp parse_dated_slug!(filename, locale, dated_slug) do
-    if !Locales.valid?(locale) do
+    if locale not in @public_locales do
       raise ArgumentError,
             "blog post locale must be published publicly, got: #{inspect(locale)}"
     end
