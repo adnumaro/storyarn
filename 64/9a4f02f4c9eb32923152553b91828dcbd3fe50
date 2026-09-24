@@ -1,0 +1,73 @@
+assets/app/live/ideation/useDecisionRequests.ts
+  s_b5abbfc6259d0c::t_04f453db10a996 74-84
+lib/storyarn/ideation/decisions/execution/mutation.ex
+  s_b5abbfc6259d0c::t_5e25bcd2e4712e 39,187-191
+  s_b5abbfc6259d0c::t_17888e46af3485 162-163,167,173-175,181-185
+  s_b5abbfc6259d0c::t_85bc43b772a66e 186,192
+lib/storyarn/ideation/decisions/queries/catalog.ex
+  s_b5abbfc6259d0c::t_17888e46af3485 135-136
+test/storyarn/ideation/decisions_test.exs
+  s_b5abbfc6259d0c::t_b8ee4cf083afac 515-516
+  s_b5abbfc6259d0c::t_3f91fcb66dc79e 500-514,517-519,534-535,549-560
+lib/storyarn/ideation/decisions/decisions.ex
+  s_b5abbfc6259d0c::t_532c4297779c21 5,22-26
+  s_b5abbfc6259d0c::t_be028c5fb971af 10,27
+assets/app/live/ideation/DecisionsPanel.vue
+  s_b5abbfc6259d0c::t_04f453db10a996 37,338
+  s_b5abbfc6259d0c::t_954a6deb2a53f3 56-67
+lib/storyarn_web/live/shared/contextual_explorations.ex
+  s_b5abbfc6259d0c::t_532c4297779c21 24,302-304
+  s_b5abbfc6259d0c::t_c8e78c2506c09c 305
+lib/storyarn/ideation/decisions/contracts/view.ex
+  s_b5abbfc6259d0c::t_17888e46af3485 71-72
+  s_b5abbfc6259d0c::t_5e25bcd2e4712e 27,30-32
+  s_b5abbfc6259d0c::t_c1c9d5625cd0e8 33
+assets/app/test/live/ideation/DecisionsPanel.test.ts
+  s_b5abbfc6259d0c::t_b72d5adce2c928 365-371,373-377
+  s_b5abbfc6259d0c::t_9aaf89206d41f9 378-386,388-395
+  s_b5abbfc6259d0c::t_a950887b98f27b 387
+  s_b5abbfc6259d0c::t_1590509788099f 372
+docs/reference/brainstorming-decisions-contract.md
+  s_b5abbfc6259d0c::t_93ba5cc3fc0ed4 239-241
+  s_b5abbfc6259d0c::t_1228a04619d7eb 67-69,75-77,94-95
+lib/storyarn/ideation/recovery/adapters/records.ex
+  s_b5abbfc6259d0c::t_b95f83fb4499d4 74,76-83,85-86,90-104
+  s_b5abbfc6259d0c::t_2ccf7de723d63f 105-106
+lib/storyarn/ideation.ex
+  s_b5abbfc6259d0c::t_532c4297779c21 102-104
+assets/app/live/ideation/decisionDashboard.ts
+  s_b5abbfc6259d0c::t_b926a6fa5b0fef 1,43-47,51,92
+test/storyarn/ideation/decision_recovery_test.exs
+  s_b5abbfc6259d0c::t_b95f83fb4499d4 392-412
+assets/app/test/live/ideation/decisionDashboard.test.ts
+  s_b5abbfc6259d0c::t_3bfe817168d8fc 31-34,40,46-47,60,65,76,92
+  s_b5abbfc6259d0c::t_f85b83e7635394 71,73
+  s_b5abbfc6259d0c::t_be028c5fb971af 35-39,41-45,49-54
+lib/storyarn_web/live/shared/contextual_decisions.ex
+  s_b5abbfc6259d0c::t_be028c5fb971af 255
+  s_b5abbfc6259d0c::t_532c4297779c21 34-40
+  s_b5abbfc6259d0c::t_b926a6fa5b0fef 253-254,256
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_b5abbfc6259d0c::t_532c4297779c21 206
+lib/storyarn/ideation/decisions/events/invalidation.ex
+  s_b5abbfc6259d0c::t_532c4297779c21 10-16,18-21
+test/storyarn_web/live/ideation_live/contextual_decisions_test.exs
+  s_b5abbfc6259d0c::t_1d4137ea946412 82-130,159-165
+  s_b5abbfc6259d0c::t_3c7587e3c7550a 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "649a4f02f4c9eb32923152553b91828dcbd3fe50",
+  "prompts": {},
+  "sessions": {
+    "s_b5abbfc6259d0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce0305-91ec-4116-b95d-80eb72980b92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
