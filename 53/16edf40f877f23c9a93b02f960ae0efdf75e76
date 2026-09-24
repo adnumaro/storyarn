@@ -1,0 +1,21 @@
+docs/reference/testing-performance.md
+  s_616f004b9b79c4::t_2d8f774c1b88e1 82-86
+.github/workflows/ci.yml
+  s_616f004b9b79c4::t_cf8f2695f2b53a 227,231,329,333,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5316edf40f877f23c9a93b02f960ae0efdf75e76",
+  "prompts": {},
+  "sessions": {
+    "s_616f004b9b79c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca446e8-f2ad-43e5-9aff-2f154e9c21ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
