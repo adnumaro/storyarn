@@ -24,6 +24,10 @@ function dot(entry: DecisionHistoryEntry) {
 }
 function label(entry: DecisionHistoryEntry) {
   if (entry.kind === "record") return t(`brainstormingDecisions.historyActions.${entry.operation}`);
+  if (entry.kind === "task")
+    return t(`brainstormingDecisions.historyActions.task_${entry.operation}`, {
+      task: entry.targetName,
+    });
   if (!entry.targetName)
     return entry.operation === "no_change_needed"
       ? t("brainstormingDecisions.historyActions.decisionNoChange")
@@ -33,11 +37,15 @@ function label(entry: DecisionHistoryEntry) {
   });
 }
 function summary(entry: DecisionHistoryEntry) {
-  const actor = entry.actorName || t("brainstormingDecisions.formerMember");
+  if (entry.kind === "task") return entry.url ?? "";
   if (entry.kind === "application")
     return entry.targetType
       ? `${t(`brainstormingDecisions.states.${entry.operation}`)} · ${entry.targetName} · ${t(`brainstormingDecisions.targetTypes.${entry.targetType}`)}`
       : t(`brainstormingDecisions.states.${entry.operation}`);
+  return recordSummary(entry);
+}
+function recordSummary(entry: DecisionHistoryEntry) {
+  const actor = entry.actorName || t("brainstormingDecisions.formerMember");
   if (entry.operation === "registered")
     return t("brainstormingDecisions.historySummaries.registered", { name: actor });
   if (entry.operation === "propose" || entry.operation === "revise")

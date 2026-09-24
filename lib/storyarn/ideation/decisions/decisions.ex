@@ -34,4 +34,7 @@ defmodule Storyarn.Ideation.Decisions do
   defdelegate accept(scope, project_id, session_id, id, version, key), to: Commands.Accept, as: :run
   defdelegate withdraw(scope, project_id, session_id, id, version, key), to: Commands.Withdraw, as: :run
   defdelegate declare(scope, project_id, session_id, id, agreement, attrs), to: Commands.Declare, as: :run
+  defdelegate link_task(scope, project_id, session_id, id, attrs), to: Commands.LinkTask, as: :run
+  defdelegate edit_task(scope, project_id, session_id, id, link_key, attrs), to: Commands.EditTask, as: :run
+  defdelegate unlink_task(scope, project_id, session_id, id, link_key, key), to: Commands.UnlinkTask, as: :run
 end

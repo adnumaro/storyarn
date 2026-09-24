@@ -9,6 +9,7 @@ defmodule Storyarn.Ideation.Decisions.Rules.Input do
   @verbs ~w(create change test keep discard)
   @target_types ~w(sheet flow scene)
   @states ~w(not_applied partially_applied applied no_change_needed)
+  @task_schemes ~w(http https)
 
   def verbs, do: @verbs
   def states, do: @states
@@ -60,6 +61,43 @@ defmodule Storyarn.Ideation.Decisions.Rules.Input do
   end
 
   def application(_), do: {:error, :invalid_application}
+
+  def task(attrs) when is_map(attrs) do
+    with {:ok, url} <- task_url(get(attrs, :url)),
+         {:ok, title} <- optional_text(get(attrs, :title), 160),
+         {:ok, key} <- request_key(get(attrs, :request_key)) do
+      {:ok, %{url: url, title: title}, key}
+    else
+      {:error, :invalid_request_key} = error -> error
+      _ -> {:error, :invalid_task_link}
+    end
+  end
+
+  def task(_), do: {:error, :invalid_task_link}
+
+  def link_key(value) do
+    case Ecto.UUID.cast(value) do
+      {:ok, key} -> {:ok, key}
+      _ -> {:error, :invalid_task_link}
+    end
+  end
+
+  # A web address without credentials: linking a task never carries access to
+  # the tracker, and Storyarn never fetches it.
+  defp task_url(value) when is_binary(value) and byte_size(value) <= 2048 do
+    with true <- String.valid?(value),
+         url = String.trim(value),
+         true <- not String.match?(url, ~r/[\s\x00-\x1f\x7f]/u),
+         {:ok, %URI{scheme: scheme, host: host, userinfo: nil}} when is_binary(scheme) and is_binary(host) <-
+           URI.new(url),
+         true <- String.downcase(scheme) in @task_schemes and host != "" do
+      {:ok, url}
+    else
+      _ -> {:error, :invalid_task_link}
+    end
+  end
+
+  defp task_url(_), do: {:error, :invalid_task_link}
 
   defp verb(verb) when verb in @verbs, do: {:ok, verb}
   defp verb(_), do: {:error, :invalid_decision}
@@ -205,6 +243,15 @@ defmodule Storyarn.Ideation.Decisions.Rules.Input do
     :crypto.hash(
       :sha256,
       :erlang.term_to_binary({:ideation_decision_application_v1, session_identity, decision_identity, agreement, attrs})
+    )
+  end
+
+  def task_fingerprint(session_identity, decision_identity, operation, link_key, attrs) do
+    :crypto.hash(
+      :sha256,
+      :erlang.term_to_binary(
+        {:ideation_decision_task_link_v1, session_identity, decision_identity, operation, link_key, attrs}
+      )
     )
   end
 

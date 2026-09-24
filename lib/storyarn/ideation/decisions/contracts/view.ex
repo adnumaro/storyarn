@@ -19,6 +19,7 @@ defmodule Storyarn.Ideation.Decisions.View do
       proposal: proposal,
       accepted: accepted,
       application: if(accepted, do: application(decision, accepted, context)),
+      tasks: Map.get(context.task_links, decision.id, []),
       inserted_at: decision.inserted_at,
       updated_at: decision.updated_at
     }
@@ -51,14 +52,20 @@ defmodule Storyarn.Ideation.Decisions.View do
     live? = decision.status in [:proposed, :accepted]
     can_revise? = editable? and live? and decision.version < 97
 
-    %{
-      can_revise: can_revise?,
-      can_assign: can_revise? and owner_or?(access, head.responsible_id),
-      can_accept: can_accept?(decision, proposal, context, access),
-      can_withdraw: editable? and decision.status == :proposed and owner_or?(access, head.actor_id),
-      can_declare: editable? and live? and not is_nil(decision.accepted_version)
-    }
+    Map.merge(
+      %{
+        can_revise: can_revise?,
+        can_assign: can_revise? and owner_or?(access, head.responsible_id),
+        can_accept: can_accept?(decision, proposal, context, access),
+        can_withdraw: editable? and decision.status == :proposed and owner_or?(access, head.actor_id)
+      },
+      follow_up(decision, editable? and live?)
+    )
   end
+
+  # Declaring application and linking tasks follow a live decision in an open session.
+  defp follow_up(decision, writable?),
+    do: %{can_declare: writable? and not is_nil(decision.accepted_version), can_link_tasks: writable?}
 
   # The project owner, or the one person the rule names.
   defp owner_or?(access, user_id), do: access.owner? or user_id == access.user_id
@@ -109,6 +116,52 @@ defmodule Storyarn.Ideation.Decisions.View do
       actor_id: application.actor_id,
       inserted_at: application.inserted_at
     }
+  end
+
+  # The latest change per link counts; an unlinked task leaves the list and
+  # keeps its history. Oldest first, as the rows arrive.
+  def task_links(changes) do
+    changes
+    |> Enum.group_by(& &1.link_key)
+    |> Enum.map(fn {_key, [first | _] = history} -> {first, List.last(history)} end)
+    |> Enum.reject(fn {_first, last} -> last.operation == "unlink" end)
+    |> Enum.sort_by(fn {first, _last} -> first.id end)
+    |> Enum.map(fn {first, last} ->
+      %{
+        key: last.link_key,
+        kind: last.kind,
+        url: last.url,
+        title: last.title,
+        linked_by_id: first.actor_id,
+        linked_at: first.inserted_at,
+        updated_at: last.inserted_at
+      }
+    end)
+  end
+
+  # Unlinking stores no address; the history names the task it removed.
+  def task_history(changes) do
+    {entries, _known} =
+      Enum.map_reduce(changes, %{}, fn change, known ->
+        {url, title} =
+          if change.operation == "unlink",
+            do: Map.get(known, change.link_key, {nil, nil}),
+            else: {change.url, change.title}
+
+        entry = %{
+          key: change.link_key,
+          operation: change.operation,
+          kind: change.kind,
+          url: url,
+          title: title,
+          actor_id: change.actor_id,
+          inserted_at: change.inserted_at
+        }
+
+        {entry, Map.put(known, change.link_key, {url, title})}
+      end)
+
+    entries
   end
 
   # Only the latest statement per target counts; the default is "not applied".

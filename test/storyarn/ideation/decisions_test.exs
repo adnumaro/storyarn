@@ -624,6 +624,144 @@ defmodule Storyarn.Ideation.DecisionsTest do
     refute_receive {:ideation_decisions_changed, ^session_id}
   end
 
+  describe "task links" do
+    test "editors link, edit and unlink tasks while the history keeps every change", ctx do
+      assert :ok = Ideation.subscribe_ideas(ctx.peer, ctx.project.id, ctx.session.id)
+      session_id = ctx.session.id
+      assert {:ok, decision} = propose(ctx)
+      assert_receive {:ideation_decisions_changed, ^session_id}
+      assert decision.tasks == []
+      assert decision.can_link_tasks
+
+      first = task_attrs(%{url: "https://tracker.example.com/browse/ENG-1", title: "Build the lighthouse choice"})
+      assert {:ok, linked} = link_task(ctx, decision, first)
+      assert_receive {:ideation_decisions_changed, ^session_id}
+      assert [%{kind: "manual", url: "https://tracker.example.com/browse/ENG-1"} = task] = linked.tasks
+      assert task.title == "Build the lighthouse choice"
+      assert task.linked_by_id == ctx.author.user.id
+
+      # A retried request writes nothing; the same key cannot carry another link.
+      assert {:ok, %{tasks: [_]}} = link_task(ctx, decision, first)
+      refute_receive {:ideation_decisions_changed, ^session_id}
+      assert {:error, :idempotency_conflict} = link_task(ctx, decision, %{first | url: "https://other.example.com"})
+
+      assert {:ok, edited} =
+               edit_task(ctx, decision, task.key, task_attrs(%{url: task.url, title: "Lighthouse choice"}))
+
+      assert [%{key: key, title: "Lighthouse choice"}] = edited.tasks
+      assert key == task.key
+
+      assert {:ok, _} = link_task(ctx, decision, task_attrs(%{url: "https://trello.com/c/abc123"}))
+      assert {:ok, unlinked} = unlink_task(ctx, decision, task.key)
+      assert [%{url: "https://trello.com/c/abc123", title: nil}] = unlinked.tasks
+      assert {:error, :task_link_not_found} = edit_task(ctx, decision, task.key, task_attrs(%{url: task.url}))
+      assert {:error, :task_link_not_found} = unlink_task(ctx, decision, Ecto.UUID.generate())
+
+      assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, session_id, decision.id)
+
+      assert Enum.map(history.tasks, &{&1.operation, &1.title}) == [
+               {"unlink", "Lighthouse choice"},
+               {"link", nil},
+               {"edit", "Lighthouse choice"},
+               {"link", "Build the lighthouse choice"}
+             ]
+
+      raw = Repo.all(from t in "ideation_decision_task_links", where: t.session_id == ^session_id, select: t.url)
+      assert Enum.all?(raw, &(is_nil(&1) or :binary.match(&1, "tracker.example.com") == :nomatch))
+    end
+
+    test "readers see linked tasks but only editors of an open session change them", ctx do
+      assert {:ok, decision} = propose(ctx)
+      assert {:ok, _} = link_task(ctx, decision, task_attrs(%{url: "https://tracker.example.com/1"}))
+      assert {:ok, read} = Ideation.get_decision(ctx.viewer, ctx.project.id, ctx.session.id, decision.id)
+      assert [%{url: "https://tracker.example.com/1"}] = read.tasks
+      refute read.can_link_tasks
+      assert {:error, :unauthorized} = link_task(ctx, decision, task_attrs(%{url: "https://x.example.com"}), ctx.viewer)
+
+      assert {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+      assert {:ok, _} = Ideation.archive_session(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision)
+      assert {:error, :session_archived} = link_task(ctx, decision, task_attrs(%{url: "https://x.example.com"}))
+      assert {:ok, archived} = Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id)
+      refute archived.can_link_tasks
+    end
+
+    test "only web addresses without credentials are linked, and titles stay short", ctx do
+      assert {:ok, decision} = propose(ctx)
+
+      for url <- [
+            "javascript:alert(1)",
+            "ftp://files.example.com/task",
+            "https://user:secret@tracker.example.com/1",
+            "tracker.example.com/1",
+            "https://tracker example.com",
+            "https://",
+            "",
+            "https://example.com/" <> String.duplicate("a", 2048),
+            nil
+          ] do
+        assert {:error, :invalid_task_link} = link_task(ctx, decision, task_attrs(%{url: url})), inspect(url)
+      end
+
+      too_long = task_attrs(%{url: "https://example.com", title: String.duplicate("t", 161)})
+      assert {:error, :invalid_task_link} = link_task(ctx, decision, too_long)
+
+      assert {:error, :invalid_request_key} =
+               link_task(ctx, decision, %{url: "https://example.com", request_key: "nope"})
+
+      assert {:ok, %{tasks: [task]}} =
+               link_task(ctx, decision, task_attrs(%{url: "  HTTPS://Example.com/path?q=1#frag  "}))
+
+      assert task.url == "HTTPS://Example.com/path?q=1#frag"
+      assert {:error, :invalid_task_link} = edit_task(ctx, decision, "not-a-key", task_attrs(%{url: task.url}))
+    end
+
+    test "a retired decision keeps its tasks but accepts no changes; 20 are linked at a time", ctx do
+      assert {:ok, decision} = propose(ctx)
+
+      keys =
+        for n <- 1..20 do
+          assert {:ok, %{tasks: tasks}} = link_task(ctx, decision, task_attrs(%{url: "https://t.example.com/#{n}"}))
+          List.last(tasks).key
+        end
+
+      assert {:error, :task_link_limit_reached} =
+               link_task(ctx, decision, task_attrs(%{url: "https://t.example.com/21"}))
+
+      assert {:ok, _} = unlink_task(ctx, decision, hd(keys))
+      assert {:ok, %{tasks: tasks}} = link_task(ctx, decision, task_attrs(%{url: "https://t.example.com/21"}))
+      assert length(tasks) == 20
+
+      assert {:ok, withdrawn} = withdraw(ctx, decision)
+      assert withdrawn.status == :withdrawn
+      assert length(withdrawn.tasks) == 20
+      refute withdrawn.can_link_tasks
+
+      assert {:error, :decision_retired} =
+               link_task(ctx, decision, task_attrs(%{url: "https://t.example.com/22"}))
+
+      assert {:error, :decision_retired} = unlink_task(ctx, decision, List.last(keys))
+    end
+  end
+
+  defp task_attrs(attrs), do: Map.put(attrs, :request_key, Ecto.UUID.generate())
+
+  defp link_task(ctx, decision, attrs, actor \\ nil),
+    do: Ideation.link_decision_task(actor || ctx.author, ctx.project.id, ctx.session.id, decision.id, attrs)
+
+  defp edit_task(ctx, decision, key, attrs, actor \\ nil),
+    do: Ideation.edit_decision_task(actor || ctx.peer, ctx.project.id, ctx.session.id, decision.id, key, attrs)
+
+  defp unlink_task(ctx, decision, key, actor \\ nil) do
+    Ideation.unlink_decision_task(
+      actor || ctx.author,
+      ctx.project.id,
+      ctx.session.id,
+      decision.id,
+      key,
+      Ecto.UUID.generate()
+    )
+  end
+
   defp attrs(ctx, sources \\ nil) do
     sources =
       sources ||

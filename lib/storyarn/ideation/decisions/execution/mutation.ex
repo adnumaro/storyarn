@@ -9,11 +9,14 @@ defmodule Storyarn.Ideation.Decisions.Execution.Mutation do
   alias Storyarn.Ideation.Decisions.Queries.Sources
   alias Storyarn.Ideation.Decisions.Queries.Targets
   alias Storyarn.Ideation.Decisions.Revision
+  alias Storyarn.Ideation.Decisions.TaskLink
   alias Storyarn.Repo
 
   @content ~w(verb title conclusion reason responsible_id next_action next_action_owner_id replaces_id)a
   @snapshot @content ++ ~w(sources source_context targets target_context round_id)a
   @max_applications 500
+  @max_task_links 20
+  @max_task_changes 200
 
   def run(scope, project_id, access, nil, %{operation: "propose"} = command, fingerprint) do
     attrs = command.attrs
@@ -67,6 +70,49 @@ defmodule Storyarn.Ideation.Decisions.Execution.Mutation do
 
       {:ok, decision}
     end
+  end
+
+  # A live decision links up to 20 tasks at once. Each change is a new row, so
+  # the history keeps who linked, edited or unlinked what.
+  def task(access, decision, command, fingerprint) do
+    changes = task_changes(decision)
+    links = Map.new(changes)
+
+    with :ok <- live(decision),
+         true <- length(changes) < @max_task_changes || {:error, :task_link_limit_reached},
+         :ok <- task_change(command, links) do
+      Repo.insert!(%TaskLink{
+        session_id: decision.session_id,
+        decision_id: decision.id,
+        link_key: command.link_key || Ecto.UUID.generate(),
+        operation: String.replace_suffix(command.operation, "_task", ""),
+        kind: "manual",
+        url: Map.get(command.attrs, :url),
+        title: Map.get(command.attrs, :title),
+        actor_id: access.user_id,
+        request_key: command.key,
+        fingerprint: fingerprint
+      })
+
+      {:ok, decision}
+    end
+  end
+
+  defp task_change(%{operation: "link_task"}, links) do
+    if Enum.count(links, fn {_key, operation} -> operation != "unlink" end) < @max_task_links,
+      do: :ok,
+      else: {:error, :task_link_limit_reached}
+  end
+
+  defp task_change(command, links) do
+    if Map.get(links, command.link_key) in ~w(link edit), do: :ok, else: {:error, :task_link_not_found}
+  end
+
+  # Oldest first, so the last change per key is the one that counts.
+  defp task_changes(decision) do
+    Repo.all(
+      from t in TaskLink, where: t.decision_id == ^decision.id, order_by: [asc: t.id], select: {t.link_key, t.operation}
+    )
   end
 
   defp mutate(scope, project_id, access, decision, previous, %{operation: "revise"} = command, fingerprint) do

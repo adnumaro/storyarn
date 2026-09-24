@@ -52,7 +52,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 10, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 11, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -214,11 +214,11 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
         &Enum.map(&1, fn row -> row |> Map.put("reveal_on_expiry", false) |> Map.delete("round_id") end)
       )
       |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
-      |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions decision_applications)))
+      |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions decision_applications decision_task_links)))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 10
+    assert normalized["version"] == 11
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)
@@ -307,6 +307,89 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     end
 
     assert capture(ctx) == capsule
+  end
+
+  test "task links and their history survive physical recovery; forged links fail before replacement", ctx do
+    link = fn attrs ->
+      attrs = Map.put(attrs, :request_key, Ecto.UUID.generate())
+      Ideation.link_decision_task(ctx.author, ctx.project.id, ctx.session.id, ctx.decision.id, attrs)
+    end
+
+    assert {:ok, %{tasks: [kept]}} = link.(%{url: "https://tracker.example.com/browse/ENG-7", title: "Keep the light"})
+    assert {:ok, %{tasks: [_, dropped]}} = link.(%{url: "https://trello.com/c/dropped"})
+
+    assert {:ok, _} =
+             Ideation.unlink_decision_task(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               ctx.decision.id,
+               dropped.key,
+               Ecto.UUID.generate()
+             )
+
+    capsule = capture(ctx)
+    assert {:ok, %{"rows" => rows} = data} = Capsule.open(capsule)
+    assert Enum.map(rows["decision_task_links"], & &1["operation"]) == ~w(link link unlink)
+    refute Jason.encode!(rows) =~ "tracker.example.com"
+    [first, second, _unlink] = rows["decision_task_links"]
+
+    after_unlink =
+      Map.merge(second, %{
+        "id" => second["id"] + 1_000,
+        "operation" => "edit",
+        "recovery_identity" => identity(),
+        "request_key" => identity()
+      })
+
+    mutations = [
+      fn data ->
+        put_in(data, ["rows", "decision_task_links", Access.at(0), "url"], encrypted("javascript:alert(1)"))
+      end,
+      fn data ->
+        put_in(data, ["rows", "decision_task_links", Access.at(0), "url"], encrypted("https://u:p@tracker.example.com"))
+      end,
+      fn data ->
+        put_in(data, ["rows", "decision_task_links", Access.at(0), "title"], encrypted(String.duplicate("t", 161)))
+      end,
+      fn data -> put_in(data, ["rows", "decision_task_links", Access.at(0), "operation"], "edit") end,
+      fn data -> put_in(data, ["rows", "decision_task_links", Access.at(0), "kind"], "jira") end,
+      fn data -> put_in(data, ["rows", "decision_task_links", Access.at(2), "url"], first["url"]) end,
+      fn data -> put_in(data, ["rows", "decision_task_links", Access.at(1), "link_key"], first["link_key"]) end,
+      fn data -> put_in(data, ["rows", "decision_task_links", Access.at(0), "decision_id"], ctx.decision.id + 1) end,
+      fn data -> update_in(data, ["rows", "decision_task_links"], &(&1 ++ [after_unlink])) end
+    ]
+
+    for mutate <- mutations do
+      assert {:error, :invalid_ideation_recovery} = restore_result(ctx, authenticate(mutate.(data)))
+      assert Repo.aggregate(Session, :count) == 1
+    end
+
+    Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    decision_id = maps["decisions"][ctx.decision.id]
+    assert {:ok, restored} = Ideation.get_decision(ctx.viewer, ctx.project.id, session_id, decision_id)
+
+    assert [%{key: key, kind: "manual", url: "https://tracker.example.com/browse/ENG-7", title: "Keep the light"}] =
+             restored.tasks
+
+    assert key == kept.key
+    assert {:ok, history} = Ideation.decision_history(ctx.viewer, ctx.project.id, session_id, decision_id)
+    assert Enum.map(history.tasks, & &1.operation) == ~w(unlink link link)
+    assert restore(ctx, capsule) == maps
+  end
+
+  test "version-ten capsules restore with no task links", ctx do
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+    legacy = data |> Map.put("version", 10) |> update_in(["rows"], &Map.delete(&1, "decision_task_links"))
+    assert {:ok, capsule} = Capsule.seal(legacy)
+    assert {:ok, normalized} = Capsule.open(capsule)
+    assert normalized["version"] == 11
+    assert normalized["rows"]["decision_task_links"] == []
+    assert length(normalized["rows"]["decisions"]) == 1
+    maps = restore(ctx, capsule)
+    assert map_size(maps["decisions"]) == 1
   end
 
   test "a capsule cannot restore more decisions than the ordinary reader supports", ctx do
@@ -448,11 +531,11 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       data
       |> Map.put("version", 9)
       |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
-      |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
+      |> update_in(["rows"], &Map.drop(&1, ~w(decision_applications decision_task_links)))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 10
+    assert normalized["version"] == 11
     assert normalized["rows"]["decisions"] == []
   end
 

@@ -224,6 +224,56 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert state(author)["selected"]["proposal"]["responsibleId"] == ctx.facilitator.user.id
   end
 
+  test "editors link, edit and unlink tasks from the detail while readers only see them", ctx do
+    view = open_board(ctx, ctx.author)
+    act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})
+    act(view, ctx, "create", proposal(view, ctx))
+    id = state(view)["selected"]["id"]
+    assert state(view)["selected"]["canLinkTasks"]
+    assert state(view)["selected"]["tasks"] == []
+
+    act(view, ctx, "link_task", %{
+      decision_id: id,
+      url: "https://tracker.example.com/browse/ENG-7",
+      title: "Build the quiet ending",
+      request_key: Ecto.UUID.generate()
+    })
+
+    assert state(view)["error"] == nil
+    assert [%{"kind" => "manual", "title" => "Build the quiet ending"} = task] = state(view)["selected"]["tasks"]
+
+    act(view, ctx, "link_task", %{decision_id: id, url: "javascript:alert(1)", request_key: Ecto.UUID.generate()})
+    assert state(view)["error"] == "invalid_task_link"
+    assert length(state(view)["selected"]["tasks"]) == 1
+
+    viewer = open_board(ctx, ctx.viewer)
+    act(viewer, ctx, "open")
+    act(viewer, ctx, "select", %{decision_id: id})
+    assert [%{"url" => "https://tracker.example.com/browse/ENG-7"}] = state(viewer)["selected"]["tasks"]
+    refute state(viewer)["selected"]["canLinkTasks"]
+    act(viewer, ctx, "unlink_task", %{decision_id: id, link_key: task["key"], request_key: Ecto.UUID.generate()})
+    assert state(viewer)["error"] == "unauthorized"
+
+    act(view, ctx, "edit_task", %{
+      decision_id: id,
+      link_key: task["key"],
+      url: task["url"],
+      title: "Build the quiet ending now",
+      request_key: Ecto.UUID.generate()
+    })
+
+    assert [%{"title" => "Build the quiet ending now"}] = state(view)["selected"]["tasks"]
+    act(view, ctx, "unlink_task", %{decision_id: id, link_key: task["key"], request_key: Ecto.UUID.generate()})
+    assert state(view)["selected"]["tasks"] == []
+
+    act(view, ctx, "history", %{decision_id: id})
+    tasks = Enum.filter(state(view)["history"], &(&1["kind"] == "task"))
+    assert Enum.map(tasks, & &1["operation"]) == ~w(unlink edit link)
+
+    assert Enum.map(tasks, & &1["targetName"]) ==
+             List.duplicate("Build the quiet ending now", 2) ++ ["Build the quiet ending"]
+  end
+
   test "privacy and access transitions clear every decision preview and old events are fenced", ctx do
     view = open_board(ctx, ctx.author)
     act(view, ctx, "new", %{idea_ids: [ctx.idea.id]})

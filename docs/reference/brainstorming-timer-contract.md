@@ -124,7 +124,7 @@ Oban polling or keep an otherwise idle database awake with timer polls.
 
 ## Snapshots
 
-The inner recovery inventory is version 10; timers joined it in version 3 and
+The inner recovery inventory is version 11; timers joined it in version 3 and
 learnt their round in version 9. It includes the timer, its round, its
 persisted flags, outcome, contribution gate and session audit. Version 1 and 2
 inventories remain accepted, normalizing to no timer and open contributions;

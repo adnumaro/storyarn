@@ -9,6 +9,7 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
   alias Storyarn.Ideation.Decisions.Queries.Sources
   alias Storyarn.Ideation.Decisions.Queries.Targets
   alias Storyarn.Ideation.Decisions.Revision
+  alias Storyarn.Ideation.Decisions.TaskLink
   alias Storyarn.Ideation.Decisions.View
   alias Storyarn.Repo
 
@@ -44,6 +45,7 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
          %Decision{} <- Repo.get_by(Decision, id: id, session_id: session_id) do
       revisions = Repo.all(from r in Revision, where: r.decision_id == ^id, order_by: [desc: r.number])
       applications = Repo.all(from a in Application, where: a.decision_id == ^id, order_by: [desc: a.id])
+      tasks = Repo.all(from t in TaskLink, where: t.decision_id == ^id, order_by: [asc: t.id])
 
       with {:ok, context} <- revision_context(scope, project_id, session_id, revisions),
            {:ok, _} <- Access.read(scope, project_id, session_id) do
@@ -52,7 +54,8 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
         {:ok,
          %{
            revisions: Enum.map(revisions, &views[&1.number]),
-           applications: Enum.map(applications, &View.declaration(&1, views[&1.agreement]))
+           applications: Enum.map(applications, &View.declaration(&1, views[&1.agreement])),
+           tasks: tasks |> View.task_history() |> Enum.reverse()
          }}
       end
     else
@@ -71,6 +74,7 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
        Map.merge(context, %{
          revisions: Map.new(revisions, &{{&1.decision_id, &1.number}, &1}),
          applications: applications(decisions),
+         task_links: task_links(decisions),
          related: related(session_id, revisions)
        })}
     end
@@ -108,6 +112,15 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
     |> Map.new(fn {key, declarations} ->
       {key, Map.new(declarations, &{&1.target_key, Map.take(&1, [:state, :note, :actor_id, :inserted_at])})}
     end)
+  end
+
+  defp task_links(decisions) do
+    ids = Enum.map(decisions, & &1.id)
+
+    from(t in TaskLink, where: t.decision_id in ^ids, order_by: [asc: t.id])
+    |> Repo.all()
+    |> Enum.group_by(& &1.decision_id)
+    |> Map.new(fn {id, changes} -> {id, View.task_links(changes)} end)
   end
 
   # The decisions a proposal replaces, or that replaced it, named by the

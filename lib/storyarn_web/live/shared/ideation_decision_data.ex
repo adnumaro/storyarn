@@ -22,6 +22,8 @@ defmodule StoryarnWeb.Live.Shared.IdeationDecisionData do
       canAssign: value.can_assign,
       canWithdraw: value.can_withdraw,
       canDeclare: value.can_declare,
+      tasks: Enum.map(value.tasks, &task(&1, board)),
+      canLinkTasks: value.can_link_tasks,
       updatedAt: value.updated_at
     }
   end
@@ -48,11 +50,12 @@ defmodule StoryarnWeb.Live.Shared.IdeationDecisionData do
 
   # Newest first. A registration is one step for the person who took it, so its
   # proposal and acceptance read as a single entry.
-  def history(%{revisions: revisions, applications: applications}, board) do
+  def history(%{revisions: revisions, applications: applications, tasks: tasks}, board) do
     records = revisions |> Enum.sort_by(& &1.number) |> records(board) |> Enum.reverse()
     declared = Enum.map(applications, &declaration_entry(&1, board))
+    linked = Enum.map(tasks, &task_entry(&1, board))
 
-    Enum.sort_by(records ++ declared, & &1.at, {:desc, DateTime})
+    Enum.sort_by(records ++ declared ++ linked, & &1.at, {:desc, DateTime})
   end
 
   def source(value, board \\ nil) do
@@ -120,6 +123,30 @@ defmodule StoryarnWeb.Live.Shared.IdeationDecisionData do
       targetName: value.target && value.target.name,
       targetType: value.target && value.target.type,
       text: value.note,
+      at: value.inserted_at
+    }
+  end
+
+  defp task(value, board) do
+    %{
+      key: value.key,
+      kind: value.kind,
+      url: value.url,
+      title: value.title,
+      linkedByName: member_name(board, value.linked_by_id),
+      linkedAt: value.linked_at
+    }
+  end
+
+  defp task_entry(value, board) do
+    %{
+      kind: "task",
+      id: "task-#{value.key}-#{value.operation}-#{DateTime.to_unix(value.inserted_at, :microsecond)}",
+      operation: value.operation,
+      actorName: member_name(board, value.actor_id),
+      targetName: value.title || value.url,
+      url: value.url,
+      text: nil,
       at: value.inserted_at
     }
   end

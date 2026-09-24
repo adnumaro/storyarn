@@ -8,6 +8,9 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
   @max_sources 20
   @max_targets 5
   @max_applications 500
+  @max_task_links 20
+  @max_task_changes 200
+  @task_operations ~w(link edit unlink)
   @operations ~w(propose revise accept register withdraw supersede)
   @verbs ~w(create change test keep discard)
   @target_types ~w(sheet flow scene)
@@ -42,6 +45,16 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
       (is_nil(row["note"]) or is_binary(row["note"])) and receipt?(row)
   end
 
+  def valid?(row, "decision_task_links", index) do
+    decision = index.decisions[row["decision_id"]]
+
+    is_map(decision) and decision["session_id"] == row["session_id"] and bytes?(row["link_key"], 16) and
+      row["operation"] in @task_operations and row["kind"] == "manual" and task_content?(row) and receipt?(row)
+  end
+
+  defp task_content?(%{"operation" => "unlink"} = row), do: is_nil(row["url"]) and is_nil(row["title"])
+  defp task_content?(row), do: is_binary(row["url"]) and (is_nil(row["title"]) or is_binary(row["title"]))
+
   defp revision_fields?(row) do
     row["operation"] in @operations and row["verb"] in @verbs and optional_id?(row["responsible_id"]) and
       optional_id?(row["next_action_owner_id"]) and receipt?(row) and
@@ -56,6 +69,7 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
   def unique?(rows) do
     revisions = rows["decision_revisions"]
     applications = Map.get(rows, "decision_applications", [])
+    task_links = Map.get(rows, "decision_task_links", [])
 
     unique_by?(revisions, &{&1["decision_id"], &1["number"]}) and
       unique_by?(
@@ -67,10 +81,17 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
         &{&1["session_id"], &1["actor_id"], &1["request_key"]}
       ) and
       rows["decisions"] |> Enum.frequencies_by(& &1["session_id"]) |> Enum.all?(fn {_, n} -> n <= @max_decisions end) and
-      applications |> Enum.frequencies_by(& &1["decision_id"]) |> Enum.all?(fn {_, n} -> n <= @max_applications end)
+      applications |> Enum.frequencies_by(& &1["decision_id"]) |> Enum.all?(fn {_, n} -> n <= @max_applications end) and
+      unique_by?(
+        Enum.reject(task_links, &is_nil(&1["actor_id"])),
+        &{&1["session_id"], &1["actor_id"], &1["request_key"]}
+      ) and
+      task_links |> Enum.frequencies_by(& &1["decision_id"]) |> Enum.all?(fn {_, n} -> n <= @max_task_changes end)
   end
 
-  def consistent?(rows) do
+  def consistent?(rows), do: histories?(rows) and task_links?(Map.get(rows, "decision_task_links", []))
+
+  defp histories?(rows) do
     revisions = Enum.group_by(rows["decision_revisions"], & &1["decision_id"])
     decisions = Map.new(rows["decisions"], &{&1["id"], &1})
 
@@ -85,6 +106,23 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
         decision["status"] == status(history) and transitions?(history) and
         supersession?(List.last(history), decision, revisions, decisions)
     end) and applications?(rows, revisions)
+  end
+
+  # A link starts linked, belongs to one decision and ends once unlinked; at
+  # most 20 are linked at a time.
+  defp task_links?(rows) do
+    histories = rows |> Enum.sort_by(& &1["id"]) |> Enum.group_by(& &1["link_key"])
+
+    Enum.all?(histories, fn {_key, [first | _] = history} ->
+      operations = Enum.map(history, & &1["operation"])
+
+      first["operation"] == "link" and length(Enum.uniq_by(history, & &1["decision_id"])) == 1 and
+        "unlink" not in Enum.drop(operations, -1)
+    end) and
+      histories
+      |> Enum.reject(fn {_key, history} -> List.last(history)["operation"] == "unlink" end)
+      |> Enum.frequencies_by(fn {_key, [first | _]} -> first["decision_id"] end)
+      |> Enum.all?(fn {_, n} -> n <= @max_task_links end)
   end
 
   # A capsule can only claim a replacement that the replacing decision accepted.
@@ -203,7 +241,8 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
     with {:ok, content} <- decrypt_revisions(revisions),
          true <- Enum.all?(revisions, &source_context?(&1, content[&1["id"]], ideas, groups)),
          true <- Enum.all?(revisions, &target_context?(&1, content[&1["id"]])),
-         true <- notes_valid?(Map.get(rows, "decision_applications", [])) do
+         true <- notes_valid?(Map.get(rows, "decision_applications", [])),
+         true <- task_links_valid?(Map.get(rows, "decision_task_links", [])) do
       revisions
       |> Enum.group_by(& &1["decision_id"])
       |> Enum.all?(fn {_, history} -> copies?(history, content) end)
@@ -344,6 +383,29 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
         _ -> false
       end
     end)
+  end
+
+  defp task_links_valid?(links) do
+    Enum.all?(links, fn link ->
+      with {:ok, url} <- plaintext(link["url"]),
+           {:ok, title} <- plaintext(link["title"]) do
+        (is_nil(url) or task_url?(url)) and optional_text?(title, 160)
+      else
+        _ -> false
+      end
+    end)
+  end
+
+  # Same rule as linking: a web address without credentials.
+  defp task_url?(url) do
+    byte_size(url) <= 2048 and not String.match?(url, ~r/[\s\x00-\x1f\x7f]/u) and
+      case URI.new(url) do
+        {:ok, %URI{scheme: scheme, host: host, userinfo: nil}} when is_binary(scheme) and is_binary(host) ->
+          String.downcase(scheme) in ~w(http https) and host != ""
+
+        _ ->
+          false
+      end
   end
 
   defp copies?(history, contents) do
