@@ -895,6 +895,15 @@ defmodule Storyarn.AI.Operations.Commands.OperationAuthorizationLockOrderTest do
         )
       )
 
+    # An operation committed here also committed its execution job, which no
+    # foreign key removes with the rows below.
+    Repo.delete_all(
+      from(job in Oban.Job,
+        where: job.worker == "Storyarn.Workers.AIExecutionWorker",
+        where: fragment("(?->>'operation_id')::bigint", job.args) in ^operation_ids
+      )
+    )
+
     Repo.delete_all(from(result in Result, where: result.operation_id in ^operation_ids))
     Repo.delete_all(from(event in UsageEvent, where: event.operation_id in ^operation_ids))
     Repo.delete_all(from(alert in OperatorAlert, where: alert.operation_id in ^operation_ids))
