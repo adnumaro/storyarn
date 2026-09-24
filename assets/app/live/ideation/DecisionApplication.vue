@@ -74,17 +74,19 @@ const marking = ref<string | null>(null);
 const choice = ref<ApplicationState>("applied");
 const note = ref("");
 
-function open(target: DecisionTarget | null, value: boolean) {
+function declarationFor(target: DecisionTarget | null) {
+  return target ? target.application : (application.value?.decision ?? null);
+}
+function beginMarking(target: DecisionTarget | null) {
   const key = target?.key ?? null;
-  if (value) {
-    marking.value = key ?? "decision";
-    choice.value = target
-      ? (target.application?.state ?? "applied")
-      : (application.value?.decision?.state ?? "no_change_needed");
-    note.value = target
-      ? (target.application?.note ?? "")
-      : (application.value?.decision?.note ?? "");
-  } else if (marking.value === (key ?? "decision")) marking.value = null;
+  marking.value = key ?? "decision";
+  const declaration = declarationFor(target);
+  choice.value = declaration?.state ?? (target ? "applied" : "no_change_needed");
+  note.value = declaration?.note ?? "";
+}
+function open(target: DecisionTarget | null, value: boolean) {
+  if (value) beginMarking(target);
+  else if (marking.value === (target?.key ?? "decision")) marking.value = null;
 }
 function confirm(target: DecisionTarget | null) {
   emit("declare", target?.key ?? null, choice.value, note.value.trim() || null);
