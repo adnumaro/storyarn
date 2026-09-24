@@ -1,0 +1,33 @@
+test/e2e/blog_test.exs
+  s_3815073ba3b4bc::t_a2103b591346f1 97
+test/storyarn/public/blog_test.exs
+  s_3815073ba3b4bc::t_a2103b591346f1 10-11,43,47-69,87-110,113-119
+  s_3815073ba3b4bc::t_8ec28556a5c694 111-112
+  s_3815073ba3b4bc::t_9d0a3524c727d3 120
+priv/blog/es/2026-09-24-lo-que-deja-una-lluvia-de-ideas.md
+  s_3815073ba3b4bc::t_137b8e5d5c233c 56
+  s_3815073ba3b4bc::t_c2f036694476c5 22,42,68
+  s_3815073ba3b4bc::t_291b2114f19eae 1-21,23-41,43-55,57-67,69-70
+priv/blog/en/2026-09-24-what-a-brainstorm-leaves-behind.md
+  s_3815073ba3b4bc::t_3634bf0855ebee 1-21,23-33,35-41,43-53,55,57-67,69-70
+  s_3815073ba3b4bc::t_c2f036694476c5 22,42,68
+  s_3815073ba3b4bc::t_137b8e5d5c233c 34,54,56
+test/storyarn_web/live/blog_live/index_test.exs
+  s_3815073ba3b4bc::t_a2103b591346f1 34,39-44,58,116,130,134,137-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "389b4c64ccc4b24152a48e0113e0bb0aa1d6d5df",
+  "prompts": {},
+  "sessions": {
+    "s_3815073ba3b4bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21122dea-fa09-4921-93cc-f214032f86d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
