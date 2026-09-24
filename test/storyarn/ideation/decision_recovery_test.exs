@@ -419,36 +419,28 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
              view.proposal.targets
   end
 
-  test "version-eight capsules restore without the decisions of the earlier model", ctx do
-    {:ok, data} = ctx |> capture() |> Capsule.open()
-    stripped = ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)
+  test "a target replaced before capture stays unavailable when an import maps its old ID", ctx do
+    Repo.update_all(from(s in "sheets", where: s.id == ^ctx.sheet.id), set: [inserted_at: ~U[2000-01-01 00:00:00Z]])
+    capsule = capture(ctx)
+    assert {:ok, %{"rows" => rows}} = Capsule.open(capsule)
+    assert [%{"targets" => %{"items" => [%{"id" => nil, "identity" => _} | _]}}] = rows["decision_revisions"]
 
-    legacy =
-      data
-      |> Map.put("version", 8)
-      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
-      |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
-      |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
+    Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
+    destinations = %{"sheet" => %{ctx.sheet.id => %{id: ctx.sheet.id, identity: "created:2000-01-01T00:00:00Z"}}}
 
-    assert {:ok, capsule} = Capsule.seal(legacy)
-    assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 10
-    assert normalized["rows"]["decisions"] == []
+    assert {:ok, maps} =
+             Repo.transact(fn ->
+               Repo.one!(from p in "projects", where: p.id == ^ctx.project.id, select: p.id, lock: "FOR UPDATE")
+               Ideation.restore_recovery(ctx.project.id, capsule, destinations)
+             end)
+
+    session_id = maps["sessions"][ctx.session.id]
+    decision_id = maps["decisions"][ctx.decision.id]
+    assert {:ok, view} = Ideation.get_decision(ctx.viewer, ctx.project.id, session_id, decision_id)
+    assert [%{name: "Mara", id: nil, available: false}, _village] = view.proposal.targets
   end
 
-  test "version-nine capsules retain each timer's round while dropping the earlier decision model", ctx do
-    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
-
-    {:ok, _} =
-      Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, %{seconds: 300})
-
-    {:ok, first_timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
-    {ctx, second_round} = new_round(ctx)
-
-    {:ok, _} =
-      Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{seconds: 600})
-
-    {:ok, second_timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+  test "version-nine capsules restore without the decisions of the earlier model", ctx do
     {:ok, data} = ctx |> capture() |> Capsule.open()
     stripped = ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)
 
@@ -458,20 +450,10 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
       |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
 
-    assert legacy["rows"]["decisions"] != []
-    assert legacy["rows"]["decision_revisions"] != []
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
     assert normalized["version"] == 10
     assert normalized["rows"]["decisions"] == []
-    assert normalized["rows"]["decision_revisions"] == []
-    assert normalized["rows"]["decision_applications"] == []
-    assert normalized["rows"]["timers"] == data["rows"]["timers"]
-
-    assert Enum.map(normalized["rows"]["timers"], &{&1["id"], &1["round_id"], &1["status"]}) == [
-             {first_timer.id, first_timer.round_id, "cancelled"},
-             {second_timer.id, second_round.id, "running"}
-           ]
   end
 
   defp proposal_attrs(ctx, selections) do

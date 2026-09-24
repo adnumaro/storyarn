@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import {
+  ArrowRight,
   Bell,
   Check,
   CheckCircle2,
   CircleAlert,
+  CircleCheck,
   LoaderCircle,
   MessageSquare,
   Plus,
   Trash2,
+  UserCheck,
   XCircle,
 } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, ref } from "vue";
@@ -198,11 +201,30 @@ function commentText(notification: NotificationItem, actor: string): string | nu
   return null;
 }
 
+const decisionKinds = [
+  "decision_to_accept",
+  "decision_accepted",
+  "decision_next_action",
+  "decision_applied",
+] as const;
+function decisionText(notification: NotificationItem, actor: string): string | null {
+  if (!(decisionKinds as readonly string[]).includes(notification.kind)) return null;
+  return t(`notifications.messages.${notification.kind}`, {
+    actor,
+    name: notification.entityName ?? "",
+  });
+}
+
+// Comments and decisions carry their own copy; content and async results share one.
+function activityText(notification: NotificationItem, actor: string): string | null {
+  return commentText(notification, actor) ?? decisionText(notification, actor);
+}
+
 function notificationText(notification: NotificationItem): string {
   const actor = notification.actorName || t("notifications.actor_fallback");
   const entity = entityLabel(notification);
   const name = notification.entityName;
-  const comment = commentText(notification, actor);
+  const comment = activityText(notification, actor);
 
   if (comment) return comment;
 
@@ -375,6 +397,22 @@ function relativeTime(isoDate: string): string {
             <XCircle v-if="notification.status === 'failure'" class="size-4" />
             <CheckCircle2 v-else-if="notification.kind === 'async_operation'" class="size-4" />
             <Plus v-else-if="notification.kind === 'content_created'" class="size-4" />
+            <UserCheck
+              v-else-if="notification.kind === 'decision_to_accept'"
+              class="size-4 text-blue-700 dark:text-blue-400"
+            />
+            <Check
+              v-else-if="notification.kind === 'decision_accepted'"
+              class="size-4 text-emerald-700 dark:text-emerald-400"
+            />
+            <ArrowRight
+              v-else-if="notification.kind === 'decision_next_action'"
+              class="size-4 text-amber-700 dark:text-amber-400"
+            />
+            <CircleCheck
+              v-else-if="notification.kind === 'decision_applied'"
+              class="size-4 text-emerald-700 dark:text-emerald-400"
+            />
             <MessageSquare
               v-else-if="
                 notification.kind === 'comment_mention' ||

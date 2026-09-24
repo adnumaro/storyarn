@@ -13,6 +13,33 @@
     "empty": "Todavía no hay decisiones",
     "emptyHelp": "Selecciona ideas compartidas o un grupo para proponer una decisión. Podéis seguir explorando antes de acordar.",
     "retired": "Retiradas · {count}",
+    "lane": "Decisiones · {count}",
+    "laneRound": "Decisiones · Ronda {number} · {count}",
+    "supports": "Respalda {count} decisión | Respalda {count} decisiones",
+    "discussion": "Conversación",
+    "discussionHint": "Resolver no acepta; aceptar no resuelve.",
+    "comments": "{count} comentario | {count} comentarios",
+    "banner": {
+      "actions": {
+        "applied": "Marcar aplicada",
+        "partially_applied": "Parcialmente",
+        "no_change_needed": "Sin cambios"
+      },
+      "marked": {
+        "applied": "Marcada como aplicada",
+        "partially_applied": "Marcada como aplicada en parte",
+        "no_change_needed": "Marcada sin cambios necesarios"
+      },
+      "justNow": "ahora mismo",
+      "undo": "Deshacer",
+      "showMore": "Ver más",
+      "close": "Cerrar decisión"
+    },
+    "about": {
+      "title": "Decisiones sobre {name}",
+      "goApply": "Ir a aplicar",
+      "tooltip": "{count} decisión sobre {name} · {pending} por aplicar | {count} decisiones sobre {name} · {pending} por aplicar"
+    },
     "formerMember": "Miembro no disponible",
     "status": {
       "toApply": "{pending} de {total} por aplicar",
@@ -241,6 +268,31 @@
       "decision_history_limit": "Esta decisión ha alcanzado su límite de historial.",
       "source_context_limit": "Estas fuentes contienen demasiado texto. Elige un conjunto más pequeño.",
       "idempotency_conflict": "Esta solicitud ya se usó para otros cambios. Revisa la decisión guardada antes de volver a intentarlo."
+    },
+    "dashboard": {
+      "tabs": {
+        "sessions": "Sesiones",
+        "decisions": "Decisiones"
+      },
+      "status": {
+        "all": "Estado · Todas",
+        "proposed": "Propuestas",
+        "accepted": "Aceptadas",
+        "retired": "Retiradas y sustituidas"
+      },
+      "application": {
+        "all": "Aplicación · Todas",
+        "toApply": "Por aplicar",
+        "applied": "Aplicadas",
+        "noChange": "Sin cambios necesarios"
+      },
+      "groupByContent": "Agrupar por contenido afectado",
+      "groupSummary": "{count} decisión · {pending} por aplicar | {count} decisiones · {pending} por aplicar",
+      "noContent": "Sin contenido afectado",
+      "empty": "Ninguna decisión coincide con estos filtros.",
+      "summary": "{count} decisión | {count} decisiones",
+      "summaryWaiting": "{count} espera tu aceptación | {count} esperan tu aceptación",
+      "summaryToApply": "{count} por aplicar"
     }
   }
 }

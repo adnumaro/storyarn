@@ -65,10 +65,10 @@ not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
 The inner inventory is version **10**. Version **9** inventories carry decisions
 without a verb, affected content or application records; they normalize to no
-decisions, decision revisions or application declarations. Version **8** inventories
-also carry no timer round: normalization hands each clock to the round in progress
-of its session, or to its last round when every round is closed. Version **7**
-inventories carry no round
+decisions, decision revisions or application declarations. Version **8**
+inventories carry no timer round: normalization hands each clock to the round in
+progress of its session, or to its last round when every round is closed, and
+then drops their decisions as for version 9. Version **7** inventories carry no round
 privacy and no group round: normalization marks the active round of a session
 that used the former session-wide private mode as private, strips that session
 key and leaves groups without a round. Version **6** inventories additionally

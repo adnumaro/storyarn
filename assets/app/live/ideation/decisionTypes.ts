@@ -1,6 +1,10 @@
-import type { Board } from "@modules/ideation";
-
-export type DecisionMember = Board["members"][number];
+import type { BrainstormingCommentsState } from "@modules/ideation/commentTypes";
+/** An editor who can be made responsible; the board's canvas reads decisions too. */
+export interface DecisionMember {
+  id: number;
+  display_name: string;
+  avatar_url: string | null;
+}
 export type DecisionSourceType = "idea" | "group";
 export type DecisionStatus = "proposed" | "accepted" | "withdrawn" | "superseded";
 export type DecisionVerb = "create" | "change" | "test" | "keep" | "discard";
@@ -43,6 +47,8 @@ export interface DecisionTarget {
   name: string;
   isNew: boolean;
   available: boolean;
+  /** Its editor, when the reader can open it. */
+  href?: string | null;
   application: DecisionDeclaration | null;
 }
 export interface DecisionNextAction {
@@ -83,6 +89,7 @@ export interface DecisionApplication {
 }
 export interface DecisionRecord {
   id: number;
+  sessionId?: number;
   version: number;
   status: DecisionStatus;
   proposal: DecisionRevision;
@@ -140,6 +147,23 @@ export interface DecisionDraftInput {
   owner_id: number;
   register: boolean;
   revision?: number;
+}
+/**
+ * The board's comment state while it holds the shown decision's conversation,
+ * and the messages of every decision's open discussions, keyed by decision id.
+ */
+export interface DecisionDiscussionState {
+  state: BrainstormingCommentsState | null;
+  counts: Record<string, number>;
+}
+/** A decision brought to the content it affects, under the editor header. */
+export interface DecisionBannerState {
+  decision: DecisionRecord;
+  targetKey: string;
+  sessionTitle: string;
+  sessionUrl: string;
+  marked: { state: Exclude<ApplicationState, "not_applied"> } | null;
+  error: string | null;
 }
 export interface DecisionsPanelState {
   open: boolean;

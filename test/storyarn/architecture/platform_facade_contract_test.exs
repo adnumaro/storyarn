@@ -38,6 +38,8 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
   ]
 
   @comment_contract [deliver_comment_activity: 4]
+  # ENG-236: decision writes deliver their own four inbox kinds.
+  @decision_contract [deliver_decision_activity: 4]
 
   @public_types ~w(notification_delivery_outcome onboarding_summary)a
 
@@ -55,7 +57,7 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       |> Enum.reject(fn {name, _arity} -> name in [:module_info, :__info__] end)
       |> MapSet.new()
 
-    assert public_functions == MapSet.new(@public_contract ++ @comment_contract)
+    assert public_functions == MapSet.new(@public_contract ++ @comment_contract ++ @decision_contract)
   end
 
   test "the root facade is declarative and enters implementation through capability facades" do
@@ -88,8 +90,13 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
           []
       end)
 
-    {comment_docs, established_docs} =
+    {decision_docs, function_docs_without_decisions} =
       Enum.split_with(function_docs, fn {name, arity, _signatures, _doc, _defaults} ->
+        {name, arity} in @decision_contract
+      end)
+
+    {comment_docs, established_docs} =
+      Enum.split_with(function_docs_without_decisions, fn {name, arity, _signatures, _doc, _defaults} ->
         {name, arity} in @comment_contract
       end)
 
@@ -111,12 +118,17 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
 
     assert length(established_docs) == 26
     assert status_counts == %{documented: 26}
-    assert represented_arities == MapSet.new(@public_contract ++ @comment_contract)
+    assert represented_arities == MapSet.new(@public_contract ++ @comment_contract ++ @decision_contract)
     assert digest(Enum.sort(established_docs)) == @docs_digest
 
     assert comment_docs == [
              {:deliver_comment_activity, 4, ["deliver_comment_activity(actor_id, project_id, comment_id, recipients)"],
               %{"en" => "Persists comment mentions and replies for the producer's selected recipients."}, 0}
+           ]
+
+    assert decision_docs == [
+             {:deliver_decision_activity, 4, ["deliver_decision_activity(actor_id, project_id, decision, recipients)"],
+              %{"en" => "Persists decision activity for the recipients the decision owner selects."}, 0}
            ]
   end
 
@@ -152,8 +164,13 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end)
       |> Enum.sort()
 
-    {comment_specs, established_specs} =
+    {decision_specs, specs_without_decisions} =
       Enum.split_with(normalized_specs, fn {name, arity, _spec} ->
+        {name, arity} in @decision_contract
+      end)
+
+    {comment_specs, established_specs} =
+      Enum.split_with(specs_without_decisions, fn {name, arity, _spec} ->
         {name, arity} in @comment_contract
       end)
 
@@ -167,6 +184,14 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end
 
     assert comment_specs == [{:deliver_comment_activity, 4, Macro.to_string(comment_spec)}]
+
+    decision_spec =
+      quote do
+        deliver_decision_activity(pos_integer(), pos_integer(), map(), [map()]) ::
+          {:ok, notification_delivery_outcome()} | {:error, term()}
+      end
+
+    assert decision_specs == [{:deliver_decision_activity, 4, Macro.to_string(decision_spec)}]
   end
 
   defp digest(term) do

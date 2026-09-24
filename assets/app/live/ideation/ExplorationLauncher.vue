@@ -21,9 +21,17 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
+import { Popover, PopoverContent } from "@components/ui/popover";
 import { Textarea } from "@components/ui/textarea";
+import DecisionBanner from "./DecisionBanner.vue";
+import DecisionsAbout from "./DecisionsAbout.vue";
 import ReferenceOverview from "./ReferenceOverview.vue";
-import type { ExplorationLauncherState, ExplorationSession } from "./explorationTypes";
+import type { ApplicationState } from "./decisionTypes";
+import type {
+  DecisionAbout,
+  ExplorationLauncherState,
+  ExplorationSession,
+} from "./explorationTypes";
 import { useExplorationRequests } from "./useExplorationRequests";
 
 const {
@@ -54,6 +62,48 @@ const canCreate = computed(() => state.canEdit && !!state.target && !!title.valu
 const launchLabel = computed(() =>
   t(state.canEdit ? "brainstormingExplorations.launch" : "brainstormingExplorations.title"),
 );
+// The lightbulb counts what is still to apply on this content; the hover names
+// every decision about it.
+const toApply = computed(() => state.decisions?.toApply ?? 0);
+const launchTitle = computed(() =>
+  state.decisions?.total
+    ? t("brainstormingDecisions.about.tooltip", {
+        count: state.decisions.total,
+        name: state.decisions.name ?? "",
+        pending: state.decisions.toApply,
+      })
+    : launchLabel.value,
+);
+const launcherElement = computed(() => {
+  const element = launcherButton.value?.$el;
+  return element instanceof HTMLElement ? element : undefined;
+});
+function decide(
+  action: "decision_apply" | "decision_declare" | "decision_undo" | "decision_dismiss",
+  payload: Record<string, unknown> = {},
+) {
+  request(action, payload, `${action}:${JSON.stringify(payload)}`);
+}
+function declare(item: DecisionAbout, stateValue: ApplicationState, note: string | null) {
+  decide("decision_declare", {
+    session_id: item.sessionId,
+    decision_id: item.decision.id,
+    target_key: item.targetKey,
+    state: stateValue,
+    note,
+  });
+}
+function declareBanner(stateValue: ApplicationState, note: string | null) {
+  const banner = state.banner;
+  if (!banner) return;
+  decide("decision_declare", {
+    session_id: banner.decision.sessionId,
+    decision_id: banner.decision.id,
+    target_key: banner.targetKey,
+    state: stateValue,
+    note,
+  });
+}
 
 function resetForm() {
   mode.value = "create";
@@ -108,10 +158,10 @@ function link(session: ExplorationSession) {
       id="explore-changes"
       :variant="compact ? 'ghost' : 'outline'"
       :size="compact ? 'icon-sm' : 'sm'"
-      class="shrink-0 gap-1.5 text-xs"
+      class="relative shrink-0 gap-1.5 text-xs"
       :disabled="!!pending"
-      :aria-label="launchLabel"
-      :title="launchLabel"
+      :aria-label="launchTitle"
+      :title="launchTitle"
       aria-haspopup="dialog"
       :aria-expanded="state.open"
       @click="setOpen(true)"
@@ -119,7 +169,36 @@ function link(session: ExplorationSession) {
       <Loader2 v-if="pending === 'open'" class="size-3.5 animate-spin" />
       <Lightbulb v-else class="size-3.5" />
       <span :class="compact ? 'sr-only' : ''">{{ launchLabel }}</span>
+      <span
+        v-if="toApply > 0"
+        id="explore-changes-decisions"
+        class="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] leading-none font-semibold text-white dark:bg-amber-400 dark:text-amber-950"
+        aria-hidden="true"
+        >{{ toApply }}</span
+      >
     </Button>
+    <Popover :open="!!state.banner">
+      <PopoverContent
+        v-if="state.banner && launcherElement"
+        :reference="launcherElement"
+        side="bottom"
+        align="start"
+        :side-offset="14"
+        class="w-[min(760px,calc(100vw-2rem))] border-0 bg-transparent p-0 shadow-none"
+        @open-auto-focus.prevent
+        @close-auto-focus.prevent
+        @escape-key-down.prevent
+        @interact-outside.prevent
+      >
+        <DecisionBanner
+          :banner="state.banner"
+          :pending="!!pending"
+          @declare="declareBanner"
+          @undo="decide('decision_undo')"
+          @dismiss="decide('decision_dismiss')"
+        />
+      </PopoverContent>
+    </Popover>
     <p v-if="notice && !state.open" role="alert" class="text-xs text-destructive">
       {{ errorText(notice) }}
     </p>
@@ -181,6 +260,21 @@ function link(session: ExplorationSession) {
           </aside>
 
           <div class="min-w-0 space-y-5">
+            <DecisionsAbout
+              v-if="state.about?.length"
+              :items="state.about"
+              :name="state.decisions?.name ?? state.target?.name ?? ''"
+              :can-edit="state.canEdit"
+              :pending="!!pending"
+              @apply="
+                (item) =>
+                  decide('decision_apply', {
+                    session_id: item.sessionId,
+                    decision_id: item.decision.id,
+                  })
+              "
+              @declare="declare"
+            />
             <section aria-labelledby="exploration-linked-heading" class="space-y-2">
               <h3 id="exploration-linked-heading" class="text-sm font-medium">
                 {{ t("brainstormingExplorations.linkedTitle") }}

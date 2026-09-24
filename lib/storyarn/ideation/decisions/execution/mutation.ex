@@ -158,8 +158,9 @@ defmodule Storyarn.Ideation.Decisions.Execution.Mutation do
     end
   end
 
-  # A later agreement of the replacement may keep the original link without
-  # closing the same decision twice.
+  # Only an agreement in force can be replaced, and never by the decision itself.
+  # A revision of the replacement keeps naming what it already replaced; there
+  # is nothing left to supersede.
   defp replaceable(_access, _self, nil), do: {:ok, nil}
   defp replaceable(_access, id, id), do: {:error, :invalid_replacement}
 
@@ -184,8 +185,8 @@ defmodule Storyarn.Ideation.Decisions.Execution.Mutation do
     )
   end
 
-  # A withdrawn revision has a closing record, but its agreement remains the
-  # authority and source context for the next revision.
+  # Without a pending revision the agreement in force is what the next step
+  # builds on; a withdrawn revision's record never carries its authority.
   defp basis(%Decision{status: :accepted, accepted_version: agreement}) when not is_nil(agreement), do: agreement
   defp basis(decision), do: decision.version
 

@@ -245,6 +245,49 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert item.url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
     end
 
+    test "decisions that name a matched entity rank with it under Jump to", %{view: view, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
+      sheet = sheet_fixture(project, %{name: "Kael the Wanderer"})
+      scope = Storyarn.Accounts.Scope.for_user(user)
+      {:ok, session} = Ideation.create_session(scope, project.id, %{title: "Endings"})
+
+      {:ok, idea} =
+        Ideation.create_idea(scope, project.id, session.id, %{
+          request_key: Ecto.UUID.generate(),
+          configuration_version: 1,
+          visibility: :shared,
+          body: "<p>Kael leaves</p>"
+        })
+
+      {:ok, [source]} =
+        Ideation.preview_decision_sources(scope, project.id, session.id, [%{type: "idea", id: idea.id}])
+
+      {:ok, decision} =
+        Ideation.propose_decision(scope, project.id, session.id, %{
+          title: "Kael leaves the order",
+          conclusion: "He walks away before the siege.",
+          verb: "change",
+          targets: [%{type: "sheet", id: sheet.id}],
+          responsible_id: user.id,
+          register: true,
+          sources: [Map.take(source, [:type, :id, :version, :identity])],
+          request_key: Ecto.UUID.generate()
+        })
+
+      render_hook(view, "palette_nav", %{"query" => "kael", "token" => 8})
+      assert_reply(view, %{token: 8, groups: groups})
+      entities = Enum.find(groups, &(&1.key == "entities"))
+      assert [%{type: "sheet"}, item] = entities.items
+      assert item.id == "nav.decision.#{decision.id}"
+      assert item.type == "decision"
+      assert item.label == "Kael leaves the order"
+      assert item.context == "Decision · Change Kael the Wanderer · Accepted · Endings"
+
+      assert item.url ==
+               "/workspaces/#{workspace.slug}/projects/#{project.slug}/brainstorming/#{session.id}?decision=#{decision.id}"
+    end
+
     test "empty query lists workspaces, projects, and per-project settings",
          %{view: view, user: user} do
       workspace = workspace_fixture(user)

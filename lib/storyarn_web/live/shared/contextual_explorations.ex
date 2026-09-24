@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
   alias Storyarn.Projects
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ContextualDecisions
   alias StoryarnWeb.Live.Shared.IdeationReferenceData, as: ReferenceData
 
   @access_events ~w(project_membership_changed project_ownership_transferred workspace_membership_changed workspace_ownership_transferred)a
@@ -20,18 +21,42 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
       Workspaces.subscribe_workspace_membership_changes(socket.assigns.workspace.id)
       Workspaces.subscribe_workspace_ownership_changes(socket.assigns.workspace.id)
       Ideation.subscribe_sessions(socket.assigns.current_scope, socket.assigns.project.id)
+      Ideation.subscribe_decisions(socket.assigns.current_scope, socket.assigns.project.id)
     end
 
     socket
     |> assign(:exploration_type, type)
+    |> ContextualDecisions.init()
     |> reset()
     |> attach_hook(:contextual_explorations, :handle_info, &handle_info/2)
+    |> attach_hook(:contextual_decisions, :handle_params, fn params, _uri, socket ->
+      {:cont, ContextualDecisions.linked(params, socket)}
+    end)
   end
 
   def source_changed(socket) do
-    if source_key(socket) == socket.assigns.exploration_source and not socket.assigns.compact,
-      do: socket,
-      else: reset(socket)
+    socket =
+      if source_key(socket) == socket.assigns.exploration_source and not socket.assigns.compact,
+        do: socket,
+        else: reset(socket)
+
+    decisions(socket)
+  end
+
+  # The decisions about the source: the lightbulb count, the dialog's section
+  # and the banner a "Go apply" link opens.
+  def handle("decision_" <> action, params, socket) do
+    with false <- socket.assigns.compact,
+         key when is_binary(key) <- source_key(socket),
+         true <- params["source_key"] == key do
+      case ContextualDecisions.handle(action, params, socket) do
+        {:ok, socket} when action == "apply" -> {:reply, %{status: "ok"}, reset(socket)}
+        {:ok, socket} -> {:reply, %{status: "ok"}, put_decisions(socket)}
+        {:error, reason, socket} -> {:reply, %{status: "error", code: error_code(reason)}, put_decisions(socket)}
+      end
+    else
+      _ -> failure(socket, :stale_context, false)
+    end
   end
 
   def handle(action, params, socket) do
@@ -49,7 +74,7 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
   end
 
   defp dispatch("open", _params, socket) do
-    socket = socket |> reset() |> put(%{open: true}) |> load()
+    socket = socket |> ContextualDecisions.reload() |> reset() |> put(%{open: true}) |> load()
     reply(socket)
   end
 
@@ -242,10 +267,30 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
         linkedCursor: nil,
         availableCursor: nil,
         canEdit: socket.assigns.can_edit,
-        error: nil
+        error: nil,
+        decisions: ContextualDecisions.summary(socket),
+        about: ContextualDecisions.about(socket),
+        banner: ContextualDecisions.banner(socket)
       }
     )
   end
+
+  defp decisions(%{assigns: %{compact: true}} = socket), do: socket
+
+  defp decisions(socket) do
+    case source_id(socket) do
+      nil -> socket
+      id -> socket |> ContextualDecisions.refresh({socket.assigns.exploration_type, id}) |> put_decisions()
+    end
+  end
+
+  defp put_decisions(socket),
+    do:
+      put(socket, %{
+        decisions: ContextualDecisions.summary(socket),
+        about: ContextualDecisions.about(socket),
+        banner: ContextualDecisions.banner(socket)
+      })
 
   defp page_keys("linked"), do: {:exploration_linked_cursor, :exploration_linked_history}
   defp page_keys("available"), do: {:exploration_available_cursor, :exploration_available_history}
@@ -254,11 +299,17 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
 
   defp handle_info({:ideation_sessions_changed, _}, socket), do: {:halt, refresh_open(socket)}
 
+  # Another person's step on a decision changes the count and the banner here too.
+  defp handle_info({:ideation_project_decisions_changed, _}, socket),
+    do: {:halt, socket |> ContextualDecisions.reload() |> put_decisions()}
+
   defp handle_info({:entities_deleted, _, _}, socket), do: {:cont, refresh_open(socket)}
   defp handle_info({:tree_changed, _}, socket), do: {:cont, refresh_open(socket)}
   defp handle_info(_, socket), do: {:cont, socket}
 
-  defp refresh_open(%{assigns: %{explorations: %{open: true}}} = socket), do: load(socket)
+  defp refresh_open(%{assigns: %{explorations: %{open: true}}} = socket),
+    do: socket |> ContextualDecisions.reload() |> put_decisions() |> load()
+
   defp refresh_open(socket), do: socket
 
   defp source_id(socket) do

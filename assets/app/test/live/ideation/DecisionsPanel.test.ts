@@ -2,15 +2,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import Panel from "@app/live/ideation/DecisionsPanel.vue";
 import type { DecisionsPanelState } from "@app/live/ideation/decisionTypes";
+import type { BrainstormingCommentsState } from "@modules/ideation/commentTypes";
+import type { DecisionDiscussionState } from "@app/live/ideation/decisionTypes";
 import { accepted, decision, decisions, revision, source, target } from "./decisionFixtures";
 
 let wrapper: VueWrapper;
 const passthrough = { template: "<div><slot /></div>" };
-function panel(overrides: Partial<DecisionsPanelState> = {}, disconnected = false) {
+function panel(
+  overrides: Partial<DecisionsPanelState> = {},
+  disconnected = false,
+  discussion?: DecisionDiscussionState,
+) {
   const pushEvent = disconnected ? vi.fn().mockRejectedValue(new Error("Disconnected")) : vi.fn();
   wrapper = mount(Panel, {
     attachTo: document.body,
-    props: { state: decisions(overrides), epoch: "epoch-1", sessionId: 12 },
+    props: {
+      state: decisions(overrides),
+      epoch: "epoch-1",
+      sessionId: 12,
+      ...(discussion ? { discussion } : {}),
+    },
     global: {
       provide: {
         _live_vue: {
@@ -386,13 +397,13 @@ describe("reading and acting on a decision", () => {
     expect(wrapper.get("#decision-application").text()).toContain("Original reason");
     wrapper.findComponent({ name: "Popover" }).vm.$emit("update:open", true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.get("#decision-no-target-no_change_needed").attributes("aria-checked")).toBe(
-      "true",
-    );
+    expect(
+      wrapper.get("#decision-edit-no-change-no_change_needed").attributes("aria-checked"),
+    ).toBe("true");
     expect(wrapper.get<HTMLTextAreaElement>("#decision-application textarea").element.value).toBe(
       "Original reason",
     );
-    await wrapper.get("#decision-no-target-not_applied").trigger("click");
+    await wrapper.get("#decision-edit-no-change-not_applied").trigger("click");
     expect(wrapper.get("#decision-edit-no-change-confirm").text()).toContain("Mark not applied");
     await wrapper
       .get("#decision-application textarea")
@@ -428,27 +439,6 @@ describe("reading and acting on a decision", () => {
     expect(wrapper.get("#decision-next-action-line").text()).not.toContain("Write the old path");
   });
 
-  it("runs the latest target query after the previous search completes", async () => {
-    vi.useFakeTimers();
-    const pushEvent = panel({ mode: "create", sources: [source()] });
-    const query = wrapper.get<HTMLInputElement>("#decision-target-search");
-    await query.setValue("Ma");
-    vi.advanceTimersByTime(250);
-    await wrapper.vm.$nextTick();
-    expect(pushEvent.mock.calls[0][0]).toBe("decisions_search_targets");
-    expect(pushEvent.mock.calls[0][1].search).toBe("Ma");
-    await query.setValue("Mar");
-    vi.advanceTimersByTime(250);
-    await query.setValue("Mara");
-    vi.advanceTimersByTime(250);
-    await wrapper.vm.$nextTick();
-    expect(pushEvent).toHaveBeenCalledTimes(1);
-    pushEvent.mock.calls[0][2]({ status: "ok" });
-    await wrapper.vm.$nextTick();
-    expect(pushEvent).toHaveBeenCalledTimes(2);
-    expect(pushEvent.mock.calls[1][1].search).toBe("Mara");
-  });
-
   it("hides unauthorized mutations and never exposes inaccessible source text", () => {
     panel({
       canPropose: false,
@@ -473,6 +463,103 @@ describe("reading and acting on a decision", () => {
     expect(wrapper.find("form").exists()).toBe(false);
     expect(wrapper.text()).not.toContain("Secret");
     expect(wrapper.text()).toContain("Source unavailable");
+  });
+});
+
+describe("revising a replacement", () => {
+  it("keeps the decision it already replaced as its choice", () => {
+    const replacement = accepted({
+      id: 4,
+      accepted: revision({ revision: 2, operation: "accept", replacesId: 9 }),
+      supersedes: { id: 9, title: "The old ending" },
+    });
+    // With no other decision in force, only the one it replaced keeps the row open.
+    panel({ mode: "revise", selected: replacement, items: [replacement], sources: [source()] });
+    expect(wrapper.find("#decision-replaces").exists()).toBe(true);
+  });
+});
+
+describe("searching affected content", () => {
+  it("sends the latest query even while another request is pending", async () => {
+    vi.useFakeTimers();
+    const pushEvent = panel({ mode: "create", sources: [source()] });
+    await fillProposal();
+    await wrapper.get("#decision-proposal-form").trigger("submit");
+    const [saving] = pushEvent.mock.calls.map((call) => call[0]);
+    expect(saving).toBe("decisions_create");
+
+    const search = wrapper.get("input[aria-label='Search Sheets, Flows and Scenes…']");
+    await search.setValue("Mara");
+    vi.advanceTimersByTime(300);
+    const searches = pushEvent.mock.calls.filter((call) => call[0] === "decisions_search_targets");
+    expect(searches.at(-1)?.[1]).toMatchObject({ search: "Mara", decision_context: "decisions-1" });
+    vi.useRealTimers();
+  });
+});
+
+describe("discussing a decision", () => {
+  function discussion(
+    overrides: Partial<BrainstormingCommentsState> = {},
+  ): BrainstormingCommentsState {
+    return {
+      open: true,
+      presentation: "workspace",
+      pins: [],
+      threads: [],
+      nextCursor: null,
+      thread: null,
+      messages: [],
+      messageNextCursor: null,
+      members: [],
+      canComment: true,
+      selectedSourceId: 4,
+      error: null,
+      ideaId: null,
+      groupId: null,
+      decisionId: 4,
+      context: "discussion-1",
+      ...overrides,
+    };
+  }
+
+  it("counts each decision's discussion on its card", () => {
+    panel({ items: [decision({ id: 4 }), accepted({ id: 5 })] }, false, {
+      state: null,
+      counts: { "4": 3 },
+    });
+    expect(wrapper.get("[data-decision-card='4'] [data-decision-comments]").text()).toBe("3");
+    expect(wrapper.find("[data-decision-card='5'] [data-decision-comments]").exists()).toBe(false);
+  });
+
+  it("holds the shown decision's conversation between its application and its actions", async () => {
+    const pushEvent = panel({ mode: "detail", selected: decision({ id: 4 }) }, false, {
+      state: discussion(),
+      counts: {},
+    });
+    const section = wrapper.get("#decision-discussion");
+    expect(section.text()).toContain("Discussion");
+    expect(section.text()).toContain("Resolving does not accept; accepting does not resolve.");
+    await wrapper.get("#decision-discussion-comment-body").setValue("Does this hold in act two?");
+    await wrapper.get("#decision-discussion-comment-send").trigger("click");
+    await flushPromises();
+    const [event, payload] = pushEvent.mock.calls.at(-1) ?? [];
+    expect(event).toBe("comments_create");
+    expect(payload).toMatchObject({
+      body: "Does this hold in act two?",
+      epoch: "epoch-1",
+      session_id: 12,
+      comment_context: "discussion-1",
+      decision_id: 4,
+    });
+    expect(payload).not.toHaveProperty("position");
+  });
+
+  it("shows nothing of a conversation held for another decision", () => {
+    panel({ mode: "detail", selected: decision({ id: 4 }) }, false, {
+      state: discussion({ decisionId: 9 }),
+      counts: {},
+    });
+    expect(wrapper.find("#decision-discussion").exists()).toBe(false);
   });
 });
 

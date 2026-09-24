@@ -7,6 +7,7 @@ import ConfirmDialog from "@components/ConfirmDialog.vue";
 import Sidebar from "@shell/Sidebar.vue";
 import DecisionCard from "./DecisionCard.vue";
 import DecisionDetail from "./DecisionDetail.vue";
+import DecisionDiscussion from "./DecisionDiscussion.vue";
 import DecisionForm from "./DecisionForm.vue";
 import DecisionSourcePicker from "./DecisionSourcePicker.vue";
 import { orderDecisions, replaceable, shownRevision } from "./decisionStatus";
@@ -17,16 +18,23 @@ import type {
   DecisionSource,
   DecisionSourceIdentity,
   DecisionSourceType,
+  DecisionDiscussionState,
   DecisionsPanelState,
 } from "./decisionTypes";
 
-const { state, epoch, sessionId } = defineProps<{
+const {
+  state,
+  epoch,
+  sessionId,
+  discussion = { state: null, counts: {} },
+} = defineProps<{
   state: DecisionsPanelState;
   epoch: string;
   sessionId: number;
+  discussion?: DecisionDiscussionState;
 }>();
 const { t, te } = useI18n();
-const { request, pending, notice } = useDecisionRequests(
+const { request, lookup, pending, notice } = useDecisionRequests(
   () => state,
   () => sessionId,
   () => epoch,
@@ -45,11 +53,18 @@ const draft = computed(() => {
     ? selected.proposal
     : selected.accepted;
 });
-const replacements = computed(() =>
-  replaceable(state.items, state.mode === "revise" ? (state.selected?.id ?? null) : null).map(
-    (item) => ({ id: item.id, title: shownRevision(item).title }),
-  ),
-);
+// A revision of a replacement keeps naming the decision it already replaced.
+const replacements = computed(() => {
+  const revising = state.mode === "revise" ? state.selected : null;
+  const options = replaceable(state.items, revising?.id ?? null).map((item) => ({
+    id: item.id,
+    title: shownRevision(item).title,
+  }));
+  const replaced = revising?.supersedes;
+  return replaced && !options.some((item) => item.id === replaced.id)
+    ? [replaced, ...options]
+    : options;
+});
 const formOptions = computed(() => ({
   members: state.members,
   defaultOwnerId: state.defaultOwnerId,
@@ -131,25 +146,6 @@ function searchSources(
     onSuccess,
   );
 }
-let queuedTargetSearch: { query: string; context: string } | null = null;
-const targetSearchContext = () => JSON.stringify([epoch, sessionId, state.context, state.mode]);
-function flushTargetSearch() {
-  if (!queuedTargetSearch || pending.value) return;
-  const queued = queuedTargetSearch;
-  queuedTargetSearch = null;
-  if (queued.context !== targetSearchContext() || !editor.value) return;
-  request("search_targets", { search: queued.query });
-}
-function searchTargets(query: string) {
-  queuedTargetSearch = { query, context: targetSearchContext() };
-  flushTargetSearch();
-}
-watch(pending, (action) => {
-  if (!action) flushTargetSearch();
-});
-watch(targetSearchContext, () => {
-  queuedTargetSearch = null;
-});
 function save(input: DecisionDraftInput) {
   const action = state.mode === "revise" ? "revise" : "create";
   if (action === "revise" ? !state.selected?.canRevise : !state.canPropose) return;
@@ -281,7 +277,11 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
               :disabled="!!pending"
               @click="request('select', { decision_id: decision.id })"
             >
-              <DecisionCard :decision="decision" :round-count="roundCount" />
+              <DecisionCard
+                :decision="decision"
+                :round-count="roundCount"
+                :comments="discussion.counts[decision.id] ?? 0"
+              />
             </button>
           </li>
           <li v-if="ordered.retired.length" class="pt-1.5">
@@ -310,7 +310,11 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
                 :disabled="!!pending"
                 @click="request('select', { decision_id: decision.id })"
               >
-                <DecisionCard :decision="decision" :round-count="roundCount" />
+                <DecisionCard
+                  :decision="decision"
+                  :round-count="roundCount"
+                  :comments="discussion.counts[decision.id] ?? 0"
+                />
               </button>
             </li>
           </template>
@@ -331,7 +335,7 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
         @remove-source="removeSource"
         @refresh-sources="request('refresh_sources')"
         @browse-sources="picker = !picker"
-        @search-targets="searchTargets"
+        @search-targets="lookup('search_targets', { search: $event })"
         ><template #picker
           ><DecisionSourcePicker
             v-if="picker"
@@ -361,7 +365,18 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
         @select="request('select', { decision_id: $event })"
         @load-history="request('history', { decision_id: state.selected?.id })"
         @declare="declare"
-      />
+      >
+        <template #discussion>
+          <DecisionDiscussion
+            v-if="discussion.state?.open && discussion.state.decisionId === state.selected.id"
+            :state="discussion.state"
+            :epoch="epoch"
+            :session-id="sessionId"
+            :title="shownRevision(state.selected).title"
+            :current-user-id="state.viewerId"
+          />
+        </template>
+      </DecisionDetail>
     </div>
   </Sidebar>
   <ConfirmDialog

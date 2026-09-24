@@ -106,6 +106,16 @@ one agreement: accepting a revision starts over with every target not applied,
 while earlier declarations stay in the history. Decisions never read or write the
 affected content.
 
+Decisions expose a `comment_source` port for their discussion, like sessions,
+ideas and groups. A decision's discussion is readable by every project reader and
+never has a canvas position.
+
+`list_decisions_about/4,5` finds the decisions about a Sheet, Flow or Scene (named
+in Affects by pinned identity, or decided in a session exploring it);
+`list_project_decisions/2` feeds the dashboard. Writes deliver their inbox
+notifications through `Decisions.Adapters.Notifications` inside the decision
+transaction and publish them after commit.
+
 Recovery retains every revision, declaration, supersession link and receipt, and
 never executes acceptance. Receipts in replaced generations of the same logical
 session prevent reexecuting commands after rollback. See the
@@ -145,7 +155,7 @@ session revision preserves the reuse receipt and stable reference identity so a
 retry cannot undo a later unlink. New writes compare the
 consulted target identity and overview fingerprint; retries preserve the original
 context and never silently refresh it. Archived linked sessions remain readable.
-Decision anchors, Drafts and automatic application remain separate features.
+Drafts and automatic application remain separate features.
 
 ## Project authority
 

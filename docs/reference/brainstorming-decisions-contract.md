@@ -16,12 +16,14 @@ A decision has exactly one verb: `create`, `change`, `test`, `keep` or
 `discard`. It affects zero to five targets. A target is an existing Sheet, Flow or
 Scene, pinned by type, ID and creation identity, or a free label and type for
 something that does not exist yet and will be created later by a person. The
-target's name is frozen in encrypted context; a target that is deleted or
+target's name is frozen in encrypted context, as its type and ID when the name is
+empty once stripped of markup; a target that is deleted or
 replaced reads as unavailable with that name rather than pointing at newer
 content.
 
 The conclusion is required. The reason and the next action are optional; a next
 action names what happens next in the editor and may name an editor who owns it.
+While a revision waits, the decision shows the next action that revision proposes.
 The owner carries no authority over the decision. The title is derived by the
 client from the first sentence of the conclusion until someone edits it; the
 server stores whatever title is sent. A decision's round is the newest round
@@ -64,12 +66,17 @@ it.
   can withdraw it. Withdrawing a revision keeps the earlier agreement in force and
   the decision stays accepted; withdrawing a proposal without one retires the
   decision as withdrawn. A withdrawn decision cannot be revised or accepted.
+  Without a pending revision, the agreement in force is what the next step builds
+  on: its responsible person holds the authority again, never the withdrawn
+  revision's.
 - **Supersede.** A proposal may name one decision of the same session that it
   replaces; that decision must have an agreement in force. When the proposal is
   accepted or registered, the replaced decision receives a closing `supersede`
   record that links to its replacement and becomes read-only. If the replaced
   decision is no longer in force at that moment, acceptance fails with
-  `replaced_decision_unavailable` and nothing is written.
+  `replaced_decision_unavailable` and nothing is written. A revision of the
+  replacement may keep naming the decision it already superseded; nothing is
+  superseded twice.
 
 There is no rejection and no deletion. Retired decisions stay readable with their
 history.
@@ -82,11 +89,14 @@ Application is declared per target of the agreement in force: `not_applied`
 encrypted note. A decision without affected content declares on itself. A
 declaration is a statement, not a verification; it never reads or changes the
 affected content. The latest declaration per target counts, and the decision
-derives how many targets are still to apply.
+derives how many targets are still to apply. An editor corrects a declaration by
+declaring again, back to `not_applied` if needed; the earlier one stays in the
+history.
 
 Declarations are append-only and belong to one agreement. Accepting a revision
 starts a new agreement in which every target is not applied again; the earlier
-declarations remain in the history. A superseded decision keeps its application
+declarations remain in the history. While a revision waits, the agreement in
+force still counts as to apply wherever the decision is listed. A superseded decision keeps its application
 records but accepts no new ones.
 
 ## Sources and visibility
@@ -187,10 +197,69 @@ existence; it does not expose historical decision content or grant access to the
 replaced session. The same key in a different logical session is independent.
 Accepting the restored proposal requires a fresh explicit request with a new key.
 
+## On the board
+
+Each round band ends in a lane that holds the decisions whose newest source round
+is that band. A decision whose round no longer exists, or never had one, joins the
+last band. Cards read left to right in the order of the list, retired decisions
+last, and thin connectors rise to each source the reader can still see. The lane
+is not a note: it has no in-place editing, colour or shape, and grows its band
+like any other content. Selecting a card outlines its sources; double-click or
+Enter opens it in the panel, which keeps its sources outlined while it is shown.
+Resting the pointer on a note that a decision cites directly shows the compact
+cards of those decisions; choosing one opens it.
+
+## Discussion
+
+A decision's discussion is an ordinary Brainstorming comment thread anchored to
+the decision (`ideation_decision`), shown inline in its detail under the
+application. The panel opens the newest thread about the decision, or a composer
+that starts one. The thread never takes a canvas position and never appears as a
+canvas pin; cards count the messages of its open threads instead. Every project
+reader can read it, like the decision itself, for as long as the session and the
+decision's recovery identity survive. Resolving the thread never accepts the
+decision, and accepting, withdrawing or superseding the decision never resolves
+the thread. Mentions, replies and followers notify through the ordinary comment
+inbox, and a `?thread=` link opens the panel on the decision.
+
+## From the content
+
+A Sheet, Flow or Scene finds the decisions about it: those whose proposal or
+agreement names it in Affects (matched by its pinned identity, never by a
+recycled ID) and every decision of the sessions that explore it. Each session is
+read through its own catalog, so access and source visibility match the panel.
+
+- **Lightbulb.** The editor's Explorations button counts, in amber, the accepted
+  decisions with something still to apply on this content; its label names all
+  of them (`2 decisions about Mara · 1 to apply`).
+- **Explorations.** The dialog lists `Decisions about {name}`: still to apply
+  here, then proposals, then what is applied or needs no change. Rows open the
+  session on the decision; editors can `Go apply` or `Mark applied`.
+- **Apply banner.** `Go apply` opens the content with `?decision=&session=`; the
+  decision sits under the editor header for that visit, anchored to the header
+  as a non-modal reka popover. `Mark applied`, `Partially` and `No change
+needed` take an optional note; the confirmation offers `Undo` for five seconds,
+  which states the previous application again. Nothing is applied automatically,
+  and the banner only shows an accepted decision that names this content. Moving
+  to other content drops it, and another person's step on any decision of the
+  project refreshes the count, the list and the banner of an open editor.
+- **Inbox.** Decision writes deliver, inside their transaction: `decision_to_accept`
+  to the responsible person of a proposal; `decision_accepted` to its proposer and
+  to everyone who started a thread about it; `decision_next_action` to the owner
+  of the agreement's next action; `decision_applied` to the responsible person
+  and the proposer when a target is marked applied. The actor is never told, and
+  the notification stores only the session title, never decision text. Its link
+  names the project and the decision; the brainstorming route resolves the
+  session after rechecking access.
+- **Dashboard.** Each session row summarizes `3 decisions · 1 waiting for you · 1
+to apply`; the `Decisions` tab lists every decision with Status and
+  Application filters and `Group by affected content`.
+- **Palette.** Under `Jump to`, the first matched Sheets, Flows and Scenes bring
+  the decisions that name them.
+
 ## Boundaries
 
 Decisions do not create Drafts, materialize authoring entities, apply proposals to
-Sheets, Flows or Scenes, create comment conversations, run AI, or send work to
-external tools. Naming a target never grants access to it, and declaring it
+Sheets, Flows or Scenes, run AI, or send work to external tools. Naming a target never grants access to it, and declaring it
 applied never checks it. Those workflows must consume explicit decisions through their
 own authorization and provenance contracts when implemented.

@@ -27,6 +27,7 @@ defmodule Storyarn.Ideation.Decisions.View do
     |> Map.merge(permissions(decision, basis(decision, head, agreement), proposal, context, access))
   end
 
+  # Without a pending revision the agreement in force holds the authority.
   defp basis(%{status: :accepted}, _head, agreement) when not is_nil(agreement), do: agreement
   defp basis(_decision, head, _agreement), do: head
 

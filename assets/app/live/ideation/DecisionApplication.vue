@@ -8,13 +8,15 @@ import {
   CircleDashed,
   CircleDot,
   Clapperboard,
+  ExternalLink,
   FileText,
   Workflow,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
-import { Textarea } from "@components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import UserAvatar from "@components/UserAvatar.vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
+import DecisionMarkForm from "./DecisionMarkForm.vue";
 import { orderTargets, targetState } from "./decisionStatus";
 import type {
   ApplicationState,
@@ -49,13 +51,6 @@ const stateTones: Record<ApplicationState, string> = {
   not_applied: "text-amber-700 dark:text-amber-400",
   no_change_needed: "text-muted-foreground",
 };
-const choices: ApplicationState[] = [
-  "applied",
-  "partially_applied",
-  "not_applied",
-  "no_change_needed",
-];
-const noTargetChoices: ApplicationState[] = ["not_applied", "no_change_needed"];
 
 const application = computed(() => decision.application);
 const accepted = computed(() => decision.accepted !== null);
@@ -65,35 +60,36 @@ const rows = computed(() =>
     ? orderTargets(application.value.targets, decision.status !== "superseded")
     : [],
 );
+const targetChoices: ApplicationState[] = [
+  "applied",
+  "partially_applied",
+  "not_applied",
+  "no_change_needed",
+];
+const noTargetChoices: ApplicationState[] = ["not_applied", "no_change_needed"];
 const nextAction = computed(
   () =>
     (decision.status === "proposed" ? decision.proposal : (decision.accepted ?? decision.proposal))
       .nextAction,
 );
 const marking = ref<string | null>(null);
-const choice = ref<ApplicationState>("applied");
-const note = ref("");
 
-function declarationFor(target: DecisionTarget | null) {
-  return target ? target.application : (application.value?.decision ?? null);
+function open(key: string | null, value: boolean) {
+  if (value) marking.value = key ?? "decision";
+  else if (marking.value === (key ?? "decision")) marking.value = null;
 }
-function beginMarking(target: DecisionTarget | null) {
-  const key = target?.key ?? null;
-  marking.value = key ?? "decision";
-  const declaration = declarationFor(target);
-  choice.value = declaration?.state ?? (target ? "applied" : "no_change_needed");
-  note.value = declaration?.note ?? "";
-}
-function open(target: DecisionTarget | null, value: boolean) {
-  if (value) beginMarking(target);
-  else if (marking.value === (target?.key ?? "decision")) marking.value = null;
-}
-function confirm(target: DecisionTarget | null) {
-  emit("declare", target?.key ?? null, choice.value, note.value.trim() || null);
+function confirm(target: DecisionTarget | null, state: ApplicationState, note: string | null) {
+  emit("declare", target?.key ?? null, state, note);
   marking.value = null;
 }
-function declareNoChange() {
-  emit("declare", null, "no_change_needed", null);
+// "Go apply" opens the content with this decision under its header.
+function applyHref(target: DecisionTarget) {
+  if (!target.href || !decision.sessionId) return null;
+  return `${target.href}?${new URLSearchParams({ decision: String(decision.id), session: String(decision.sessionId) })}`;
+}
+function pendingRow(target: DecisionTarget) {
+  const state = targetState(target);
+  return state === "not_applied" || state === "partially_applied";
 }
 function when(declaration: DecisionDeclaration) {
   const parsed = new Date(declaration.at);
@@ -186,9 +182,21 @@ function when(declaration: DecisionDeclaration) {
           “{{ target.application.note }}”
         </p>
         <div v-if="decision.canDeclare" class="mt-2 ml-[22px] flex gap-1.5">
+          <Button
+            v-if="pendingRow(target) && applyHref(target)"
+            :id="`decision-go-apply-${target.key}`"
+            variant="outline"
+            size="xs"
+            as-child
+            ><LiveLink :to="applyHref(target) ?? ''"
+              ><ExternalLink class="size-3" />{{
+                t("brainstormingDecisions.about.goApply")
+              }}</LiveLink
+            ></Button
+          >
           <Popover
             :open="marking === target.key"
-            @update:open="(value: boolean) => open(target, value)"
+            @update:open="(value: boolean) => open(target.key, value)"
           >
             <PopoverTrigger as-child>
               <Button
@@ -206,58 +214,16 @@ function when(declaration: DecisionDeclaration) {
               /></Button>
             </PopoverTrigger>
             <PopoverContent align="start" class="w-[300px] p-3">
-              <p class="text-[13px] font-medium">
-                {{
-                  t("brainstormingDecisions.markAs", {
-                    name: target.name,
-                    state: t(`brainstormingDecisions.stateChips.${choice}`),
-                  })
-                }}
-              </p>
-              <p class="mt-0.5 text-xs text-muted-foreground">
-                {{ t("brainstormingDecisions.markStatement") }}
-              </p>
-              <div
-                class="mt-2.5 grid grid-cols-2 rounded-md border border-border p-0.5"
-                role="radiogroup"
-              >
-                <button
-                  v-for="option in choices"
-                  :id="`decision-mark-${target.key}-${option}`"
-                  :key="option"
-                  type="button"
-                  role="radio"
-                  :aria-checked="choice === option"
-                  class="flex-1 rounded-[5px] px-1.5 py-1 text-[11.5px]"
-                  :class="
-                    choice === option
-                      ? 'bg-accent font-medium text-foreground'
-                      : 'text-muted-foreground'
-                  "
-                  @click="choice = option"
-                >
-                  {{ t(`brainstormingDecisions.states.${option}`) }}
-                </button>
-              </div>
-              <Textarea
-                v-model="note"
-                class="mt-2.5"
-                :rows="2"
-                :maxlength="1000"
-                :placeholder="t('brainstormingDecisions.notePlaceholder')"
+              <DecisionMarkForm
+                :name="target.name"
+                :id-prefix="`decision-mark-${target.key}`"
+                :initial="target.application?.state ?? 'applied'"
+                :initial-note="target.application?.note ?? ''"
+                :choices="targetChoices"
+                :pending="pending"
+                @confirm="(state, note) => confirm(target, state, note)"
+                @cancel="marking = null"
               />
-              <div class="mt-2.5 flex justify-end gap-1.5">
-                <Button variant="ghost" size="sm" @click="marking = null">{{
-                  t("brainstormingDecisions.cancel")
-                }}</Button>
-                <Button
-                  :id="`decision-mark-${target.key}-confirm`"
-                  size="sm"
-                  :disabled="pending"
-                  @click="confirm(target)"
-                  >{{ t(`brainstormingDecisions.markConfirm.${choice}`) }}</Button
-                >
-              </div>
             </PopoverContent>
           </Popover>
         </div>
@@ -289,51 +255,17 @@ function when(declaration: DecisionDeclaration) {
             /></Button>
           </PopoverTrigger>
           <PopoverContent align="end" class="w-[300px] p-3">
-            <p class="text-[13px] font-medium">{{ t("brainstormingDecisions.editApplication") }}</p>
-            <p class="mt-0.5 text-xs text-muted-foreground">
-              {{ t("brainstormingDecisions.markStatement") }}
-            </p>
-            <div
-              class="mt-2.5 grid grid-cols-2 rounded-md border border-border p-0.5"
-              role="radiogroup"
-            >
-              <button
-                v-for="option in noTargetChoices"
-                :id="`decision-no-target-${option}`"
-                :key="option"
-                type="button"
-                role="radio"
-                :aria-checked="choice === option"
-                class="rounded-[5px] px-1.5 py-1 text-[11.5px]"
-                :class="
-                  choice === option
-                    ? 'bg-accent font-medium text-foreground'
-                    : 'text-muted-foreground'
-                "
-                @click="choice = option"
-              >
-                {{ t(`brainstormingDecisions.states.${option}`) }}
-              </button>
-            </div>
-            <Textarea
-              v-model="note"
-              class="mt-2.5"
-              :rows="2"
-              :maxlength="1000"
-              :placeholder="t('brainstormingDecisions.notePlaceholder')"
+            <DecisionMarkForm
+              :name="decision.proposal.title"
+              :title="t('brainstormingDecisions.editApplication')"
+              id-prefix="decision-edit-no-change"
+              :initial="application.decision.state"
+              :initial-note="application.decision.note ?? ''"
+              :choices="noTargetChoices"
+              :pending="pending"
+              @confirm="(state, note) => confirm(null, state, note)"
+              @cancel="marking = null"
             />
-            <div class="mt-2.5 flex justify-end gap-1.5">
-              <Button variant="ghost" size="sm" @click="marking = null">{{
-                t("brainstormingDecisions.cancel")
-              }}</Button>
-              <Button
-                id="decision-edit-no-change-confirm"
-                size="sm"
-                :disabled="pending"
-                @click="confirm(null)"
-                >{{ t(`brainstormingDecisions.markConfirm.${choice}`) }}</Button
-              >
-            </div>
           </PopoverContent>
         </Popover>
       </div>
@@ -357,7 +289,7 @@ function when(declaration: DecisionDeclaration) {
         variant="outline"
         size="xs"
         :disabled="pending"
-        @click="declareNoChange"
+        @click="confirm(null, 'no_change_needed', null)"
         >{{ t("brainstormingDecisions.declareNoChange") }}</Button
       >
     </div>

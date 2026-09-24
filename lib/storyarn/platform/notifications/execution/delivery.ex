@@ -27,6 +27,7 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   @content_entity_types ~w(sheet flow scene localization_language)
   @content_activity_marker_table "notification_content_activity_markers"
   @comment_kinds ~w(comment_mention comment_reply comment_followed)
+  @decision_kinds ~w(decision_to_accept decision_accepted decision_next_action decision_applied)
   @max_pg_bigint 9_223_372_036_854_775_807
 
   defguardp valid_id(id) when is_integer(id) and id > 0 and id <= @max_pg_bigint
@@ -68,6 +69,37 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   def deliver_comment_activity(_actor_id, _project_id, _comment_id, _recipients) do
     ensure_inside_transaction!("deliver_comment_activity/4")
     {:error, :invalid_comment_activity}
+  end
+
+  @doc """
+  Persists decision activity for recipients selected by the decision owner.
+
+  This joins the source transaction. `decision` names the decision, the label
+  shown with it (never encrypted decision text) and the event that makes each
+  delivery unique. Recipients without current project access are suppressed.
+  """
+  @spec deliver_decision_activity(pos_integer(), pos_integer(), map(), [map()]) ::
+          {:ok, delivery_outcome()} | {:error, term()}
+  def deliver_decision_activity(actor_id, project_id, %{id: decision_id, label: label, event: event}, recipients)
+      when valid_id(actor_id) and valid_id(project_id) and valid_id(decision_id) and is_binary(label) and
+             is_binary(event) and is_list(recipients) do
+    ensure_inside_transaction!("deliver_decision_activity/4")
+
+    with true <- Enum.all?(recipients, &valid_decision_recipient?/1),
+         %Project{} = project <- lock_async_project(project_id),
+         %User{} = actor <- lock_async_requester(actor_id),
+         {:ok, authorized_project} <- authorize_project(%{user: actor}, project) do
+      insert_decision_notifications(actor, authorized_project, {decision_id, label, event}, recipients)
+    else
+      false -> {:error, :invalid_decision_activity}
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def deliver_decision_activity(_actor_id, _project_id, _decision, _recipients) do
+    ensure_inside_transaction!("deliver_decision_activity/4")
+    {:error, :invalid_decision_activity}
   end
 
   @doc """
@@ -469,6 +501,40 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   defp comment_priority("comment_reply"), do: 1
   defp comment_priority("comment_followed"), do: 2
   defp comment_priority(_), do: 3
+
+  defp valid_decision_recipient?(%{user_id: user_id, kind: kind}), do: valid_id(user_id) and kind in @decision_kinds
+  defp valid_decision_recipient?(_recipient), do: false
+
+  defp insert_decision_notifications(actor, project, {decision_id, label, event}, recipients) do
+    kinds = Map.new(recipients, &{&1.user_id, &1.kind})
+    selected_ids = Map.keys(kinds)
+
+    recipient_ids =
+      project
+      |> effective_recipient_ids(actor.id)
+      |> where([recipient], recipient.user_id in ^selected_ids)
+      |> select([recipient], recipient.user_id)
+
+    from(user in User, where: user.id in subquery(recipient_ids), order_by: [asc: user.id], lock: "FOR KEY SHARE")
+    |> Repo.all()
+    |> Enum.reduce_while({:ok, {:created, []}}, fn recipient, {:ok, {:created, notifications}} ->
+      kind = Map.fetch!(kinds, recipient.id)
+
+      attrs = %{
+        kind: kind,
+        entity_type: "decision",
+        entity_id: decision_id,
+        entity_name: label,
+        dedupe_key: "decision:v1:#{project.id}:#{decision_id}:#{event}:#{kind}"
+      }
+
+      case insert_one(recipient, actor, project, attrs) do
+        {:ok, {:created, notification}} -> {:cont, {:ok, {:created, [notification | notifications]}}}
+        {:ok, :deduplicated} -> {:cont, {:ok, {:created, notifications}}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
 
   defp insert_comment_notifications(actor, project, comment_id, recipient_kinds) do
     selected_ids = Map.keys(recipient_kinds)

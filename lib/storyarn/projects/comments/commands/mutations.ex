@@ -19,7 +19,8 @@ defmodule Storyarn.Projects.Comments.Mutations do
   def create_ideation(scope, project_id, session_id, anchor, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
          {:ok, position} <- Payload.position(Payload.value(attrs, :position)),
-         true <- Payload.valid_id?(session_id) and Payload.valid_ideation_anchor?(anchor) do
+         true <- Payload.valid_id?(session_id) and Payload.valid_ideation_anchor?(anchor),
+         true <- is_nil(position) or not match?({:decision, _}, anchor) do
       payload = if position, do: Map.put(payload, :position, position), else: payload
       target = {:create_ideation, session_id, anchor}
 
@@ -38,12 +39,12 @@ defmodule Storyarn.Projects.Comments.Mutations do
             ideation_session_id: session_id,
             ideation_idea_id: if(type == "ideation_idea", do: source.id),
             ideation_group_id: if(type == "ideation_group", do: source.id),
+            ideation_decision_id: if(type == "ideation_decision", do: source.id),
             position_x: if(position, do: position.x),
             position_y: if(position, do: position.y),
             source_inserted_at: source.inserted_at,
             source_recovery_identity: source.recovery_identity,
-            source_label:
-              %{"ideation_session" => "Session", "ideation_idea" => "Idea", "ideation_group" => "Group"}[type],
+            source_label: source_label(type),
             last_activity_at: TimeHelpers.now()
           })
 
@@ -54,6 +55,11 @@ defmodule Storyarn.Projects.Comments.Mutations do
       {:error, _} = error -> error
     end
   end
+
+  defp source_label("ideation_session"), do: "Session"
+  defp source_label("ideation_idea"), do: "Idea"
+  defp source_label("ideation_group"), do: "Group"
+  defp source_label("ideation_decision"), do: "Decision"
 
   defp lock_ideation_source!(scope, project_id, session_id, anchor) do
     case Queries.ideation_source(scope, project_id, session_id, anchor, lock: :share) do
@@ -221,6 +227,10 @@ defmodule Storyarn.Projects.Comments.Mutations do
       {:error, :invalid_position} -> Repo.rollback(:invalid_position)
     end
   end
+
+  # A decision's discussion lives in the decision panel, never on the canvas.
+  defp validate_position_for_thread!(%Thread{source_type: "ideation_decision"}, _position),
+    do: Repo.rollback(:invalid_position)
 
   defp validate_position_for_thread!(_thread, _position), do: :ok
 

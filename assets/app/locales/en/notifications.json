@@ -51,7 +51,11 @@
       "async_success_named": "{entity}: {name} completed",
       "async_success": "{entity} completed",
       "async_failure_named": "{entity}: {name} failed",
-      "async_failure": "{entity} failed"
+      "async_failure": "{entity} failed",
+      "decision_to_accept": "{actor} proposed a decision for you to accept · {name}",
+      "decision_accepted": "{actor} accepted a decision · {name}",
+      "decision_next_action": "{actor} asked you to apply a decision · {name}",
+      "decision_applied": "{actor} marked a decision as applied · {name}"
     }
   }
 }

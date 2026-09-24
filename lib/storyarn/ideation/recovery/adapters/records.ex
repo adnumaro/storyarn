@@ -71,12 +71,37 @@ defmodule Storyarn.Ideation.Recovery.Records do
   end
 
   defp normalize_reference_targets(rows, project_id) do
-    targets = for row <- rows["references"], not is_nil(row.target_id), do: {row.target_type, row.target_id}
+    references = for row <- rows["references"], not is_nil(row.target_id), do: {row.target_type, row.target_id}
 
-    with {:ok, identities} <- Projects.ideation_recovery_target_identities(project_id, targets) do
+    decisions =
+      for row <- Map.get(rows, "decision_revisions", []),
+          target <- row.targets["items"],
+          not is_nil(target["id"]),
+          do: {target["type"], target["id"]}
+
+    with {:ok, identities} <-
+           Projects.ideation_recovery_target_identities(project_id, Enum.uniq(references ++ decisions)) do
       references = Enum.map(rows["references"], &normalize_reference_target(&1, identities))
-      {:ok, Map.put(rows, "references", references)}
+      revisions = Enum.map(Map.get(rows, "decision_revisions", []), &normalize_decision_targets(&1, identities))
+      {:ok, rows |> Map.put("references", references) |> Map.put("decision_revisions", revisions)}
     end
+  end
+
+  # Affected content follows reference targets: a target whose content was
+  # replaced keeps its name but no ID another generation could answer to.
+  defp normalize_decision_targets(row, identities) do
+    items =
+      Enum.map(row.targets["items"], fn
+        %{"id" => nil} = target ->
+          target
+
+        target ->
+          if get_in(identities, [target["type"], target["id"]]) == target["identity"],
+            do: target,
+            else: %{target | "id" => nil}
+      end)
+
+    %{row | targets: Map.put(row.targets, "items", items)}
   end
 
   defp normalize_reference_target(row, identities) do

@@ -7,6 +7,7 @@ import {
   GitBranch,
   History,
   Lightbulb,
+  ListChecks,
   LoaderCircle,
   Map as MapIcon,
   Play,
@@ -186,6 +187,7 @@ const navIcons: Record<string, LucideIcon> = {
   flow: GitBranch,
   scene: MapIcon,
   ideation_session: Lightbulb,
+  decision: ListChecks,
 };
 
 const deletableEntityTypes: DeletableEntityType[] = ["sheet", "flow", "scene"];
