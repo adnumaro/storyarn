@@ -14,6 +14,41 @@ end)
 
 Ecto.Adapters.SQL.Sandbox.mode(Storyarn.Repo, :manual)
 
+# A test that commits data with Sandbox.unboxed_run must also remove the Oban
+# jobs that data enqueued: no foreign key does it, and a committed job outlives
+# the run and breaks any test that inspects the queue. Only jobs inserted by
+# this run count, so rows left by an earlier run do not fail this one.
+require Ecto.Query
+
+oban_job_baseline =
+  Ecto.Adapters.SQL.Sandbox.unboxed_run(Storyarn.Repo, fn ->
+    Storyarn.Repo.one(Ecto.Query.from(job in Oban.Job, select: max(job.id)))
+  end) || 0
+
+ExUnit.after_suite(fn _result ->
+  leaked =
+    Ecto.Adapters.SQL.Sandbox.unboxed_run(Storyarn.Repo, fn ->
+      Storyarn.Repo.all(
+        Ecto.Query.from(job in Oban.Job,
+          where: job.id > ^oban_job_baseline,
+          order_by: job.id,
+          select: %{id: job.id, worker: job.worker, args: job.args}
+        )
+      )
+    end)
+
+  if leaked != [] do
+    raise """
+    #{length(leaked)} Oban job(s) were committed outside the SQL sandbox and outlived the test run:
+
+    #{Enum.map_join(leaked, "\n", &"  #{&1.id} #{&1.worker} #{inspect(&1.args)}")}
+
+    The test that inserted them committed data with Sandbox.unboxed_run. Delete
+    the jobs its data enqueued in that test's cleanup.
+    """
+  end
+end)
+
 # Import factory functions globally in tests
 {:ok, _} = Application.ensure_all_started(:ex_machina)
 

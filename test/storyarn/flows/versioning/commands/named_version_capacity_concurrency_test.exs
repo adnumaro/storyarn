@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.NamedVersionLimitConcurrencyTest do
   alias Storyarn.Flows
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.SnapshotStorage
+  alias Storyarn.Flows.Versioning.VersionRequest
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -249,6 +250,18 @@ defmodule Storyarn.Flows.NamedVersionLimitConcurrencyTest do
             select: version.storage_key
           )
         )
+
+      request_ids =
+        Repo.all(from(request in VersionRequest, where: request.project_id == ^project.id, select: request.id))
+
+      # A request committed here also committed its Oban job, which no foreign
+      # key removes with the rows below.
+      Repo.delete_all(
+        from(job in Oban.Job,
+          where: job.worker == "Storyarn.Workers.CreateFlowVersionWorker",
+          where: fragment("(?->>'request_id')::bigint", job.args) in ^request_ids
+        )
+      )
 
       Repo.delete_all(from(version in EntityVersionRecord, where: version.project_id == ^project.id))
       Repo.delete_all(from(current in Project, where: current.id == ^project.id))
