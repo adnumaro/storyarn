@@ -94,7 +94,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> click("#public-language-switcher-es")
     |> assert_path("/es/blog")
     |> assert_has("html[lang='es']")
-    |> assert_has("#blog-featured-post h2", text: "Volver atrás sin romper la historia")
+    |> assert_has("#blog-featured-post h2", text: "Lo que deja una lluvia de ideas")
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(localized_metadata_expression(), fn metadata ->
       assert metadata["canonicalPath"] == "/es/blog"
