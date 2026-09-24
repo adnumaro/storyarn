@@ -68,15 +68,19 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       assert {:error, {:redirect, %{to: registration_path}}} =
                live(conn, invitation_path)
 
-      {:ok, view, _html} = live(conn, registration_path)
+      {_registration, conn} =
+        register_through_session_handoff(conn, registration_path, %{"password" => password})
 
-      assert {:error, {:live_redirect, %{to: ^invitation_path}}} =
-               render_click(view, "save", %{"user" => %{"password" => password}})
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == invitation_path
 
-      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
-               live(conn, invitation_path)
+      project = Repo.preload(project, :workspace)
+      project_path = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
 
-      assert flash["info"] =~ "Invitation accepted"
+      assert {:error, {:redirect, %{to: ^project_path, flash: flash}}} =
+               live(recycle(conn), invitation_path)
+
+      assert flash["info"] == "Invitation accepted! Welcome to Cool Project."
 
       user = Accounts.get_user_by_email(email)
       assert Accounts.get_user_by_email_and_password(email, password)
