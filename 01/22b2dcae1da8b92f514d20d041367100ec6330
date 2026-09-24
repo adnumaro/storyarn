@@ -1,0 +1,21 @@
+assets/js/utils/posthog.js
+  s_c335c90a020cdb::t_955d68c1b870e7 53-55,57
+assets/app/test/utils/posthog.test.ts
+  s_c335c90a020cdb::t_aa5426bdfad3bc 133-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0122b2dcae1da8b92f514d20d041367100ec6330",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
