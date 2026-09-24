@@ -9,7 +9,14 @@ defmodule StoryarnWeb.PublicLocaleRedirectControllerTest do
         {"/en/docs", "/docs"},
         {"/en/docs/welcome/start-here", "/docs/welcome/start-here"},
         {"/en/blog", "/blog"},
-        {"/en/blog/introducing-storyarn", "/blog/introducing-storyarn"}
+        {"/en/blog/introducing-storyarn", "/blog/introducing-storyarn"},
+        {"/en/users/log-in", "/users/log-in"},
+        {"/en/users/register", "/users/register"},
+        {"/en/users/register/token", "/users/register/token"},
+        {"/en/users/reset-password", "/users/reset-password"},
+        {"/en/users/reset-password/token", "/users/reset-password/token"},
+        {"/en/projects/invitations/token", "/projects/invitations/token"},
+        {"/en/workspaces/invitations/token", "/workspaces/invitations/token"}
       ] do
     test "permanently redirects #{source} to #{target}", %{conn: conn} do
       conn = get(conn, unquote(source))

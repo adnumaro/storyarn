@@ -9,6 +9,7 @@ defmodule StoryarnWeb.UserAuth do
 
   alias Storyarn.Accounts
   alias Storyarn.Workspaces
+  alias StoryarnWeb.PublicURLs
 
   @locales Gettext.known_locales(Storyarn.Gettext)
   @default_locale "en"
@@ -242,7 +243,7 @@ defmodule StoryarnWeb.UserAuth do
           :error,
           dgettext("identity", "You must log in to access this page.")
         )
-        |> Phoenix.LiveView.redirect(to: "/users/log-in")
+        |> Phoenix.LiveView.redirect(to: PublicURLs.login_path(PublicURLs.public_locale(socket.assigns.locale)))
 
       {:halt, socket}
     end
@@ -532,7 +533,7 @@ defmodule StoryarnWeb.UserAuth do
       conn
       |> put_flash(:error, dgettext("identity", "You must log in to access this page."))
       |> maybe_store_return_to()
-      |> redirect(to: "/users/log-in")
+      |> redirect(to: PublicURLs.login_path(PublicURLs.public_locale(conn.assigns.locale)))
       |> halt()
     end
   end

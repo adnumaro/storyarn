@@ -190,7 +190,7 @@ msgstr "por %{email}"
 msgid "just now"
 msgstr "ahora mismo"
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:145
+#: lib/storyarn_web/live/workspace_live/invitation.ex:146
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr "Crea una contraseña para %{email} y acepta tu invitación."

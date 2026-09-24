@@ -400,6 +400,14 @@ defmodule StoryarnWeb.Router do
         PublicLocaleRedirectController,
         :default_locale
 
+    get "/#{@default_public_segment}/users/register", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/users/register/:token", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/users/log-in", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/users/reset-password", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/users/reset-password/:token", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/projects/invitations/:token", PublicLocaleRedirectController, :default_locale
+    get "/#{@default_public_segment}/workspaces/invitations/:token", PublicLocaleRedirectController, :default_locale
+
     live_session :current_user,
       session: {StoryarnWeb.PublicLocale, :session, []},
       on_mount:
@@ -450,25 +458,54 @@ defmodule StoryarnWeb.Router do
         live "/#{path_segment}/docs", DocsLive.Show, :index, private: %{public_locale: locale}
 
         live "/#{path_segment}/docs/:category/*path", DocsLive.Show, :show, private: %{public_locale: locale}
+
+        live "/#{path_segment}/projects/invitations/:token", ProjectLive.Invitation, :show,
+          private: %{public_locale: locale}
+
+        live "/#{path_segment}/workspaces/invitations/:token", WorkspaceLive.Invitation, :show,
+          private: %{public_locale: locale}
+
+        live "/#{path_segment}/users/register", UserLive.Registration, :new, private: %{public_locale: locale}
+
+        live "/#{path_segment}/users/register/:token", UserLive.Registration, :new, private: %{public_locale: locale}
+
+        live "/#{path_segment}/users/log-in", UserLive.Login, :new, private: %{public_locale: locale}
+
+        live "/#{path_segment}/users/reset-password", UserLive.ForgotPassword, :new, private: %{public_locale: locale}
+
+        live "/#{path_segment}/users/reset-password/:token", UserLive.ResetPassword, :edit,
+          private: %{public_locale: locale}
       end
 
-      # Project invitations (accessible with or without auth)
-      live "/projects/invitations/:token", ProjectLive.Invitation, :show
+      # Access pages carry their language in the path like the rest of the
+      # public surface. Invitations work with or without authentication.
+      live "/projects/invitations/:token", ProjectLive.Invitation, :show,
+        private: %{public_locale: @default_public_locale}
 
-      # Workspace invitations (accessible with or without auth)
-      live "/workspaces/invitations/:token", WorkspaceLive.Invitation, :show
+      live "/workspaces/invitations/:token", WorkspaceLive.Invitation, :show,
+        private: %{public_locale: @default_public_locale}
 
       # Public-only authentication pages share this live_session with the
       # landing page so LiveView can navigate without a full page reload. Each
       # auth LiveView redirects signed-in users with its own on_mount hook.
-      live "/users/register", UserLive.Registration, :new
-      live "/users/register/:token", UserLive.Registration, :new
-      live "/users/log-in", UserLive.Login, :new
-      live "/users/reset-password", UserLive.ForgotPassword, :new
-      live "/users/reset-password/:token", UserLive.ResetPassword, :edit
+      live "/users/register", UserLive.Registration, :new, private: %{public_locale: @default_public_locale}
+
+      live "/users/register/:token", UserLive.Registration, :new, private: %{public_locale: @default_public_locale}
+
+      live "/users/log-in", UserLive.Login, :new, private: %{public_locale: @default_public_locale}
+
+      live "/users/reset-password", UserLive.ForgotPassword, :new, private: %{public_locale: @default_public_locale}
+
+      live "/users/reset-password/:token", UserLive.ResetPassword, :edit,
+        private: %{public_locale: @default_public_locale}
     end
 
     post "/users/log-in", UserSessionController, :create
+
+    for {_locale, path_segment} <- @localized_public_routes do
+      post "/#{path_segment}/users/log-in", UserSessionController, :create
+    end
+
     delete "/users/log-out", UserSessionController, :delete
   end
 

@@ -15,6 +15,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
 
   alias Storyarn.Accounts
   alias StoryarnWeb.ClientIp
+  alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserAuth
 
   @impl true
@@ -54,7 +55,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
       {:ok,
        socket
        |> put_flash(:error, dgettext("identity", "You must log in to access this page."))
-       |> redirect(to: ~p"/users/log-in")}
+       |> redirect(to: PublicURLs.login_path(PublicURLs.public_locale(socket.assigns.locale)))}
     else
       {:ok,
        assign(socket,
@@ -101,7 +102,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
         {:noreply,
          socket
          |> put_flash(:error, dgettext("identity", "Your session has expired. Please log in again."))
-         |> redirect(to: ~p"/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(PublicURLs.public_locale(socket.assigns.locale)))}
     end
   end
 

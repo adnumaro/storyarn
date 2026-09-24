@@ -38,9 +38,9 @@ defmodule StoryarnWeb.UserLive.Login do
         login-token={@login_token}
         local-mail-adapter={local_mail_adapter?()}
         csrf-token={Plug.CSRFProtection.get_csrf_token()}
-        login-action={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
-        forgot-password-url={PublicURLs.locale_handoff_path(~p"/users/reset-password", @locale)}
-        register-url={PublicURLs.locale_handoff_path(~p"/users/register", @locale)}
+        login-action={PublicURLs.login_path(@locale)}
+        forgot-password-url={PublicURLs.reset_password_path(@locale)}
+        register-url={PublicURLs.registration_path(@locale)}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """

@@ -151,7 +151,7 @@ defmodule StoryarnWeb.BlogLive.Show do
             <div class="mt-8">
               <.link
                 id="blog-register-cta"
-                navigate={PublicURLs.locale_handoff_path(~p"/users/register", @locale)}
+                navigate={PublicURLs.registration_path(@locale)}
                 class="group inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-teal-950 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0"
               >
                 {dgettext("blog", "Create your Storyarn account")}

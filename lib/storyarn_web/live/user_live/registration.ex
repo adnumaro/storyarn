@@ -29,11 +29,11 @@ defmodule StoryarnWeb.UserLive.Registration do
         form={@form}
         user-email={@registration_user.email}
         invited={!!@invite_token}
-        login-url={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
+        login-url={PublicURLs.login_path(@locale)}
         trigger-submit={@trigger_submit}
         login-token={@login_token}
         csrf-token={Plug.CSRFProtection.get_csrf_token()}
-        login-action={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
+        login-action={PublicURLs.login_path(@locale)}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """
@@ -81,7 +81,8 @@ defmodule StoryarnWeb.UserLive.Registration do
   def handle_event("save", %{"user" => user_params}, socket) do
     case Accounts.check_registration_rate(socket.assigns[:client_ip] || ClientIp.missing_peer_data()) do
       :ok ->
-        do_register(socket, user_params)
+        # The account keeps the language of the page it was created from.
+        do_register(socket, Map.put(user_params, "locale", socket.assigns.locale))
 
       {:error, :rate_limited} ->
         {:noreply,
@@ -140,9 +141,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   defp hand_off_session(socket, _user) do
     socket
     |> put_flash(:info, dgettext("identity", "Your account was created. Log in to continue."))
-    |> push_navigate(
-      to: socket.assigns.return_to || PublicURLs.locale_handoff_path(~p"/users/log-in", socket.assigns.locale)
-    )
+    |> push_navigate(to: socket.assigns.return_to || PublicURLs.login_path(socket.assigns.locale))
   end
 
   defp assign_session_handoff(socket, session) do

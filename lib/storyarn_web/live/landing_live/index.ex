@@ -99,7 +99,7 @@ defmodule StoryarnWeb.LandingLive.Index do
         v-socket={@socket}
         id="landing-page"
         is-logged-in={!!@current_scope && !!@current_scope.user}
-        registration-url={PublicURLs.locale_handoff_path(~p"/users/register", @locale)}
+        registration-url={PublicURLs.registration_path(@locale)}
       />
     </StoryarnWeb.Components.PublicLayout.public>
     """

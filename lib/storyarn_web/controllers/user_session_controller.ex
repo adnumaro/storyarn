@@ -5,6 +5,7 @@ defmodule StoryarnWeb.UserSessionController do
   alias Storyarn.Accounts
   alias Storyarn.Platform.Shared.TimeHelpers
   alias StoryarnWeb.ClientIp
+  alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserAuth
   alias StoryarnWeb.UserLoginToken
 
@@ -67,7 +68,7 @@ defmodule StoryarnWeb.UserSessionController do
           :error,
           dgettext("identity", "Too many login attempts. Please try again later.")
         )
-        |> redirect(to: ~p"/users/log-in")
+        |> redirect(to: PublicURLs.login_path(PublicURLs.public_locale(conn.assigns.locale)))
     end
   end
 
@@ -92,7 +93,7 @@ defmodule StoryarnWeb.UserSessionController do
         |> put_registration_return_to(return_to)
         |> put_flash(:info, dgettext("identity", "Your account was created. Log in to continue."))
         |> put_flash(:email, String.slice(user_params["email"] || "", 0, 160))
-        |> redirect(to: ~p"/users/log-in")
+        |> redirect(to: PublicURLs.login_path(PublicURLs.public_locale(conn.assigns.locale)))
 
       _login_or_invalid ->
         create_with_password(conn, user_params, info)
@@ -105,7 +106,7 @@ defmodule StoryarnWeb.UserSessionController do
     conn
     |> put_flash(:login_error, dgettext("identity", "Invalid email or password"))
     |> put_flash(:email, String.slice(email, 0, 160))
-    |> redirect(to: ~p"/users/log-in")
+    |> redirect(to: PublicURLs.login_path(PublicURLs.public_locale(conn.assigns.locale)))
   end
 
   defp user_from_login_token(conn, token) do

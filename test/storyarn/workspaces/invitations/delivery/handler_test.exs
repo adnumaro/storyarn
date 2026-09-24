@@ -34,6 +34,20 @@ defmodule Storyarn.Workspaces.Invitations.Delivery.HandlerTest do
       assert email.text_body =~ "7 days"
     end
 
+    test "links to the invitation in the language the email is written in", %{
+      encoded_token: encoded_token
+    } do
+      assert {:ok, email} =
+               Gettext.with_locale(Storyarn.Gettext, "es", fn ->
+                 Workspaces.deliver_invitation_email(encoded_token)
+               end)
+
+      assert email.text_body =~ "/es/workspaces/invitations/#{encoded_token}"
+
+      assert {:ok, english} = Workspaces.deliver_invitation_email(encoded_token)
+      refute english.text_body =~ "/es/workspaces/invitations/"
+    end
+
     test "uses the inviter display name when available", %{
       encoded_token: encoded_token,
       owner: owner

@@ -83,7 +83,7 @@ defmodule StoryarnWeb.Components.DocsLayout do
         home: PublicURLs.home_path(assigns.locale),
         docs: PublicURLs.docs_index_path(assigns.locale),
         workspaces: ~p"/workspaces",
-        login: PublicURLs.locale_handoff_path(~p"/users/log-in", assigns.locale)
+        login: PublicURLs.login_path(assigns.locale)
       },
       sidebarOpen: assigns.sidebar_open,
       categories: Enum.map(assigns.categories, &docs_category(&1, assigns.expanded_categories)),

@@ -376,7 +376,7 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:139
+#: lib/storyarn_web/live/project_live/invitation.ex:140
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr ""

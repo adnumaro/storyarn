@@ -187,6 +187,17 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       refute Phoenix.Flash.get(conn.assigns.flash, :login_error)
     end
 
+    test "returns a failed Spanish login to the Spanish log-in page", %{conn: conn, user: user} do
+      conn =
+        post(conn, "/es/users/log-in", %{
+          "user" => %{"email" => user.email, "password" => "wrong password"}
+        })
+
+      refute get_session(conn, :user_token)
+      assert redirected_to(conn) == "/es/users/log-in"
+      assert Phoenix.Flash.get(conn.assigns.flash, :login_error)
+    end
+
     test "ignores a blank LiveView login token when credentials are present", %{conn: conn, user: user} do
       user = set_password(user)
 

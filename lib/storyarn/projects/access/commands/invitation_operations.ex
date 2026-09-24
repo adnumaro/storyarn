@@ -25,6 +25,7 @@ defmodule Storyarn.Projects.InvitationOperations do
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias Storyarn.Repo
 
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -487,7 +488,13 @@ defmodule Storyarn.Projects.InvitationOperations do
   end
 
   defp invitation_url(path_prefix, token) do
-    Storyarn.Platform.Urls.base_url() <> path_prefix <> "/" <> token
+    Storyarn.Platform.Urls.base_url() <> locale_prefix() <> path_prefix <> "/" <> token
+  end
+
+  # The link opens the invitation in the language the email is rendered in.
+  defp locale_prefix do
+    locale = PublicLocales.normalize(Gettext.get_locale(Storyarn.Gettext))
+    if locale == PublicLocales.default_locale(), do: "", else: "/" <> PublicLocales.path_segment(locale)
   end
 
   defp mark_invitation_accepted(invitation) do

@@ -4,11 +4,15 @@ defmodule StoryarnWeb.Plugs.Locale do
 
   Checks locale in this order:
   1. Canonical public URL for that response (unprefixed is English, `/es/...` is Spanish)
-  2. URL parameter (?locale=es)
-  3. User's saved locale preference (from DB)
-  4. Session value
-  5. Accept-Language header
-  6. Default locale (en)
+  2. User's saved locale preference (from DB)
+  3. Session value
+  4. Accept-Language header
+  5. Default locale (en)
+
+  The language of a content page (landing, docs, blog, legal) applies to that
+  response only. The language of an access page (log-in, registration,
+  password reset, invitations) is the one the person chose to enter with, so
+  it also becomes the session preference the application keeps using.
   """
   import Plug.Conn
 
@@ -33,26 +37,25 @@ defmodule StoryarnWeb.Plugs.Locale do
 
   def call(conn, _opts) do
     path_locale = PublicURLs.locale_from_path(conn.request_path)
-    param_locale = get_locale_from_params(conn)
+    access_locale = if path_locale && PublicURLs.access_path?(conn.request_path), do: path_locale
     user_locale = get_locale_from_user(conn)
     session_locale = get_locale_from_session(conn)
     header_locale = get_locale_from_header(conn)
 
-    preferred_locale =
-      param_locale || user_locale || session_locale || header_locale || @default_locale
+    preferred_locale = user_locale || session_locale || header_locale || @default_locale
 
     locale = path_locale || preferred_locale
 
     Gettext.put_locale(Storyarn.Gettext, locale)
 
     conn
-    |> persist_preferred_locale(param_locale, user_locale, session_locale, preferred_locale)
+    |> persist_preferred_locale(access_locale, user_locale, session_locale, preferred_locale)
     |> assign(:locale, locale)
   end
 
-  # A localized public URL changes only that content response, not the global preference.
-  defp persist_preferred_locale(conn, param_locale, _user_locale, _session_locale, _preferred_locale)
-       when is_binary(param_locale), do: put_session(conn, :locale, param_locale)
+  # An access page's language is the one the person entered with.
+  defp persist_preferred_locale(conn, access_locale, _user_locale, _session_locale, _preferred_locale)
+       when is_binary(access_locale), do: put_session(conn, :locale, access_locale)
 
   # The DB preference is the source of truth, so discard any stale session value.
   defp persist_preferred_locale(conn, _param_locale, user_locale, _session_locale, _preferred_locale)
@@ -73,11 +76,6 @@ defmodule StoryarnWeb.Plugs.Locale do
       _ ->
         nil
     end
-  end
-
-  defp get_locale_from_params(conn) do
-    conn = fetch_query_params(conn)
-    validate_locale(conn.query_params["locale"])
   end
 
   defp get_locale_from_session(conn) do
