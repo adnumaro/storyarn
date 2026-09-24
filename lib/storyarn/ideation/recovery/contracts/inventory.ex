@@ -12,7 +12,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"rounds", "ideation_rounds", :session_id,
      ~w(id recovery_identity session_id number prompt status private reveal_on_expiry revealed_at started_at closed_at inserted_at updated_at)a},
     {"timers", "ideation_timers", :session_id,
-     ~w(id recovery_identity session_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
+     ~w(id recovery_identity session_id round_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
     {"ideas", "ideation_ideas", :session_id,
      ~w(id recovery_identity session_id author_id author_kind creation_key revision published_revision state publication_consent configuration_version creation_source_id source_idea_id source_revision canvas round_id late_contribution deleted_at inserted_at updated_at)a},
     {"revisions", "ideation_idea_revisions", :idea_id,
@@ -110,7 +110,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3, 4, 5, 6, 7, 8] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3, 4, 5, 6, 7, 8, 9] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -203,10 +203,28 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
       |> Map.update("timers", [], fn timers -> Enum.map(timers, &Map.delete(&1, "reveal_on_expiry")) end)
       |> Map.update("session_revisions", [], fn revisions -> Enum.map(revisions, &strip_timer_reveal/1) end)
 
-    %{data | "version" => 8, "rows" => rows}
+    normalize(%{data | "version" => 8, "rows" => rows})
+  end
+
+  # The clock joined its round: an older timer belongs to the round in progress
+  # of its session, or to the last one when every round is closed.
+  def normalize(%{"version" => 8, "rows" => rows} = data) do
+    rounds = Enum.group_by(rows["rounds"], & &1["session_id"])
+
+    timers =
+      Enum.map(rows["timers"], fn timer ->
+        Map.put(timer, "round_id", clock_round(Map.get(rounds, timer["session_id"], [])))
+      end)
+
+    %{data | "version" => 9, "rows" => Map.put(rows, "timers", timers)}
   end
 
   def normalize(data), do: data
+
+  defp clock_round([]), do: nil
+
+  defp clock_round(rounds),
+    do: (Enum.find(rounds, &(&1["status"] == "active")) || Enum.max_by(rounds, & &1["number"]))["id"]
 
   # Separating a synthesis removes its memberships, not the privacy of the work
   # it came from. Prefer current sources, then the last retained source, with the
@@ -303,7 +321,13 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   defp strip_timer_reveal(row), do: row
 
-  defp tables_for(8), do: @tables
+  defp tables_for(9), do: @tables
+
+  defp tables_for(8) do
+    for {collection, table, parent, fields} <- tables_for(9) do
+      {collection, table, parent, if(collection == "timers", do: fields -- [:round_id], else: fields)}
+    end
+  end
 
   defp tables_for(7) do
     for {collection, table, parent, fields} <- tables_for(8) do

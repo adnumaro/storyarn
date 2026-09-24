@@ -93,6 +93,7 @@ export function round(overrides: Partial<Round> = {}): Round {
 export function timer(overrides: Partial<SessionTimer> = {}): SessionTimer {
   return {
     id: 30,
+    round_id: 20,
     version: 1,
     status: "running",
     deadline_at: "2026-09-08T10:05:00Z",

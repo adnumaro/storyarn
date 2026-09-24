@@ -38,6 +38,9 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     assert {:ok, restored} = Ideation.get_timer(ctx.viewer, ctx.project.id, session_id)
     assert restored.id == maps["timers"][timer.id]
     assert restored.id != timer.id
+    assert restored.round_id == maps["rounds"][timer.round_id]
+    assert {:ok, [%{id: restored_round}]} = Ideation.list_rounds(ctx.viewer, ctx.project.id, session_id)
+    assert restored.round_id == restored_round
     assert restored.recovery_identity == timer.recovery_identity
     assert restored.actor_id == ctx.facilitator.user.id
     assert restored.status == :paused
@@ -144,7 +147,7 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     assert {:ok, first} = Repo.transact(fn -> Records.capture(ctx.project.id) end)
     assert {:ok, second} = Repo.transact(fn -> Records.capture(ctx.project.id) end)
     assert first == second
-    assert first["version"] == 8
+    assert first["version"] == 9
     assert capture(ctx) == capture(ctx)
   end
 
@@ -241,6 +244,7 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
 
     mutations = [
       fn data -> put_in(data, ["rows", "timers", Access.at(0), "session_id"], -1) end,
+      fn data -> put_in(data, ["rows", "timers", Access.at(0), "round_id"], -1) end,
       fn data -> put_in(data, ["rows", "timers", Access.at(0), "deadline_at"], "invalid") end,
       fn data -> put_in(data, ["rows", "timers", Access.at(0), "deadline_at"], nil) end,
       fn data -> put_in(data, ["rows", "timers", Access.at(0), "status"], "elapsed") end,

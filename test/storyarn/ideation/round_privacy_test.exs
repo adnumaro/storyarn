@@ -83,7 +83,7 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
 
   defp comment, do: %{body: "Discuss this group", client_request_id: Ecto.UUID.generate(), mention_user_ids: []}
 
-  test "when time runs out, every private round that asked to be revealed is, the closed ones too", ctx do
+  test "a round's clock ends with the round, and the next clock reveals only its own round at 0:00", ctx do
     first = first_round(ctx)
 
     assert {:ok, _} =
@@ -96,11 +96,20 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
              Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, revision(ctx), %{seconds: 60})
 
     {:ok, timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    assert timer.round_id == first.id
 
     secret = canvas_note(ctx, ctx.peer, 20)
     assert {:error, :not_found} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, secret.id)
 
+    # Starting the next round stops the first round's clock; nothing is revealed.
     {ctx, second} = new_round(ctx)
+
+    assert [[first_id, "cancelled"]] =
+             Repo.all(from(t in "ideation_timers", where: t.id == ^timer.id, select: [t.round_id, t.status]))
+
+    assert first_id == first.id
+    assert {:ok, nil} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    assert {:ok, %{outcome: :stale}} = Ideation.expire_timer(timer.id, timer.version)
 
     assert {:ok, _} =
              Ideation.set_round_privacy(ctx.facilitator, ctx.project.id, ctx.session.id, second.id, revision(ctx), %{
@@ -111,19 +120,26 @@ defmodule Storyarn.Ideation.RoundPrivacyTest do
     second_secret = canvas_note(ctx, ctx.peer, 40)
     draft = idea_fixture(ctx)
 
+    assert {:ok, _} =
+             Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, revision(ctx), %{seconds: 60})
+
+    {:ok, clock} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    assert clock.round_id == second.id
+    assert clock.id != timer.id
+
     # The clock reaches 0:00.
-    Repo.update_all(from(t in "ideation_timers", where: t.id == ^timer.id),
+    Repo.update_all(from(t in "ideation_timers", where: t.id == ^clock.id),
       set: [deadline_at: DateTime.shift(Storyarn.Platform.Shared.TimeHelpers.now(), second: -1)]
     )
 
-    assert {:ok, %{outcome: :completed, revealed: true}} = Ideation.expire_timer(timer.id, timer.version)
+    assert {:ok, %{outcome: :completed, revealed: true}} = Ideation.expire_timer(clock.id, clock.version)
 
     assert {:ok, rounds} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
-    revealed = Enum.find(rounds, &(&1.id == first.id))
-    assert revealed.status == :closed
-    refute revealed.private
-    assert revealed.revealed_at
-    assert {:ok, _} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, secret.id)
+    hidden = Enum.find(rounds, &(&1.id == first.id))
+    assert hidden.status == :closed
+    assert hidden.private
+    refute hidden.revealed_at
+    assert {:error, :not_found} = Ideation.get_idea(ctx.facilitator, ctx.project.id, ctx.session.id, secret.id)
 
     active = Enum.find(rounds, &(&1.id == second.id))
     assert active.status == :active

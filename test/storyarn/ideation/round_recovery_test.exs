@@ -26,7 +26,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert {:ok, _} = Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, ordinary.id, next.id, true)
     capsule = capture(ctx)
 
-    assert {:ok, %{"version" => 8, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 9, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["rounds"]) == 2
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
@@ -119,7 +119,10 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
         ["rows", "rounds"],
         &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
       )
-      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", true) end))
+      |> update_in(
+        ["rows", "timers"],
+        &Enum.map(&1, fn row -> row |> Map.put("reveal_on_expiry", true) |> Map.delete("round_id") end)
+      )
       |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
       |> update_in(["rows", "sessions"], fn rows ->
         Enum.map(rows, &put_in(&1, ["configuration", "private_mode"], true))
@@ -135,6 +138,39 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     refute Enum.any?(normalized["rows"]["sessions"], &Map.has_key?(&1["configuration"], "private_mode"))
     refute Enum.any?(normalized["rows"]["timers"], &Map.has_key?(&1, "reveal_on_expiry"))
+    # The clock, once the session's, joins the round in progress.
+    active = Enum.find(normalized["rows"]["rounds"], &(&1["status"] == "active"))
+    assert [%{"round_id" => round_id}] = normalized["rows"]["timers"]
+    assert round_id == active["id"]
+  end
+
+  test "a version-eight clock joins the last round when every round is closed, and restores there", ctx do
+    {:ok, [first]} = Ideation.list_rounds(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, _} = Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, %{seconds: 300})
+    ctx = close_round(ctx, first)
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+
+    legacy =
+      data
+      |> Map.put("version", 8)
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
+
+    {:ok, capsule} = Capsule.seal(legacy)
+    assert {:ok, normalized} = Capsule.open(capsule)
+    assert [%{"round_id" => round_id, "status" => "cancelled"}] = normalized["rows"]["timers"]
+    assert round_id == first.id
+
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+
+    assert {:ok, [%{id: restored_round, status: :closed}]} =
+             Ideation.list_rounds(ctx.author, ctx.project.id, session_id)
+
+    assert {:ok, nil} = Ideation.get_timer(ctx.author, ctx.project.id, session_id)
+
+    assert [[^restored_round, "cancelled"]] =
+             Repo.all(from(t in "ideation_timers", where: t.session_id == ^session_id, select: [t.round_id, t.status]))
   end
 
   test "legacy separated synthesis keeps its source round and privacy through repeated recovery", ctx do
@@ -228,7 +264,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 8
+    assert normalized["version"] == 9
     # A session that had no rounds is born its Round 1, in progress, and its notes join it.
     assert [%{"number" => 1, "status" => "active", "private" => false, "session_id" => born_session}] =
              normalized["rows"]["rounds"]
@@ -280,7 +316,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 8
+    assert normalized["version"] == 9
     assert [%{"number" => 1, "status" => "active"} = normalized_round] = normalized["rows"]["rounds"]
     refute Map.has_key?(normalized_round, "canvas_offset_y")
     assert now
@@ -304,7 +340,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     {ctx, second} = new_round(ctx, %{prompt: "Next"})
     capsule = capture(ctx)
     assert {:ok, data} = Capsule.open(capsule)
-    assert data["version"] == 8
+    assert data["version"] == 9
     assert [saved_first, _saved_second] = data["rows"]["rounds"]
     assert saved_first["status"] == "closed"
     assert saved_first["prompt"] == "Corrected question"
