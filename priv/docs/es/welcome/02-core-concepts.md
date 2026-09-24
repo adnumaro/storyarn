@@ -48,6 +48,14 @@ Por ejemplo, un bloque Health en la ficha `mc.jaime` se convierte en `mc.jaime.h
 | **Scene** | Un mapa espacial donde el contenido narrativo puede explorarse mediante zonas, pines, escenas hijas y overlays de flujo.                        | [Resumen de escenas](/docs/scene-design/scenes-overview) |
 | **Zone**  | Una región dibujada dentro de una escena. Las zonas pueden evaluar condiciones, ejecutar instrucciones, enlazar a flujos o abrir escenas hijas. | [Zonas y áreas interactivas](/docs/scene-design/zones)   |
 
+## Brainstorming
+
+| Concepto     | Significado                                                                                                                             | Dónde leer más                                                                |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Session**  | Un lienzo compartido de notas donde un equipo explora ideas, que puede empezar desde una Ficha, un Flujo o una Escena.                  | [Vista general de Brainstorming](/docs/brainstorming/brainstorming-overview)  |
+| **Round**    | Una franja de una sesión con su propia pregunta. Una ronda puede ser privada hasta que se revela.                                       | [Rondas, privacidad y temporizador](/docs/brainstorming/rounds-privacy-timer) |
+| **Decision** | Lo que el equipo acordó hacer: un verbo, el contenido al que afecta, una conclusión y sus fuentes, con seguimiento hasta que se aplica. | [Decisiones](/docs/brainstorming/decisions)                                   |
+
 ## Localización
 
 | Concepto            | Significado                                                                                                                                                     | Dónde leer más                                                      |
@@ -56,4 +64,4 @@ Por ejemplo, un bloque Health en la ficha `mc.jaime` se convierte en `mc.jaime.h
 
 ## Cómo se conectan
 
-Las fichas definen el estado del mundo. Los bloques de las fichas se convierten en variables. Los flujos leen esas variables mediante nodos de condición y las modifican mediante nodos de instrucción. Las escenas colocan los flujos en un contexto espacial. Localización extrae de Flujos y Fichas el texto de runtime visible para el jugador; las Escenas siguen siendo contenido espacial del editor. Exportar mueve el resultado a formatos específicos de engine.
+Las fichas definen el estado del mundo. Los bloques de las fichas se convierten en variables. Los flujos leen esas variables mediante nodos de condición y las modifican mediante nodos de instrucción. Las escenas colocan los flujos en un contexto espacial. Las sesiones de Brainstorming exploran los cambios antes de hacerlos, y sus decisiones apuntan a las Fichas, Flujos y Escenas a las que afectan. Localización extrae de Flujos y Fichas el texto de runtime visible para el jugador; las Escenas siguen siendo contenido espacial del editor. Exportar mueve el resultado a formatos específicos de engine.

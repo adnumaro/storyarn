@@ -45,6 +45,12 @@ Interactive maps for your world. Draw zones, place character pins, and connect l
 
 <img src="/images/docs/scenes-dashboard.png" alt="Scenes dashboard listing the project's interactive maps" loading="lazy">
 
+<h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span> Brainstorming</h3>
+
+A shared canvas where your team explores ideas before they become content. Notes are organized in rounds with their own question, people can write privately before a reveal, and related ideas are grouped with a written synthesis. When the team agrees, a **decision** names the Sheets, Flows, and Scenes it changes, and appears in their editors until someone marks it applied.
+
+<img src="/images/docs/brainstorming/brainstorming-board.webp" alt="A brainstorming session with a round of notes, a group with its synthesis, and the round's decisions" loading="lazy">
+
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></span> Localization</h3>
 
 Extract every line of dialogue automatically. Translate with DeepL integration, review each localized string through a defined status workflow, and track progress per language with detailed reports.

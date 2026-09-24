@@ -48,6 +48,14 @@ For example, a Health block on the `mc.jaime` sheet becomes `mc.jaime.health`.
 | **Scene** | A spatial map where narrative content can be explored through zones, pins, child scenes, and flow overlays.                | [Scenes Overview](/docs/scene-design/scenes-overview)   |
 | **Zone**  | A drawn region inside a scene. Zones can evaluate conditions, run instructions, link to flows, or drill into child scenes. | [Zones and Interactive Areas](/docs/scene-design/zones) |
 
+## Brainstorming
+
+| Concept      | Meaning                                                                                                                 | Where to learn more                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Session**  | A shared canvas of notes where a team explores ideas, optionally started from a Sheet, Flow, or Scene.                  | [Brainstorming Overview](/docs/brainstorming/brainstorming-overview)   |
+| **Round**    | One band of a session with its own question. A round can stay private until it is revealed.                             | [Rounds, Privacy, and Timer](/docs/brainstorming/rounds-privacy-timer) |
+| **Decision** | What the team agreed to do: a verb, the content it affects, a conclusion, and its sources, tracked until it is applied. | [Decisions](/docs/brainstorming/decisions)                             |
+
 ## Localization
 
 | Concept             | Meaning                                                                                                                                    | Where to learn more                                               |
@@ -56,4 +64,4 @@ For example, a Health block on the `mc.jaime` sheet becomes `mc.jaime.health`.
 
 ## How these concepts connect
 
-Sheets define the world state. Blocks on sheets become variables. Flows read those variables through condition nodes and change them through instruction nodes. Scenes place flows in a spatial context. Localization extracts the player-facing runtime text from Flows and Sheets; Scenes remain spatial editor content. Export moves the result into engine-specific formats.
+Sheets define the world state. Blocks on sheets become variables. Flows read those variables through condition nodes and change them through instruction nodes. Scenes place flows in a spatial context. Brainstorming sessions explore changes before they are made, and their decisions point at the Sheets, Flows, and Scenes they affect. Localization extracts the player-facing runtime text from Flows and Sheets; Scenes remain spatial editor content. Export moves the result into engine-specific formats.

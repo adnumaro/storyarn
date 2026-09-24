@@ -69,9 +69,10 @@ defmodule Storyarn.Public.Docs.Guide do
   defp category_order("narrative-design"), do: 4
   defp category_order("screenwriting"), do: 5
   defp category_order("scene-design"), do: 6
-  defp category_order("localization"), do: 7
-  defp category_order("collaboration"), do: 8
-  defp category_order("import-export"), do: 9
-  defp category_order("ai"), do: 10
+  defp category_order("brainstorming"), do: 7
+  defp category_order("localization"), do: 8
+  defp category_order("collaboration"), do: 9
+  defp category_order("import-export"), do: 10
+  defp category_order("ai"), do: 11
   defp category_order(_), do: 99
 end

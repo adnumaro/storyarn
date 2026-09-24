@@ -45,6 +45,12 @@ Mapas interactivos para tu mundo. Dibuja zonas, coloca pines de personajes y con
 
 <img src="/images/docs/scenes-dashboard.png" alt="Dashboard de escenas con los mapas interactivos del proyecto" loading="lazy">
 
+<h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span> Brainstorming</h3>
+
+Un lienzo compartido donde tu equipo explora ideas antes de que se conviertan en contenido. Las notas se organizan en rondas con su propia pregunta, cada persona puede escribir en privado antes de revelar, y las ideas relacionadas se agrupan con una síntesis escrita. Cuando el equipo se pone de acuerdo, una **decisión** nombra las Fichas, Flujos y Escenas que cambia, y aparece en sus editores hasta que alguien la marca como aplicada.
+
+<img src="/images/docs/brainstorming/brainstorming-board.webp" alt="Una sesión de brainstorming con una ronda de notas, un grupo con su síntesis y las decisiones de la ronda" loading="lazy">
+
 <h3><span class="docs-tool-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></span> Localización</h3>
 
 Extrae automáticamente cada línea de diálogo. Traduce mediante la integración con DeepL, revisa cada texto localizado con un flujo de estados definido y sigue el progreso por idioma mediante informes detallados.
