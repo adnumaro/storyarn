@@ -147,6 +147,10 @@ defmodule Storyarn.Ideation do
 
   defdelegate create_session(scope, project_id, attrs), to: Sessions
   defdelegate subscribe_sessions(scope, project_id), to: Sessions
+
+  @doc "Publishes session invalidation after a caller-owned transaction has committed."
+  defdelegate notify_sessions_changed(project_id), to: Sessions, as: :notify_tree_changed
+
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Sessions
   defdelegate get_session(scope, project_id, session_id), to: Sessions
 

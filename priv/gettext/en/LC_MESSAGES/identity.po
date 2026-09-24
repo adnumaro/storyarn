@@ -16,39 +16,39 @@ msgstr ""
 msgid "%{name}'s workspace"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:179
+#: lib/storyarn_web/controllers/user_session_controller.ex:210
 #, elixir-autogen, elixir-format
 msgid "Failed to update password."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:75
+#: lib/storyarn_web/controllers/user_session_controller.ex:106
 #: lib/storyarn_web/live/user_live/login.ex:137
 #, elixir-autogen, elixir-format
 msgid "Invalid email or password"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:186
+#: lib/storyarn_web/controllers/user_session_controller.ex:217
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:172
+#: lib/storyarn_web/controllers/user_session_controller.ex:203
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:152
+#: lib/storyarn_web/controllers/user_session_controller.ex:183
 #, elixir-autogen, elixir-format
 msgid "Please re-authenticate to change your password."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:57
+#: lib/storyarn_web/controllers/user_session_controller.ex:68
 #: lib/storyarn_web/live/user_live/login.ex:122
 #, elixir-autogen, elixir-format
 msgid "Too many login attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:84
+#: lib/storyarn_web/live/user_live/registration.ex:91
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr ""
@@ -65,12 +65,12 @@ msgstr ""
 msgid "You must log in to access this page."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:102
+#: lib/storyarn_web/controllers/user_session_controller.ex:38
 #, elixir-autogen, elixir-format
 msgid "Account created successfully! Welcome."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:55
+#: lib/storyarn_web/live/user_live/registration.ex:61
 #: lib/storyarn_web/live/user_live/registration.ex:115
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
@@ -102,8 +102,14 @@ msgstr ""
 msgid "Your session has expired. Please log in again."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:118
-#: lib/storyarn_web/controllers/user_session_controller.ex:134
+#: lib/storyarn_web/controllers/user_session_controller.ex:149
+#: lib/storyarn_web/controllers/user_session_controller.ex:165
 #, elixir-autogen, elixir-format
 msgid "Your access confirmation has expired. Please try again."
+msgstr ""
+
+#: lib/storyarn_web/controllers/user_session_controller.ex:93
+#: lib/storyarn_web/live/user_live/registration.ex:142
+#, elixir-autogen, elixir-format
+msgid "Your account was created. Log in to continue."
 msgstr ""

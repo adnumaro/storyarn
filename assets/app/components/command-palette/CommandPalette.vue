@@ -6,6 +6,7 @@ import {
   Folder,
   GitBranch,
   History,
+  Lightbulb,
   ListChecks,
   LoaderCircle,
   Map as MapIcon,
@@ -111,7 +112,8 @@ interface AdvancedSearchReply {
   error?: string;
 }
 
-type EntityType = "sheet" | "flow" | "scene";
+type DeletableEntityType = "sheet" | "flow" | "scene";
+type EntityType = DeletableEntityType | "ideation_session";
 
 interface CreateTarget {
   id: number;
@@ -126,7 +128,7 @@ interface CreateTargetsReply {
 
 interface DeleteItem {
   id: number;
-  type: EntityType;
+  type: DeletableEntityType;
   label: string;
   context?: string;
   shortcut?: string | null;
@@ -184,10 +186,12 @@ const navIcons: Record<string, LucideIcon> = {
   sheet: FileText,
   flow: GitBranch,
   scene: MapIcon,
+  ideation_session: Lightbulb,
   decision: ListChecks,
 };
 
-const entityTypes: EntityType[] = ["sheet", "flow", "scene"];
+const deletableEntityTypes: DeletableEntityType[] = ["sheet", "flow", "scene"];
+const entityTypes: EntityType[] = [...deletableEntityTypes, "ideation_session"];
 
 // Labels reuse each tree's own "New X" / delete-confirm keys — one concept,
 // one name, no matter which surface runs it.
@@ -195,6 +199,7 @@ const createLabelKeys: Record<EntityType, string> = {
   sheet: "sheets.tree.new_sheet",
   flow: "flows.tree.new_flow",
   scene: "scenes.tree.new_scene",
+  ideation_session: "palette.create_brainstorming_session",
 };
 
 // Group headings reuse the canonical name each concept already has in the
@@ -1481,7 +1486,7 @@ function deleteItemFromOperationValue(value: OperationValue | null | undefined):
   const type = raw.type;
   const id = raw.id;
   const projectId = raw.projectId;
-  if (!validEntityType(type) || typeof id !== "number" || typeof projectId !== "number")
+  if (!validDeletableEntityType(type) || typeof id !== "number" || typeof projectId !== "number")
     return null;
 
   return {
@@ -1501,6 +1506,10 @@ function operationRecord(value: OperationValue | null | undefined): Record<strin
 
 function validEntityType(value: unknown): value is EntityType {
   return typeof value === "string" && entityTypes.includes(value as EntityType);
+}
+
+function validDeletableEntityType(value: unknown): value is DeletableEntityType {
+  return typeof value === "string" && deletableEntityTypes.includes(value as DeletableEntityType);
 }
 
 function operationOptionSearchText(option: OperationValue): string {

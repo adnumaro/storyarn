@@ -4,7 +4,9 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundMutation do
   import Ecto.Query
 
   alias Storyarn.Ideation.Sessions.Execution.Mutation
+  alias Storyarn.Ideation.Sessions.Execution.TimerMutation
   alias Storyarn.Ideation.Sessions.Round
+  alias Storyarn.Ideation.Sessions.Timer
   alias Storyarn.Repo
 
   def run(scope, project_id, session_id, revision, callback) do
@@ -22,6 +24,25 @@ defmodule Storyarn.Ideation.Sessions.Execution.RoundMutation do
   end
 
   def get(_session_id, _round_id), do: {:error, :invalid_round}
+
+  # A round ends with its clock: a running or paused countdown is cancelled and
+  # recorded first, so the audit reads the stop before the close.
+  def close(session, access, round, now) do
+    with {:ok, session} <- stop_clock(session, access, round),
+         {:ok, closed} <- round |> Round.lifecycle_changeset(status: :closed, closed_at: now) |> Repo.update() do
+      {:ok, session, closed}
+    end
+  end
+
+  defp stop_clock(session, access, round) do
+    case Repo.get_by(Timer, round_id: round.id) do
+      %{status: status} = timer when status in [:running, :paused] ->
+        TimerMutation.save(session, access, timer, TimerMutation.cancel_attrs(timer), :timer_cancelled)
+
+      _ ->
+        {:ok, session}
+    end
+  end
 
   def record(session, access, round, action) do
     with {:ok, updated} <- session |> change(revision: session.revision + 1) |> Repo.update() do

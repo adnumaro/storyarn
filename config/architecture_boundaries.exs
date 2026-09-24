@@ -4200,12 +4200,6 @@ policy = %{
       reason: "An accepted decision tells the people who started its Projects-owned discussion"
     },
     %{
-      source: "lib/storyarn_web/live/hooks/palette.ex",
-      target: "lib/storyarn/ideation.ex",
-      kinds: ["runtime"],
-      reason: "The palette lists the decisions that name matched content through the public Ideation facade"
-    },
-    %{
       source: "lib/storyarn_web/live/shared/contextual_decisions.ex",
       target: "lib/storyarn/ideation.ex",
       kinds: ["runtime"],
@@ -5536,6 +5530,13 @@ policy = %{
       target: "lib/storyarn/scenes.ex",
       kinds: ["runtime"],
       reason: "Authenticated command palette coordinates Scene creation and deletion through the public facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason:
+        "Authenticated command palette creates sessions, publishes committed invalidation and lists the decisions that name matched content through the public Ideation facade"
     },
     %{
       source: "lib/storyarn_web/live/workspace_live/show.ex",

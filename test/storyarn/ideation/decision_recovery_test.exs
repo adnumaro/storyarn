@@ -50,7 +50,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 9, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 10, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -213,7 +213,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 9
+    assert normalized["version"] == 10
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)
@@ -410,19 +410,19 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert [%{name: "Mara", id: nil, available: false}, _village] = view.proposal.targets
   end
 
-  test "version-eight capsules restore without the decisions of the earlier model", ctx do
+  test "version-nine capsules restore without the decisions of the earlier model", ctx do
     {:ok, data} = ctx |> capture() |> Capsule.open()
     stripped = ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)
 
     legacy =
       data
-      |> Map.put("version", 8)
+      |> Map.put("version", 9)
       |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
       |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 9
+    assert normalized["version"] == 10
     assert normalized["rows"]["decisions"] == []
   end
 

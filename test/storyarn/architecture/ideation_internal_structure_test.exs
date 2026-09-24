@@ -192,6 +192,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                  group_operations ++
                  idea_operations ++
                  [
+                   notify_sessions_changed: 1,
                    bring_idea_forward: 5,
                    reveal_round: 5,
                    comment_source: 4,

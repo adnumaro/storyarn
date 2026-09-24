@@ -99,7 +99,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
   defp outcome(_, _, _, _), do: :skipped_authorization
 
   defp effects(session, timer, :completed, {:ok, access}) do
-    with {:ok, revealed} <- reveal(session, access) do
+    with {:ok, revealed} <- reveal(session, timer, access) do
       current = Repo.get!(Session, session.id)
 
       result =
@@ -113,26 +113,19 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExpireTimer do
 
   defp effects(session, _, _, _), do: {:ok, session, false}
 
-  # Every private round that asked to be revealed when time runs out, the one
-  # in progress and any closed since the clock started. Each reveal records a
-  # session revision, so the next one reads the revision it left.
-  defp reveal(session, access) do
-    rounds =
-      Repo.all(
-        from r in Round,
-          where: r.session_id == ^session.id and r.private and r.reveal_on_expiry,
-          order_by: r.number
-      )
+  # The clock belongs to its round: at 0:00 it reveals that round when the
+  # round is private and asked for it. Other rounds are not its business.
+  defp reveal(session, timer, access) do
+    case Repo.get(Round, timer.round_id) do
+      %Round{private: true, reveal_on_expiry: true} = round ->
+        current = Repo.get!(Session, session.id)
+        current_access = ContributionAccess.from_session(current, access)
 
-    Enum.reduce_while(rounds, {:ok, false}, fn round, _ ->
-      current = Repo.get!(Session, session.id)
-      current_access = ContributionAccess.from_session(current, access)
+        with {:ok, _} <- Ideas.reveal_round_locked(current_access, current.revision, round.id), do: {:ok, true}
 
-      case Ideas.reveal_round_locked(current_access, current.revision, round.id) do
-        {:ok, _} -> {:cont, {:ok, true}}
-        error -> {:halt, error}
-      end
-    end)
+      _ ->
+        {:ok, false}
+    end
   end
 
   defp receipt(session, timer, outcome, revealed \\ false),

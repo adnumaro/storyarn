@@ -4,7 +4,7 @@ import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import BrainstormingCanvas from "@modules/ideation/components/BrainstormingCanvas.vue";
 import { bandAt, bandOffsets } from "@modules/ideation/lib/bands";
 import { board, idea, round, timer } from "./fixtures";
-import type { SessionTimer } from "@modules/ideation/types";
+import type { Round, SessionTimer } from "@modules/ideation/types";
 
 const view = reactive({ x: 0, y: 0, zoom: 1, width: 800, height: 600 });
 vi.mock("@modules/ideation/composables/useCanvasViewport", () => ({
@@ -502,30 +502,46 @@ describe("round bands on the canvas", () => {
     expect(stopped.find("#brainstorming-band-20").exists()).toBe(false);
   });
 
-  it("keeps the clock on the last band once no round is in progress", () => {
-    const wrapper = canvas({
-      notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
-      bands: {
-        rounds: [
-          round({ id: 20, number: 1, status: "closed" }),
-          round({ id: 21, number: 2, status: "closed" }),
-        ],
-        offsets: new Map([
-          [20, 0],
-          [21, 500],
-        ]),
-        canManage: false,
-        pending: false,
-        timer: {
-          session: board().session!,
-          epoch: "a",
-          timer: timer({ status: "paused" }),
-          canEdit: false,
+  it("shows a clock on the round in progress only, and only its own", () => {
+    const clocked = (rounds: Round[], clock: SessionTimer) =>
+      canvas({
+        notes: [idea({ id: 10, round_id: 20, canvas: { x: 10, y: 60 } })],
+        bands: {
+          rounds,
+          offsets: new Map([
+            [20, 0],
+            [21, 500],
+          ]),
+          canManage: true,
+          pending: false,
+          timer: { session: board().session!, epoch: "a", timer: clock, canEdit: true },
         },
-      },
-    });
-    expect(wrapper.get("#brainstorming-band-21 #brainstorming-round-timer").text()).toBe("05:00");
-    expect(wrapper.find("#brainstorming-band-20 #brainstorming-round-timer").exists()).toBe(false);
+      });
+    const first = round({ id: 20, number: 1, status: "closed" });
+
+    // Closed without a successor: the paused clock is history, nothing to operate.
+    const closed = clocked(
+      [first, round({ id: 21, number: 2, status: "closed" })],
+      timer({ status: "paused" }),
+    );
+    expect(closed.find("#brainstorming-round-timer").exists()).toBe(false);
+    expect(closed.find("#brainstorming-round-timer-minutes").exists()).toBe(false);
+
+    // The round in progress shows its own clock, never a stale one from the round before.
+    const own = clocked(
+      [first, round({ id: 21, number: 2 })],
+      timer({ status: "paused", round_id: 21 }),
+    );
+    expect(own.get("#brainstorming-band-21 #brainstorming-round-timer").text()).toBe("05:00");
+    expect(own.find("#brainstorming-band-20 #brainstorming-round-timer").exists()).toBe(false);
+    const stale = clocked(
+      [first, round({ id: 21, number: 2 })],
+      timer({ status: "paused", round_id: 20 }),
+    );
+    expect(stale.find("#brainstorming-round-timer").exists()).toBe(false);
+    expect(stale.find("#brainstorming-band-21 #brainstorming-round-timer-minutes").exists()).toBe(
+      true,
+    );
   });
 
   it("opens on the round in progress and fits everything when there is one round", async () => {

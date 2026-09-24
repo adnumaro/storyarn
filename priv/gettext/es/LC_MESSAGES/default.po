@@ -141,6 +141,7 @@ msgstr "No tienes permiso para realizar esta acción."
 msgid "Brainstorming"
 msgstr "Brainstorming"
 
+#: lib/storyarn_web/live/hooks/palette.ex:656
 #: lib/storyarn_web/live/ideation_live/sidebar.ex:118
 #, elixir-autogen, elixir-format
 msgid "Untitled session"
@@ -171,52 +172,52 @@ msgstr "Esta conversación ha cambiado. Inténtalo de nuevo."
 msgid "This conversation is no longer available or you do not have permission to change it."
 msgstr "Esta conversación ya no está disponible o no tienes permiso para modificarla."
 
-#: lib/storyarn_web/live/hooks/palette.ex:594
+#: lib/storyarn_web/live/hooks/palette.ex:597
 #, elixir-autogen, elixir-format
 msgid "Accepted"
 msgstr "Aceptada"
 
-#: lib/storyarn_web/live/hooks/palette.ex:588
+#: lib/storyarn_web/live/hooks/palette.ex:591
 #, elixir-autogen, elixir-format
 msgid "Change"
 msgstr "Cambiar"
 
-#: lib/storyarn_web/live/hooks/palette.ex:587
+#: lib/storyarn_web/live/hooks/palette.ex:590
 #, elixir-autogen, elixir-format
 msgid "Create"
 msgstr "Crear"
 
-#: lib/storyarn_web/live/hooks/palette.ex:576
+#: lib/storyarn_web/live/hooks/palette.ex:579
 #, elixir-autogen, elixir-format
 msgid "Decision · %{verb} %{name} · %{status} · %{session}"
 msgstr "Decisión · %{verb} %{name} · %{status} · %{session}"
 
-#: lib/storyarn_web/live/hooks/palette.ex:591
+#: lib/storyarn_web/live/hooks/palette.ex:594
 #, elixir-autogen, elixir-format
 msgid "Discard"
 msgstr "Descartar"
 
-#: lib/storyarn_web/live/hooks/palette.ex:590
+#: lib/storyarn_web/live/hooks/palette.ex:593
 #, elixir-autogen, elixir-format
 msgid "Keep"
 msgstr "Mantener"
 
-#: lib/storyarn_web/live/hooks/palette.ex:593
+#: lib/storyarn_web/live/hooks/palette.ex:596
 #, elixir-autogen, elixir-format
 msgid "Proposal"
 msgstr "Propuesta"
 
-#: lib/storyarn_web/live/hooks/palette.ex:596
+#: lib/storyarn_web/live/hooks/palette.ex:599
 #, elixir-autogen, elixir-format
 msgid "Superseded"
 msgstr "Sustituida"
 
-#: lib/storyarn_web/live/hooks/palette.ex:589
+#: lib/storyarn_web/live/hooks/palette.ex:592
 #, elixir-autogen, elixir-format
 msgid "Test"
 msgstr "Probar"
 
-#: lib/storyarn_web/live/hooks/palette.ex:595
+#: lib/storyarn_web/live/hooks/palette.ex:598
 #, elixir-autogen, elixir-format
 msgid "Withdrawn"
 msgstr "Retirada"
