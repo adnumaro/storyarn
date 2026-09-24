@@ -7,6 +7,7 @@ defmodule Storyarn.Public.Docs.GuideBuilder do
   alias Storyarn.Public.Publication.Locales
 
   @known_feature_flags FeatureFlags.known_flags()
+  @public_locales Locales.locales()
 
   def build(filename, attrs, body) do
     parts =
@@ -74,7 +75,7 @@ defmodule Storyarn.Public.Docs.GuideBuilder do
   end
 
   defp validate_public_locale!(locale) do
-    if !Locales.valid?(locale) do
+    if locale not in @public_locales do
       raise ArgumentError, "docs locale must be published publicly, got: #{inspect(locale)}"
     end
   end
