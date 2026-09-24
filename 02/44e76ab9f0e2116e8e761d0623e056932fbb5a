@@ -1,0 +1,19 @@
+test/storyarn_web/controllers/public_locale_redirect_controller_test.exs
+  s_c335c90a020cdb::t_1de842b846a07e 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0244e76ab9f0e2116e8e761d0623e056932fbb5a",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
