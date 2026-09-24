@@ -1,0 +1,21 @@
+lib/storyarn/public/docs/guide_builder.ex
+  s_616f004b9b79c4::t_1943138acdf15c 10,78
+lib/storyarn/public/blog/post_builder.ex
+  s_616f004b9b79c4::t_1943138acdf15c 11,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "00a7dbbae30080d803515bf0a4adab29644ae1c9",
+  "prompts": {},
+  "sessions": {
+    "s_616f004b9b79c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca446e8-f2ad-43e5-9aff-2f154e9c21ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
