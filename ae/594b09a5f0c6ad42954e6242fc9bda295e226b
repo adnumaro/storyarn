@@ -32,8 +32,10 @@ assets/app/locales/es/layout.json
   s_c335c90a020cdb::t_8c325cbe4759ab 3-5
 priv/gettext/en/LC_MESSAGES/assets.po
   s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,29,34-35,40,45,50,55-56
+  s_c335c90a020cdb::t_866e832476aaf3 57
 priv/gettext/es/LC_MESSAGES/scenes.po
   s_c335c90a020cdb::t_cf44f232583ae5 58,83-84,105-106,138,173,314,368,379,385,400,456-457,482-483,664,669,674,684,804-806,827
+  s_c335c90a020cdb::t_866e832476aaf3 35,234,251-252,273,289,658-659,743,748,753,764,769,774,832,848,858
 priv/gettext/es/LC_MESSAGES/workspaces.po
   s_c335c90a020cdb::t_cf44f232583ae5 14,19,29,34-37,42,52-53,58-59,64,69,79,101-102,111-112,130-132,198,209,214,219,224,229,234,239,244,249,254,323,328-329,339,344,349,354-355,360,365,371,376,381
 lib/storyarn_web/components/layouts.ex
@@ -51,6 +53,7 @@ test/storyarn_web/live/shared/plan_limit_flash_test.exs
   s_c335c90a020cdb::t_c7be4499cad275 113
 priv/gettext/scenes.pot
   s_c335c90a020cdb::t_cf44f232583ae5 58,83-84,105-106,138,173,314,368,379,385,400,456-457,482-483,664,669,674,684,804-806,827
+  s_c335c90a020cdb::t_866e832476aaf3 35,234,251-252,273,289,658-659,743,748,753,764,769,774,832,848,858
 assets/app/locales/en/settings.json
   s_c335c90a020cdb::t_f0d816aec70397 310-313
 lib/storyarn/scenes/versioning/commands/named_version_capacity.ex
@@ -81,8 +84,10 @@ lib/storyarn_web/live/flow_sidebar_live.ex
   s_c335c90a020cdb::t_095cd3803feef4 18,93,110
 priv/gettext/assets.pot
   s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,29,34-35,40,45,50,55-56
+  s_c335c90a020cdb::t_866e832476aaf3 57
 priv/gettext/es/LC_MESSAGES/assets.po
   s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,29,34-35,40,45,50,55-56
+  s_c335c90a020cdb::t_866e832476aaf3 57
 lib/storyarn_web/live/project_settings_live/templates.ex
   s_c335c90a020cdb::t_10085aafef2ed3 11,181-185
 lib/storyarn/scenes/editor/commands/item_capacity.ex
@@ -136,6 +141,7 @@ lib/storyarn_web/router.ex
   s_c335c90a020cdb::t_f31e327b0eee6d 201-202
 priv/gettext/en/LC_MESSAGES/scenes.po
   s_c335c90a020cdb::t_cf44f232583ae5 58,83-84,105-106,138,173,314,368,379,385,400,456-457,482-483,664,669,674,684,804-806,827
+  s_c335c90a020cdb::t_866e832476aaf3 35,234,251-252,273,289,658-659,743,748,753,764,769,774,832,848,858
 lib/storyarn/flows/versioning/execution/asset_catalog.ex
   s_c335c90a020cdb::t_7bef6e1470a5ae 892-899
 lib/storyarn_web/live/project_settings_live/snapshots.ex
