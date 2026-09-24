@@ -1,0 +1,19 @@
+vitest.config.js
+  s_616f004b9b79c4::t_6e780288f0d441 4-6,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "268c508a46ff71a8ad4cef77b95cd74ea5b5e5cf",
+  "prompts": {},
+  "sessions": {
+    "s_616f004b9b79c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca446e8-f2ad-43e5-9aff-2f154e9c21ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
