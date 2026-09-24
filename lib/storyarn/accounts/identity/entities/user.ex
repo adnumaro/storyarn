@@ -63,6 +63,17 @@ defmodule Storyarn.Accounts.User do
     user
     |> email_changeset(attrs, validate_unique: Keyword.get(opts, :validate_unique, true))
     |> password_changeset(attrs, hash_password: Keyword.get(opts, :hash_password, true))
+    |> locale_changeset(attrs)
+  end
+
+  @doc """
+  Records the language of the page the account was created from, which the
+  application keeps using until the person changes it in their preferences.
+  """
+  def locale_changeset(user_or_changeset, attrs) do
+    user_or_changeset
+    |> cast(attrs, [:locale])
+    |> validate_inclusion(:locale, Gettext.known_locales(Storyarn.Gettext))
   end
 
   defp validate_email(changeset, opts) do

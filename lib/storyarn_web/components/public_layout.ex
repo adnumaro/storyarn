@@ -96,8 +96,8 @@ defmodule StoryarnWeb.Components.PublicLayout do
       contact: PublicURLs.contact_path(locale),
       privacy: PublicURLs.privacy_path(locale),
       terms: PublicURLs.terms_path(locale),
-      login: PublicURLs.locale_handoff_path(~p"/users/log-in", locale),
-      register: PublicURLs.locale_handoff_path(~p"/users/register", locale),
+      login: PublicURLs.login_path(locale),
+      register: PublicURLs.registration_path(locale),
       workspaces: ~p"/workspaces"
     }
   end

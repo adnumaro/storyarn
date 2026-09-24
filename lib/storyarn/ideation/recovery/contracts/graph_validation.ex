@@ -45,7 +45,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   defp unique_session_records?(rows) do
     unique_numbers?(rows["session_revisions"], "session_id") and
       unique_numbers?(rows["rounds"], "session_id") and one_active_round?(rows["rounds"]) and
-      length(rows["timers"]) == length(Enum.uniq_by(rows["timers"], & &1["session_id"]))
+      length(rows["timers"]) == length(Enum.uniq_by(rows["timers"], & &1["round_id"]))
   end
 
   defp valid_row?(row, collection, index) do
@@ -68,8 +68,11 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
     Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
   end
 
-  defp valid_links?(row, "timers", index),
-    do: Map.has_key?(index.sessions, row["session_id"]) and TimerState.valid?(row)
+  # A clock belongs to one round of its own session.
+  defp valid_links?(row, "timers", index) do
+    Map.has_key?(index.sessions, row["session_id"]) and
+      clock_round?(index.rounds[row["round_id"]], row["session_id"]) and TimerState.valid?(row)
+  end
 
   defp valid_links?(row, "ideas", index) do
     Map.has_key?(index.sessions, row["session_id"]) and revision?(index, row["id"], row["revision"]) and
@@ -247,6 +250,9 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
        do: TimerState.snapshot_valid?(snapshot["timer"])
 
   defp timer_snapshot?(_), do: true
+
+  defp clock_round?(%{"session_id" => session_id}, expected), do: session_id == expected
+  defp clock_round?(_round, _expected), do: false
 
   defp valid_selection?(%{"selection" => %{"mode" => "eligible", "states" => states}}, _) do
     is_list(states) and length(states) in 1..3 and Enum.all?(states, &(&1 in ~w(active parked discarded)))

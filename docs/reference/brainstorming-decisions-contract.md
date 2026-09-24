@@ -150,9 +150,9 @@ invalidation and identity information rather than creative text.
 
 ## Recovery
 
-The sealed Ideation inventory version 9 includes the decision records, every
+The sealed Ideation inventory version 10 includes the decision records, every
 immutable revision and every application declaration, with their request
-receipts. Inventories before version 9 carry decisions of the earlier model and
+receipts. Inventories before version 10 carry decisions of the earlier model and
 normalize to empty decision collections. The Project snapshot format and the
 outer encrypted compartment format remain unchanged.
 

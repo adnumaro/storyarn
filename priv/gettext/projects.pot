@@ -103,7 +103,7 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:93
+#: lib/storyarn_web/live/project_live/invitation.ex:95
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr ""
@@ -176,7 +176,7 @@ msgstr ""
 msgid "You don't have permission to manage this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:99
+#: lib/storyarn_web/live/project_live/invitation.ex:101
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this project."
 msgstr ""
@@ -201,7 +201,7 @@ msgstr ""
 msgid "Theme saved."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:82
+#: lib/storyarn_web/live/project_live/invitation.ex:122
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
@@ -376,7 +376,7 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:123
+#: lib/storyarn_web/live/project_live/invitation.ex:140
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr ""
@@ -787,7 +787,7 @@ msgstr ""
 msgid "Too many invitations have been sent. Try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:106
+#: lib/storyarn_web/live/project_live/invitation.ex:108
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""
@@ -1327,4 +1327,9 @@ msgstr ""
 #: lib/storyarn/projects/interchange/exports/queries/validator.ex:245
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" uses Storyarn sequence composition that %{format} cannot represent; those composition details will be omitted. Use a Storyarn project snapshot to preserve them."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:85
+#, elixir-autogen, elixir-format
+msgid "Invitation accepted! Welcome to %{project}."
 msgstr ""

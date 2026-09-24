@@ -18,6 +18,7 @@ defmodule Storyarn.Accounts.Registration.Commands.CompleteInvitation do
           user
           |> User.confirm_changeset()
           |> User.password_changeset(attrs, hash_password: true)
+          |> User.locale_changeset(attrs)
 
         with {1, nil} <- delete_registration_invite_token(token_record, user),
              {:ok, updated_user} <- Repo.update(user_changeset) do

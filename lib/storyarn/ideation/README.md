@@ -192,19 +192,20 @@ The canvas uses facilitator-controlled round privacy and direct editing. See
 [canvas behavior](../../../docs/features/brainstorming-board.md) for interaction,
 delete/discard semantics and the compatibility boundary of publication ports.
 
-Optional rounds are Session-owned children. Their start/close operations share
-the session lock with contributions and record session revisions atomically.
-Ideas asks the Sessions contribution port to bind its immutable round provenance;
-closing a round never publishes or freezes content. The round in progress can be
-private: Sessions flips the flag under the contribution lock, and Ideas publishes
-the round's consenting contributions when that mask ends, manually or at timer
-expiry when the round asked for it. See the
+Rounds are Session-owned children. Their start/close operations share the
+session lock with contributions and record session revisions atomically. Ideas
+asks the Sessions contribution port to bind its immutable round provenance;
+closing a round never publishes or freezes content, but it cancels the round's
+running or paused clock first. The round in progress can be private: Sessions
+flips the flag under the contribution lock, and Ideas publishes the round's
+consenting contributions when that mask ends, manually or at timer expiry when
+the round asked for it. See the
 [round contract](../../../docs/reference/brainstorming-rounds-contract.md).
 
-Independent countdowns belong to Sessions. Its execution runtime wakes persisted
-deadlines without idle polling; the owner-scoped worker provides durable delivery.
-Expiry revalidates the original actor and policy before revealing the round in
-progress, when it asked for that, and closing contributions when the timer asked,
-in one transaction. Recovery pauses running timers and
-fences their old deliveries. See the
+Countdowns belong to Sessions, one row per round, started only on the round in
+progress. Its execution runtime wakes persisted deadlines without idle polling;
+the owner-scoped worker provides durable delivery. Expiry revalidates the
+original actor and policy before revealing the clock's own round, when it asked
+for that, and closing contributions when the timer asked, in one transaction.
+Recovery pauses running timers and fences their old deliveries. See the
 [timer contract](../../../docs/reference/brainstorming-timer-contract.md).

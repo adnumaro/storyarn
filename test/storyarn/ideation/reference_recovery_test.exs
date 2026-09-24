@@ -46,7 +46,7 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
              )
 
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 9, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 10, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["references"]) == 2
     assert length(rows["reference_revisions"]) == 3
     refute Jason.encode!(capsule) =~ "Original overview"
@@ -312,7 +312,7 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
         ["rows", "rounds"],
         &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
       )
-      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> row |> Map.put("reveal_on_expiry", false) |> Map.delete("round_id") end))
       |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
       |> update_in(
         ["rows"],
@@ -321,7 +321,7 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 9
+    assert normalized["version"] == 10
     assert normalized["rows"]["references"] == []
     assert normalized["rows"]["reference_revisions"] == []
     maps = restore(ctx, capsule)

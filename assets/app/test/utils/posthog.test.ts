@@ -130,6 +130,26 @@ describe("PostHog frontend utility", () => {
     );
   });
 
+  it("classifies localized access pages like their unprefixed routes", () => {
+    expect(routeFamilyForPath("/users/log-in")).toBe("login");
+    expect(routeFamilyForPath("/es/users/log-in")).toBe("login");
+    expect(routeFamilyForPath("/users/register")).toBe("registration");
+    expect(routeFamilyForPath("/es/users/register")).toBe("registration");
+    expect(routeFamilyForPath("/es/users/register/invite-token")).toBe("registration");
+
+    for (const path of [
+      "/users/reset-password",
+      "/users/reset-password/reset-token",
+      "/projects/invitations/invite-token",
+      "/workspaces/invitations/invite-token",
+    ]) {
+      expect(routeFamilyForPath(`/es${path}`)).toBe(routeFamilyForPath(path));
+    }
+
+    expect(routeFamilyForPath("/es/users/log-inx")).toBe("other");
+    expect(routeFamilyForPath("/es/users/settings")).not.toBe("account_settings");
+  });
+
   it("persists analytics consent decisions", () => {
     expect(readCookieConsent()).toBeNull();
     expect(hasAnalyticsConsent()).toBe(false);

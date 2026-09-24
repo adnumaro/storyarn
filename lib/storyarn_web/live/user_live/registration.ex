@@ -6,6 +6,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   alias Storyarn.Accounts
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
+  alias StoryarnWeb.UserLoginToken
 
   on_mount {StoryarnWeb.UserAuth, :redirect_if_user_is_authenticated}
 
@@ -28,14 +29,18 @@ defmodule StoryarnWeb.UserLive.Registration do
         form={@form}
         user-email={@registration_user.email}
         invited={!!@invite_token}
-        login-url={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
+        login-url={PublicURLs.login_path(@locale)}
+        trigger-submit={@trigger_submit}
+        login-token={@login_token}
+        csrf-token={Plug.CSRFProtection.get_csrf_token()}
+        login-action={PublicURLs.login_path(@locale)}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """
   end
 
   @impl true
-  def mount(%{"token" => token} = params, _session, socket) do
+  def mount(%{"token" => token} = params, session, socket) do
     case Accounts.get_user_by_invite_token(token) do
       {user, token_record} ->
         # We start with an empty changeset (casted so params is %{}) so no validation errors are shown on load
@@ -47,6 +52,7 @@ defmodule StoryarnWeb.UserLive.Registration do
          |> assign(:invite_token, token_record)
          |> assign(:client_ip, ClientIp.from_socket(socket))
          |> assign(:return_to, safe_return_to(params["return_to"]))
+         |> assign_session_handoff(session)
          |> assign_form(changeset)}
 
       nil ->
@@ -57,7 +63,7 @@ defmodule StoryarnWeb.UserLive.Registration do
     end
   end
 
-  def mount(_params, _session, socket) do
+  def mount(_params, session, socket) do
     user = Accounts.new_user()
     changeset = Ecto.Changeset.cast(user, %{}, [])
 
@@ -67,6 +73,7 @@ defmodule StoryarnWeb.UserLive.Registration do
      |> assign(:invite_token, nil)
      |> assign(:client_ip, ClientIp.from_socket(socket))
      |> assign(:return_to, nil)
+     |> assign_session_handoff(session)
      |> assign_form(changeset)}
   end
 
@@ -74,7 +81,8 @@ defmodule StoryarnWeb.UserLive.Registration do
   def handle_event("save", %{"user" => user_params}, socket) do
     case Accounts.check_registration_rate(socket.assigns[:client_ip] || ClientIp.missing_peer_data()) do
       :ok ->
-        do_register(socket, user_params)
+        # The account keeps the language of the page it was created from.
+        do_register(socket, Map.put(user_params, "locale", socket.assigns.locale))
 
       {:error, :rate_limited} ->
         {:noreply,
@@ -96,15 +104,8 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   defp do_register(socket, user_params) do
     case register(socket, user_params) do
-      {:ok, _updated_user} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, dgettext("identity", "Account created successfully! Welcome."))
-         |> push_navigate(
-           to:
-             socket.assigns.return_to ||
-               PublicURLs.locale_handoff_path(~p"/users/log-in", socket.assigns.locale)
-         )}
+      {:ok, user} ->
+        {:noreply, hand_off_session(socket, user)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
@@ -124,6 +125,30 @@ defmodule StoryarnWeb.UserLive.Registration do
            dgettext("identity", "We couldn't create your workspace. Please try again.")
          )}
     end
+  end
+
+  # The account exists: the browser posts this token to UserSessionController,
+  # which starts the session the same way the login form does.
+  defp hand_off_session(%{assigns: %{login_handoff_nonce: nonce}} = socket, user)
+       when is_binary(nonce) and nonce != "" do
+    socket
+    |> assign(:trigger_submit, true)
+    |> assign(:login_token, UserLoginToken.sign_registration(user, nonce, socket.assigns.return_to))
+  end
+
+  # Without a session nonce there is nothing to bind a token to. The person logs
+  # in; an invitation destination is still visited so the invitation is accepted.
+  defp hand_off_session(socket, _user) do
+    socket
+    |> put_flash(:info, dgettext("identity", "Your account was created. Log in to continue."))
+    |> push_navigate(to: socket.assigns.return_to || PublicURLs.login_path(socket.assigns.locale))
+  end
+
+  defp assign_session_handoff(socket, session) do
+    socket
+    |> assign(:login_handoff_nonce, session["login_handoff_nonce"])
+    |> assign(:trigger_submit, false)
+    |> assign(:login_token, nil)
   end
 
   defp register(%{assigns: %{invite_token: nil}}, user_params) do

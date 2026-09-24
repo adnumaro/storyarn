@@ -4883,6 +4883,12 @@ policy = %{
       reason: "Project invitations enforce Commercial-owned member seat policy"
     },
     %{
+      source: "lib/storyarn/projects/access/commands/invitation_operations.ex",
+      target: "lib/storyarn/public/publication/locales.ex",
+      kinds: ["runtime"],
+      reason: "Project invitation email links carry the public locale prefix of the email's language"
+    },
+    %{
       source: "lib/storyarn/projects/versioning/versioning.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
@@ -5154,6 +5160,12 @@ policy = %{
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Sheet Versioning publishes its owned business facts through the Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/workspaces/invitations/delivery/handler.ex",
+      target: "lib/storyarn/public/publication/locales.ex",
+      kinds: ["runtime"],
+      reason: "Workspace invitation email links carry the public locale prefix of the email's language"
     },
     %{
       source: "lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex",
@@ -5505,6 +5517,13 @@ policy = %{
       target: "lib/storyarn/scenes.ex",
       kinds: ["runtime"],
       reason: "Authenticated command palette coordinates Scene creation and deletion through the public facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason:
+        "Authenticated command palette creates sessions and publishes committed invalidation through the public Ideation facade"
     },
     %{
       source: "lib/storyarn_web/live/workspace_live/show.ex",

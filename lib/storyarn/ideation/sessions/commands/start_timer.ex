@@ -4,12 +4,14 @@ defmodule Storyarn.Ideation.Sessions.Commands.StartTimer do
   alias Storyarn.Ideation.Sessions.Timer
   alias Storyarn.Platform.Kernel.MapAccess
 
+  # A clock starts on the round in progress and stays with it.
   def run(scope, project_id, session_id, revision, attrs) when is_map(attrs) do
-    TimerMutation.run(scope, project_id, session_id, revision, fn session, access, timer ->
-      with :ok <- available(timer),
+    TimerMutation.run(scope, project_id, session_id, revision, fn session, access, round, timer ->
+      with {:ok, round} <- in_progress(round),
+           :ok <- available(timer),
            {:ok, options} <- options(attrs) do
         now = TimerMutation.now()
-        timer = timer || %Timer{session_id: session.id, version: 0}
+        timer = timer || %Timer{session_id: session.id, round_id: round.id, version: 0}
 
         values =
           Map.merge(options, %{
@@ -30,6 +32,8 @@ defmodule Storyarn.Ideation.Sessions.Commands.StartTimer do
   end
 
   def run(_, _, _, _, _), do: {:error, :invalid_timer_options}
+  defp in_progress(nil), do: {:error, :round_not_active}
+  defp in_progress(round), do: {:ok, round}
   defp available(%{status: status}) when status in [:running, :paused], do: {:error, :timer_already_running}
   defp available(_), do: :ok
 

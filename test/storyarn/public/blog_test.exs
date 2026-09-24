@@ -219,7 +219,7 @@ defmodule Storyarn.BlogTest do
     assert link_attributes(post.body, "register") == %{
              "data-phx-link" => "redirect",
              "data-phx-link-state" => "push",
-             "href" => "/users/register?from=blog#account",
+             "href" => "/es/users/register?from=blog#account",
              "id" => "register"
            }
   end

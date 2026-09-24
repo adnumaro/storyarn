@@ -1,10 +1,11 @@
 defmodule Storyarn.Ideation.Sessions.Timer do
-  @moduledoc "Session-owned countdown with a durable deadline and fenced expiration effects."
+  @moduledoc "Round-owned countdown with a durable deadline and fenced expiration effects."
   use Ecto.Schema
 
   schema "ideation_timers" do
     field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :session_id, :id
+    field :round_id, :id
     field :actor_id, :id
     field :version, :integer, default: 1
     field :status, Ecto.Enum, values: [:running, :paused, :elapsed, :cancelled]

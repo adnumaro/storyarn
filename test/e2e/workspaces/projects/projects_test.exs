@@ -224,7 +224,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       refute Projects.get_membership(project.id, invited_user.id)
     end
 
-    test "invited user can accept, authenticate, and open the project", %{conn: conn} do
+    test "invited user sets a password and lands signed in on the project", %{conn: conn} do
       owner = user_fixture()
       project = owner |> project_fixture(%{name: "Invitation Flow Project"}) |> Repo.preload(:workspace)
       invited_email = "project-invite-#{System.unique_integer([:positive])}@example.com"
@@ -238,21 +238,15 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> fill_in("#register-password", "Password", with: "password12345")
       |> fill_in("#register-password-confirmation", "Confirm Password", with: "password12345")
       |> click_button("Create an account")
-      |> assert_path("/users/log-in")
-      |> assert_has("#login-form")
-      |> assert_has("[data-phx-main].phx-connected")
+      |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
+      |> assert_has("[data-testid='project-stat-sheets']")
+      |> assert_has("[data-testid='project-stat-flows']")
 
       invited_user = Accounts.get_user_by_email(invited_email)
       assert invited_user
 
       membership = Projects.get_membership(project.id, invited_user.id)
       assert membership.role == "editor"
-
-      conn
-      |> authenticate(invited_user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
-      |> assert_has("[data-testid='project-stat-sheets']")
-      |> assert_has("[data-testid='project-stat-flows']")
     end
 
     test "already accepted invitation shows invalid invitation page", %{conn: conn} do

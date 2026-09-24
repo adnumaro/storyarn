@@ -28,6 +28,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   alias Storyarn.AI
   alias Storyarn.Flows
+  alias Storyarn.Ideation
   alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.CommandPalette
@@ -44,16 +45,17 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   # character-shape regex alone would still let forged hyphenated text
   # through. Static commands live here; AI command ids come from the canonical
   # TaskRegistry catalog so product execution and analytics cannot drift.
-  @known_surfaces ~w(global project workspace flows sheets scenes localization account)
+  @known_surfaces ~w(global project workspace flows sheets scenes brainstorming localization account)
 
   @static_command_ids MapSet.new(
                         ~w(account.profile account.security account.tutorials account.integrations
                            workspace.toggle-sidebar flows.toggle-minimap
                            flows.fit-to-view flows.analyze scenes.fit-to-view
-                           create.project create.sheet create.flow create.scene
+                           brainstorming.new-session brainstorming.fit-to-view
+                           create.project create.sheet create.flow create.scene create.ideation_session
                            delete.sheet delete.flow delete.scene advanced-search.open) ++
                           Enum.map(
-                            ~w(dashboard sheets flows scenes assets localization),
+                            ~w(dashboard sheets flows scenes brainstorming assets localization),
                             &"project.go-to.#{&1}"
                           ) ++
                           Enum.map(
@@ -63,7 +65,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                           )
                       )
 
-  @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.[1-9]\d{0,19}$/
+  @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene|ideation_session)\.[1-9]\d{0,19}$/
   @operation_analytics_events ~w(palette_operation_selected palette_operation_completed
                                  palette_operation_abandoned)
   @operation_analytics_names %{
@@ -205,7 +207,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
          %{"type" => type, "project_id" => project_id, "execution_id" => execution_id},
          socket
        )
-       when type in ~w(sheet flow scene) and valid_database_id(project_id) and valid_execution_id(execution_id) do
+       when type in ~w(sheet flow scene ideation_session) and valid_database_id(project_id) and
+              valid_execution_id(execution_id) do
     scope = socket.assigns.current_scope
 
     {reply, post_commit} =
@@ -214,24 +217,25 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         "palette_create",
         execution_id,
         fn ->
-          case GlobalSearch.editable_project(scope, project_id) do
-            {:ok, %{project: project, workspace: workspace}} ->
-              {entity, notification_outcome} = create_entity_in_transaction(scope, type, project)
+          with {:ok, %{project: project, workspace: workspace}} <- GlobalSearch.editable_project(scope, project_id),
+               {:ok, {entity, notification_outcome}} <- create_entity_in_transaction(scope, type, project) do
+            reply = %{
+              url:
+                entity_url(%{
+                  type: entity_type(type),
+                  id: entity.id,
+                  project_slug: project.slug,
+                  workspace_slug: workspace.slug
+                })
+            }
 
-              reply = %{
-                url:
-                  entity_url(%{
-                    type: entity_type(type),
-                    id: entity.id,
-                    project_slug: project.slug,
-                    workspace_slug: workspace.slug
-                  })
-              }
-
-              {reply, {:entity_created, project.id, type, entity, notification_outcome}}
-
+            {reply, {:entity_created, project.id, type, entity, notification_outcome}}
+          else
             {:error, :unauthorized} ->
               {%{error: "unauthorized"}, nil}
+
+            {:error, reason} ->
+              {create_error_reply(reason), nil}
           end
         end,
         &create_error_reply/1
@@ -533,7 +537,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     }
   end
 
-  defp nav_item(%{type: entity_type} = dest) when entity_type in [:sheet, :flow, :scene] do
+  defp nav_item(%{type: entity_type} = dest) when entity_type in [:sheet, :flow, :scene, :ideation_session] do
     %{
       id: "nav.#{entity_type}.#{dest.id}",
       type: Atom.to_string(entity_type),
@@ -575,9 +579,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}/scenes/#{dest.id}"
   end
 
+  defp entity_url(%{type: :ideation_session} = dest) do
+    ~p"/workspaces/#{dest.workspace_slug}/projects/#{dest.project_slug}/brainstorming/#{dest.id}"
+  end
+
   defp entity_type("sheet"), do: :sheet
   defp entity_type("flow"), do: :flow
   defp entity_type("scene"), do: :scene
+  defp entity_type("ideation_session"), do: :ideation_session
 
   defp destination_context(%{project_name: project_name, workspace_name: workspace_name}) do
     "#{project_name} · #{workspace_name}"
@@ -585,13 +594,19 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   # Same default names the tree sidebars use — one concept, one name.
   defp create_entity_in_transaction(scope, "sheet", project),
-    do: Sheets.create_sheet_in_transaction(scope, project, %{name: dgettext("sheets", "Untitled")})
+    do: {:ok, Sheets.create_sheet_in_transaction(scope, project, %{name: dgettext("sheets", "Untitled")})}
 
   defp create_entity_in_transaction(scope, "flow", project),
-    do: Flows.create_flow_in_transaction(scope, project, %{name: dgettext("flows", "Untitled")})
+    do: {:ok, Flows.create_flow_in_transaction(scope, project, %{name: dgettext("flows", "Untitled")})}
 
   defp create_entity_in_transaction(scope, "scene", project),
-    do: Scenes.create_scene_in_transaction(scope, project, %{name: dgettext("scenes", "Untitled")})
+    do: {:ok, Scenes.create_scene_in_transaction(scope, project, %{name: dgettext("scenes", "Untitled")})}
+
+  defp create_entity_in_transaction(scope, "ideation_session", project) do
+    attrs = %{title: gettext("Untitled session"), configuration: %{default_visibility: :shared}}
+
+    with {:ok, session} <- Ideation.create_session(scope, project.id, attrs), do: {:ok, {session, nil}}
+  end
 
   defp delete_entity_subtree_in_transaction(scope, "sheet", entity),
     do: Sheets.delete_sheet_subtree_by_id_in_transaction(scope, entity.project_id, entity.id)
@@ -625,6 +640,10 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp run_post_commit(nil), do: :ok
+
+  defp run_post_commit({:entity_created, project_id, "ideation_session", _session, nil}) do
+    Ideation.notify_sessions_changed(project_id)
+  end
 
   defp run_post_commit({:entity_created, project_id, type, entity, notification_outcome}) do
     Platform.publish_notification_delivery(notification_outcome)

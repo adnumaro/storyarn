@@ -103,7 +103,7 @@ msgstr "Reparación parcial: %{repaired}; %{failed}."
 msgid "Save"
 msgstr "Guardado"
 
-#: lib/storyarn_web/live/project_live/invitation.ex:93
+#: lib/storyarn_web/live/project_live/invitation.ex:95
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
@@ -176,7 +176,7 @@ msgstr "Algunos elementos no se pudieron eliminar."
 msgid "You don't have permission to manage this project."
 msgstr "No tienes permiso para gestionar este proyecto."
 
-#: lib/storyarn_web/live/project_live/invitation.ex:99
+#: lib/storyarn_web/live/project_live/invitation.ex:101
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this project."
 msgstr "Ya eres miembro de este proyecto."
@@ -201,7 +201,7 @@ msgstr "Tema restablecido por defecto."
 msgid "Theme saved."
 msgstr "Tema guardado."
 
-#: lib/storyarn_web/live/project_live/invitation.ex:82
+#: lib/storyarn_web/live/project_live/invitation.ex:122
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
@@ -376,7 +376,7 @@ msgstr "Cancelar"
 msgid "Clear"
 msgstr "Limpiar"
 
-#: lib/storyarn_web/live/project_live/invitation.ex:123
+#: lib/storyarn_web/live/project_live/invitation.ex:140
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr "Crea una contraseña para %{email} para aceptar tu invitación."
@@ -787,7 +787,7 @@ msgstr "Esta persona ya es miembro de este proyecto."
 msgid "Too many invitations have been sent. Try again later."
 msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
 
-#: lib/storyarn_web/live/project_live/invitation.ex:106
+#: lib/storyarn_web/live/project_live/invitation.ex:108
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr "Esta invitación no se puede aceptar mientras el espacio de trabajo esté en su límite de miembros. Pide a un propietario o administrador que libere una plaza y vuelve a intentarlo con esta invitación."
@@ -1328,3 +1328,8 @@ msgstr "No tienes permiso para importar contenido en este proyecto."
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" uses Storyarn sequence composition that %{format} cannot represent; those composition details will be omitted. Use a Storyarn project snapshot to preserve them."
 msgstr "El flujo \"%{name}\" usa una composición de secuencia de Storyarn que %{format} no puede representar; esos detalles de composición se omitirán. Usa una snapshot de proyecto de Storyarn para conservarlos."
+
+#: lib/storyarn_web/live/project_live/invitation.ex:85
+#, elixir-autogen, elixir-format
+msgid "Invitation accepted! Welcome to %{project}."
+msgstr "¡Invitación aceptada! Te damos la bienvenida a %{project}."

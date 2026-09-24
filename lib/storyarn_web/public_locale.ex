@@ -2,9 +2,10 @@ defmodule StoryarnWeb.PublicLocale do
   @moduledoc """
   Makes the URL authoritative for locale-aware public LiveViews.
 
-  The hook is safe to install on the shared `:current_user` live session:
-  authentication, invitation, and other non-public routes retain the user's
-  existing language preference.
+  The hook is safe to install on the shared `:current_user` live session.
+  Content and access pages (log-in, registration, password reset,
+  invitations) carry their language in the path; any other route keeps the
+  user's existing language preference.
   """
 
   import Phoenix.Component, only: [assign: 3]
@@ -12,8 +13,6 @@ defmodule StoryarnWeb.PublicLocale do
 
   alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicURLs
-
-  @known_locales Gettext.known_locales(Storyarn.Gettext)
 
   @doc false
   def session(conn) do
@@ -23,9 +22,9 @@ defmodule StoryarnWeb.PublicLocale do
     end
   end
 
-  def on_mount(:set_locale, params, session, socket) do
+  def on_mount(:set_locale, _params, session, socket) do
     preferred_locale = socket.assigns[:locale] || session["locale"] || PublicLocales.default_locale()
-    initial_locale = public_locale_from_mount(socket, session) || locale_from_params(params) || preferred_locale
+    initial_locale = public_locale_from_mount(socket, session) || preferred_locale
 
     {:cont, install(socket, initial_locale, preferred_locale)}
   end
@@ -44,14 +43,11 @@ defmodule StoryarnWeb.PublicLocale do
   defp install(socket, locale, preferred_locale) do
     socket
     |> put_locale(locale)
-    |> attach_hook(:public_locale, :handle_params, fn params, uri, socket ->
-      locale = PublicURLs.locale_from_uri(uri) || locale_from_params(params) || preferred_locale
+    |> attach_hook(:public_locale, :handle_params, fn _params, uri, socket ->
+      locale = PublicURLs.locale_from_uri(uri) || preferred_locale
       {:cont, put_locale(socket, locale)}
     end)
   end
-
-  defp locale_from_params(%{"locale" => locale}) when locale in @known_locales, do: locale
-  defp locale_from_params(_params), do: nil
 
   defp put_locale(socket, locale) do
     Gettext.put_locale(Storyarn.Gettext, locale)

@@ -35,6 +35,7 @@ function mountLayout(canManageProject: boolean) {
         tools: {
           dashboard: "/workspaces/acme/projects/veilbreak",
           sheets: "/workspaces/acme/projects/veilbreak/sheets",
+          brainstorming: "/workspaces/acme/projects/veilbreak/brainstorming",
         },
       },
     },
@@ -60,6 +61,13 @@ describe("project layout palette permissions", () => {
     const wrapper = mountLayout(false);
 
     expect(commandIds()).toContain("project.go-to.sheets");
+    expect(paletteGroups.value.flatMap((group) => group.commands)).toContainEqual(
+      expect.objectContaining({
+        id: "project.go-to.brainstorming",
+        labelKey: "layout.tools.brainstorming",
+        href: "/workspaces/acme/projects/veilbreak/brainstorming",
+      }),
+    );
     expect(commandIds().some((id) => id.startsWith("project.settings."))).toBe(false);
 
     wrapper.unmount();

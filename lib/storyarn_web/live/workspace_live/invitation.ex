@@ -75,17 +75,19 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
   defp accept_ready_user(socket, invitation, user) do
     case Workspaces.accept_invitation(invitation, user) do
       {:ok, _membership} ->
-        {:ok,
-         socket
-         |> put_flash(
-           :info,
-           dgettext(
-             "workspaces",
-             "Invitation accepted! Log in with %{email} to get started.",
-             email: invitation.email
+        if InvitationHelpers.signed_in_as?(socket, user) do
+          {:ok,
+           socket
+           |> put_flash(
+             :info,
+             dgettext("workspaces", "Invitation accepted! Welcome to %{workspace}.",
+               workspace: invitation.workspace.name
+             )
            )
-         )
-         |> redirect(to: ~p"/users/log-in")}
+           |> redirect(to: ~p"/workspaces/#{invitation.workspace.slug}")}
+        else
+          accepted_redirect_to_log_in(socket, invitation)
+        end
 
       {:error, :already_accepted} ->
         {:ok,
@@ -94,7 +96,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
            :info,
            dgettext("workspaces", "This invitation has already been accepted.")
          )
-         |> redirect(to: ~p"/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
 
       {:error, :already_member} ->
         {:ok,
@@ -103,7 +105,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
            :info,
            dgettext("workspaces", "You're already a member of this workspace.")
          )
-         |> redirect(to: ~p"/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
 
       error ->
         InvitationHelpers.handle_acceptance_error(
@@ -118,9 +120,24 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
     end
   end
 
+  defp accepted_redirect_to_log_in(socket, invitation) do
+    {:ok,
+     socket
+     |> put_flash(
+       :info,
+       dgettext(
+         "workspaces",
+         "Invitation accepted! Log in with %{email} to get started.",
+         email: invitation.email
+       )
+     )
+     |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
+  end
+
   defp redirect_to_registration(socket, invitation, token, registration_token) do
-    invitation_path = ~p"/workspaces/invitations/#{token}"
-    registration_path = ~p"/users/register/#{registration_token}?#{[return_to: invitation_path]}"
+    locale = socket.assigns.locale
+    invitation_path = PublicURLs.workspace_invitation_path(locale, token)
+    registration_path = PublicURLs.invited_registration_path(locale, registration_token, invitation_path)
 
     {:ok,
      socket

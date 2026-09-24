@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Link2,
   ListChecks,
+  Maximize2,
   Plus,
   RotateCcw,
   StickyNote,
@@ -19,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import DashboardContent from "@shell/DashboardContent.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
 import CanvasConnectionTools from "./components/CanvasConnectionTools.vue";
 import CanvasShapePicker from "./components/CanvasShapePicker.vue";
@@ -95,6 +97,9 @@ const canvas = ref<InstanceType<typeof BrainstormingCanvas> | null>(null);
 const colorTrigger = ref<HTMLButtonElement>();
 const linksTrigger = ref<HTMLButtonElement>();
 const { request, context, online, sync } = useBoardConnection(() => board, reset);
+const canStartSession = computed(
+  () => board.can_edit && !starting.value && !board.loading && online.value,
+);
 async function createComment(target: BrainstormingCommentTarget) {
   const reply = await request("comments_open", {
     idea_id: target.ideaId,
@@ -961,7 +966,7 @@ function redo() {
   canvas.value?.focus();
 }
 async function startSession() {
-  if (starting.value) return;
+  if (!canStartSession.value) return;
   starting.value = true;
   const reply = await request<{ id: number }>("create_session", {
     title: t("ideation.canvas.untitledSession"),
@@ -973,6 +978,27 @@ async function startSession() {
     failure.value = "session_creation_unknown";
   else starting.value = false;
 }
+const unregisterPaletteCommands = registerPaletteCommands("brainstorming", [
+  {
+    id: "brainstorming.new-session",
+    labelKey: "ideation.newSession",
+    groupKey: "palette.groups.actions",
+    icon: Plus,
+    visible: () => board.can_edit,
+    enabled: () => canStartSession.value,
+    run: startSession,
+  },
+  {
+    id: "brainstorming.fit-to-view",
+    labelKey: "ideation.canvas.fit",
+    groupKey: "palette.groups.view",
+    icon: Maximize2,
+    visible: () => !!board.session && !list.value,
+    enabled: () => canvas.value !== null,
+    run: () => canvas.value?.fitAll(),
+  },
+]);
+onUnmounted(unregisterPaletteCommands);
 watch(
   () => board.session?.id,
   () => {

@@ -96,6 +96,108 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert redirected_to(conn) == ~p"/users/log-in"
     end
 
+    test "starts the first session of a registered account", %{conn: conn, user: user} do
+      user = set_password(user)
+      session_nonce = "registering-browser-session"
+      login_token = StoryarnWeb.UserLoginToken.sign_registration(user, session_nonce, nil)
+
+      conn =
+        conn
+        |> init_test_session(login_handoff_nonce: session_nonce)
+        |> post(~p"/users/log-in", %{
+          "user" => %{"_login_token" => login_token}
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) =~ "/workspaces/"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) == "Account created successfully! Welcome."
+    end
+
+    test "returns a registered account to the destination signed into its token", %{conn: conn, user: user} do
+      user = set_password(user)
+      session_nonce = "registering-browser-session"
+
+      login_token =
+        StoryarnWeb.UserLoginToken.sign_registration(user, session_nonce, "/workspaces/invitations/abc")
+
+      conn =
+        conn
+        |> init_test_session(login_handoff_nonce: session_nonce)
+        |> post(~p"/users/log-in", %{
+          "user" => %{"_login_token" => login_token}
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == "/workspaces/invitations/abc"
+    end
+
+    test "keeps the registration destination for the next login when the handoff has expired", %{
+      conn: conn,
+      user: user
+    } do
+      user = set_password(user)
+      session_nonce = "registering-browser-session"
+
+      # The payload shape StoryarnWeb.UserLoginToken signs, issued past its 60-second validity.
+      expired_token =
+        Phoenix.Token.sign(
+          StoryarnWeb.Endpoint,
+          "user login",
+          {user.id, session_nonce, {:registration, "/workspaces/invitations/abc"}},
+          signed_at: System.system_time(:second) - 61
+        )
+
+      conn =
+        conn
+        |> init_test_session(login_handoff_nonce: session_nonce)
+        |> post(~p"/users/log-in", %{"user" => %{"_login_token" => expired_token, "email" => user.email}})
+
+      refute get_session(conn, :user_token)
+      assert get_session(conn, :user_return_to) == "/workspaces/invitations/abc"
+      assert redirected_to(conn) == ~p"/users/log-in"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) == "Your account was created. Log in to continue."
+
+      conn =
+        conn
+        |> recycle()
+        |> post(~p"/users/log-in", %{"user" => %{"email" => user.email, "password" => valid_user_password()}})
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == "/workspaces/invitations/abc"
+    end
+
+    test "asks a registered account to log in when its handoff is rejected", %{conn: conn, user: user} do
+      user = set_password(user)
+      login_token = StoryarnWeb.UserLoginToken.sign_registration(user, "registering-browser-session", nil)
+
+      conn =
+        conn
+        |> init_test_session(login_handoff_nonce: "another-browser-session")
+        |> post(~p"/users/log-in", %{
+          "user" => %{
+            "_login_token" => login_token,
+            "email" => user.email
+          }
+        })
+
+      refute get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/users/log-in"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) == "Your account was created. Log in to continue."
+      assert Phoenix.Flash.get(conn.assigns.flash, :email) == user.email
+      refute Phoenix.Flash.get(conn.assigns.flash, :login_error)
+    end
+
+    test "returns a failed Spanish login to the Spanish log-in page", %{conn: conn, user: user} do
+      conn =
+        post(conn, "/es/users/log-in", %{
+          "user" => %{"email" => user.email, "password" => "wrong password"}
+        })
+
+      refute get_session(conn, :user_token)
+      assert redirected_to(conn) == "/es/users/log-in"
+      assert Phoenix.Flash.get(conn.assigns.flash, :login_error)
+    end
+
     test "ignores a blank LiveView login token when credentials are present", %{conn: conn, user: user} do
       user = set_password(user)
 

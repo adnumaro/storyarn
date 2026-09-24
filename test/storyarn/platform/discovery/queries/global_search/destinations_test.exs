@@ -8,6 +8,7 @@ defmodule Storyarn.Platform.GlobalSearch.DestinationsTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Ideation
   alias Storyarn.Platform.GlobalSearch
   alias Storyarn.Projects
   alias Storyarn.Sheets
@@ -121,6 +122,130 @@ defmodule Storyarn.Platform.GlobalSearch.DestinationsTest do
 
       result = GlobalSearch.destinations(scope, "Limited", limit_per_type: 3)
       assert length(result.entities) == 3
+    end
+  end
+
+  describe "brainstorming destinations" do
+    test "finds open and archived sessions with project context, without exposing creative content",
+         %{scope: scope, project: project, workspace: workspace} do
+      {:ok, session} =
+        Ideation.create_session(scope, project.id, %{
+          title: "Kael motivations",
+          objective: "Hidden objective",
+          context: "Hidden context"
+        })
+
+      {:ok, archived} = Ideation.create_session(scope, project.id, %{title: "Kael origins"})
+      {:ok, _} = Ideation.archive_session(scope, project.id, archived.id, archived.revision)
+
+      assert [hit, archived_hit] = GlobalSearch.destinations(scope, "kael").entities
+      assert hit.type == :ideation_session
+      assert hit.id == session.id
+      assert hit.name == session.title
+      assert hit.shortcut == nil
+      assert hit.project_id == project.id
+      assert hit.project_slug == project.slug
+      assert hit.project_name == project.name
+      assert hit.workspace_slug == workspace.slug
+      assert hit.workspace_name == workspace.name
+      assert archived_hit.id == archived.id
+      refute Map.has_key?(hit, :objective)
+      refute Map.has_key?(hit, :context)
+      refute Map.has_key?(hit, :configuration)
+    end
+
+    test "uses composed project authorization for viewers and excludes inaccessible projects",
+         %{scope: scope, user: user} do
+      owner = user_fixture()
+      owner_scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+      visible = project_fixture(owner, %{workspace: workspace})
+      hidden = project_fixture(owner, %{workspace: workspace})
+      {:ok, session} = Ideation.create_session(owner_scope, visible.id, %{title: "Accessible session"})
+      {:ok, _} = Ideation.create_session(owner_scope, hidden.id, %{title: "Accessible session secret"})
+
+      assert GlobalSearch.destinations(scope, "Accessible session").entities == []
+      membership_fixture(visible, user, "viewer")
+
+      assert [%{id: id, type: :ideation_session}] = GlobalSearch.destinations(scope, "Accessible session").entities
+      assert id == session.id
+
+      {:ok, _} = Projects.delete_project(owner_scope, visible.id)
+      assert GlobalSearch.destinations(scope, "Accessible session").entities == []
+    end
+
+    test "never matches objectives, context or private ideas", %{scope: scope, project: project, user: user} do
+      {:ok, session} =
+        Ideation.create_session(scope, project.id, %{
+          title: "Visible session",
+          objective: "PrivateNeedle objective",
+          context: "PrivateNeedle context"
+        })
+
+      {:ok, _idea} =
+        Ideation.create_idea(scope, project.id, session.id, %{
+          title: "PrivateNeedle idea",
+          body: "<p>PrivateNeedle body</p>",
+          request_key: Ecto.UUID.generate(),
+          configuration_version: session.configuration_version
+        })
+
+      viewer = user_fixture()
+      membership_fixture(project, viewer, "viewer")
+
+      for actor <- [user, viewer] do
+        assert GlobalSearch.destinations(user_scope_fixture(actor), "PrivateNeedle").entities == []
+        assert [%{id: id}] = GlobalSearch.destinations(user_scope_fixture(actor), "Visible session").entities
+        assert id == session.id
+      end
+    end
+
+    test "excludes replaced sessions and never suggests sessions for generic deletion",
+         %{scope: scope, project: project} do
+      {:ok, session} = Ideation.create_session(scope, project.id, %{title: "Replaced session"})
+
+      assert [%{id: id}] = GlobalSearch.destinations(scope, "Replaced session").entities
+      assert id == session.id
+      assert GlobalSearch.deletable_entities(scope, "Replaced session") == []
+      assert GlobalSearch.deletable_entities(scope, "") == []
+
+      deleted_at = %{Storyarn.Platform.Shared.TimeHelpers.now() | microsecond: {0, 6}}
+
+      session
+      |> Ecto.Changeset.change(deleted_at: deleted_at)
+      |> Storyarn.Repo.update!()
+
+      assert GlobalSearch.destinations(scope, "Replaced session").entities == []
+    end
+
+    test "shares the character threshold and query truncation of other destinations",
+         %{scope: scope, project: project} do
+      {:ok, _} = Ideation.create_session(scope, project.id, %{title: "ñandú"})
+      prefix = String.duplicate("a", 100)
+      {:ok, session} = Ideation.create_session(scope, project.id, %{title: prefix})
+
+      assert GlobalSearch.destinations(scope, "").entities == []
+      assert GlobalSearch.destinations(scope, "ñ").entities == []
+      assert [%{name: "ñandú"}] = GlobalSearch.destinations(scope, "ñan").entities
+      assert [%{id: id}] = GlobalSearch.destinations(scope, prefix <> "ignored").entities
+      assert id == session.id
+    end
+
+    test "escapes SQL wildcards and applies the limit after matching titles",
+         %{scope: scope, project: project} do
+      {:ok, special} = Ideation.create_session(scope, project.id, %{title: "100%_done"})
+      {:ok, _} = Ideation.create_session(scope, project.id, %{title: "100 percent done"})
+      for n <- 1..4, do: Ideation.create_session(scope, project.id, %{title: "Limited session #{n}"})
+
+      assert [%{id: id}] = GlobalSearch.destinations(scope, "%_").entities
+      assert id == special.id
+      assert GlobalSearch.destinations(scope, "%%").entities == []
+
+      assert [%{name: "Limited session 1"}, %{name: "Limited session 2"}] =
+               GlobalSearch.destinations(scope, "Limited session", limit_per_type: 2).entities
+
+      # The match is the oldest session: a recent-list limit must not hide it.
+      assert [%{id: ^id}] = GlobalSearch.destinations(scope, "%_", limit_per_type: 1).entities
     end
   end
 

@@ -133,7 +133,7 @@
     "operations": {
       "goto": {
         "label": "Ir a…",
-        "description": "Abre un espacio de trabajo, proyecto, ficha, flujo o escena por su nombre.",
+        "description": "Abre un espacio de trabajo, proyecto, ficha, flujo, escena o sesión de Brainstorming por nombre.",
         "example": "Ir a Capítulo 2",
         "phrase": {
           "prefix": "Ir a"
@@ -144,7 +144,7 @@
       },
       "create": {
         "label": "Crear contenido…",
-        "description": "Crea una ficha, flujo o escena en un proyecto que puedas editar.",
+        "description": "Crea una ficha, flujo, escena o sesión de Brainstorming en un proyecto que puedas editar.",
         "example": "Crear un flujo en Veilbreak",
         "phrase": {
           "prefix": "Crear",
@@ -193,6 +193,7 @@
       "projects": "Proyectos",
       "workspace_settings": "Ajustes del espacio de trabajo",
       "entities": "Ir a"
-    }
+    },
+    "create_brainstorming_session": "Nueva sesión de Brainstorming"
   }
 }

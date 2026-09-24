@@ -65,15 +65,18 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       assert {:error, {:redirect, %{to: registration_path}}} =
                live(conn, invitation_path)
 
-      {:ok, view, _html} = live(conn, registration_path)
+      {_registration, conn} =
+        register_through_session_handoff(conn, registration_path, %{"password" => password})
 
-      assert {:error, {:live_redirect, %{to: ^invitation_path}}} =
-               render_click(view, "save", %{"user" => %{"password" => password}})
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == invitation_path
 
-      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
-               live(conn, invitation_path)
+      workspace_path = ~p"/workspaces/#{workspace.slug}"
 
-      assert flash["info"] =~ "Invitation accepted"
+      assert {:error, {:redirect, %{to: ^workspace_path, flash: flash}}} =
+               live(recycle(conn), invitation_path)
+
+      assert flash["info"] == "Invitation accepted! Welcome to #{workspace.name}."
 
       user = Accounts.get_user_by_email(email)
       assert Accounts.get_user_by_email_and_password(email, password)
@@ -83,6 +86,86 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       assert invitation.accepted_at
 
       assert Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: user.id)
+    end
+
+    test "keeps the invitation when the registration handoff is rejected", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      email = "late-invitee@example.com"
+      password = valid_user_password()
+
+      {encoded_token, _invitation} = workspace_invitation_fixture(workspace, owner, email)
+      invitation_path = ~p"/workspaces/invitations/#{encoded_token}"
+
+      assert {:error, {:redirect, %{to: registration_path}}} = live(conn, invitation_path)
+
+      {:ok, view, _html} = live(conn, registration_path)
+      render_click(view, "save", %{"user" => %{"password" => password}})
+
+      login_token =
+        LiveVue.Test.get_vue(view, name: "live/auth/registration/AuthRegistrationForm").props["login-token"]
+
+      # A browser session the token was not bound to rejects it, as an expired token does.
+      conn = post(build_conn(), ~p"/users/log-in", %{"user" => %{"_login_token" => login_token, "email" => email}})
+
+      refute get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/users/log-in"
+
+      conn =
+        conn
+        |> recycle()
+        |> post(~p"/users/log-in", %{"user" => %{"email" => email, "password" => password}})
+
+      assert redirected_to(conn) == invitation_path
+
+      workspace_path = ~p"/workspaces/#{workspace.slug}"
+
+      assert {:error, {:redirect, %{to: ^workspace_path}}} = live(recycle(conn), invitation_path)
+
+      user = Accounts.get_user_by_email(email)
+      assert Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: user.id)
+    end
+
+    test "keeps a Spanish invitation in Spanish through password setup", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      email = "nuevo-invitado@example.com"
+
+      {encoded_token, _invitation} = workspace_invitation_fixture(workspace, owner, email)
+      invitation_path = "/es/workspaces/invitations/#{encoded_token}"
+
+      assert {:error, {:redirect, %{to: registration_path, flash: flash}}} = live(conn, invitation_path)
+      assert flash["info"] =~ "Crea una contraseña"
+      assert "/es/users/register/" <> _rest = registration_path
+
+      assert {_registration_token, ^invitation_path} =
+               registration_redirect(String.replace_prefix(registration_path, "/es", ""))
+
+      {_registration, conn} =
+        register_through_session_handoff(conn, registration_path, %{"password" => valid_user_password()})
+
+      assert redirected_to(conn) == invitation_path
+      assert Accounts.get_user_by_email(email).locale == "es"
+
+      workspace_path = ~p"/workspaces/#{workspace.slug}"
+      assert {:error, {:redirect, %{to: ^workspace_path}}} = live(recycle(conn), invitation_path)
+    end
+
+    test "sends an invitee who is signed in as someone else to log in", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      invitee = user_fixture()
+      other_user = user_fixture()
+
+      {encoded_token, _invitation} =
+        workspace_invitation_fixture(workspace, owner, invitee.email)
+
+      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
+               conn
+               |> log_in_user(other_user)
+               |> live(~p"/workspaces/invitations/#{encoded_token}")
+
+      assert flash["info"] =~ invitee.email
     end
 
     test "shows error for already accepted invitation", %{conn: conn} do
@@ -126,7 +209,6 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace = workspace_fixture(owner)
       invitee = user_fixture()
       existing_member = user_fixture()
-      conn = init_test_session(conn, %{locale: "es"})
 
       {encoded_token, invitation} =
         workspace_invitation_fixture(workspace, owner, invitee.email)
@@ -134,7 +216,7 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace_membership_fixture(workspace, existing_member, "viewer")
 
       assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
-               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+               live(conn, "/es/workspaces/invitations/#{encoded_token}")
 
       assert flash["error"] =~ "límite de miembros"
       refute Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: invitee.id)
@@ -144,8 +226,7 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
 
   describe "mount with invalid token" do
     test "renders error page with a locale-aware homepage for invalid token", %{conn: conn} do
-      conn = init_test_session(conn, %{locale: "es"})
-      {:ok, view, _html} = live(conn, ~p"/workspaces/invitations/invalidtoken123")
+      {:ok, view, _html} = live(conn, "/es/workspaces/invitations/invalidtoken123")
 
       vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/WorkspaceInvitationResponse")
       assert vue.component == "live/workspace/invitation/WorkspaceInvitationResponse"

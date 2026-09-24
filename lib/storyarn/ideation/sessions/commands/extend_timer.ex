@@ -4,7 +4,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.ExtendTimer do
 
   def run(scope, project_id, session_id, revision, version, seconds)
       when is_integer(seconds) and seconds > 0 and seconds <= 86_400 do
-    TimerMutation.run(scope, project_id, session_id, revision, fn session, access, timer ->
+    TimerMutation.run(scope, project_id, session_id, revision, fn session, access, _round, timer ->
       with {:ok, timer} <- TimerMutation.current(timer, version),
            {:ok, current_remaining} <- extendable(timer),
            true <- timer.duration_seconds + seconds <= 86_400 || {:error, :invalid_timer_duration} do

@@ -75,29 +75,31 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   defp accept_ready_user(socket, invitation, user) do
     case Projects.accept_invitation(invitation, user) do
       {:ok, _membership} ->
-        {:ok,
-         socket
-         |> put_flash(
-           :info,
-           dgettext(
-             "projects",
-             "Invitation accepted! Log in with %{email} to get started.",
-             email: invitation.email
+        if InvitationHelpers.signed_in_as?(socket, user) do
+          project = invitation.project
+
+          {:ok,
+           socket
+           |> put_flash(
+             :info,
+             dgettext("projects", "Invitation accepted! Welcome to %{project}.", project: project.name)
            )
-         )
-         |> redirect(to: ~p"/users/log-in")}
+           |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+        else
+          accepted_redirect_to_log_in(socket, invitation)
+        end
 
       {:error, :already_accepted} ->
         {:ok,
          socket
          |> put_flash(:info, dgettext("projects", "This invitation has already been accepted."))
-         |> redirect(to: ~p"/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
 
       {:error, :already_member} ->
         {:ok,
          socket
          |> put_flash(:info, dgettext("projects", "You're already a member of this project."))
-         |> redirect(to: ~p"/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
 
       error ->
         InvitationHelpers.handle_acceptance_error(
@@ -112,9 +114,24 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
     end
   end
 
+  defp accepted_redirect_to_log_in(socket, invitation) do
+    {:ok,
+     socket
+     |> put_flash(
+       :info,
+       dgettext(
+         "projects",
+         "Invitation accepted! Log in with %{email} to get started.",
+         email: invitation.email
+       )
+     )
+     |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
+  end
+
   defp redirect_to_registration(socket, invitation, token, registration_token) do
-    invitation_path = ~p"/projects/invitations/#{token}"
-    registration_path = ~p"/users/register/#{registration_token}?#{[return_to: invitation_path]}"
+    locale = socket.assigns.locale
+    invitation_path = PublicURLs.project_invitation_path(locale, token)
+    registration_path = PublicURLs.invited_registration_path(locale, registration_token, invitation_path)
 
     {:ok,
      socket

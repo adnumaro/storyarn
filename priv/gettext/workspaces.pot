@@ -71,7 +71,7 @@ msgstr ""
 msgid "Role updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:95
+#: lib/storyarn_web/live/workspace_live/invitation.ex:97
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr ""
@@ -116,12 +116,12 @@ msgstr ""
 msgid "You don't have permission to manage this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:104
+#: lib/storyarn_web/live/workspace_live/invitation.ex:106
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:82
+#: lib/storyarn_web/live/workspace_live/invitation.ex:128
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
@@ -190,7 +190,7 @@ msgstr ""
 msgid "just now"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:129
+#: lib/storyarn_web/live/workspace_live/invitation.ex:146
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr ""
@@ -256,7 +256,7 @@ msgstr ""
 msgid "Too many invitations have been sent. Try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:112
+#: lib/storyarn_web/live/workspace_live/invitation.ex:114
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""
@@ -396,4 +396,9 @@ msgstr ""
 #: lib/storyarn_web/live/settings_live/workspace_ai.ex:32
 #, elixir-autogen, elixir-format
 msgid "Workspace AI"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:83
+#, elixir-autogen, elixir-format
+msgid "Invitation accepted! Welcome to %{workspace}."
 msgstr ""

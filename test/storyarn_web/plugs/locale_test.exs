@@ -104,55 +104,21 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
       assert conn.assigns.locale == "en"
     end
 
-    test "uses locale from URL params" do
-      conn =
-        :get
-        |> build_conn("/users/log-in?locale=es")
-        |> init_test_session(%{})
-        |> fetch_query_params()
-        |> Locale.call([])
-
-      assert conn.assigns.locale == "es"
-      assert get_session(conn, :locale) == "es"
-    end
-
-    test "ignores invalid locale from URL params" do
-      conn =
-        :get
-        |> build_conn("/users/log-in?locale=xx")
-        |> init_test_session(%{})
-        |> fetch_query_params()
-        |> Locale.call([])
-
-      assert conn.assigns.locale == "en"
-    end
-
     test "uses locale from session" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{locale: "es"})
         |> fetch_query_params()
         |> Locale.call([])
 
       assert conn.assigns.locale == "es"
-    end
-
-    test "URL params take precedence over session" do
-      conn =
-        :get
-        |> build_conn("/users/log-in?locale=en")
-        |> init_test_session(%{locale: "es"})
-        |> fetch_query_params()
-        |> Locale.call([])
-
-      assert conn.assigns.locale == "en"
     end
 
     test "uses locale from Accept-Language header" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "es-MX,es;q=0.9,en;q=0.8")
@@ -164,7 +130,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "uses the first supported alternative instead of only inspecting the first range" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "fr-FR, es-ES;q=0.9, en;q=0.8")
@@ -176,7 +142,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "orders language ranges by quality value" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "en;q=0.2, es;q=0.9")
@@ -188,7 +154,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "ignores language ranges with a zero quality value" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "es;q=0, fr;q=1")
@@ -200,7 +166,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "keeps an explicitly excluded English locale excluded from a wildcard" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "en;q=0,*;q=0.5")
@@ -213,7 +179,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "applies a wildcard only to locales without an explicit quality" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "en;q=0.2,*;q=0.9")
@@ -226,7 +192,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "uses English when Spanish is explicitly excluded from a wildcard" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "es;q=0,*;q=0.5")
@@ -239,7 +205,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "ignores malformed quality values and continues with valid alternatives" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "es;q=invalid, en;q=0.8")
@@ -251,7 +217,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "normalizes language range case and underscore separators" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "ES_mx")
@@ -263,7 +229,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "handles Accept-Language with just language code" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "en")
@@ -275,7 +241,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "falls back to default with unsupported Accept-Language" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "fr-FR,fr;q=0.9")
@@ -287,7 +253,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "session takes precedence over Accept-Language" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{locale: "es"})
         |> fetch_query_params()
         |> put_req_header("accept-language", "en-US")
@@ -296,21 +262,54 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
       assert conn.assigns.locale == "es"
     end
 
-    test "stores locale in session for subsequent requests" do
+    test "ignores a locale query parameter" do
       conn =
         :get
-        |> build_conn("/users/log-in?locale=es")
+        |> build_conn("/users/settings?locale=es")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> Locale.call([])
 
-      assert get_session(conn, :locale) == "es"
+      assert conn.assigns.locale == "en"
+      assert get_session(conn, :locale) == "en"
+    end
+
+    test "an access page's language becomes the site preference" do
+      for path <- [
+            "/es/users/log-in",
+            "/es/users/register",
+            "/es/users/reset-password/token",
+            "/es/projects/invitations/token",
+            "/es/workspaces/invitations/token"
+          ] do
+        conn =
+          :get
+          |> build_conn(path)
+          |> init_test_session(%{locale: "en"})
+          |> fetch_query_params()
+          |> Locale.call([])
+
+        assert conn.assigns.locale == "es"
+        assert get_session(conn, :locale) == "es"
+      end
+    end
+
+    test "an unprefixed access page is English and becomes the site preference" do
+      conn =
+        :get
+        |> build_conn("/users/log-in")
+        |> init_test_session(%{locale: "es"})
+        |> fetch_query_params()
+        |> Locale.call([])
+
+      assert conn.assigns.locale == "en"
+      assert get_session(conn, :locale) == "en"
     end
 
     test "ignores invalid session locale and falls back" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{locale: "invalid"})
         |> fetch_query_params()
         |> Locale.call([])
@@ -321,7 +320,7 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
     test "handles Accept-Language with uppercase" do
       conn =
         :get
-        |> build_conn("/users/log-in")
+        |> build_conn("/users/settings")
         |> init_test_session(%{})
         |> fetch_query_params()
         |> put_req_header("accept-language", "ES-AR")

@@ -79,7 +79,7 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
     assert_receive {:email, email}
     assert email.to == [{"", invitation.email}]
     assert email.text_body =~ "Ada"
-    assert email.text_body =~ "/projects/invitations/"
+    assert email.text_body =~ "/es/projects/invitations/"
   end
 
   test "cancels a payload owned by another invitation context" do

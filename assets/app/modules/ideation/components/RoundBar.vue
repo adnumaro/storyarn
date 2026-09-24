@@ -52,7 +52,7 @@ const {
   pending?: boolean;
   /** A dragged note is pressing against this header's line. */
   contact?: boolean;
-  /** The session timer, shown on the round in progress only. */
+  /** The round's own clock; only the round in progress has one. */
   timer?: RoundTimerContext | null;
   /** Notes in the band, hidden ones included. */
   count?: number;

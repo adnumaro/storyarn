@@ -52,7 +52,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 9, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 10, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -209,13 +209,13 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
         ["rows", "rounds"],
         &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
       )
-      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> row |> Map.put("reveal_on_expiry", false) |> Map.delete("round_id") end))
       |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
       |> update_in(["rows"], &Map.drop(&1, ~w(decisions decision_revisions decision_applications)))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 9
+    assert normalized["version"] == 10
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)
@@ -423,13 +423,52 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     legacy =
       data
       |> Map.put("version", 8)
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
       |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
       |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 9
+    assert normalized["version"] == 10
     assert normalized["rows"]["decisions"] == []
+  end
+
+  test "version-nine capsules retain each timer's round while dropping the earlier decision model", ctx do
+    {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+
+    {:ok, _} =
+      Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, session.revision, %{seconds: 300})
+
+    {:ok, first_timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {ctx, second_round} = new_round(ctx)
+
+    {:ok, _} =
+      Ideation.start_timer(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, %{seconds: 600})
+
+    {:ok, second_timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
+    {:ok, data} = ctx |> capture() |> Capsule.open()
+    stripped = ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)
+
+    legacy =
+      data
+      |> Map.put("version", 9)
+      |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
+      |> update_in(["rows"], &Map.delete(&1, "decision_applications"))
+
+    assert legacy["rows"]["decisions"] != []
+    assert legacy["rows"]["decision_revisions"] != []
+    assert {:ok, capsule} = Capsule.seal(legacy)
+    assert {:ok, normalized} = Capsule.open(capsule)
+    assert normalized["version"] == 10
+    assert normalized["rows"]["decisions"] == []
+    assert normalized["rows"]["decision_revisions"] == []
+    assert normalized["rows"]["decision_applications"] == []
+    assert normalized["rows"]["timers"] == data["rows"]["timers"]
+
+    assert Enum.map(normalized["rows"]["timers"], &{&1["id"], &1["round_id"], &1["status"]}) == [
+             {first_timer.id, first_timer.round_id, "cancelled"},
+             {second_timer.id, second_round.id, "running"}
+           ]
   end
 
   defp proposal_attrs(ctx, selections) do

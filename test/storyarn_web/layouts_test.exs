@@ -247,6 +247,11 @@ defmodule StoryarnWeb.LayoutsTest do
                conn: %{request_path: "/projects/invitations/secret-token"}
              }) == "noindex, follow"
 
+      assert Layouts.seo_robots(%{conn: %{request_path: "/es/users/log-in"}}) == "noindex, follow"
+
+      assert Layouts.seo_robots(%{conn: %{request_path: "/es/workspaces/invitations/secret-token"}}) ==
+               "noindex, follow"
+
       assert Layouts.seo_robots(%{conn: %{request_path: "/es/blog"}}) == nil
     end
 

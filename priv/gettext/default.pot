@@ -11,17 +11,17 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:114
+#: lib/storyarn_web/components/layouts.ex:115
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:113
+#: lib/storyarn_web/components/layouts.ex:114
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:112
+#: lib/storyarn_web/components/layouts.ex:113
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -141,6 +141,7 @@ msgstr ""
 msgid "Brainstorming"
 msgstr ""
 
+#: lib/storyarn_web/live/hooks/palette.ex:606
 #: lib/storyarn_web/live/ideation_live/sidebar.ex:118
 #, elixir-autogen, elixir-format
 msgid "Untitled session"

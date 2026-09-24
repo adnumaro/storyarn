@@ -33,7 +33,7 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
 
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, third.id, third.revision)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 9, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 10, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["groups"]) == 1
     assert length(rows["group_memberships"]) == 3
     assert length(rows["group_revisions"]) == 2
@@ -165,7 +165,7 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
         ["rows", "rounds"],
         &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
       )
-      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> row |> Map.put("reveal_on_expiry", false) |> Map.delete("round_id") end))
       |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
       |> update_in(
         ["rows"],
@@ -177,7 +177,7 @@ defmodule Storyarn.Ideation.GroupRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 9
+    assert normalized["version"] == 10
     assert normalized["rows"]["groups"] == []
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
