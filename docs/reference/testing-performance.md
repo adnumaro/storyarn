@@ -79,7 +79,11 @@ Sharded jobs restore the same build key, and only their first shard saves it.
 
 CI runs Elixir lint, JS lint and Vitest, and export validation as separate jobs.
 ExUnit runs in two `--partitions` shards plus the source-scan shard, and
-Playwright in two partitions. Each shard sets its own `MIX_TEST_PARTITION`. The
+Playwright in two partitions. Each shard sets its own `MIX_TEST_PARTITION`, but
+only on the steps after compilation. The variable changes the Repo's database in
+`config/test.exs`. On a fresh checkout the config files are newer than the
+restored manifest, so Mix compares the evaluated configuration, finds a change
+for `:storyarn` and recompiles every module. The
 JS job needs `deps/` for the Phoenix and LiveVue npm packages but never compiles
 Elixir. Vitest drops LiveVue's Vite plugin. Its dev-server hook exits the
 process when stdin closes, and CI runners close it, so Vitest used to exit 0

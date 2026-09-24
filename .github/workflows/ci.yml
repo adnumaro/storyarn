@@ -153,9 +153,6 @@ jobs:
             partition: 3
             args: --only test_group:source_scans
 
-    env:
-      MIX_TEST_PARTITION: ${{ matrix.partition }}
-
     services:
       postgres:
         image: postgres:15
@@ -227,9 +224,11 @@ jobs:
           path: _build
           key: ${{ steps.build-cache.outputs.cache-primary-key }}
 
+      # MIX_TEST_PARTITION changes the Repo config, so setting it before compiling recompiles everything.
       - name: Run Elixir tests
         run: mix test ${{ matrix.args }}
         env:
+          MIX_TEST_PARTITION: ${{ matrix.partition }}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
 
   e2e:
@@ -240,9 +239,6 @@ jobs:
       fail-fast: false
       matrix:
         partition: [1, 2]
-
-    env:
-      MIX_TEST_PARTITION: ${{ matrix.partition }}
 
     services:
       postgres:
@@ -330,14 +326,17 @@ jobs:
           path: _build
           key: ${{ steps.build-cache.outputs.cache-primary-key }}
 
+      # MIX_TEST_PARTITION changes the Repo config, so setting it before compiling recompiles everything.
       - name: Setup database
         run: mix ecto.create && mix ecto.migrate
         env:
+          MIX_TEST_PARTITION: ${{ matrix.partition }}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
 
       - name: Run E2E tests
         run: mix test.e2e --partitions 2
         env:
+          MIX_TEST_PARTITION: ${{ matrix.partition }}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
           PLAYWRIGHT_HEADLESS: true
 
