@@ -211,7 +211,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
       |> put(%{
         mode: "revise",
         selected: selected,
-        sources: selected.proposal.sources,
+        sources: revision_basis(selected).sources,
         sourceResults: [],
         sourceNextCursor: nil,
         searched: false,
@@ -486,14 +486,19 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     })
   end
 
-  defp pinned_source(%{mode: "revise", selected: %{proposal: %{sources: sources}}}, source) do
-    Enum.find(sources, fn pinned ->
+  defp pinned_source(%{mode: "revise", selected: %{} = selected}, source) do
+    Enum.find(revision_basis(selected).sources, fn pinned ->
       pinned.available and pinned.type == source.type and pinned.identity == source.identity and
         pinned.version == source.version
     end)
   end
 
   defp pinned_source(_, _), do: nil
+
+  # A revision starts from the agreement in force unless one is already pending;
+  # a withdrawn revision's sources never come back.
+  defp revision_basis(%{status: :accepted, accepted: %{} = agreement}), do: agreement
+  defp revision_basis(selected), do: selected.proposal
 
   # The session's origin and references come first in the Affects picker; the
   # project search covers anything else.

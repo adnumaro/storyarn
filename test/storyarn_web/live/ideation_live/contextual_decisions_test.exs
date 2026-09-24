@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.IdeationLive.ContextualDecisionsTest do
   use StoryarnWeb.ConnCase, async: true
 
+  import Ecto.Query, only: [from: 2]
   import Phoenix.LiveViewTest
   import Storyarn.FlowsFixtures
   import Storyarn.IdeationFixtures
@@ -126,6 +127,43 @@ defmodule StoryarnWeb.IdeationLive.ContextualDecisionsTest do
 
     render(view)
     assert launcher(view)["decisions"]["toApply"] == 0
+  end
+
+  test "Undo never writes on an agreement accepted after the mark", ctx do
+    {:ok, decision} = register(ctx, [%{type: "sheet", id: ctx.mara.id}])
+    view = open(ctx, ctx.author, "?decision=#{decision.id}&session=#{ctx.session.id}")
+    key = launcher(view)["banner"]["targetKey"]
+    render_hook(view, "exploration_decision_declare", declare(ctx, decision, key, "applied"))
+    assert launcher(view)["banner"]["marked"] == %{"state" => "applied"}
+
+    {:ok, sources} = sources(ctx)
+
+    {:ok, again} =
+      Ideation.revise_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id, decision.version, %{
+        title: "Mara leaves the guild",
+        conclusion: "Mara leaves the guild at dawn.",
+        verb: "change",
+        targets: [%{type: "sheet", id: ctx.mara.id}],
+        responsible_id: ctx.author.user.id,
+        register: true,
+        sources: sources,
+        request_key: Ecto.UUID.generate()
+      })
+
+    render(view)
+    assert launcher(view)["banner"]["marked"] == nil
+
+    render_hook(view, "exploration_decision_undo", %{
+      source_key: "sheet:#{ctx.mara.id}",
+      request_key: Ecto.UUID.generate()
+    })
+
+    assert Repo.aggregate(
+             from(a in Storyarn.Ideation.Decisions.Application,
+               where: a.decision_id == ^decision.id and a.agreement == ^again.accepted_version
+             ),
+             :count
+           ) == 0
   end
 
   defp declare(ctx, decision, key, state) do

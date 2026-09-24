@@ -444,6 +444,53 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     refute state(missing)["open"]
   end
 
+  test "revising after a withdrawn revision starts again from the agreement's sources", ctx do
+    other =
+      idea_fixture(ctx, %{title: "A louder ending", body: "<p>The player leaves.</p>", visibility: :shared})
+
+    {:ok, proposed} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, direct_proposal(ctx))
+
+    {:ok, accepted} =
+      Ideation.accept_decision(ctx.facilitator, ctx.project.id, ctx.session.id, proposed.id, 1, Ecto.UUID.generate())
+
+    {:ok, [louder]} =
+      Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [%{type: "idea", id: other.id}])
+
+    revision =
+      Map.merge(direct_proposal(ctx), %{
+        conclusion: "Let the player leave instead.",
+        sources: [Map.take(louder, [:type, :id, :version, :identity])]
+      })
+
+    {:ok, revised} =
+      Ideation.revise_decision(ctx.author, ctx.project.id, ctx.session.id, accepted.id, accepted.version, revision)
+
+    {:ok, kept} =
+      Ideation.withdraw_decision(
+        ctx.author,
+        ctx.project.id,
+        ctx.session.id,
+        revised.id,
+        revised.version,
+        Ecto.UUID.generate()
+      )
+
+    view = open_board(ctx, ctx.author)
+    render_hook(view, "decisions_open", payload(view, ctx, %{decision_id: kept.id}))
+    act(view, ctx, "begin_revision", %{decision_id: kept.id, revision: kept.version})
+    assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id]
+
+    act(
+      view,
+      ctx,
+      "revise",
+      Map.merge(proposal(view, ctx), %{decision_id: kept.id, revision: kept.version, owner_id: ctx.facilitator.user.id})
+    )
+
+    {:ok, saved} = Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, kept.id)
+    assert Enum.map(saved.proposal.sources, & &1.id) == [ctx.idea.id]
+  end
+
   defp open_board(ctx, actor) do
     {:ok, view, _} = live(log_in_user(ctx.conn, actor.user), path(ctx))
     view

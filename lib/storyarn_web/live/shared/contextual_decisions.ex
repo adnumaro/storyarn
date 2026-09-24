@@ -120,18 +120,20 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
          state when state in @marks <- params["state"],
          {:ok, _} <- submit(socket, item.decision, key, state, params["note"], params["request_key"]) do
       socket = reload(socket)
-      {:ok, mark_banner(socket, decision_id, state, state_of(item))}
+      {:ok, mark_banner(socket, decision_id, %{state: state, previous: state_of(item), agreement: agreement(item)})}
     else
       {:error, reason} -> {:error, reason, reload(socket)}
       _ -> {:error, :invalid_parameters, socket}
     end
   end
 
-  # Undo states the target's previous application again; the history keeps both.
+  # Undo states the target's previous application again, on the agreement it was
+  # marked on; the history keeps both. A newer agreement is never written to.
   defp declare("undo", params, socket) do
-    with %{marked: %{previous: previous}} = banner <- socket.assigns.decision_banner,
+    with %{marked: %{previous: previous, agreement: agreement}} = banner <- socket.assigns.decision_banner,
          %{} = item <- find(socket, banner.session_id, banner.decision_id),
-         {:ok, _} <- submit(socket, item.decision, banner.target_key, previous, nil, params["request_key"]) do
+         decision = %{item.decision | accepted_version: agreement},
+         {:ok, _} <- submit(socket, decision, banner.target_key, previous, nil, params["request_key"]) do
       {:ok, socket |> reload() |> clear_mark()}
     else
       {:error, reason} -> {:error, reason, reload(socket)}
@@ -157,10 +159,12 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
     )
   end
 
-  defp mark_banner(%{assigns: %{decision_banner: %{decision_id: id} = banner}} = socket, id, state, previous),
-    do: assign(socket, :decision_banner, %{banner | marked: %{state: state, previous: previous}, error: nil})
+  defp mark_banner(%{assigns: %{decision_banner: %{decision_id: id} = banner}} = socket, id, marked),
+    do: assign(socket, :decision_banner, %{banner | marked: marked, error: nil})
 
-  defp mark_banner(socket, _id, _state, _previous), do: socket
+  defp mark_banner(socket, _id, _marked), do: socket
+
+  defp agreement(item), do: item.decision.accepted_version
 
   defp clear_mark(%{assigns: %{decision_banner: %{} = banner}} = socket),
     do: assign(socket, :decision_banner, %{banner | marked: nil})
@@ -218,7 +222,7 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
               marked: nil,
               error: nil
             },
-            keep
+            kept_mark(keep, agreement)
           )
         )
 
@@ -226,6 +230,10 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
         assign(socket, :decision_banner, nil)
     end
   end
+
+  # A mark belongs to the agreement it was made on; a newer agreement drops it.
+  defp kept_mark(%{marked: %{agreement: agreement}} = keep, agreement), do: keep
+  defp kept_mark(keep, _agreement), do: Map.delete(keep, :marked)
 
   defp find(socket, session_id, decision_id),
     do: Enum.find(socket.assigns.decision_items, &(&1.session.id == session_id and &1.decision.id == decision_id))
