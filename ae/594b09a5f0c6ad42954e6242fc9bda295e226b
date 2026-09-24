@@ -1,0 +1,234 @@
+priv/gettext/projects.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,39,44-45,50,59-60,75,82,89,96,168-169,171-174,209,285-286,291-292,297,302,307,312,317,322,327,332,337-338,349,364,384,389,394-395,400,425,430,435,440,460,480,510,525,530,535,541,546,551,576,596,607,613,624-626,631,641-642,647-648,658-659,664-665,675,680-681,686,691,694,704-705,715,720,725,745,750,755,760,765,770,775,780,785,795,800,805-806,811,816,821,826,831,836,841,846,851,856,1189,1196,1201,1206,1211,1265,1270,1275,1280,1306
+lib/storyarn_web/live/asset_live/index.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 9,324-327
+test/storyarn_web/live/project_live/settings_test.exs
+  s_c335c90a020cdb::t_0e76082aef446e 1723-1746,1779-1784
+  s_c335c90a020cdb::t_94eb001898a237 1785
+lib/storyarn_web/live/settings_live/workspace_plan.ex
+  s_c335c90a020cdb::t_712687933e6bf3 74,77-79
+  s_c335c90a020cdb::t_5e43c2ceeb4a67 80
+priv/gettext/es/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,51-55,96,133
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_c335c90a020cdb::t_10085aafef2ed3 15,265-270
+  s_c335c90a020cdb::t_712687933e6bf3 75-82
+lib/storyarn/commercial/execution/storage_accounting.ex
+  s_c335c90a020cdb::t_798f76b79b0196 1529,1536-1542
+  s_c335c90a020cdb::t_a6aeb99ad65e59 1543
+lib/storyarn_web/live/project_settings_live/usage_limits.ex
+  s_c335c90a020cdb::t_712687933e6bf3 7-12,87
+assets/app/live/workspace/settings/WorkspaceSettingsPlan.vue
+  s_c335c90a020cdb::t_e39fb9bea64be7 22-23,63,68-69,71-80
+assets/app/locales/en/layout.json
+  s_c335c90a020cdb::t_8c325cbe4759ab 3-5
+lib/storyarn/commercial/execution/limits.ex
+  s_c335c90a020cdb::t_f411e323cd8c8d 345,357
+  s_c335c90a020cdb::t_5194a7375fae34 338-339,351
+  s_c335c90a020cdb::t_ce55240d871766 352
+lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 11,113,115
+assets/app/locales/es/layout.json
+  s_c335c90a020cdb::t_8c325cbe4759ab 3-5
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,29,34-35,40,45,50,55-56
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_c335c90a020cdb::t_cf44f232583ae5 58,83-84,105-106,138,173,314,368,379,385,400,456-457,482-483,664,669,674,684,804-806,827
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,29,34-37,42,52-53,58-59,64,69,79,101-102,111-112,130-132,198,209,214,219,224,229,234,239,244,249,254,323,328-329,339,344,349,354-355,360,365,371,376,381
+lib/storyarn_web/components/layouts.ex
+  s_c335c90a020cdb::t_f31e327b0eee6d 107-108,112-118
+  s_c335c90a020cdb::t_45ac13d1154a93 119
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_c335c90a020cdb::t_e39fb9bea64be7 111-112,160,164-169
+  s_c335c90a020cdb::t_4fa62faeff5567 136-137,183,194,717-724,744-751
+  s_c335c90a020cdb::t_cff13779f2de14 182
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_c335c90a020cdb::t_d1d559c510d6f8 394-433
+  s_c335c90a020cdb::t_dfe3861b3f75c1 434-448
+test/storyarn_web/live/shared/plan_limit_flash_test.exs
+  s_c335c90a020cdb::t_1c8c31d624fb8c 1-112,114-127
+  s_c335c90a020cdb::t_c7be4499cad275 113
+priv/gettext/scenes.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 58,83-84,105-106,138,173,314,368,379,385,400,456-457,482-483,664,669,674,684,804-806,827
+assets/app/locales/en/settings.json
+  s_c335c90a020cdb::t_f0d816aec70397 310-313
+lib/storyarn/scenes/versioning/commands/named_version_capacity.ex
+  s_c335c90a020cdb::t_f411e323cd8c8d 70-71,75
+assets/app/locales/es/settings.json
+  s_c335c90a020cdb::t_f0d816aec70397 310-313
+test/storyarn/commercial/execution/limits_test.exs
+  s_c335c90a020cdb::t_2d386e5c497ea5 9,11,523-648
+assets/app/live/layouts/flash/FlashGroup.vue
+  s_c335c90a020cdb::t_8c325cbe4759ab 5,10-14,20,39,63-66,76-79,131,156,159
+  s_c335c90a020cdb::t_ba8cc0379fe767 7-8,71
+  s_c335c90a020cdb::t_bab0caaa14c07f 132-155,157-158
+  s_c335c90a020cdb::t_61c2e24787b5a3 9,67-69,160-161
+lib/storyarn/sheets/versioning/commands/named_version_capacity.ex
+  s_c335c90a020cdb::t_f411e323cd8c8d 76-77,81
+assets/app/locales/es/project-settings.json
+  s_c335c90a020cdb::t_c78ac341e36c99 227
+  s_c335c90a020cdb::t_4fa62faeff5567 228
+assets/app/test/live/layouts/flash/FlashGroup.test.ts
+  s_c335c90a020cdb::t_d1d559c510d6f8 1-66
+assets/app/test/live/project/settings/ProjectSettingsVersionControl.test.ts
+  s_c335c90a020cdb::t_dfe3861b3f75c1 108-125
+lib/storyarn/flows/editor/commands/item_capacity.ex
+  s_c335c90a020cdb::t_f411e323cd8c8d 55-56,61
+lib/storyarn/sheets/editor/commands/item_capacity.ex
+  s_c335c90a020cdb::t_f411e323cd8c8d 58-59,63
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_c335c90a020cdb::t_095cd3803feef4 18,93,110
+priv/gettext/assets.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,29,34-35,40,45,50,55-56
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,29,34-35,40,45,50,55-56
+lib/storyarn_web/live/project_settings_live/templates.ex
+  s_c335c90a020cdb::t_10085aafef2ed3 11,181-185
+lib/storyarn/scenes/editor/commands/item_capacity.ex
+  s_c335c90a020cdb::t_f411e323cd8c8d 56-57,62
+priv/repo/migrations/20260924100000_restrict_subscription_statuses.exs
+  s_c335c90a020cdb::t_53258d5197c834 1-17
+lib/storyarn/flows/versioning/commands/named_version_capacity.ex
+  s_c335c90a020cdb::t_f411e323cd8c8d 77-78,82
+lib/storyarn/commercial/queries/entitlements.ex
+  s_c335c90a020cdb::t_404f1f5304bfae 12
+test/storyarn/commercial/reference_data/plan_test.exs
+  s_c335c90a020cdb::t_780228c536a0b1 24-57
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_c335c90a020cdb::t_095cd3803feef4 16,99,117
+lib/storyarn_web/live/sheet_live/version_events.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 17,142,182
+  s_c335c90a020cdb::t_ad411ff3b19bb1 311-318
+test/storyarn/commercial/rules/effective_plan_test.exs
+  s_c335c90a020cdb::t_780228c536a0b1 1-22
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_c335c90a020cdb::t_095cd3803feef4 16,99,116
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,36-37,43,48,53,70,97,103,106,135,169,174-175,191,201,228,233,347,352-353,378-379,384,389,394
+priv/gettext/flows.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,36-37,43,48,53,70,97,103,106,135,169,174-175,191,201,228,233,347,352-353,378-379,384,389,394
+priv/gettext/sheets.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 37-38,49,54,79,84,96,122,128,219,286,446,451,456
+priv/gettext/workspaces.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,29,34-37,42,52-53,58-59,64,69,79,101-102,111-112,130-132,198,209,214,219,224,229,234,239,244,249,254,323,328-329,339,344,349,354-355,360,365,371,376,381
+docs/reference/component-registry.md
+  s_c335c90a020cdb::t_b5d46859680804 175
+lib/storyarn_web/live/shared/plan_limit_flash.ex
+  s_c335c90a020cdb::t_cc3b22528f52d9 9-13,18,32-33,38-39,41-44
+  s_c335c90a020cdb::t_d4e6685daea4cf 1-8,14-17,19-31,34-37,40,45-64
+assets/app/live/project/settings/ProjectSettingsVersionControl.vue
+  s_c335c90a020cdb::t_e39fb9bea64be7 20-21,135,145,154,159-165,172
+lib/storyarn/commercial/entities/subscription.ex
+  s_c335c90a020cdb::t_53258d5197c834 13-15,31-33,39-40,58-59
+lib/storyarn/commercial/rules/effective_plan.ex
+  s_c335c90a020cdb::t_53258d5197c834 1-21
+test/storyarn/architecture/commercial_facade_contract_test.exs
+  s_c335c90a020cdb::t_a6265d88399a28 62,64
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,36-37,43,48,53,70,97,103,106,135,169,174-175,191,201,228,233,347,352-353,378-379,384,389,394
+priv/gettext/versioning.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 29,34-38,43-45,57-59,64-69,81,86,91,96-98,103-105,110-112,117-119,170-175,180-181,284,288-293
+  s_c335c90a020cdb::t_81831a69ac09af 294
+lib/storyarn/scenes/assets/commands/assets.ex
+  s_c335c90a020cdb::t_7bef6e1470a5ae 878-902
+lib/storyarn_web/router.ex
+  s_c335c90a020cdb::t_f31e327b0eee6d 201-202
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_c335c90a020cdb::t_cf44f232583ae5 58,83-84,105-106,138,173,314,368,379,385,400,456-457,482-483,664,669,674,684,804-806,827
+lib/storyarn/flows/versioning/execution/asset_catalog.ex
+  s_c335c90a020cdb::t_7bef6e1470a5ae 892-899
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_c335c90a020cdb::t_712687933e6bf3 234
+lib/storyarn_web/live/workspace_live/show.ex
+  s_c335c90a020cdb::t_10085aafef2ed3 11,118-123,163-167
+config/architecture_boundaries.exs
+  s_c335c90a020cdb::t_219de6048265ce 4236-4240
+  s_c335c90a020cdb::t_aaca07d87588d9 4235
+assets/app/test/live/workspace/settings/WorkspaceSettingsPlan.test.ts
+  s_c335c90a020cdb::t_dfe3861b3f75c1 62,78-79,82-88
+  s_c335c90a020cdb::t_7792fdac85e8ef 89
+lib/storyarn/commercial/README.md
+  s_c335c90a020cdb::t_cf260811909889 39,56-67
+  s_c335c90a020cdb::t_b64d612825e869 68
+lib/storyarn/commercial/reference_data/plan.ex
+  s_c335c90a020cdb::t_796406ff1cd728 4-6,10,31-74,86
+  s_c335c90a020cdb::t_f345608d54b3fa 28
+lib/storyarn/commercial.ex
+  s_c335c90a020cdb::t_404f1f5304bfae 40-47
+lib/storyarn_web/live/flow_live/version_events.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 17,158,200
+  s_c335c90a020cdb::t_ad411ff3b19bb1 280-287
+lib/storyarn_web/live/scene_live/show.ex
+  s_c335c90a020cdb::t_c7be4499cad275 1029,1084
+  s_c335c90a020cdb::t_0ac275d692c68e 35,2022
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 19,187,189,243,245
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_c335c90a020cdb::t_10085aafef2ed3 9,331-336
+lib/storyarn/sheets/assets/commands/assets.ex
+  s_c335c90a020cdb::t_7bef6e1470a5ae 878-902
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_c335c90a020cdb::t_cf44f232583ae5 37-38,49,54,79,84,96,122,128,219,286,446,451,456
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_c335c90a020cdb::t_cf44f232583ae5 29,34-38,43-45,57-59,64-69,81,86,91,96-98,103-105,110-112,117-119,170-175,180-181,284,288-293
+  s_c335c90a020cdb::t_d7bbcacda40525 294
+lib/storyarn/commercial/queries/subscriptions.ex
+  s_c335c90a020cdb::t_53258d5197c834 6,15-18,25,40,42-44
+lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 15,58,60,153-158
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,39,44-45,50,59-60,75,82,89,96,168-169,171-174,209,285-286,291-292,297,302,307,312,317,322,327,332,337-338,349,364,384,389,394-395,400,425,430,435,440,460,480,510,525,530,535,541,546,551,576,596,607,613,624-626,631,641-642,647-648,658-659,664-665,675,680-681,686,691,694,704-705,715,720,725,745,750,755,760,765,770,775,780,785,795,800,805-806,811,816,821,826,831,836,841,846,851,856,1189,1196,1201,1206,1211,1265,1270,1275,1280,1306
+lib/storyarn/projects/versioning/queries/snapshot_accounting.ex
+  s_c335c90a020cdb::t_404f1f5304bfae 13,15
+priv/gettext/default.pot
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,51-55,96,133
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_c335c90a020cdb::t_712687933e6bf3 6-7,62,66
+assets/app/test/live/project/settings/ProjectSettingsUsageLimits.test.ts
+  s_c335c90a020cdb::t_dfe3861b3f75c1 83-98
+assets/app/live/project/settings/ProjectSettingsUsageLimits.vue
+  s_c335c90a020cdb::t_ed58c985e02f21 15-16,47,64,73,78-84,91
+lib/storyarn_web/live/flow_live/show.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 39,1986-1987
+test/storyarn/commercial/subscription_crud_test.exs
+  s_c335c90a020cdb::t_780228c536a0b1 117-162,232-237
+  s_c335c90a020cdb::t_dcdf6abdd0cb2a 238
+priv/gettext/en/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,24,51-55,96,133
+lib/storyarn_web/live/scene_live/version_events.ex
+  s_c335c90a020cdb::t_0ac275d692c68e 16,158,200
+  s_c335c90a020cdb::t_ad411ff3b19bb1 280-287
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_c335c90a020cdb::t_cf44f232583ae5 29,34-38,43-45,57-59,64-69,81,86,91,96-98,103-105,110-112,117-119,170-175,180-181,284,288-294
+test/storyarn_web/live/settings_live/workspace_plan_test.exs
+  s_c335c90a020cdb::t_0e76082aef446e 9-18,46-65
+  s_c335c90a020cdb::t_98aa04153f3ccb 66-67
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_c335c90a020cdb::t_cf44f232583ae5 37-38,49,54,79,84,96,122,128,219,286,446,451,456
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,29,34-37,42,52-53,58-59,64,69,79,101-102,111-112,130-132,198,209,214,219,224,229,234,239,244,249,254,323,328-329,339,344,349,354-355,360,365,371,376,381
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_cf44f232583ae5 14,19,39,44-45,50,59-60,75,82,89,96,168-169,171-174,209,285-286,291-292,297,302,307,312,317,322,327,332,337-338,349,364,384,389,394-395,400,425,430,435,440,460,480,510,525,530,535,541,546,551,576,596,607,613,624-626,631,641-642,647-648,658-659,664-665,675,680-681,686,691,694,704-705,715,720,725,745,750,755,760,765,770,775,780,785,795,800,805-806,811,816,821,826,831,836,841,846,851,856,1189,1196,1201,1206,1211,1265,1270,1275,1280,1306
+lib/storyarn_web/live/template_live/show.ex
+  s_c335c90a020cdb::t_10085aafef2ed3 12,460-463,522-527,530-535
+assets/app/locales/en/project-settings.json
+  s_c335c90a020cdb::t_4fa62faeff5567 228
+  s_c335c90a020cdb::t_c78ac341e36c99 227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ae594b09a5f0c6ad42954e6242fc9bda295e226b",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
