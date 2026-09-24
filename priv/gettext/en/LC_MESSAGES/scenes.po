@@ -452,7 +452,7 @@ msgstr ""
 msgid "Undo: zone restored."
 msgstr ""
 
-#: lib/storyarn_web/live/hooks/palette.ex:594
+#: lib/storyarn_web/live/hooks/palette.ex:603
 #: lib/storyarn_web/live/scene_sidebar_live.ex:92
 #: lib/storyarn_web/live/scene_sidebar_live.ex:109
 #, elixir-autogen, elixir-format

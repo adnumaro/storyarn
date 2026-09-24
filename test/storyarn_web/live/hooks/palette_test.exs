@@ -10,6 +10,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Ideation
   alias Storyarn.Platform.CommandPalette.Definition
   alias Storyarn.Platform.Notifications
 
@@ -76,6 +77,37 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     assert_receive {:analytics_capture, %{event: "palette command executed"} = payload}
     assert payload.properties["command_id"] == "ai.contract.echo"
     assert payload.properties["surface"] == "flows"
+  end
+
+  test "brainstorming analytics accepts registered commands and rejects content-shaped ids", %{view: view} do
+    render_hook(view, "palette_opened", %{"surface" => "brainstorming"})
+    assert_receive {:analytics_capture, %{event: "palette opened", properties: %{"surface" => "brainstorming"}}}
+
+    for command_id <- [
+          "project.go-to.brainstorming",
+          "brainstorming.new-session",
+          "brainstorming.fit-to-view",
+          "create.ideation_session",
+          "nav.ideation_session.123"
+        ] do
+      render_hook(view, "palette_command_executed", %{
+        "command_id" => command_id,
+        "surface" => "brainstorming",
+        "title" => "Private session title"
+      })
+
+      assert_receive {:analytics_capture, %{event: "palette command executed", properties: properties}}
+      assert properties == %{"command_id" => command_id, "surface" => "brainstorming"}
+    end
+
+    for command_id <- ["brainstorming.private-title", "nav.ideation_session.private-title", "nav.ideation_session.007"] do
+      render_hook(view, "palette_command_executed", %{
+        "command_id" => command_id,
+        "surface" => "brainstorming"
+      })
+    end
+
+    refute_receive {:analytics_capture, %{event: "palette command executed"}}, 100
   end
 
   test "palette_search_no_results tracks the query length, never content", %{view: view} do
@@ -162,6 +194,38 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   end
 
   describe "palette_nav" do
+    test "returns readable sessions with the existing brainstorming route", %{view: view, user: user} do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace, name: "Veilbreak"})
+      {:ok, session} = Ideation.create_session(scope, project.id, %{title: "Kael motivations"})
+      membership_fixture(project, user, "viewer")
+
+      render_hook(view, "palette_nav", %{"query" => "kael", "token" => 7})
+      assert_reply(view, %{token: 7, groups: [%{key: "entities", items: [item]}]})
+
+      assert item.id == "nav.ideation_session.#{session.id}"
+      assert item.type == "ideation_session"
+      assert item.label == "Kael motivations"
+      assert item.shortcut == nil
+      assert item.context == "Veilbreak · #{workspace.name}"
+      assert item.url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/brainstorming/#{session.id}"
+
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "goto",
+        "parameter_id" => "destination",
+        "query" => "kael",
+        "token" => 8
+      })
+
+      assert_reply(view, %{token: 8, items: [option]})
+      assert option.id == item.id
+      assert option.label == item.label
+      assert option.value == item.url
+      assert option.meta.type == "ideation_session"
+    end
+
     test "replies grouped authorized destinations with URLs and echoes the token",
          %{view: view, user: user} do
       workspace = workspace_fixture(user)
@@ -683,6 +747,71 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   end
 
   describe "palette_create" do
+    test "creates a shared brainstorming session once and publishes its committed invalidation",
+         %{view: view, user: user, conn: conn, workspace_path: workspace_path} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      scope = user_scope_fixture(user)
+      :ok = Ideation.subscribe_sessions(scope, project.id)
+
+      payload = %{
+        "type" => "ideation_session",
+        "project_id" => project.id,
+        "execution_id" => "create-brainstorming-session"
+      }
+
+      render_hook(view, "palette_create", payload)
+      assert_reply(view, %{url: url})
+      assert [_, session_id] = Regex.run(~r{/brainstorming/(\d+)$}, url)
+      assert url == "/workspaces/#{workspace.slug}/projects/#{project.slug}/brainstorming/#{session_id}"
+
+      assert {:ok, [session]} = Ideation.list_sessions(scope, project.id)
+      assert session.id == String.to_integer(session_id)
+      assert session.title == "Untitled session"
+      assert session.configuration.default_visibility == :shared
+      assert session.created_by_id == user.id
+      assert session.facilitator_id == user.id
+      assert session.decision_owner_id == user.id
+      assert {:ok, [%{status: :active}]} = Ideation.list_rounds(scope, project.id, session.id)
+
+      project_id = project.id
+      assert_receive {:ideation_sessions_changed, ^project_id}
+      refute_receive {:ideation_sessions_changed, ^project_id}, 100
+
+      render_hook(view, "palette_create", payload)
+      assert_reply(view, %{url: ^url})
+      {:ok, reconnected_view, _html} = live(conn, workspace_path)
+      render_hook(reconnected_view, "palette_create", payload)
+      assert_reply(reconnected_view, %{url: ^url})
+
+      assert {:ok, [persisted]} = Ideation.list_sessions(scope, project.id)
+      assert persisted.id == session.id
+      refute_receive {:ideation_sessions_changed, ^project_id}, 100
+    end
+
+    test "rejects brainstorming creation for viewers and inaccessible projects", %{view: view, user: user} do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+      viewer_project = project_fixture(owner, %{workspace: workspace})
+      hidden_project = project_fixture(owner, %{workspace: workspace})
+      membership_fixture(viewer_project, user, "viewer")
+
+      for project <- [viewer_project, hidden_project] do
+        :ok = Ideation.subscribe_sessions(scope, project.id)
+
+        render_hook(view, "palette_create", %{
+          "type" => "ideation_session",
+          "project_id" => project.id,
+          "execution_id" => "unauthorized-session-#{project.id}"
+        })
+
+        assert_reply(view, %{error: "unauthorized"})
+        assert {:ok, []} = Ideation.list_sessions(scope, project.id, status: :all)
+        refute_receive {:ideation_sessions_changed, _}, 100
+      end
+    end
+
     test "creates the entity in an authorized project and replies its URL", %{view: view, user: user} do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
@@ -804,6 +933,25 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   end
 
   describe "palette_delete_search" do
+    test "brainstorming sessions are excluded from generic deletion", %{view: view, user: user} do
+      scope = user_scope_fixture(user)
+      project = project_fixture(user, %{workspace: workspace_fixture(user)})
+      {:ok, session} = Ideation.create_session(scope, project.id, %{title: "Protected session"})
+
+      render_hook(view, "palette_delete_search", %{"query" => "Protected", "token" => 1})
+      assert_reply(view, %{token: 1, items: []})
+
+      render_hook(view, "palette_delete", %{
+        "type" => "ideation_session",
+        "id" => session.id,
+        "project_id" => project.id,
+        "execution_id" => "reject-session-delete"
+      })
+
+      assert_reply(view, %{error: "invalid_request"})
+      assert {:ok, %{status: :open}} = Ideation.get_session(scope, project.id, session.id)
+    end
+
     test "lists deletable entities with their project id; empty query browses recents",
          %{view: view, user: user} do
       workspace = workspace_fixture(user)

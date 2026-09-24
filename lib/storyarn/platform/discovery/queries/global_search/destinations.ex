@@ -11,6 +11,7 @@ defmodule Storyarn.Platform.GlobalSearch.Destinations do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Platform.GlobalSearch.FlowSearch
+  alias Storyarn.Platform.GlobalSearch.IdeationSessionSearch
   alias Storyarn.Platform.GlobalSearch.SceneSearch
   alias Storyarn.Platform.GlobalSearch.SheetSearch
   alias Storyarn.Projects
@@ -21,7 +22,7 @@ defmodule Storyarn.Platform.GlobalSearch.Destinations do
   @default_limit_per_type 8
 
   @type destination :: %{
-          required(:type) => :workspace | :project | :sheet | :flow | :scene,
+          required(:type) => :workspace | :project | :sheet | :flow | :scene | :ideation_session,
           required(:id) => integer(),
           required(:name) => String.t(),
           required(:workspace_slug) => String.t(),
@@ -239,8 +240,18 @@ defmodule Storyarn.Platform.GlobalSearch.Destinations do
     if map_size(projects_by_id) == 0 or String.length(query) < @min_entity_query_length do
       []
     else
-      run_entity_searches(projects_by_id, workspace_by_id, query, limit)
+      run_entity_searches(projects_by_id, workspace_by_id, query, limit) ++
+        session_destinations(projects_by_id, workspace_by_id, query, limit)
     end
+  end
+
+  # Sessions are navigable, including archived sessions, but their lifecycle is
+  # managed through Ideation. Never include them in the generic delete picker.
+  defp session_destinations(projects_by_id, workspace_by_id, query, limit) do
+    projects_by_id
+    |> Map.keys()
+    |> IdeationSessionSearch.search_in_projects(query, limit: limit)
+    |> Enum.map(&entity_destination(&1, :ideation_session, projects_by_id, workspace_by_id))
   end
 
   defp run_entity_searches(projects_by_id, workspace_by_id, query, limit) do
@@ -254,23 +265,26 @@ defmodule Storyarn.Platform.GlobalSearch.Destinations do
         {:scene, SceneSearch.search_in_projects(project_ids, query, search_opts)}
       ],
       fn {type, entities} ->
-        Enum.map(entities, fn entity ->
-          project = projects_by_id[entity.project_id]
-
-          %{
-            type: type,
-            id: entity.id,
-            name: entity.name,
-            shortcut: entity.shortcut,
-            updated_at: entity.updated_at,
-            project_id: project.id,
-            project_name: project.name,
-            project_slug: project.slug,
-            workspace_slug: workspace_by_id[project.workspace_id].slug,
-            workspace_name: workspace_by_id[project.workspace_id].name
-          }
-        end)
+        Enum.map(entities, &entity_destination(&1, type, projects_by_id, workspace_by_id))
       end
     )
+  end
+
+  defp entity_destination(entity, type, projects_by_id, workspace_by_id) do
+    project = projects_by_id[entity.project_id]
+    workspace = workspace_by_id[project.workspace_id]
+
+    %{
+      type: type,
+      id: entity.id,
+      name: entity.name,
+      shortcut: Map.get(entity, :shortcut),
+      updated_at: entity.updated_at,
+      project_id: project.id,
+      project_name: project.name,
+      project_slug: project.slug,
+      workspace_slug: workspace.slug,
+      workspace_name: workspace.name
+    }
   end
 end
