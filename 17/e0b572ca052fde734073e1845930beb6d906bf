@@ -1,0 +1,20 @@
+assets/app/live/ideation/DecisionApplication.vue
+  s_27a4f8b99cbe11::t_31418d2977b9f5 77-79
+  s_27a4f8b99cbe11::t_5e3aae94faf001 80,82-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "17e0b572ca052fde734073e1845930beb6d906bf",
+  "prompts": {},
+  "sessions": {
+    "s_27a4f8b99cbe11": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d30e-9ae1-7391-9a7e-6b0d49d106cb",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
