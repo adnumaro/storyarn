@@ -54,12 +54,24 @@ defmodule StoryarnWeb.PublicURLsTest do
       assert BlogURLs.index_path("fr") == "/blog"
     end
 
-    test "hands the current public locale to non-indexable auth destinations" do
-      assert PublicURLs.locale_handoff_path("/users/register", "es") ==
-               "/users/register?locale=es"
+    test "carries the language of the access pages in the path" do
+      assert PublicURLs.login_path("en") == "/users/log-in"
+      assert PublicURLs.login_path("es") == "/es/users/log-in"
+      assert PublicURLs.registration_path("es") == "/es/users/register"
+      assert PublicURLs.registration_path("en", plan: "pro") == "/users/register?plan=pro"
+      assert PublicURLs.reset_password_path("es") == "/es/users/reset-password"
+      assert PublicURLs.reset_password_path("es", "abc") == "/es/users/reset-password/abc"
+      assert PublicURLs.workspace_invitation_path("es", "abc") == "/es/workspaces/invitations/abc"
+      assert PublicURLs.project_invitation_path("en", "abc") == "/projects/invitations/abc"
 
-      assert PublicURLs.locale_handoff_path("/users/log-in?return_to=%2Fworkspaces#form", "en") ==
-               "/users/log-in?locale=en&return_to=%2Fworkspaces#form"
+      assert PublicURLs.invited_registration_path("es", "reg", "/es/projects/invitations/abc") ==
+               "/es/users/register/reg?return_to=%2Fes%2Fprojects%2Finvitations%2Fabc"
+    end
+
+    test "resolves an unpublished Gettext locale to the public default" do
+      assert PublicURLs.public_locale("es") == "es"
+      assert PublicURLs.public_locale("xx") == "en"
+      assert_raise ArgumentError, fn -> PublicURLs.login_path("xx") end
     end
   end
 
@@ -81,16 +93,40 @@ defmodule StoryarnWeb.PublicURLsTest do
       end
     end
 
-    test "does not claim auth, invitation, private, or default-locale alias paths" do
+    test "reads the language of every access page from its path" do
       for path <- [
             "/users/log-in",
+            "/users/register",
+            "/users/register/token",
+            "/users/reset-password/token",
             "/projects/invitations/token",
+            "/workspaces/invitations/token"
+          ] do
+        assert PublicURLs.locale_from_path(path) == "en"
+        assert PublicURLs.locale_from_path("/es" <> path) == "es"
+        assert PublicURLs.access_path?(path)
+        assert PublicURLs.access_path?("/es" <> path)
+      end
+
+      refute PublicURLs.access_path?("/docs")
+      refute PublicURLs.access_path?("/es/blog")
+    end
+
+    test "does not claim application or default-locale alias paths" do
+      for path <- [
+            "/users/settings",
+            "/users/log-out",
             "/workspaces/example",
+            "/workspaces/example/projects/story",
             "/en",
-            "/en/docs/welcome/start-here"
+            "/en/docs/welcome/start-here",
+            "/en/users/log-in"
           ] do
         assert PublicURLs.locale_from_path(path) == nil
       end
+
+      refute PublicURLs.access_path?("/users/settings")
+      refute PublicURLs.access_path?("/workspaces/example")
     end
 
     test "ignores query and fragment when reading a URI" do
@@ -126,9 +162,17 @@ defmodule StoryarnWeb.PublicURLsTest do
                "/blog?ref=header#latest"
     end
 
-    test "does not localize private, auth, asset, external, or anchor-only destinations" do
+    test "localizes access pages like the rest of the public surface" do
+      assert PublicURLs.localize_path("/users/log-in?return_to=%2Fworkspaces", "es") ==
+               "/es/users/log-in?return_to=%2Fworkspaces"
+
+      assert PublicURLs.localize_path("/en/users/register/token", "en") == "/users/register/token"
+      assert PublicURLs.localize_path("/es/workspaces/invitations/abc", "en") == "/workspaces/invitations/abc"
+    end
+
+    test "does not localize application, asset, external, or anchor-only destinations" do
       for path <- [
-            "/users/log-in?return_to=%2Fworkspaces",
+            "/users/settings",
             "/workspaces/example",
             "/images/logo.svg",
             "https://example.com/docs",

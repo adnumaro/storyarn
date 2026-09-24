@@ -126,6 +126,31 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       assert Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: user.id)
     end
 
+    test "keeps a Spanish invitation in Spanish through password setup", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      email = "nuevo-invitado@example.com"
+
+      {encoded_token, _invitation} = workspace_invitation_fixture(workspace, owner, email)
+      invitation_path = "/es/workspaces/invitations/#{encoded_token}"
+
+      assert {:error, {:redirect, %{to: registration_path, flash: flash}}} = live(conn, invitation_path)
+      assert flash["info"] =~ "Crea una contraseña"
+      assert "/es/users/register/" <> _rest = registration_path
+
+      assert {_registration_token, ^invitation_path} =
+               registration_redirect(String.replace_prefix(registration_path, "/es", ""))
+
+      {_registration, conn} =
+        register_through_session_handoff(conn, registration_path, %{"password" => valid_user_password()})
+
+      assert redirected_to(conn) == invitation_path
+      assert Accounts.get_user_by_email(email).locale == "es"
+
+      workspace_path = ~p"/workspaces/#{workspace.slug}"
+      assert {:error, {:redirect, %{to: ^workspace_path}}} = live(recycle(conn), invitation_path)
+    end
+
     test "sends an invitee who is signed in as someone else to log in", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
@@ -184,7 +209,6 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace = workspace_fixture(owner)
       invitee = user_fixture()
       existing_member = user_fixture()
-      conn = init_test_session(conn, %{locale: "es"})
 
       {encoded_token, invitation} =
         workspace_invitation_fixture(workspace, owner, invitee.email)
@@ -192,7 +216,7 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace_membership_fixture(workspace, existing_member, "viewer")
 
       assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
-               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+               live(conn, "/es/workspaces/invitations/#{encoded_token}")
 
       assert flash["error"] =~ "límite de miembros"
       refute Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: invitee.id)
@@ -202,8 +226,7 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
 
   describe "mount with invalid token" do
     test "renders error page with a locale-aware homepage for invalid token", %{conn: conn} do
-      conn = init_test_session(conn, %{locale: "es"})
-      {:ok, view, _html} = live(conn, ~p"/workspaces/invitations/invalidtoken123")
+      {:ok, view, _html} = live(conn, "/es/workspaces/invitations/invalidtoken123")
 
       vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/WorkspaceInvitationResponse")
       assert vue.component == "live/workspace/invitation/WorkspaceInvitationResponse"

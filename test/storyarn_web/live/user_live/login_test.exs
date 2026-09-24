@@ -16,9 +16,9 @@ defmodule StoryarnWeb.UserLive.LoginTest do
 
       vue = get_login_vue(view)
       assert vue.component == "live/auth/login/AuthLoginForm"
-      assert vue.props["login-action"] == "/users/log-in?locale=en"
-      assert vue.props["forgot-password-url"] == "/users/reset-password?locale=en"
-      assert vue.props["register-url"] == "/users/register?locale=en"
+      assert vue.props["login-action"] == "/users/log-in"
+      assert vue.props["forgot-password-url"] == "/users/reset-password"
+      assert vue.props["register-url"] == "/users/register"
       assert is_map(vue.props["form"])
       assert vue.props["trigger-submit"] == false
     end
@@ -77,16 +77,16 @@ defmodule StoryarnWeb.UserLive.LoginTest do
       {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
       vue = get_login_vue(view)
-      assert vue.props["register-url"] == "/users/register?locale=en"
+      assert vue.props["register-url"] == "/users/register"
     end
 
     test "keeps an explicit Spanish handoff throughout auth navigation", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/users/log-in?locale=es")
+      {:ok, view, _html} = live(conn, "/es/users/log-in")
 
       vue = get_login_vue(view)
-      assert vue.props["login-action"] == "/users/log-in?locale=es"
-      assert vue.props["forgot-password-url"] == "/users/reset-password?locale=es"
-      assert vue.props["register-url"] == "/users/register?locale=es"
+      assert vue.props["login-action"] == "/es/users/log-in"
+      assert vue.props["forgot-password-url"] == "/es/users/reset-password"
+      assert vue.props["register-url"] == "/es/users/register"
     end
   end
 

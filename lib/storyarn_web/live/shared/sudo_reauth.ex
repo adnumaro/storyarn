@@ -18,6 +18,7 @@ defmodule StoryarnWeb.Live.Shared.SudoReauth do
 
   alias Storyarn.Accounts
   alias StoryarnWeb.ClientIp
+  alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserAuth
 
   @doc """
@@ -101,7 +102,7 @@ defmodule StoryarnWeb.Live.Shared.SudoReauth do
         {:noreply,
          socket
          |> put_flash(:error, dgettext("identity", "Your session has expired. Please log in again."))
-         |> redirect(to: "/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(PublicURLs.public_locale(socket.assigns.locale)))}
     end
   end
 

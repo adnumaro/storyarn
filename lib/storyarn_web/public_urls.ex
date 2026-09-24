@@ -3,17 +3,15 @@ defmodule StoryarnWeb.PublicURLs do
   Canonical paths and language relationships for Storyarn's public pages.
 
   The default locale keeps the existing unprefixed URLs. Every other public
-  locale receives a stable prefix, so one indexable URL always renders one
-  language.
+  locale receives a stable prefix, so one URL always renders one language.
+  The access pages (log-in, registration, password reset, invitations) follow
+  the same rule; they are not indexable, but their language is still the path.
   """
 
   alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias Storyarn.Public.Publication.PathLocalizer
   alias StoryarnWeb.Layouts
   alias StoryarnWeb.PublicLanguageMetadata
-
-  @public_roots ~w(contact privacy terms docs blog)
-  @known_gettext_locales Gettext.known_locales(Storyarn.Gettext)
 
   @spec home_path(String.t()) :: String.t()
   def home_path(locale \\ PublicLocales.default_locale()), do: localized_path(locale, "/")
@@ -57,20 +55,39 @@ defmodule StoryarnWeb.PublicURLs do
   @spec blog_post_path(String.t(), String.t()) :: String.t()
   def blog_post_path(locale, slug), do: localized_path(locale, "/blog/#{trim_segment(slug)}")
 
-  @doc "Adds an explicit locale handoff to a non-indexable destination."
-  @spec locale_handoff_path(String.t(), String.t()) :: String.t()
-  def locale_handoff_path(path, locale) when is_binary(path) do
-    locale = validate_gettext_locale!(locale)
-    uri = URI.parse(path)
+  @doc "The published locale for a Gettext locale; unpublished ones use the public default."
+  @spec public_locale(term()) :: String.t()
+  defdelegate public_locale(locale), to: PublicLocales, as: :normalize
 
-    query =
-      (uri.query || "")
-      |> URI.decode_query()
-      |> Map.put("locale", locale)
-      |> URI.encode_query()
+  @spec login_path(String.t()) :: String.t()
+  def login_path(locale \\ PublicLocales.default_locale()), do: localized_path(locale, "/users/log-in")
 
-    URI.to_string(%{uri | query: query})
+  @doc "Public registration, optionally carrying query parameters such as a chosen plan."
+  @spec registration_path(String.t(), keyword() | map()) :: String.t()
+  def registration_path(locale \\ PublicLocales.default_locale(), query \\ []) do
+    locale |> localized_path("/users/register") |> with_query(query)
   end
+
+  @doc "Password setup for an invited account, returning to the invitation afterwards."
+  @spec invited_registration_path(String.t(), String.t(), String.t()) :: String.t()
+  def invited_registration_path(locale, registration_token, return_to) do
+    locale
+    |> localized_path("/users/register/#{trim_segment(registration_token)}")
+    |> with_query(return_to: return_to)
+  end
+
+  @spec reset_password_path(String.t()) :: String.t()
+  def reset_password_path(locale \\ PublicLocales.default_locale()), do: localized_path(locale, "/users/reset-password")
+
+  @spec reset_password_path(String.t(), String.t()) :: String.t()
+  def reset_password_path(locale, token), do: localized_path(locale, "/users/reset-password/#{trim_segment(token)}")
+
+  @spec workspace_invitation_path(String.t(), String.t()) :: String.t()
+  def workspace_invitation_path(locale, token),
+    do: localized_path(locale, "/workspaces/invitations/#{trim_segment(token)}")
+
+  @spec project_invitation_path(String.t(), String.t()) :: String.t()
+  def project_invitation_path(locale, token), do: localized_path(locale, "/projects/invitations/#{trim_segment(token)}")
 
   @doc "Extracts a public locale from a URI. Non-public paths return nil."
   @spec locale_from_uri(String.t() | URI.t()) :: String.t() | nil
@@ -87,12 +104,25 @@ defmodule StoryarnWeb.PublicURLs do
   @doc "Extracts the authoritative locale from a canonical public path."
   @spec locale_from_path(String.t()) :: String.t() | nil
   def locale_from_path(path) when is_binary(path) do
-    path
-    |> String.split("/", trim: true)
-    |> locale_from_segments()
+    case String.split(path, "/", trim: true) do
+      [] -> PublicLocales.default_locale()
+      [segment | rest] -> locale_from_prefix(PublicLocales.localized_locale_from_path_segment(segment), path, rest)
+    end
   end
 
   def locale_from_path(_path), do: nil
+
+  # An unprefixed path is the default locale when it belongs to the public
+  # surface; a prefixed one only when what follows the prefix does.
+  defp locale_from_prefix(nil, path, _rest) do
+    if PathLocalizer.localizable?(path), do: PublicLocales.default_locale()
+  end
+
+  defp locale_from_prefix(locale, _path, []), do: locale
+
+  defp locale_from_prefix(locale, _path, rest) do
+    if PathLocalizer.localizable?(Enum.join(rest, "/")), do: locale
+  end
 
   @doc """
   Moves a local path to the requested locale while preserving query and fragment.
@@ -102,6 +132,14 @@ defmodule StoryarnWeb.PublicURLs do
   """
   @spec localize_path(String.t(), String.t()) :: String.t()
   defdelegate localize_path(path, locale), to: PathLocalizer, as: :localize
+
+  @doc "Whether a path, prefixed or not, is an access page whose language is the visitor's preference."
+  @spec access_path?(String.t()) :: boolean()
+  def access_path?(path) when is_binary(path), do: path |> PathLocalizer.unprefixed() |> PathLocalizer.access_path?()
+
+  @doc "Removes a leading public locale segment from a path."
+  @spec unprefixed_path(String.t()) :: String.t()
+  defdelegate unprefixed_path(path), to: PathLocalizer, as: :unprefixed
 
   @doc "Builds language-switcher entries from `{locale, path}` pairs."
   @spec language_links([{String.t(), String.t()}]) :: [map()]
@@ -137,23 +175,6 @@ defmodule StoryarnWeb.PublicURLs do
 
   defp localized_path(locale, path), do: PathLocalizer.localized_path(locale, path)
 
-  defp locale_from_segments([]), do: PublicLocales.default_locale()
-
-  defp locale_from_segments([segment]) do
-    case PublicLocales.localized_locale_from_path_segment(segment) do
-      nil -> if(segment in @public_roots, do: PublicLocales.default_locale())
-      locale -> locale
-    end
-  end
-
-  defp locale_from_segments([segment, root | _rest]) when root in @public_roots do
-    PublicLocales.localized_locale_from_path_segment(segment)
-  end
-
-  defp locale_from_segments([root | _rest]) when root in @public_roots, do: PublicLocales.default_locale()
-
-  defp locale_from_segments(_segments), do: nil
-
   defp path_segments(path) when is_list(path), do: Enum.map(path, &trim_segment/1)
 
   defp path_segments(path) when is_binary(path) do
@@ -172,9 +193,7 @@ defmodule StoryarnWeb.PublicURLs do
     end
   end
 
-  defp validate_gettext_locale!(locale) when locale in @known_gettext_locales, do: locale
-
-  defp validate_gettext_locale!(locale) do
-    raise ArgumentError, "unsupported Gettext locale: #{inspect(locale)}"
-  end
+  defp with_query(path, []), do: path
+  defp with_query(path, query) when query == %{}, do: path
+  defp with_query(path, query), do: path <> "?" <> URI.encode_query(query)
 end

@@ -96,7 +96,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
            :info,
            dgettext("workspaces", "This invitation has already been accepted.")
          )
-         |> redirect(to: ~p"/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
 
       {:error, :already_member} ->
         {:ok,
@@ -105,7 +105,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
            :info,
            dgettext("workspaces", "You're already a member of this workspace.")
          )
-         |> redirect(to: ~p"/users/log-in")}
+         |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
 
       error ->
         InvitationHelpers.handle_acceptance_error(
@@ -131,12 +131,13 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
          email: invitation.email
        )
      )
-     |> redirect(to: ~p"/users/log-in")}
+     |> redirect(to: PublicURLs.login_path(socket.assigns.locale))}
   end
 
   defp redirect_to_registration(socket, invitation, token, registration_token) do
-    invitation_path = ~p"/workspaces/invitations/#{token}"
-    registration_path = ~p"/users/register/#{registration_token}?#{[return_to: invitation_path]}"
+    locale = socket.assigns.locale
+    invitation_path = PublicURLs.workspace_invitation_path(locale, token)
+    registration_path = PublicURLs.invited_registration_path(locale, registration_token, invitation_path)
 
     {:ok,
      socket

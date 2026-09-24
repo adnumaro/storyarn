@@ -20,8 +20,8 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
       vue = get_registration_vue(view)
 
       assert vue.props["invited"] == false
-      assert vue.props["login-url"] == "/users/log-in?locale=en"
-      assert vue.props["login-action"] == "/users/log-in?locale=en"
+      assert vue.props["login-url"] == "/users/log-in"
+      assert vue.props["login-action"] == "/users/log-in"
       assert vue.props["user-email"] == nil
       assert vue.props["form"]["errors"] == %{}
       assert vue.props["trigger-submit"] == false
@@ -77,6 +77,40 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) == "Account created successfully! Welcome."
     end
 
+    test "keeps the language of the page the account was created from", %{conn: conn} do
+      email = unique_user_email()
+      password = valid_user_password()
+
+      {registration, conn} =
+        register_through_session_handoff(conn, "/es/users/register", %{
+          "email" => email,
+          "password" => password,
+          "password_confirmation" => password
+        })
+
+      assert registration.props["login-action"] == "/es/users/log-in"
+      assert get_session(conn, :user_token)
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) ==
+               "¡Cuenta creada correctamente! Te damos la bienvenida."
+
+      assert Accounts.get_user_by_email(email).locale == "es"
+    end
+
+    test "records English for an account created from the unprefixed page", %{conn: conn} do
+      email = unique_user_email()
+      password = valid_user_password()
+
+      register_through_session_handoff(conn, ~p"/users/register", %{
+        "email" => email,
+        "password" => password,
+        "password_confirmation" => password,
+        "locale" => "es"
+      })
+
+      assert Accounts.get_user_by_email(email).locale == "en"
+    end
+
     test "does not start a session from another browser", %{conn: conn} do
       email = unique_user_email()
       password = valid_user_password()
@@ -106,11 +140,11 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
     end
 
     test "keeps an explicit Spanish handoff", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/users/register?locale=es")
+      {:ok, view, _html} = live(conn, "/es/users/register")
 
       vue = get_registration_vue(view)
-      assert vue.props["login-url"] == "/users/log-in?locale=es"
-      assert vue.props["login-action"] == "/users/log-in?locale=es"
+      assert vue.props["login-url"] == "/es/users/log-in"
+      assert vue.props["login-action"] == "/es/users/log-in"
 
       layout = LiveVue.Test.get_vue(view, name: "live/layouts/auth/Layout")
       assert layout.props["home-url"] == "/es"
@@ -118,7 +152,7 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
 
     test "returns an invalid Spanish invitation to the Spanish landing", %{conn: conn} do
       assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
-               live(conn, ~p"/users/register/invalid-token?locale=es")
+               live(conn, "/es/users/register/invalid-token")
 
       assert flash["error"] =~ "El enlace de registro no es válido o ha caducado."
     end

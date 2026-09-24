@@ -44,7 +44,7 @@ defmodule Storyarn.Public.Docs.GuideBuilderTest do
     assert link_attributes(guide.body, "register") == %{
              "data-phx-link" => "redirect",
              "data-phx-link-state" => "push",
-             "href" => "/users/register?from=docs#account",
+             "href" => "/es/users/register?from=docs#account",
              "id" => "register"
            }
   end

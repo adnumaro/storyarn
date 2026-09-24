@@ -9,7 +9,7 @@ defmodule StoryarnWeb.LandingLive.IndexTest do
     landing = LiveVue.Test.get_vue(view, name: "live/public/landing/PublicLanding")
 
     assert landing.props["is-logged-in"] == false
-    assert landing.props["registration-url"] == "/users/register?locale=en"
+    assert landing.props["registration-url"] == "/users/register"
     assert has_element?(view, "#public-layout-wrapper.dark.min-h-screen")
     assert has_element?(view, "#public-header")
     assert has_element?(view, "#public-footer")
@@ -25,7 +25,7 @@ defmodule StoryarnWeb.LandingLive.IndexTest do
 
     assert has_element?(
              view,
-             ~s|#public-header a[href="/users/register?locale=en"][data-phx-link="redirect"]|
+             ~s|#public-header a[href="/users/register"][data-phx-link="redirect"]|
            )
   end
 

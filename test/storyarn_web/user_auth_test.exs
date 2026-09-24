@@ -474,8 +474,9 @@ defmodule StoryarnWeb.UserAuthTest do
   end
 
   describe "require_authenticated_user/2" do
+    # The :browser pipeline's Locale plug assigns the locale before this plug runs.
     setup %{conn: conn} do
-      %{conn: UserAuth.fetch_current_scope_for_user(conn, [])}
+      %{conn: conn |> UserAuth.fetch_current_scope_for_user([]) |> assign(:locale, "en")}
     end
 
     test "redirects if user is not authenticated", %{conn: conn} do
@@ -486,6 +487,18 @@ defmodule StoryarnWeb.UserAuthTest do
 
       assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
                "You must log in to access this page."
+    end
+
+    test "sends the visitor to the log-in page in their language", %{conn: conn} do
+      conn = conn |> assign(:locale, "es") |> fetch_flash() |> UserAuth.require_authenticated_user([])
+
+      assert redirected_to(conn) == "/es/users/log-in"
+    end
+
+    test "sends an unpublished language to the default log-in page", %{conn: conn} do
+      conn = conn |> assign(:locale, "fr") |> fetch_flash() |> UserAuth.require_authenticated_user([])
+
+      assert redirected_to(conn) == "/users/log-in"
     end
 
     test "stores the path to redirect to on GET", %{conn: conn} do
