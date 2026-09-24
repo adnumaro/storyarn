@@ -9,8 +9,8 @@ defmodule StoryarnWeb.E2E.BlogTest do
 
   @moduletag :e2e
 
-  @article_path "/blog/version-control-branching-narratives"
-  @spanish_article_path "/es/blog/control-versiones-narrativa-ramificada"
+  @article_path "/blog/what-a-brainstorm-leaves-behind"
+  @spanish_article_path "/es/blog/lo-que-deja-una-lluvia-de-ideas"
   @spanish_intro_path "/es/blog/presentamos-storyarn"
 
   test "keeps one public shell and updates SEO metadata without document reloads", %{conn: conn} do
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> evaluate(article_metadata_expression(), fn metadata ->
       assert metadata["type"] == "article"
       assert metadata["canonicalPath"] == @article_path
-      assert metadata["published"] == "2026-07-17"
+      assert metadata["published"] == "2026-09-24"
       assert metadata["tagCount"] == 4
       assert metadata["hasStructuredData"] == true
     end)
@@ -108,7 +108,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> assert_path(@spanish_article_path)
     |> assert_has("#blog-post[lang='es']")
     |> assert_has("#blog-post-content",
-      text: "Una restauración puede terminar sin errores y aun así romper una historia."
+      text: "Una lluvia de ideas puede salir bien y aun así no dejar nada."
     )
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> click("#public-language-switcher-trigger")
@@ -117,7 +117,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> assert_has("html[lang='en']")
     |> assert_has("#blog-post[lang='en']")
     |> assert_has("#blog-post-content",
-      text: "A restore can complete without errors and still break a story."
+      text: "A brainstorm can go well and still leave nothing behind."
     )
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(localized_metadata_expression(), fn metadata ->
@@ -133,7 +133,7 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> assert_path(@spanish_article_path)
     |> assert_has("html[lang='es']")
     |> assert_has("#blog-post-content",
-      text: "Una restauración puede terminar sin errores y aun así romper una historia."
+      text: "Una lluvia de ideas puede salir bien y aun así no dejar nada."
     )
     |> evaluate("window.__publicNavigationBlank", fn value -> assert value == false end)
     |> evaluate(history_navigation_expression("forward"))
