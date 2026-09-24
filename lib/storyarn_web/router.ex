@@ -400,14 +400,6 @@ defmodule StoryarnWeb.Router do
         PublicLocaleRedirectController,
         :default_locale
 
-    get "/#{@default_public_segment}/users/register", PublicLocaleRedirectController, :default_locale
-    get "/#{@default_public_segment}/users/register/:token", PublicLocaleRedirectController, :default_locale
-    get "/#{@default_public_segment}/users/log-in", PublicLocaleRedirectController, :default_locale
-    get "/#{@default_public_segment}/users/reset-password", PublicLocaleRedirectController, :default_locale
-    get "/#{@default_public_segment}/users/reset-password/:token", PublicLocaleRedirectController, :default_locale
-    get "/#{@default_public_segment}/projects/invitations/:token", PublicLocaleRedirectController, :default_locale
-    get "/#{@default_public_segment}/workspaces/invitations/:token", PublicLocaleRedirectController, :default_locale
-
     live_session :current_user,
       session: {StoryarnWeb.PublicLocale, :session, []},
       on_mount:
