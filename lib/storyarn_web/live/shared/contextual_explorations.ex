@@ -21,6 +21,7 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
       Workspaces.subscribe_workspace_membership_changes(socket.assigns.workspace.id)
       Workspaces.subscribe_workspace_ownership_changes(socket.assigns.workspace.id)
       Ideation.subscribe_sessions(socket.assigns.current_scope, socket.assigns.project.id)
+      Ideation.subscribe_decisions(socket.assigns.current_scope, socket.assigns.project.id)
     end
 
     socket
@@ -297,6 +298,10 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
   defp handle_info({event, _}, socket) when event in @access_events, do: {:halt, refresh_open(socket)}
 
   defp handle_info({:ideation_sessions_changed, _}, socket), do: {:halt, refresh_open(socket)}
+
+  # Another person's step on a decision changes the count and the banner here too.
+  defp handle_info({:ideation_project_decisions_changed, _}, socket),
+    do: {:halt, socket |> ContextualDecisions.reload() |> put_decisions()}
 
   defp handle_info({:entities_deleted, _, _}, socket), do: {:cont, refresh_open(socket)}
   defp handle_info({:tree_changed, _}, socket), do: {:cont, refresh_open(socket)}

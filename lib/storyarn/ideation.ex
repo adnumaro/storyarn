@@ -99,6 +99,9 @@ defmodule Storyarn.Ideation do
   @doc "Decisions about a Sheet, Flow or Scene: those naming it in Affects and those of the sessions exploring it."
   defdelegate list_decisions_about(scope, project_id, type, id, opts \\ []), to: Decisions, as: :about
 
+  @doc "Subscribes a project reader to changes in any of the project's decisions."
+  defdelegate subscribe_decisions(scope, project_id), to: Decisions, as: :subscribe_project
+
   @doc "Every decision of the project's readable sessions, grouped by session."
   defdelegate list_project_decisions(scope, project_id), to: Decisions, as: :list_project
 

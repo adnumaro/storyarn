@@ -362,6 +362,37 @@ describe("reading and acting on a decision", () => {
   });
 });
 
+describe("revising a replacement", () => {
+  it("keeps the decision it already replaced as its choice", () => {
+    const replacement = accepted({
+      id: 4,
+      accepted: revision({ revision: 2, operation: "accept", replacesId: 9 }),
+      supersedes: { id: 9, title: "The old ending" },
+    });
+    // With no other decision in force, only the one it replaced keeps the row open.
+    panel({ mode: "revise", selected: replacement, items: [replacement], sources: [source()] });
+    expect(wrapper.find("#decision-replaces").exists()).toBe(true);
+  });
+});
+
+describe("searching affected content", () => {
+  it("sends the latest query even while another request is pending", async () => {
+    vi.useFakeTimers();
+    const pushEvent = panel({ mode: "create", sources: [source()] });
+    await fillProposal();
+    await wrapper.get("#decision-proposal-form").trigger("submit");
+    const [saving] = pushEvent.mock.calls.map((call) => call[0]);
+    expect(saving).toBe("decisions_create");
+
+    const search = wrapper.get("input[aria-label='Search Sheets, Flows and Scenes…']");
+    await search.setValue("Mara");
+    vi.advanceTimersByTime(300);
+    const searches = pushEvent.mock.calls.filter((call) => call[0] === "decisions_search_targets");
+    expect(searches.at(-1)?.[1]).toMatchObject({ search: "Mara", decision_context: "decisions-1" });
+    vi.useRealTimers();
+  });
+});
+
 describe("discussing a decision", () => {
   function discussion(
     overrides: Partial<BrainstormingCommentsState> = {},

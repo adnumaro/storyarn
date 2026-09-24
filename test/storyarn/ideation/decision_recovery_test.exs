@@ -389,6 +389,27 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
              view.proposal.targets
   end
 
+  test "a target replaced before capture stays unavailable when an import maps its old ID", ctx do
+    Repo.update_all(from(s in "sheets", where: s.id == ^ctx.sheet.id), set: [inserted_at: ~U[2000-01-01 00:00:00Z]])
+    capsule = capture(ctx)
+    assert {:ok, %{"rows" => rows}} = Capsule.open(capsule)
+    assert [%{"targets" => %{"items" => [%{"id" => nil, "identity" => _} | _]}}] = rows["decision_revisions"]
+
+    Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
+    destinations = %{"sheet" => %{ctx.sheet.id => %{id: ctx.sheet.id, identity: "created:2000-01-01T00:00:00Z"}}}
+
+    assert {:ok, maps} =
+             Repo.transact(fn ->
+               Repo.one!(from p in "projects", where: p.id == ^ctx.project.id, select: p.id, lock: "FOR UPDATE")
+               Ideation.restore_recovery(ctx.project.id, capsule, destinations)
+             end)
+
+    session_id = maps["sessions"][ctx.session.id]
+    decision_id = maps["decisions"][ctx.decision.id]
+    assert {:ok, view} = Ideation.get_decision(ctx.viewer, ctx.project.id, session_id, decision_id)
+    assert [%{name: "Mara", id: nil, available: false}, _village] = view.proposal.targets
+  end
+
   test "version-eight capsules restore without the decisions of the earlier model", ctx do
     {:ok, data} = ctx |> capture() |> Capsule.open()
     stripped = ~w(verb targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id)

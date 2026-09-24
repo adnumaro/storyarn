@@ -71,5 +71,15 @@ export function useDecisionRequests(
       () => finish("offline"),
     );
   }
-  return { request, pending, notice };
+  // Lookups as you type never wait behind another request: the server answers
+  // them in order, so the last query's results are the ones left on screen.
+  function lookup(action: string, payload: Record<string, unknown> = {}) {
+    live.pushEvent(
+      `decisions_${action}`,
+      { ...payload, epoch: epoch(), session_id: sessionId(), decision_context: state().context },
+      () => undefined,
+      () => undefined,
+    );
+  }
+  return { request, lookup, pending, notice };
 }

@@ -64,12 +64,17 @@ it.
   can withdraw it. Withdrawing a revision keeps the earlier agreement in force and
   the decision stays accepted; withdrawing a proposal without one retires the
   decision as withdrawn. A withdrawn decision cannot be revised or accepted.
+  Without a pending revision, the agreement in force is what the next step builds
+  on: its responsible person holds the authority again, never the withdrawn
+  revision's.
 - **Supersede.** A proposal may name one decision of the same session that it
   replaces; that decision must have an agreement in force. When the proposal is
   accepted or registered, the replaced decision receives a closing `supersede`
   record that links to its replacement and becomes read-only. If the replaced
   decision is no longer in force at that moment, acceptance fails with
-  `replaced_decision_unavailable` and nothing is written.
+  `replaced_decision_unavailable` and nothing is written. A revision of the
+  replacement may keep naming the decision it already superseded; nothing is
+  superseded twice.
 
 There is no rejection and no deletion. Retired decisions stay readable with their
 history.
@@ -86,7 +91,8 @@ derives how many targets are still to apply.
 
 Declarations are append-only and belong to one agreement. Accepting a revision
 starts a new agreement in which every target is not applied again; the earlier
-declarations remain in the history. A superseded decision keeps its application
+declarations remain in the history. While a revision waits, the agreement in
+force still counts as to apply wherever the decision is listed. A superseded decision keeps its application
 records but accepts no new ones.
 
 ## Sources and visibility
@@ -230,7 +236,9 @@ read through its own catalog, so access and source visibility match the panel.
   as a non-modal reka popover. `Mark applied`, `Partially` and `No change
 needed` take an optional note; the confirmation offers `Undo` for five seconds,
   which states the previous application again. Nothing is applied automatically,
-  and the banner only shows an accepted decision that names this content.
+  and the banner only shows an accepted decision that names this content. Moving
+  to other content drops it, and another person's step on any decision of the
+  project refreshes the count, the list and the banner of an open editor.
 - **Inbox.** Decision writes deliver, inside their transaction: `decision_to_accept`
   to the responsible person of a proposal; `decision_accepted` to its proposer and
   to everyone who started a thread about it; `decision_next_action` to the owner

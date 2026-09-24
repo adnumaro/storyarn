@@ -203,6 +203,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    list_decisions_about: 4,
                    list_decisions_about: 5,
                    list_project_decisions: 2,
+                   subscribe_decisions: 2,
                    group_comment_source: 4,
                    group_comment_source: 5,
                    capture_recovery: 1,

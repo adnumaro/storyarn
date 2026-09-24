@@ -79,6 +79,55 @@ defmodule StoryarnWeb.IdeationLive.ContextualDecisionsTest do
     assert launcher(elsewhere)["decisions"]["total"] == 0
   end
 
+  test "a pending revision keeps the agreement's work to apply in the count", ctx do
+    {:ok, decision} = register(ctx, [%{type: "sheet", id: ctx.mara.id}])
+    {:ok, sources} = sources(ctx)
+
+    {:ok, _revised} =
+      Ideation.revise_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id, decision.version, %{
+        title: "Mara leaves the guild",
+        conclusion: "Mara leaves the guild and the harbor.",
+        verb: "change",
+        targets: [%{type: "sheet", id: ctx.mara.id}],
+        responsible_id: ctx.peer.user.id,
+        sources: sources,
+        request_key: Ecto.UUID.generate()
+      })
+
+    view = open(ctx, ctx.author)
+    assert launcher(view)["decisions"]["toApply"] == 1
+    assert [%{"toApply" => true}] = launcher(view)["about"]
+  end
+
+  test "moving to other content drops the banner that arrived with the first", ctx do
+    {:ok, decision} = register(ctx, [%{type: "sheet", id: ctx.mara.id}])
+    other = sheet_fixture(ctx.project, %{name: "The keeper"})
+    view = open(ctx, ctx.author, "?decision=#{decision.id}&session=#{ctx.session.id}")
+    assert launcher(view)["banner"]
+
+    render_patch(view, "#{base_path(ctx)}/sheets/#{other.id}")
+    render_async(view)
+    assert launcher(view)["banner"] == nil
+    assert launcher(view)["decisions"]["total"] == 0
+  end
+
+  test "another person's step on a decision reaches an editor that is already open", ctx do
+    {:ok, decision} = register(ctx, [%{type: "sheet", id: ctx.mara.id}])
+    view = open(ctx, ctx.author)
+    assert launcher(view)["decisions"]["toApply"] == 1
+    [target] = decision.accepted.targets
+
+    {:ok, _} =
+      Ideation.declare_decision_application(ctx.peer, ctx.project.id, ctx.session.id, decision.id, 2, %{
+        target_key: target.key,
+        state: "applied",
+        request_key: Ecto.UUID.generate()
+      })
+
+    render(view)
+    assert launcher(view)["decisions"]["toApply"] == 0
+  end
+
   defp declare(ctx, decision, key, state) do
     %{
       source_key: "sheet:#{ctx.mara.id}",
@@ -106,6 +155,14 @@ defmodule StoryarnWeb.IdeationLive.ContextualDecisionsTest do
     do: LiveVue.Test.get_vue(view, name: "live/shared/ContextualSourceHeader").props["exploration-state"]
 
   defp register(ctx, targets), do: propose(ctx, targets, %{responsible_id: ctx.author.user.id, register: true})
+
+  defp sources(ctx) do
+    with {:ok, sources} <-
+           Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [
+             %{type: "idea", id: ctx.idea.id}
+           ]),
+         do: {:ok, Enum.map(sources, &Map.take(&1, [:type, :id, :version, :identity]))}
+  end
 
   defp propose(ctx, targets, changes \\ %{}) do
     {:ok, sources} =

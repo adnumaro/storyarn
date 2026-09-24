@@ -28,29 +28,52 @@ const other = accepted({
 other.accepted = other.proposal;
 other.application = { targets: other.proposal.targets, decision: null, pending: 1, total: 1 };
 
+// A revision waits while the agreement in force still has something to apply.
+const revising = accepted({
+  id: 6,
+  status: "proposed",
+  proposal: revision({
+    revision: 3,
+    operation: "revise",
+    targets: [target({ key: "keeper", id: 8, name: "The keeper" })],
+  }),
+});
+revising.accepted = revision({
+  revision: 2,
+  operation: "accept",
+  targets: [target({ key: "keeper", id: 8, name: "The keeper" })],
+});
+revising.application = { targets: revising.accepted.targets, decision: null, pending: 1, total: 1 };
+
 const groups: DecisionSessionGroup[] = [
-  { id: 10, title: "Endings", status: "open", decisions: [applied, pending, waiting, withdrawn] },
+  {
+    id: 10,
+    title: "Endings",
+    status: "open",
+    decisions: [applied, pending, waiting, withdrawn, revising],
+  },
   { id: 11, title: "Act 3", status: "open", decisions: [other] },
 ];
 
 describe("the decisions dashboard", () => {
   it("summarizes a session", () => {
-    expect(sessionSummary(groups[0].decisions)).toEqual({ total: 4, waiting: 1, toApply: 1 });
+    expect(sessionSummary(groups[0].decisions)).toEqual({ total: 5, waiting: 1, toApply: 2 });
   });
 
   it("orders by what to do first and keeps retired apart, with their session", () => {
     const { live, retired } = dashboardDecisions(groups, "all", "all");
-    expect(live.map((item) => item.decision.id)).toEqual([3, 2, 5, 1]);
+    expect(live.map((item) => item.decision.id)).toEqual([3, 2, 6, 5, 1]);
     expect(live[0].sessionTitle).toBe("Endings");
     expect(retired.map((item) => item.decision.id)).toEqual([4]);
   });
 
   it("filters by status and application", () => {
+    // A pending revision is a proposal too, even with an agreement in force.
     expect(dashboardDecisions(groups, "proposed", "all").live.map((i) => i.decision.id)).toEqual([
-      3,
+      3, 6,
     ]);
     expect(dashboardDecisions(groups, "all", "toApply").live.map((i) => i.decision.id)).toEqual([
-      2, 5,
+      2, 6, 5,
     ]);
     expect(dashboardDecisions(groups, "all", "applied").live.map((i) => i.decision.id)).toEqual([
       1,
@@ -66,6 +89,7 @@ describe("the decisions dashboard", () => {
     expect(grouped.map((group) => [group.name, group.items.length, group.toApply])).toEqual([
       ["Act 3", 1, 1],
       ["Mara", 3, 1],
+      ["The keeper", 1, 1],
     ]);
   });
 });

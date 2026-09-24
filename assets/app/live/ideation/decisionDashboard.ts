@@ -1,4 +1,4 @@
-import { orderDecisions, primaryStatus, targetState } from "./decisionStatus";
+import { orderDecisions, primaryStatus, retired, targetState } from "./decisionStatus";
 import type { DecisionRecord, DecisionTarget, DecisionTargetType } from "./decisionTypes";
 
 export type StatusFilter = "all" | "proposed" | "accepted" | "retired";
@@ -40,10 +40,15 @@ function matchesStatus(decision: DecisionRecord, filter: StatusFilter) {
   return decision.status === filter;
 }
 
+// Application belongs to the agreement in force, even while a revision waits.
+function inForce(decision: DecisionRecord) {
+  return decision.accepted !== null && !retired(decision);
+}
+
 function matchesApplication(decision: DecisionRecord, filter: ApplicationFilter) {
   if (filter === "all") return true;
   const application = decision.application;
-  if (!application || decision.status !== "accepted") return false;
+  if (!application || !inForce(decision)) return false;
   const states = application.targets.map(targetState);
   if (filter === "toApply") return application.pending > 0;
   if (filter === "applied") return application.pending === 0 && states.includes("applied");
@@ -84,7 +89,7 @@ function targetKey(target: DecisionTarget | null) {
 
 // Whether this content still waits for the decision in force.
 function pendingHere(decision: DecisionRecord, target: DecisionTarget | null) {
-  if (!target || decision.status !== "accepted") return false;
+  if (!target || !inForce(decision)) return false;
   const declared = decision.application?.targets.find((entry) => entry.key === target.key);
   return (
     declared !== undefined && ["not_applied", "partially_applied"].includes(targetState(declared))

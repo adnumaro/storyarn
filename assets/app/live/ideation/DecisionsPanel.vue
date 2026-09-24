@@ -34,7 +34,7 @@ const {
   discussion?: DecisionDiscussionState;
 }>();
 const { t, te } = useI18n();
-const { request, pending, notice } = useDecisionRequests(
+const { request, lookup, pending, notice } = useDecisionRequests(
   () => state,
   () => sessionId,
   () => epoch,
@@ -53,11 +53,18 @@ const draft = computed(() => {
     ? selected.proposal
     : selected.accepted;
 });
-const replacements = computed(() =>
-  replaceable(state.items, state.mode === "revise" ? (state.selected?.id ?? null) : null).map(
-    (item) => ({ id: item.id, title: shownRevision(item).title }),
-  ),
-);
+// A revision of a replacement keeps naming the decision it already replaced.
+const replacements = computed(() => {
+  const revising = state.mode === "revise" ? state.selected : null;
+  const options = replaceable(state.items, revising?.id ?? null).map((item) => ({
+    id: item.id,
+    title: shownRevision(item).title,
+  }));
+  const replaced = revising?.supersedes;
+  return replaced && !options.some((item) => item.id === replaced.id)
+    ? [replaced, ...options]
+    : options;
+});
 const formOptions = computed(() => ({
   members: state.members,
   defaultOwnerId: state.defaultOwnerId,
@@ -328,7 +335,7 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
         @remove-source="removeSource"
         @refresh-sources="request('refresh_sources')"
         @browse-sources="picker = !picker"
-        @search-targets="request('search_targets', { search: $event })"
+        @search-targets="lookup('search_targets', { search: $event })"
         ><template #picker
           ><DecisionSourcePicker
             v-if="picker"

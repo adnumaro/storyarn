@@ -31,9 +31,13 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
 
   @doc "Reads the decisions about a new source, then opens the linked decision in the banner."
   def refresh(socket, source) do
-    socket
-    |> then(&if(&1.assigns.decision_source == source, do: &1, else: load(&1, source)))
-    |> open_link()
+    # A banner belongs to the content it arrived with; other content drops it.
+    socket =
+      if socket.assigns.decision_source == source,
+        do: socket,
+        else: socket |> load(source) |> assign(:decision_banner, nil)
+
+    open_link(socket)
   end
 
   @doc "Rereads the decisions about the current source, keeping the banner's decision current."
@@ -246,7 +250,10 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
     end
   end
 
-  defp to_apply?(%{decision: %{status: :accepted}} = item), do: state_of(item) in @pending
+  # The agreement in force stays to apply while a revision waits.
+  defp to_apply?(%{decision: %{status: status, accepted_version: agreement}} = item)
+       when status in [:accepted, :proposed] and not is_nil(agreement), do: state_of(item) in @pending
+
   defp to_apply?(_item), do: false
 
   defp state_of(%{target_key: key, decision: %{application: %{targets: targets}}}) when is_binary(key) do
