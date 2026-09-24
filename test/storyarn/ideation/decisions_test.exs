@@ -517,6 +517,32 @@ defmodule Storyarn.Ideation.DecisionsTest do
     assert reassigned.proposal.responsible_id == ctx.author.user.id
   end
 
+  test "withdrawing a reassignment restores the agreement owner's authority and source pin", ctx do
+    assert {:ok, decision} = propose(ctx)
+    assert {:ok, accepted} = accept(ctx, decision)
+    original = hd(accepted.accepted.sources)
+
+    {:ok, [newer]} =
+      Ideation.preview_decision_sources(ctx.peer, ctx.project.id, ctx.session.id, [%{type: "idea", id: ctx.second.id}])
+
+    revised_attrs =
+      fresh(attrs(ctx), %{
+        responsible_id: ctx.facilitator.user.id,
+        sources: [Map.take(newer, [:type, :id, :version, :identity])]
+      })
+
+    assert {:ok, pending} = revise(ctx, accepted, revised_attrs, ctx.peer)
+    assert {:ok, kept} = withdraw(ctx, pending, ctx.peer)
+    assert kept.status == :accepted
+    assert kept.accepted.responsible_id == ctx.peer.user.id
+    assert kept.can_assign
+
+    next_attrs = fresh(attrs(ctx), %{conclusion: "Keep the existing agreement"})
+    assert {:ok, next} = revise(ctx, kept, next_attrs, ctx.peer)
+    assert next.proposal.responsible_id == ctx.peer.user.id
+    assert hd(next.proposal.sources).identity == original.identity
+  end
+
   test "accepting a replacement supersedes the earlier agreement and links both ways", ctx do
     assert {:ok, earlier} = propose(ctx)
     assert {:error, :invalid_replacement} = propose(ctx, %{replaces_id: earlier.id})

@@ -30,7 +30,7 @@ const { banner, pending = false } = defineProps<{
   pending?: boolean;
 }>();
 const emit = defineEmits<{
-  declare: [state: Mark, note: string | null];
+  declare: [state: ApplicationState, note: string | null];
   undo: [];
   dismiss: [];
 }>();
@@ -54,7 +54,7 @@ const marking = ref<Mark | null>(null);
 const seconds = ref(UNDO_SECONDS);
 let timer: ReturnType<typeof setInterval> | null = null;
 
-function declare(state: Mark, note: string | null) {
+function declare(state: ApplicationState, note: string | null) {
   marking.value = null;
   emit("declare", state, note);
 }

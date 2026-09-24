@@ -2,6 +2,7 @@ defmodule Storyarn.Workspaces.Invitations.Delivery.Handler do
   @moduledoc false
 
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias Storyarn.Workspaces.Invitations.Adapters.Email.Mailer
   alias Storyarn.Workspaces.Invitations.Commands.Revoke
   alias Storyarn.Workspaces.Invitations.Delivery.Content
@@ -38,7 +39,13 @@ defmodule Storyarn.Workspaces.Invitations.Delivery.Handler do
   end
 
   defp invitation_url(token) do
-    Storyarn.Platform.Urls.base_url() <> @invitation_path_prefix <> "/" <> token
+    Storyarn.Platform.Urls.base_url() <> locale_prefix() <> @invitation_path_prefix <> "/" <> token
+  end
+
+  # The link opens the invitation in the language the email is rendered in.
+  defp locale_prefix do
+    locale = PublicLocales.normalize(Gettext.get_locale(Storyarn.Gettext))
+    if locale == PublicLocales.default_locale(), do: "", else: "/" <> PublicLocales.path_segment(locale)
   end
 
   defp inviter_name(invitation, opts) do

@@ -312,7 +312,10 @@ defmodule Storyarn.Ideation.ReferenceRecoveryTest do
         ["rows", "rounds"],
         &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
       )
-      |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.put(row, "reveal_on_expiry", false) end))
+      |> update_in(
+        ["rows", "timers"],
+        &Enum.map(&1, fn row -> row |> Map.put("reveal_on_expiry", false) |> Map.delete("round_id") end)
+      )
       |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
       |> update_in(
         ["rows"],

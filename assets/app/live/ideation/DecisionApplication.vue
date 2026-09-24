@@ -60,7 +60,18 @@ const rows = computed(() =>
     ? orderTargets(application.value.targets, decision.status !== "superseded")
     : [],
 );
-const nextAction = computed(() => (decision.accepted ?? decision.proposal).nextAction);
+const targetChoices: ApplicationState[] = [
+  "applied",
+  "partially_applied",
+  "not_applied",
+  "no_change_needed",
+];
+const noTargetChoices: ApplicationState[] = ["not_applied", "no_change_needed"];
+const nextAction = computed(
+  () =>
+    (decision.status === "proposed" ? decision.proposal : (decision.accepted ?? decision.proposal))
+      .nextAction,
+);
 const marking = ref<string | null>(null);
 
 function open(key: string | null, value: boolean) {
@@ -170,9 +181,9 @@ function when(declaration: DecisionDeclaration) {
         >
           “{{ target.application.note }}”
         </p>
-        <div v-if="decision.canDeclare && pendingRow(target)" class="mt-2 ml-[22px] flex gap-1.5">
+        <div v-if="decision.canDeclare" class="mt-2 ml-[22px] flex gap-1.5">
           <Button
-            v-if="applyHref(target)"
+            v-if="pendingRow(target) && applyHref(target)"
             :id="`decision-go-apply-${target.key}`"
             variant="outline"
             size="xs"
@@ -193,13 +204,22 @@ function when(declaration: DecisionDeclaration) {
                 variant="ghost"
                 size="xs"
                 :disabled="pending"
-                >{{ t("brainstormingDecisions.markApplied") }}<ChevronDown class="size-3"
+                >{{
+                  t(
+                    target.application
+                      ? "brainstormingDecisions.editApplication"
+                      : "brainstormingDecisions.markApplied",
+                  )
+                }}<ChevronDown class="size-3"
               /></Button>
             </PopoverTrigger>
             <PopoverContent align="start" class="w-[300px] p-3">
               <DecisionMarkForm
                 :name="target.name"
                 :id-prefix="`decision-mark-${target.key}`"
+                :initial="target.application?.state ?? 'applied'"
+                :initial-note="target.application?.note ?? ''"
+                :choices="targetChoices"
                 :pending="pending"
                 @confirm="(state, note) => confirm(target, state, note)"
                 @cancel="marking = null"
@@ -209,18 +229,52 @@ function when(declaration: DecisionDeclaration) {
         </div>
       </div>
     </div>
-    <div
-      v-else-if="application?.decision?.state === 'no_change_needed'"
-      class="flex min-h-[26px] items-center gap-2 rounded-xl border border-border px-3 py-2.5"
-    >
-      <CircleCheck class="size-3.5 text-muted-foreground" />
-      <span class="text-[13px] font-medium">{{
-        t("brainstormingDecisions.states.no_change_needed")
-      }}</span>
-      <span class="text-xs text-muted-foreground"
-        >· {{ application.decision.actorName || t("brainstormingDecisions.formerMember") }} ·
-        {{ when(application.decision) }}</span
+    <div v-else-if="application?.decision" class="rounded-xl border border-border px-3 py-2.5">
+      <div class="flex min-h-[26px] flex-wrap items-center gap-2">
+        <component
+          :is="stateIcons[application.decision.state]"
+          class="size-3.5"
+          :class="stateTones[application.decision.state]"
+        />
+        <span class="text-[13px] font-medium">{{
+          t(`brainstormingDecisions.states.${application.decision.state}`)
+        }}</span>
+        <span class="text-xs text-muted-foreground"
+          >· {{ application.decision.actorName || t("brainstormingDecisions.formerMember") }} ·
+          {{ when(application.decision) }}</span
+        >
+        <span class="flex-1" />
+        <Popover
+          v-if="decision.canDeclare"
+          :open="marking === 'decision'"
+          @update:open="(value: boolean) => open(null, value)"
+        >
+          <PopoverTrigger as-child>
+            <Button id="decision-edit-no-change" variant="ghost" size="xs" :disabled="pending"
+              >{{ t("brainstormingDecisions.editApplication") }}<ChevronDown class="size-3"
+            /></Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" class="w-[300px] p-3">
+            <DecisionMarkForm
+              :name="decision.proposal.title"
+              :title="t('brainstormingDecisions.editApplication')"
+              id-prefix="decision-edit-no-change"
+              :initial="application.decision.state"
+              :initial-note="application.decision.note ?? ''"
+              :choices="noTargetChoices"
+              :pending="pending"
+              @confirm="(state, note) => confirm(null, state, note)"
+              @cancel="marking = null"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      <p
+        v-if="application.decision.note"
+        class="mt-1 ml-[22px] text-xs text-muted-foreground italic"
       >
+        “{{ application.decision.note }}”
+      </p>
     </div>
     <div
       v-else

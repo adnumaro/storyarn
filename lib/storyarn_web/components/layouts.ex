@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Layouts do
   alias Storyarn.Platform.CommandPalette
   alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.FeatureFlagHelpers
+  alias StoryarnWeb.PublicURLs
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -314,6 +315,8 @@ defmodule StoryarnWeb.Layouts do
   defp current_request_path(_assigns), do: "/"
 
   defp non_indexable_path?(path) do
+    path = PublicURLs.unprefixed_path(path)
+
     String.starts_with?(path, "/users/") or
       String.starts_with?(path, "/workspaces") or
       String.starts_with?(path, "/projects/invitations/")

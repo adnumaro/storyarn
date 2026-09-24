@@ -84,11 +84,7 @@ function decide(
 ) {
   request(action, payload, `${action}:${JSON.stringify(payload)}`);
 }
-function declare(
-  item: DecisionAbout,
-  stateValue: Exclude<ApplicationState, "not_applied">,
-  note: string | null,
-) {
+function declare(item: DecisionAbout, stateValue: ApplicationState, note: string | null) {
   decide("decision_declare", {
     session_id: item.sessionId,
     decision_id: item.decision.id,
@@ -97,7 +93,7 @@ function declare(
     note,
   });
 }
-function declareBanner(stateValue: Exclude<ApplicationState, "not_applied">, note: string | null) {
+function declareBanner(stateValue: ApplicationState, note: string | null) {
   const banner = state.banner;
   if (!banner) return;
   decide("decision_declare", {

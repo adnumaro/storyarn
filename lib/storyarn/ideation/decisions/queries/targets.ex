@@ -25,7 +25,8 @@ defmodule Storyarn.Ideation.Decisions.Queries.Targets do
   defp pin(%{id: id, type: type}, live) do
     case live[{type, id}] do
       %{identity: identity, name: name} ->
-        {:ok, %{"key" => Ecto.UUID.generate(), "type" => type, "id" => id, "identity" => identity}, name}
+        {:ok, %{"key" => Ecto.UUID.generate(), "type" => type, "id" => id, "identity" => identity},
+         label(name, type, id)}
 
       _ ->
         :error
@@ -34,6 +35,12 @@ defmodule Storyarn.Ideation.Decisions.Queries.Targets do
 
   defp pin(%{label: label, type: type}, _live),
     do: {:ok, %{"key" => Ecto.UUID.generate(), "type" => type, "id" => nil, "identity" => nil}, label}
+
+  # Reference names are stripped of HTML before they reach us. A valid name
+  # such as "<hero>" can therefore be empty, but the frozen label must remain
+  # non-empty so the decision can be recovered from a project snapshot.
+  defp label(name, _type, _id) when is_binary(name) and name != "", do: name
+  defp label(_name, type, id), do: "#{String.capitalize(type)} ##{id}"
 
   # Current names of the pinned targets the reader may see, keyed by type and ID.
   def live(_scope, _project_id, []), do: {:ok, %{}}

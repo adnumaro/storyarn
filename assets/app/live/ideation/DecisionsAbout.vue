@@ -10,8 +10,6 @@ import DecisionMarkForm from "./DecisionMarkForm.vue";
 import type { ApplicationState } from "./decisionTypes";
 import type { DecisionAbout } from "./explorationTypes";
 
-type Mark = Exclude<ApplicationState, "not_applied">;
-
 /**
  * Decisions about the content open in the editor, already in the order to act
  * on them. A row opens its session on the decision; rows still to apply here
@@ -30,12 +28,12 @@ const {
 }>();
 const emit = defineEmits<{
   apply: [item: DecisionAbout];
-  declare: [item: DecisionAbout, state: Mark, note: string | null];
+  declare: [item: DecisionAbout, state: ApplicationState, note: string | null];
 }>();
 const { t } = useI18n();
 const marking = ref<number | null>(null);
 
-function declare(item: DecisionAbout, state: Mark, note: string | null) {
+function declare(item: DecisionAbout, state: ApplicationState, note: string | null) {
   marking.value = null;
   emit("declare", item, state, note);
 }

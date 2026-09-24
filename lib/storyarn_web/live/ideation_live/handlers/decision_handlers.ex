@@ -165,7 +165,8 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
        when mode in ~w(create revise) do
     with %{"idea_ids" => _} <- params,
          {:ok, selection} <- initial_selection(params) do
-      preview(socket.assigns.decisions.sources ++ selection, socket)
+      sources = Enum.uniq_by(socket.assigns.decisions.sources ++ selection, &{field(&1, :type), field(&1, :id)})
+      preview(sources, socket)
     else
       _ -> failure(socket, :invalid_parameters)
     end

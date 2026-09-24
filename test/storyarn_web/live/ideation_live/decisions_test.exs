@@ -347,6 +347,11 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     )
 
     assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id, other.id]
+
+    # The board selection still includes the idea that opened this proposal.
+    act(view, ctx, "add_sources", %{idea_ids: [ctx.idea.id, other.id]})
+    assert state(view)["error"] == nil
+    assert Enum.map(state(view)["sources"], & &1["id"]) == [ctx.idea.id, other.id]
   end
 
   test "the board draws every decision and a lane card opens it with its discussion", ctx do

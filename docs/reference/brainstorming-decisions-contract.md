@@ -16,12 +16,14 @@ A decision has exactly one verb: `create`, `change`, `test`, `keep` or
 `discard`. It affects zero to five targets. A target is an existing Sheet, Flow or
 Scene, pinned by type, ID and creation identity, or a free label and type for
 something that does not exist yet and will be created later by a person. The
-target's name is frozen in encrypted context; a target that is deleted or
+target's name is frozen in encrypted context, as its type and ID when the name is
+empty once stripped of markup; a target that is deleted or
 replaced reads as unavailable with that name rather than pointing at newer
 content.
 
 The conclusion is required. The reason and the next action are optional; a next
 action names what happens next in the editor and may name an editor who owns it.
+While a revision waits, the decision shows the next action that revision proposes.
 The owner carries no authority over the decision. The title is derived by the
 client from the first sentence of the conclusion until someone edits it; the
 server stores whatever title is sent. A decision's round is the newest round
@@ -87,7 +89,9 @@ Application is declared per target of the agreement in force: `not_applied`
 encrypted note. A decision without affected content declares on itself. A
 declaration is a statement, not a verification; it never reads or changes the
 affected content. The latest declaration per target counts, and the decision
-derives how many targets are still to apply.
+derives how many targets are still to apply. An editor corrects a declaration by
+declaring again, back to `not_applied` if needed; the earlier one stays in the
+history.
 
 Declarations are append-only and belong to one agreement. Accepting a revision
 starts a new agreement in which every target is not applied again; the earlier

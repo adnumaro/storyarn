@@ -26,7 +26,7 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
         v-inject="auth-layout"
         id="reset-password-vue"
         form={@form}
-        login-url={PublicURLs.locale_handoff_path(~p"/users/log-in", @locale)}
+        login-url={PublicURLs.login_path(@locale)}
         reset-complete={@reset_complete}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
   defp invalid_token_redirect(socket) do
     socket
     |> put_flash(:error, dgettext("identity", "Invalid or expired password reset link."))
-    |> redirect(to: ~p"/users/reset-password")
+    |> redirect(to: PublicURLs.reset_password_path(socket.assigns.locale))
   end
 
   defp assign_form(socket, changeset) do

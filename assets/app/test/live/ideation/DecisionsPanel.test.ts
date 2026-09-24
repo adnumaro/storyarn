@@ -34,7 +34,12 @@ function panel(
       },
       stubs: {
         Sidebar: { template: "<aside><slot name='header'/><slot/></aside>" },
-        Popover: passthrough,
+        Popover: {
+          name: "Popover",
+          props: ["open"],
+          emits: ["update:open"],
+          template: "<div><slot /></div>",
+        },
         PopoverTrigger: passthrough,
         PopoverContent: passthrough,
         ConfirmDialog: {
@@ -55,6 +60,7 @@ async function fillProposal() {
 }
 afterEach(() => {
   wrapper?.unmount();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -320,6 +326,40 @@ describe("reading and acting on a decision", () => {
     });
   });
 
+  it("lets an editor correct an applied declaration back to not applied with a new note", async () => {
+    const appliedTarget = target({
+      application: {
+        state: "applied",
+        note: "Marked too early",
+        actorName: "Alex",
+        at: "2026-09-13T12:00:00Z",
+      },
+    });
+    const pushEvent = panel({
+      mode: "detail",
+      selected: accepted({
+        application: { targets: [appliedTarget], decision: null, pending: 0, total: 1 },
+      }),
+    });
+    expect(wrapper.get("#decision-mark-target-mara").text()).toContain("Update declaration");
+    wrapper.findComponent({ name: "Popover" }).vm.$emit("update:open", true);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.get("#decision-mark-target-mara-applied").attributes("aria-checked")).toBe(
+      "true",
+    );
+    expect(wrapper.get<HTMLTextAreaElement>("#decision-application textarea").element.value).toBe(
+      "Marked too early",
+    );
+    await wrapper.get("#decision-mark-target-mara-not_applied").trigger("click");
+    await wrapper.get("#decision-application textarea").setValue("Still waiting on the scene");
+    await wrapper.get("#decision-mark-target-mara-confirm").trigger("click");
+    expect(pushEvent.mock.calls[0][1]).toMatchObject({
+      target_key: "target-mara",
+      state: "not_applied",
+      note: "Still waiting on the scene",
+    });
+  });
+
   it("declares that a decision without affected content needs no change", async () => {
     const pushEvent = panel({
       mode: "detail",
@@ -333,6 +373,70 @@ describe("reading and acting on a decision", () => {
       target_key: null,
       state: "no_change_needed",
     });
+  });
+
+  it("lets an editor retract a no-change declaration with an updated note", async () => {
+    const pushEvent = panel({
+      mode: "detail",
+      selected: accepted({
+        accepted: revision({ revision: 2, operation: "register", verb: "discard", targets: [] }),
+        application: {
+          targets: [],
+          decision: {
+            state: "no_change_needed",
+            note: "Original reason",
+            actorName: "Alex",
+            at: "2026-09-13T12:00:00Z",
+          },
+          pending: 0,
+          total: 0,
+        },
+      }),
+    });
+    expect(wrapper.get("#decision-edit-no-change").text()).toContain("Update declaration");
+    expect(wrapper.get("#decision-application").text()).toContain("Original reason");
+    wrapper.findComponent({ name: "Popover" }).vm.$emit("update:open", true);
+    await wrapper.vm.$nextTick();
+    expect(
+      wrapper.get("#decision-edit-no-change-no_change_needed").attributes("aria-checked"),
+    ).toBe("true");
+    expect(wrapper.get<HTMLTextAreaElement>("#decision-application textarea").element.value).toBe(
+      "Original reason",
+    );
+    await wrapper.get("#decision-edit-no-change-not_applied").trigger("click");
+    expect(wrapper.get("#decision-edit-no-change-confirm").text()).toContain("Mark not applied");
+    await wrapper
+      .get("#decision-application textarea")
+      .setValue("The discarded route was never built");
+    await wrapper.get("#decision-edit-no-change-confirm").trigger("click");
+    expect(pushEvent.mock.calls[0][1]).toMatchObject({
+      target_key: null,
+      state: "not_applied",
+      note: "The discarded route was never built",
+    });
+  });
+
+  it("shows the proposed next action when reviewing a revision of an accepted decision", () => {
+    panel({
+      mode: "detail",
+      selected: accepted({
+        version: 3,
+        status: "proposed",
+        accepted: revision({
+          revision: 2,
+          operation: "accept",
+          nextAction: { text: "Write the old path", ownerId: 1, ownerName: "Alex" },
+        }),
+        proposal: revision({
+          revision: 3,
+          operation: "revise",
+          nextAction: { text: "Test the forest route", ownerId: 2, ownerName: "Noor" },
+        }),
+      }),
+    });
+    expect(wrapper.get("#decision-next-action-line").text()).toContain("Test the forest route");
+    expect(wrapper.get("#decision-next-action-line").text()).toContain("Noor");
+    expect(wrapper.get("#decision-next-action-line").text()).not.toContain("Write the old path");
   });
 
   it("hides unauthorized mutations and never exposes inaccessible source text", () => {

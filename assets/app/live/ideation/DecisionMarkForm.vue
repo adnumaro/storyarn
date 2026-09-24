@@ -5,34 +5,39 @@ import { Button } from "@components/ui/button";
 import { Textarea } from "@components/ui/textarea";
 import type { ApplicationState } from "./decisionTypes";
 
-type Mark = Exclude<ApplicationState, "not_applied">;
-
 /**
  * The optional-note step of marking a target: a statement, not a verification.
- * The state is chosen here unless the caller already chose it.
+ * The state is chosen here unless the caller already chose it; correcting a
+ * declaration starts from the one being corrected.
  */
 const {
   name,
   idPrefix,
   initial = "applied",
+  initialNote = "",
+  title = null,
+  choices = ["applied", "partially_applied", "no_change_needed"],
   choosable = true,
   pending = false,
 } = defineProps<{
   name: string;
   idPrefix: string;
-  initial?: Mark;
+  initial?: ApplicationState;
+  initialNote?: string;
+  title?: string | null;
+  choices?: ApplicationState[];
   choosable?: boolean;
   pending?: boolean;
 }>();
-const emit = defineEmits<{ confirm: [state: Mark, note: string | null]; cancel: [] }>();
+const emit = defineEmits<{ confirm: [state: ApplicationState, note: string | null]; cancel: [] }>();
 const { t } = useI18n();
-const choices: Mark[] = ["applied", "partially_applied", "no_change_needed"];
-const choice = ref<Mark>(initial);
-const note = ref("");
+const choice = ref<ApplicationState>(initial);
+const note = ref(initialNote);
 </script>
 <template>
   <p class="text-[13px] font-medium">
     {{
+      title ??
       t("brainstormingDecisions.markAs", {
         name,
         state: t(`brainstormingDecisions.stateChips.${choice}`),
@@ -42,7 +47,12 @@ const note = ref("");
   <p class="mt-0.5 text-xs text-muted-foreground">
     {{ t("brainstormingDecisions.markStatement") }}
   </p>
-  <div v-if="choosable" class="mt-2.5 flex rounded-md border border-border p-0.5" role="radiogroup">
+  <div
+    v-if="choosable"
+    class="mt-2.5 grid rounded-md border border-border p-0.5"
+    :class="choices.length === 3 ? 'grid-cols-3' : 'grid-cols-2'"
+    role="radiogroup"
+  >
     <button
       v-for="option in choices"
       :id="`${idPrefix}-${option}`"

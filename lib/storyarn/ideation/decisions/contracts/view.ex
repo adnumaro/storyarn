@@ -175,7 +175,7 @@ defmodule Storyarn.Ideation.Decisions.View do
       key: target["key"],
       type: target["type"],
       id: if(available?, do: target["id"]),
-      name: if(available?, do: current.name, else: labels[target["key"]]["label"]),
+      name: if(available? and current.name != "", do: current.name, else: labels[target["key"]]["label"]),
       new: false,
       available: available?
     }

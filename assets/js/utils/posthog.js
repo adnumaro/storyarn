@@ -50,8 +50,11 @@ const routeFamilies = [
   [(pathname) => pathname.startsWith("/workspaces"), "workspace"],
 ];
 
+// Mirrors the public surface of Storyarn.Public.Publication.PathLocalizer:
+// content pages plus the access pages (log-in, registration, password reset,
+// invitations), whose language prefix must not change their route family.
 const localizedPublicPathPattern =
-  /^\/[a-z]{2,3}(?:-[a-z0-9]{2,8})*(?<path>\/(?:contact|privacy|terms|docs|blog)(?:\/.*)?|)$/i;
+  /^\/[a-z]{2,3}(?:-[a-z0-9]{2,8})*(?<path>\/(?:contact|privacy|terms|docs|blog|users\/(?:log-in|register|reset-password)|(?:projects|workspaces)\/invitations)(?:\/.*)?|)$/i;
 
 const privateAutoProperties = new Set([
   "$current_url",

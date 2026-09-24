@@ -176,9 +176,9 @@ defmodule StoryarnWeb.E2E.BlogTest do
       assert_in_delta image["aspectRatio"], 1356 / 773, 0.001
     end)
     |> click("#blog-register-cta")
-    |> assert_path("/users/register")
+    |> assert_path("/es/users/register")
     |> assert_has("html[lang='es']")
-    |> evaluate("window.location.search", fn search -> assert search == "?locale=es" end)
+    |> evaluate("window.location.search", fn search -> assert search == "" end)
   end
 
   test "localized article links preserve the URL-authoritative locale", %{conn: conn} do
@@ -195,17 +195,17 @@ defmodule StoryarnWeb.E2E.BlogTest do
     |> assert_has("#docs-language-switcher-en[href='/docs/world-building/sheets-overview'][hreflang='en']")
   end
 
-  test "hands Spanish off to auth and returns to the localized landing without reloading", %{conn: conn} do
+  test "keeps Spanish in the auth path and returns to the localized landing without reloading", %{conn: conn} do
     conn
     |> visit("/es/blog")
     |> assert_has("body .phx-connected")
     |> evaluate("document.documentElement.dataset.navigationSentinel = 'kept'")
     |> evaluate(cross_surface_blank_observer_expression())
-    |> click("#public-header a[href='/users/register?locale=es']")
-    |> assert_path("/users/register")
+    |> click("#public-header a[href='/es/users/register']")
+    |> assert_path("/es/users/register")
     |> assert_has("html[lang='es']")
     |> assert_has("#auth-layout-shell")
-    |> evaluate("window.location.search", fn search -> assert search == "?locale=es" end)
+    |> evaluate("window.location.search", fn search -> assert search == "" end)
     |> evaluate("document.documentElement.dataset.navigationSentinel", fn value ->
       assert value == "kept"
     end)

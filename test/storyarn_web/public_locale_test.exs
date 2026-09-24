@@ -29,14 +29,18 @@ defmodule StoryarnWeb.PublicLocaleTest do
     assert LazyHTML.attribute(LazyHTML.query(document, "html"), "lang") == ["en"]
   end
 
-  test "auth routes have no public route locale and retain the session preference", %{conn: conn} do
-    conn =
+  test "auth routes carry their language in the path", %{conn: conn} do
+    spanish = conn |> get("/es/users/log-in") |> html_response(200) |> LazyHTML.from_document()
+
+    assert LazyHTML.attribute(LazyHTML.query(spanish, "html"), "lang") == ["es"]
+
+    english =
       conn
       |> init_test_session(%{locale: "es"})
       |> get("/users/log-in")
+      |> html_response(200)
+      |> LazyHTML.from_document()
 
-    document = conn |> html_response(200) |> LazyHTML.from_document()
-
-    assert LazyHTML.attribute(LazyHTML.query(document, "html"), "lang") == ["es"]
+    assert LazyHTML.attribute(LazyHTML.query(english, "html"), "lang") == ["en"]
   end
 end

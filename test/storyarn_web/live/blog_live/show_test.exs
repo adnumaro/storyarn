@@ -64,7 +64,7 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
 
     assert has_element?(
              view,
-             ~s|#blog-register-cta[href="/users/register?locale=en"][data-phx-link="redirect"]|
+             ~s|#blog-register-cta[href="/users/register"][data-phx-link="redirect"]|
            )
 
     assert has_element?(view, "#blog-signup-card")
@@ -134,7 +134,7 @@ defmodule StoryarnWeb.BlogLive.ShowTest do
 
     assert has_element?(
              view,
-             ~s|#blog-register-cta[href="/users/register?locale=es"][data-phx-link="redirect"]|,
+             ~s|#blog-register-cta[href="/es/users/register"][data-phx-link="redirect"]|,
              "Crea tu cuenta de Storyarn"
            )
 
