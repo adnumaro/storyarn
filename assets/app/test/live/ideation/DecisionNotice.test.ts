@@ -3,7 +3,7 @@ import { mount, type VueWrapper } from "@vue/test-utils";
 import Notice from "@app/live/ideation/DecisionNotice.vue";
 import type { NotificationItem } from "@components/notifications/types";
 import type { DecisionNoticeData } from "@app/live/ideation/decisionTypes";
-import { accepted, decision } from "./decisionFixtures";
+import { accepted, decision, revision } from "./decisionFixtures";
 
 let wrapper: VueWrapper;
 afterEach(() => wrapper?.unmount());
@@ -54,11 +54,18 @@ describe("a decision notification", () => {
 
   it("sends the owner of a next action to the content still to apply", async () => {
     notice("decision_next_action", {
-      decision: accepted(),
+      decision: accepted({
+        accepted: revision({
+          revision: 2,
+          operation: "accept",
+          nextAction: { text: "Schedule the playtest", ownerId: 2, ownerName: "Noor" },
+        }),
+      }),
       target: "Mara",
       action: { kind: "apply", href: "/sheets/7?decision=4&session=3" },
     });
     expect(wrapper.text()).toContain("Noor Haddad asked you to apply · Mara");
+    expect(wrapper.text()).toContain("Schedule the playtest");
     const apply = wrapper.get("#notification-action-7");
     expect(apply.text()).toBe("Go apply");
     expect(apply.attributes("href")).toBe("/sheets/7?decision=4&session=3");

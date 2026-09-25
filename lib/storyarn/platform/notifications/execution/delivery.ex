@@ -104,6 +104,21 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   end
 
   @doc """
+  The producer's event behind a decision notification, as its deduplication key
+  recorded it, so the producer can name exactly what happened.
+  """
+  @spec decision_event(Notification.t()) :: String.t() | nil
+  def decision_event(%Notification{entity_type: "decision", dedupe_key: key} = notification) when is_binary(key) do
+    prefix = "decision:v1:#{notification.project_id}:#{notification.entity_id}:"
+    suffix = ":#{notification.kind}"
+
+    if String.starts_with?(key, prefix) and String.ends_with?(key, suffix),
+      do: key |> String.replace_prefix(prefix, "") |> String.replace_suffix(suffix, "")
+  end
+
+  def decision_event(_notification), do: nil
+
+  @doc """
   Marks the requests to accept a decision as read once it no longer waits for
   them: it was accepted, withdrawn or replaced by a newer proposal. Runs inside
   the decision's transaction; publish the returned outcome after it commits.

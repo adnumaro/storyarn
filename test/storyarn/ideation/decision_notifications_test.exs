@@ -256,6 +256,119 @@ defmodule Storyarn.Ideation.DecisionNotificationsTest do
     assert Enum.all?(requests(ctx.peer), &match?(%DateTime{}, &1.read_at))
   end
 
+  test "each applied notification names the content its own declaration marked", ctx do
+    keeper = sheet_fixture(ctx.project, %{name: "The keeper"})
+
+    {:ok, proposed} =
+      propose(ctx, %{targets: [%{type: "sheet", id: ctx.mara.id}, %{type: "sheet", id: keeper.id}]})
+
+    {:ok, accepted} =
+      Ideation.accept_decision(
+        ctx.peer,
+        ctx.project.id,
+        ctx.session.id,
+        proposed.id,
+        proposed.version,
+        Ecto.UUID.generate()
+      )
+
+    [mara, keeper_target] = accepted.application.targets
+    declare(ctx, accepted, mara, "applied")
+    declare(ctx, accepted, keeper_target, "applied")
+    assert applied_targets(ctx.author) == ["The keeper", "Mara"]
+
+    # Changing one declaration later does not rewrite what earlier notifications said.
+    declare(ctx, accepted, mara, "partially_applied")
+    assert applied_targets(ctx.author) == ["The keeper", "Mara"]
+  end
+
+  test "Go apply is offered only while the reader can still declare", ctx do
+    {:ok, proposed} =
+      propose(ctx, %{
+        targets: [%{type: "sheet", id: ctx.mara.id}],
+        next_action: "Schedule the playtest",
+        next_action_owner_id: ctx.facilitator.user.id
+      })
+
+    {:ok, _} =
+      Ideation.accept_decision(
+        ctx.peer,
+        ctx.project.id,
+        ctx.session.id,
+        proposed.id,
+        proposed.version,
+        Ecto.UUID.generate()
+      )
+
+    [next] = NotificationHelpers.client_state(ctx.facilitator).items
+    assert next.attachment.data.action.kind == "apply"
+    assert next.attachment.data.decision.accepted.nextAction.text == "Schedule the playtest"
+
+    {:ok, replacement} = propose(ctx, %{title: "Mara stays", replaces_id: proposed.id})
+
+    {:ok, _} =
+      Ideation.accept_decision(
+        ctx.peer,
+        ctx.project.id,
+        ctx.session.id,
+        replacement.id,
+        replacement.version,
+        Ecto.UUID.generate()
+      )
+
+    next = Enum.find(NotificationHelpers.client_state(ctx.facilitator).items, &(&1.kind == "decision_next_action"))
+    assert next.attachment.data.decision.status == :superseded
+    assert next.attachment.data.action.kind == "open"
+  end
+
+  test "reading the inbox costs the same for one decision or several of a session", ctx do
+    {:ok, _} = propose(ctx, %{})
+    one = count_queries(fn -> NotificationHelpers.client_state(ctx.peer) end)
+
+    for n <- 1..4, do: {:ok, _} = propose(ctx, %{title: "Ending #{n}"})
+    %{items: items} = NotificationHelpers.client_state(ctx.peer)
+    assert length(items) == 5 and Enum.all?(items, & &1.attachment)
+    five = count_queries(fn -> NotificationHelpers.client_state(ctx.peer) end)
+
+    assert five - one <= 2, "one decision: #{one} queries, five: #{five}"
+  end
+
+  defp declare(ctx, decision, target, state) do
+    {:ok, _} =
+      Ideation.declare_decision_application(ctx.facilitator, ctx.project.id, ctx.session.id, decision.id, 2, %{
+        target_key: target.key,
+        state: state,
+        request_key: Ecto.UUID.generate()
+      })
+  end
+
+  defp applied_targets(actor) do
+    actor
+    |> NotificationHelpers.client_state()
+    |> Map.fetch!(:items)
+    |> Enum.filter(&(&1.kind == "decision_applied"))
+    |> Enum.map(& &1.attachment.data.target)
+  end
+
+  defp count_queries(fun) do
+    ref = make_ref()
+    parent = self()
+    handler = "count-queries-#{inspect(ref)}"
+
+    :telemetry.attach(handler, [:storyarn, :repo, :query], fn _, _, _, _ -> send(parent, {ref, :query}) end, nil)
+    fun.()
+    :telemetry.detach(handler)
+    drain(ref, 0)
+  end
+
+  defp drain(ref, count) do
+    receive do
+      {^ref, :query} -> drain(ref, count + 1)
+    after
+      0 -> count
+    end
+  end
+
   defp requests(actor) do
     actor
     |> NotificationInbox.list_notifications()

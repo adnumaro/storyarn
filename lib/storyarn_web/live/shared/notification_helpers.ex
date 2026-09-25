@@ -28,7 +28,7 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
     destinations = Map.merge(Projects.comment_destinations(scope, comment_ids), decision_projects)
 
     cards =
-      DecisionNotices.cards(
+      DecisionNotices.index(
         scope,
         notifications,
         Map.new(decision_projects, fn {{:decision_project, id}, slugs} -> {id, slugs} end)

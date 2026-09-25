@@ -283,8 +283,12 @@ needed` take an optional note; the confirmation offers `Undo` for five seconds,
   session after rechecking access. In the inbox each one reads actor · what
   happened · the compact card · one action · time: the card is read when the
   inbox loads, with the reader's current access, and a decision they can no
-  longer see leaves only the sentence. `Open` goes to the decision; the next
-  action's `Go apply` opens the first content still to apply with its banner.
+  longer see leaves only the sentence, and every decision of the inbox is read
+  together, one pass per session. `Open` goes to the decision; the next action's
+  notification shows what was asked, and its `Go apply` opens the first content
+  still to apply with its banner, only while the reader can still declare. An
+  application's notification names the content its own declaration marked, never
+  whatever is applied now.
   A `decision_to_accept` stays unread when opened and is marked read once the
   decision stops waiting for it: a revision, acceptance or withdrawal settles
   the earlier requests before any new one is delivered.

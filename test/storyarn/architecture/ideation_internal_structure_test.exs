@@ -241,6 +241,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                    accept_decision: 6,
                    withdraw_decision: 6,
                    declare_decision_application: 6,
+                   list_decisions_by_ids: 3,
+                   decision_event_declarations: 3,
                    link_decision_task: 5,
                    edit_decision_task: 6,
                    unlink_decision_task: 6

@@ -40,6 +40,69 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
 
   def get(_, _, _, _), do: {:error, :not_found}
 
+  # Several decisions of one project at once, one pass per session: each session
+  # is checked for the reader, and a decision they cannot see is left out.
+  def get_many(scope, project_id, ids) when is_list(ids) do
+    ids = ids |> Enum.filter(&valid_id/1) |> Enum.uniq() |> Enum.take(100)
+
+    views =
+      from(d in Decision, where: d.id in ^ids)
+      |> Repo.all()
+      |> Enum.group_by(& &1.session_id)
+      |> Enum.flat_map(fn {session_id, decisions} -> session_views(scope, project_id, session_id, decisions) end)
+
+    {:ok, views}
+  end
+
+  # The declarations some decision events recorded (`"d" <> request key`), for
+  # the decisions the reader may see, keyed by decision and event.
+  def declarations(scope, project_id, events) when is_list(events) do
+    pairs =
+      for {id, "d" <> key} <- events, valid_id(id), {:ok, key} <- [Ecto.UUID.cast(key)], uniq: true, do: {id, key}
+
+    ids = pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+    keys = pairs |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
+
+    rows =
+      Repo.all(
+        from a in Application,
+          where: a.decision_id in ^ids and a.request_key in ^keys,
+          select: %{
+            session_id: a.session_id,
+            decision_id: a.decision_id,
+            request_key: a.request_key,
+            agreement: a.agreement,
+            target_key: a.target_key
+          }
+      )
+
+    readable =
+      rows
+      |> Enum.map(& &1.session_id)
+      |> Enum.uniq()
+      |> Enum.filter(&match?({:ok, _}, Access.read(scope, project_id, &1)))
+      |> MapSet.new()
+
+    found =
+      for row <- rows,
+          {row.decision_id, row.request_key} in pairs,
+          MapSet.member?(readable, row.session_id),
+          into: %{},
+          do: {{row.decision_id, "d" <> row.request_key}, Map.take(row, [:agreement, :target_key])}
+
+    {:ok, found}
+  end
+
+  defp session_views(scope, project_id, session_id, decisions) do
+    with {:ok, _} <- Access.read(scope, project_id, session_id),
+         {:ok, context} <- context(scope, project_id, session_id, decisions),
+         {:ok, access} <- Access.read(scope, project_id, session_id) do
+      Enum.map(decisions, &View.decision(&1, context, access))
+    else
+      _ -> []
+    end
+  end
+
   def history(scope, project_id, session_id, id) when valid_id(id) do
     with {:ok, _} <- Access.read(scope, project_id, session_id),
          %Decision{} <- Repo.get_by(Decision, id: id, session_id: session_id) do

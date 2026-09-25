@@ -3,35 +3,37 @@ defmodule StoryarnWeb.Live.Shared.DecisionNotices do
 
   # The compact decision card a decision notification carries in the inbox. It
   # is read now, with the reader's current access: a decision they can no longer
-  # see carries no card, and its notification keeps only its sentence.
+  # see carries no card, and its notification keeps only its sentence. All the
+  # decisions of a project are read together, one pass per session.
 
   use StoryarnWeb, :verified_routes
 
   alias Storyarn.Ideation
+  alias Storyarn.NotificationInbox
   alias Storyarn.Projects
   alias StoryarnWeb.Live.Shared.IdeationDecisionData
 
   @pending ~w(not_applied partially_applied)
 
-  @doc "Cards keyed by project and decision, for the decision notifications given."
-  def cards(scope, notifications, projects) do
+  @doc "The cards and applied declarations for the decision notifications given."
+  def index(scope, notifications, projects) do
     notifications
     |> Enum.filter(&(&1.entity_type == "decision" and Map.has_key?(projects, &1.project_id)))
-    |> Enum.group_by(& &1.project_id, & &1.entity_id)
-    |> Enum.flat_map(fn {project_id, ids} ->
-      project_cards(scope, project_id, Enum.uniq(ids), projects[project_id])
+    |> Enum.group_by(& &1.project_id)
+    |> Enum.reduce(%{cards: %{}, declarations: %{}}, fn {project_id, project_notifications}, index ->
+      {cards, declarations} = project_index(scope, project_id, project_notifications, projects[project_id])
+      %{cards: Map.merge(index.cards, cards), declarations: Map.merge(index.declarations, declarations)}
     end)
-    |> Map.new()
   end
 
   @doc "The attachment one notification carries, or nil."
-  def attachment(%{entity_type: "decision", project_id: project_id, entity_id: id} = notification, cards) do
-    case cards[{project_id, id}] do
+  def attachment(%{entity_type: "decision", project_id: project_id, entity_id: id} = notification, index) do
+    case index.cards[{project_id, id}] do
       nil ->
         nil
 
       card ->
-        target = target(notification, card)
+        target = target(notification, card, index.declarations)
 
         %{
           type: "decision",
@@ -45,48 +47,55 @@ defmodule StoryarnWeb.Live.Shared.DecisionNotices do
     end
   end
 
-  def attachment(_notification, _cards), do: nil
+  def attachment(_notification, _index), do: nil
 
-  defp project_cards(scope, project_id, ids, slugs) do
-    decisions =
-      for id <- ids,
-          {:ok, session_id} <- [Ideation.get_decision_session_id(scope, project_id, id)],
-          {:ok, decision} <- [Ideation.get_decision(scope, project_id, session_id, id)],
-          do: decision
+  defp project_index(scope, project_id, notifications, slugs) do
+    ids = notifications |> Enum.map(& &1.entity_id) |> Enum.uniq()
 
-    sessions = decisions |> Enum.map(& &1.session_id) |> Enum.uniq()
+    events =
+      for %{kind: "decision_applied"} = n <- notifications, do: {n.entity_id, NotificationInbox.decision_event(n)}
 
-    with [_ | _] <- decisions,
+    with {:ok, [_ | _] = decisions} <- Ideation.list_decisions_by_ids(scope, project_id, ids),
+         {:ok, declared} <- Ideation.decision_event_declarations(scope, project_id, events),
          {:ok, members} <- Projects.list_comment_members(scope, project_id),
+         sessions = decisions |> Enum.map(& &1.session_id) |> Enum.uniq(),
          {:ok, rounds} <- Ideation.list_session_rounds(scope, project_id, sessions) do
-      Enum.map(decisions, fn decision ->
-        board = %{members: members, rounds: Map.get(rounds, decision.session_id, []), href: &content_href(&1, slugs)}
+      cards =
+        Map.new(decisions, fn decision ->
+          board = %{members: members, rounds: Map.get(rounds, decision.session_id, []), href: &content_href(&1, slugs)}
 
-        {{project_id, decision.id},
-         %{view: decision, props: IdeationDecisionData.decision(decision, board), slugs: slugs}}
-      end)
+          {{project_id, decision.id},
+           %{view: decision, props: IdeationDecisionData.decision(decision, board), slugs: slugs}}
+        end)
+
+      {cards, Map.new(declared, fn {{id, event}, declaration} -> {{project_id, id, event}, declaration} end)}
     else
-      _ -> []
+      _ -> {%{}, %{}}
     end
   end
 
-  # The content a next action asks to apply is the first one still pending; the
-  # content an application names is the one its actor marked applied, when
-  # there is exactly one.
-  defp target(%{kind: "decision_next_action"}, card) do
+  # A next action points at the first content still pending. An application
+  # names the content its own declaration marked, when that declaration belongs
+  # to the agreement shown; never whatever happens to be applied now.
+  defp target(%{kind: "decision_next_action"}, card, _declarations) do
     card.view
     |> targets()
     |> Enum.find(&(state(&1) in @pending and &1.available))
   end
 
-  defp target(%{kind: "decision_applied", actor_id: actor_id}, card) when is_integer(actor_id) do
-    case Enum.filter(targets(card.view), &(state(&1) == "applied" and &1.application.actor_id == actor_id)) do
-      [target] -> target
-      _ -> nil
+  defp target(%{kind: "decision_applied"} = notification, card, declarations) do
+    event = NotificationInbox.decision_event(notification)
+
+    case declarations[{notification.project_id, notification.entity_id, event}] do
+      %{agreement: agreement, target_key: key} when agreement == card.view.accepted_version and is_binary(key) ->
+        Enum.find(targets(card.view), &(&1.key == key))
+
+      _ ->
+        nil
     end
   end
 
-  defp target(_notification, _card), do: nil
+  defp target(_notification, _card, _declarations), do: nil
 
   defp targets(%{application: %{targets: targets}}), do: targets
   defp targets(_decision), do: []
@@ -94,7 +103,9 @@ defmodule StoryarnWeb.Live.Shared.DecisionNotices do
   defp state(%{application: %{state: state}}), do: state
   defp state(_target), do: "not_applied"
 
-  defp action("decision_next_action", %{type: type, id: id}, card) when is_integer(id) do
+  # Go apply only where the reader can still declare; anything else opens the decision.
+  defp action("decision_next_action", %{type: type, id: id}, %{view: %{can_declare: true}} = card)
+       when is_integer(id) do
     query = [decision: card.view.id, session: card.view.session_id]
     %{kind: "apply", href: content_href(%{type: type, id: id}, card.slugs) <> "?" <> URI.encode_query(query)}
   end

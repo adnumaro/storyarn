@@ -30,6 +30,10 @@ defmodule Storyarn.Platform.Notifications do
           {:ok, delivery_outcome()} | {:error, term()}
   defdelegate deliver_decision_activity(actor_id, project_id, decision, recipients), to: Delivery
 
+  @doc "The producer's event behind a decision notification."
+  @spec decision_event(Notification.t()) :: String.t() | nil
+  defdelegate decision_event(notification), to: Delivery
+
   @doc "Marks the requests to accept a decision as read once it no longer waits for them."
   @spec resolve_decision_requests(pos_integer(), pos_integer()) :: {:ok, delivery_outcome()}
   defdelegate resolve_decision_requests(project_id, decision_id), to: Delivery
