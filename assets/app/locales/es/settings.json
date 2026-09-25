@@ -181,19 +181,10 @@
         "active_members": "Miembros activos",
         "no_members": "No se han encontrado miembros.",
         "remove_member": "Eliminar miembro",
-        "transfer": {
-          "action": "Transferir propiedad",
-          "title": "¿Transferir la propiedad del espacio?",
-          "description": "{name} pasará a ser la persona propietaria del espacio y tú pasarás a ser administrador. La propiedad de los proyectos no cambiará. La transferencia fallará si la nueva persona propietaria ha alcanzado su límite de espacios.",
-          "confirm": "Transferir propiedad",
-          "pending": "Transfiriendo la propiedad del espacio…",
-          "cancel": "Cancelar",
-          "connection_unconfirmed": "La conexión se ha interrumpido y Storyarn no ha podido confirmar el resultado. Vuelve a conectarte y actualiza esta página antes de intentarlo de nuevo."
-        },
         "page_title": "Miembros",
         "count": "{count} personas",
         "pending_hint": "Reservan un asiento hasta que se acepten, se revoquen o caduquen",
-        "owner_note": "Solo el propietario puede cambiar roles, transferir la propiedad o eliminar miembros.",
+        "owner_note": "Solo el propietario puede cambiar roles o eliminar miembros.",
         "remove_dialog": {
           "title": "¿Eliminar del workspace?",
           "description": "{name} perderá el acceso a todos los proyectos de este workspace. Puedes invitarle de nuevo más adelante.",

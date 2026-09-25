@@ -9,16 +9,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.SaveStatusTimer
   alias StoryarnWeb.LanguagePickerOption
-  alias StoryarnWeb.Live.Hooks.SettingsNav
   alias StoryarnWeb.PrivateMedia
 
   @impl true
   def mount(_params, _session, socket) do
     stale_workspace = socket.assigns.workspace
-
-    if connected?(socket) do
-      :ok = Workspaces.subscribe_workspace_ownership_changes(stale_workspace.id)
-    end
 
     case Workspaces.authorize(
            socket.assigns.current_scope,
@@ -218,36 +213,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   end
 
   @impl true
-  def handle_info(
-        {:workspace_ownership_transferred, %{workspace_id: workspace_id}},
-        %{assigns: %{workspace: %{id: workspace_id}}} = socket
-      ) do
-    case Workspaces.authorize(
-           socket.assigns.current_scope,
-           workspace_id,
-           :access_workspace_general_settings
-         ) do
-      {:ok, workspace, membership} ->
-        socket =
-          socket
-          |> assign(:workspace, workspace)
-          |> assign(:membership, membership)
-          |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
-          |> refresh_workspace_navigation()
-
-        {:noreply, assign(socket, :settings_nav, SettingsNav.build_nav(socket.assigns))}
-
-      {:error, _reason} ->
-        {:noreply,
-         socket
-         |> put_flash(
-           :error,
-           dgettext("workspaces", "You don't have permission to manage this workspace.")
-         )
-         |> push_navigate(to: ~p"/users/settings")}
-    end
-  end
-
   def handle_info({:reset_save_status, token}, socket) do
     if socket.assigns[:save_status_reset_token] == token do
       {:noreply, assign(socket, :save_status, :idle)}
@@ -294,26 +259,5 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     Enum.map(Workspaces.source_locale_options(), fn locale ->
       LanguagePickerOption.from_code(locale.code, label: locale.name)
     end)
-  end
-
-  # The rail derives workspace access from these assigns; refresh them after an
-  # ownership transfer so the nav reflects the new roles without a reload.
-  defp refresh_workspace_navigation(socket) do
-    workspace_data = Workspaces.list_workspaces(socket.assigns.current_scope)
-
-    managed_slugs =
-      workspace_data
-      |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_settings))
-      |> MapSet.new(& &1.workspace.slug)
-
-    general_slugs =
-      workspace_data
-      |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_general_settings))
-      |> MapSet.new(& &1.workspace.slug)
-
-    socket
-    |> assign(:workspaces, Enum.map(workspace_data, & &1.workspace))
-    |> assign(:managed_workspace_slugs, managed_slugs)
-    |> assign(:general_workspace_slugs, general_slugs)
   end
 end

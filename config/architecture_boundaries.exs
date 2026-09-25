@@ -1605,15 +1605,6 @@ aggregate_identity_persistence_ownership = %{
           %{identity: "def update/3", operations: [:update], detected_by_analyzer: true}
         ],
         reason: "Workspace lifecycle owns ordinary metadata updates"
-      },
-      %{
-        context: :workspaces,
-        authority: :ownership_transfer,
-        path: "lib/storyarn/workspaces/memberships/commands/transfer_ownership.ex",
-        functions: [
-          %{identity: "defp change_workspace_owner/2", operations: [:update], detected_by_analyzer: true}
-        ],
-        reason: "the serialized Workspace transfer changes the canonical owner_id"
       }
     ],
     scanner_false_positives: [],
@@ -1659,15 +1650,6 @@ aggregate_identity_persistence_ownership = %{
           %{identity: "def remove/3", operations: [:delete], detected_by_analyzer: true}
         ],
         reason: "Workspace memberships owns ordinary member removal"
-      },
-      %{
-        context: :workspaces,
-        authority: :ownership_transfer,
-        path: "lib/storyarn/workspaces/memberships/commands/transfer_ownership.ex",
-        functions: [
-          %{identity: "defp change_role/2", operations: [:update], detected_by_analyzer: true}
-        ],
-        reason: "the serialized Workspace transfer atomically demotes and promotes owner memberships"
       }
     ],
     scanner_false_positives: [],
@@ -5197,13 +5179,6 @@ policy = %{
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
       reason: "Workspace creation applies commercial limits and subscriptions through the public Commercial facade"
-    },
-    %{
-      source: "lib/storyarn/workspaces/memberships/commands/transfer_ownership.ex",
-      target: "lib/storyarn/commercial.ex",
-      kinds: ["runtime"],
-      reason:
-        "Workspace ownership transfer applies the receiver's Commercial-owned workspace entitlement while holding its user lock"
     },
     %{
       source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",

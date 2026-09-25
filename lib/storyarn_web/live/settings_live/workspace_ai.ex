@@ -9,15 +9,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceAI do
   alias Storyarn.AI
   alias Storyarn.Platform.FeatureFlags
   alias Storyarn.Workspaces
-  alias StoryarnWeb.Live.Hooks.SettingsNav
 
   @impl true
   def mount(_params, _session, socket) do
     stale_workspace = socket.assigns.workspace
-
-    if connected?(socket) do
-      :ok = Workspaces.subscribe_workspace_ownership_changes(stale_workspace.id)
-    end
 
     case Workspaces.authorize(
            socket.assigns.current_scope,
@@ -90,36 +85,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceAI do
 
   def handle_event("update_personal_ai_members_policy", _params, socket) do
     {:noreply, put_flash(socket, :error, dgettext("workspaces", "Personal AI member policy could not be updated."))}
-  end
-
-  @impl true
-  def handle_info(
-        {:workspace_ownership_transferred, %{workspace_id: workspace_id}},
-        %{assigns: %{workspace: %{id: workspace_id}}} = socket
-      ) do
-    case Workspaces.authorize(
-           socket.assigns.current_scope,
-           workspace_id,
-           :access_workspace_general_settings
-         ) do
-      {:ok, workspace, membership} ->
-        socket =
-          socket
-          |> assign(:workspace, workspace)
-          |> assign(:membership, membership)
-          |> assign_ai_settings()
-
-        {:noreply, assign(socket, :settings_nav, SettingsNav.build_nav(socket.assigns))}
-
-      {:error, _reason} ->
-        {:noreply,
-         socket
-         |> put_flash(
-           :error,
-           dgettext("workspaces", "You don't have permission to manage this workspace.")
-         )
-         |> push_navigate(to: ~p"/users/settings")}
-    end
   end
 
   defp assign_ai_settings(socket) do

@@ -28,22 +28,14 @@ defmodule Storyarn.Commercial.Billing.Limits do
 
   @doc """
   Checks if a user can create another workspace.
+
+  This is an admission check, not a concurrency boundary. Workspace creation
+  must hold a row lock for the user while it calls this function and until the
+  new Workspace commits.
   """
   def can_create_workspace?(user) do
-    can_receive_workspace?(user)
-  end
-
-  @doc """
-  Checks if a user can receive ownership of another workspace.
-
-  This is an admission check, not a concurrency boundary. The owning
-  Workspace workflow must hold a row lock for the receiving user while it
-  calls this function and until the ownership write commits.
-  """
-  def can_receive_workspace?(user) do
     # Workspace ownership is currently governed by the default user-level
-    # policy. Future user-level plans can replace this resolution without
-    # changing either creation or transfer semantics.
+    # policy. Future user-level plans can replace this resolution.
     limit = Plan.limit(Plan.default_plan(), :workspaces_per_user)
     used = count_user_workspaces(user.id)
     check_limit(:workspaces_per_user, used, limit)

@@ -24,7 +24,6 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project_id))
       Projects.subscribe_project_ownership_changes(project_id)
       Projects.subscribe_project_membership_changes(project_id)
-      Workspaces.subscribe_workspace_ownership_changes(workspace_id)
       Workspaces.subscribe_workspace_membership_changes(workspace_id)
     end
 
@@ -93,8 +92,8 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
   def handle_info({event, %{project_id: id}}, %{assigns: %{project_id: id}} = socket)
       when event in [:project_membership_changed, :project_ownership_transferred], do: {:noreply, load(socket)}
 
-  def handle_info({event, %{workspace_id: id}}, %{assigns: %{workspace_id: id}} = socket)
-      when event in [:workspace_membership_changed, :workspace_ownership_transferred], do: {:noreply, load(socket)}
+  def handle_info({:workspace_membership_changed, %{workspace_id: id}}, %{assigns: %{workspace_id: id}} = socket),
+    do: {:noreply, load(socket)}
 
   def handle_info({:project_restored, _}, socket) do
     socket = socket |> assign(:epoch, Ecto.UUID.generate()) |> load()

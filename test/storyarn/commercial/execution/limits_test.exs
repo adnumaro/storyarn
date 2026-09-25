@@ -37,25 +37,6 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
     end
   end
 
-  describe "can_receive_workspace?/1" do
-    test "uses the same ownership capacity as workspace creation", %{user: user} do
-      assert {:error, :limit_reached, %{resource: :workspaces_per_user, used: 1, limit: 1}} =
-               Billing.can_receive_workspace?(user)
-    end
-
-    test "allows a user with no owned workspace" do
-      user =
-        %User{}
-        |> Ecto.Changeset.change(%{
-          email: "receiver#{System.unique_integer([:positive])}@test.com",
-          confirmed_at: DateTime.utc_now(:second)
-        })
-        |> Repo.insert!()
-
-      assert :ok = Billing.can_receive_workspace?(user)
-    end
-  end
-
   describe "can_create_project?/1" do
     test "allows under limit", %{workspace: workspace} do
       assert :ok = Billing.can_create_project?(workspace)
