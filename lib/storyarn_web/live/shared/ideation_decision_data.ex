@@ -24,6 +24,8 @@ defmodule StoryarnWeb.Live.Shared.IdeationDecisionData do
       canDeclare: value.can_declare,
       tasks: Enum.map(value.tasks, &task(&1, board)),
       canLinkTasks: value.can_link_tasks,
+      canEditTasks: value.can_edit_tasks,
+      canUnlinkTasks: value.can_unlink_tasks,
       updatedAt: value.updated_at
     }
   end

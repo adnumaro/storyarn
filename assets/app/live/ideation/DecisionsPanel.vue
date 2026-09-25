@@ -174,14 +174,22 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
   };
   request("declare", payload, JSON.stringify(["declare", payload]));
 }
+const tasksSaved = ref(0);
+const taskPermission = {
+  link_task: "canLinkTasks",
+  edit_task: "canEditTasks",
+  unlink_task: "canUnlinkTasks",
+} as const;
 function changeTask(
-  action: "link_task" | "edit_task" | "unlink_task",
+  action: keyof typeof taskPermission,
   change: { link_key?: string; url?: string; title?: string | null },
 ) {
   const selected = state.selected;
-  if (!selected?.canLinkTasks) return;
+  if (!selected?.[taskPermission[action]]) return;
   const payload = { decision_id: selected.id, ...change };
-  request(action, payload, JSON.stringify([action, payload]));
+  request(action, payload, JSON.stringify([action, payload]), () => {
+    tasksSaved.value += 1;
+  });
 }
 </script>
 <template>
@@ -373,6 +381,7 @@ function changeTask(
         "
         @select="request('select', { decision_id: $event })"
         @load-history="request('history', { decision_id: state.selected?.id })"
+        :tasks-saved="tasksSaved"
         @declare="declare"
         @link-task="(url, title) => changeTask('link_task', { url, title })"
         @edit-task="(key, url, title) => changeTask('edit_task', { link_key: key, url, title })"

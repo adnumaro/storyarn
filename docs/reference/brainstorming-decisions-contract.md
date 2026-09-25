@@ -113,12 +113,16 @@ Editors of an open session link, edit and unlink tasks on a proposed or accepted
 decision; every reader can open them. Each change is a new record with its
 actor, time and request receipt, and the latest record per link is the link, so
 the decision history shows who linked, edited or unlinked which task. A
-withdrawn or superseded decision keeps its tasks but accepts no changes.
+withdrawn or superseded decision keeps its tasks but accepts no changes. A
+decision holds at most 200 task-link records, and every linked task keeps one in
+reserve for its unlink: linking and editing stop earlier, unlinking never does.
 
 "Prepare task" composes plain text for the reader to copy into their tracker:
 the agreement in force, or the proposal before one exists, with the conclusion,
 reason, affected content, next action and shared sources the reader ticks, and
-links back to the decision and to the affected content. It uses only what the
+links back to the decision and to the affected content. The text states where
+the decision stands: agreed, agreed with a revision pending, proposed, withdrawn
+or superseded by another decision. It uses only what the
 reader already sees. The discussion, private notes and drafts never go in, and
 nothing is sent anywhere.
 

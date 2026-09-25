@@ -9,20 +9,19 @@ interface SummaryContext {
   decisionUrl: string;
 }
 
-const blank = (char: string) => /\s/u.test(char) || char < " " || char === "\u007f";
+// What the server's URI parser accepts: ASCII letters, digits, the URI
+// delimiters and percent escapes. Browsers repair far more than this.
+const uriCharacters = /^[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
+const webAddress = /^https?:\/\/([^/?#]*)/i;
 
 /** The rule the server applies: a web address without credentials. */
 export function validTaskUrl(value: string): boolean {
   const url = value.trim();
-  if (!url || url.length > 2048 || [...url].some(blank)) return false;
+  if (!url || url.length > 2048 || !uriCharacters.test(url)) return false;
+  const authority = webAddress.exec(url)?.[1];
+  if (!authority || authority.includes("@")) return false;
   try {
-    const parsed = new URL(url);
-    return (
-      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-      parsed.hostname !== "" &&
-      !parsed.username &&
-      !parsed.password
-    );
+    return new URL(url).hostname !== "";
   } catch {
     return false;
   }
@@ -83,6 +82,17 @@ const sections: Record<TaskPart, (basis: DecisionRevision, context: SummaryConte
     ].join("\n"),
 };
 
+// Pasted text outlives the decision, so it states where the decision stands.
+function taskStatus(decision: DecisionRecord, t: Translate) {
+  const key = "brainstormingDecisions.tasks.summary.status";
+  if (decision.status === "superseded")
+    return decision.supersededBy
+      ? t(`${key}.superseded`, { title: decision.supersededBy.title })
+      : t(`${key}.supersededUnnamed`);
+  if (decision.status === "proposed" && decision.accepted) return t(`${key}.revisionPending`);
+  return t(`${key}.${decision.status}`);
+}
+
 /**
  * The text a person pastes into their tracker. Only the chosen parts of what
  * the reader already sees go in: never the discussion, drafts or hidden sources.
@@ -93,9 +103,7 @@ export function taskSummary(
   context: SummaryContext,
 ): string {
   const basis = taskBasis(decision);
-  const status = decision.accepted
-    ? context.t("brainstormingDecisions.tasks.summary.agreed")
-    : context.t("brainstormingDecisions.tasks.summary.proposed");
+  const status = taskStatus(decision, context.t);
   const heading = `${basis.title}\n${context.t(`brainstormingDecisions.verbs.${basis.verb}`)} · ${status}`;
   const body = taskParts(basis)
     .filter((part) => chosen.includes(part))

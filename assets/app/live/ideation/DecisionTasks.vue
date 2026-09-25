@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ChevronDown, ClipboardList, ExternalLink, Link2, Unlink } from "@lucide/vue";
 import { Button } from "@components/ui/button";
@@ -13,9 +13,15 @@ import type { DecisionRecord, DecisionTask } from "./decisionTypes";
  * Tasks in external trackers that carry this decision out. Links are manual:
  * Storyarn opens them but never reads or updates the task.
  */
-const { decision, pending = false } = defineProps<{
+const {
+  decision,
+  pending = false,
+  saved = 0,
+} = defineProps<{
   decision: DecisionRecord;
   pending?: boolean;
+  /** Counts confirmed task changes; a form closes only once its change is saved. */
+  saved?: number;
 }>();
 const emit = defineEmits<{
   link: [url: string, title: string | null];
@@ -30,14 +36,19 @@ function open(key: string, value: boolean) {
   if (value) editing.value = key;
   else if (editing.value === key) editing.value = null;
 }
-function link(url: string, title: string | null) {
-  emit("link", url, title);
-  editing.value = null;
-}
-function edit(task: DecisionTask, url: string, title: string | null) {
-  emit("edit", task.key, url, title);
-  editing.value = null;
-}
+// A failed save keeps the form and what was typed in it.
+watch(
+  () => saved,
+  () => {
+    editing.value = null;
+  },
+);
+const limit = computed(() => {
+  if (decision.canLinkTasks || !decision.canUnlinkTasks) return null;
+  return decision.tasks.length >= 20
+    ? t("brainstormingDecisions.tasks.limitLinks")
+    : t("brainstormingDecisions.tasks.limitChanges");
+});
 function linkedBy(task: DecisionTask) {
   const parsed = new Date(task.linkedAt);
   const when = Number.isNaN(parsed.getTime())
@@ -84,7 +95,7 @@ function linkedBy(task: DecisionTask) {
             id-prefix="decision-link-task"
             :confirm-label="t('brainstormingDecisions.tasks.link')"
             :pending="pending"
-            @confirm="link"
+            @confirm="(url, title) => emit('link', url, title)"
             @cancel="editing = null"
           />
         </PopoverContent>
@@ -117,8 +128,12 @@ function linkedBy(task: DecisionTask) {
         <p class="mt-0.5 ml-[22px] truncate text-xs text-muted-foreground">
           <template v-if="task.title">{{ taskHost(task.url) }} · </template>{{ linkedBy(task) }}
         </p>
-        <div v-if="decision.canLinkTasks" class="mt-2 ml-[22px] flex gap-1.5">
+        <div
+          v-if="decision.canEditTasks || decision.canUnlinkTasks"
+          class="mt-2 ml-[22px] flex gap-1.5"
+        >
           <Popover
+            v-if="decision.canEditTasks"
             :open="editing === task.key"
             @update:open="(value: boolean) => open(task.key, value)"
           >
@@ -138,12 +153,13 @@ function linkedBy(task: DecisionTask) {
                 :initial-title="task.title ?? ''"
                 :confirm-label="t('brainstormingDecisions.tasks.save')"
                 :pending="pending"
-                @confirm="(url, title) => edit(task, url, title)"
+                @confirm="(url, title) => emit('edit', task.key, url, title)"
                 @cancel="editing = null"
               />
             </PopoverContent>
           </Popover>
           <Button
+            v-if="decision.canUnlinkTasks"
             :id="`decision-unlink-task-${task.key}`"
             variant="ghost"
             size="xs"
@@ -159,6 +175,9 @@ function linkedBy(task: DecisionTask) {
       class="rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground"
     >
       {{ t("brainstormingDecisions.tasks.empty") }}
+    </p>
+    <p v-if="limit" id="decision-task-limit" class="mt-1.5 text-xs text-muted-foreground">
+      {{ limit }}
     </p>
   </section>
 </template>

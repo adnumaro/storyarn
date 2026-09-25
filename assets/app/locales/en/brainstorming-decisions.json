@@ -268,12 +268,20 @@
       "copyFailed": "The text could not be copied. Select it and copy it by hand.",
       "close": "Close",
       "summary": {
-        "agreed": "Agreed",
-        "proposed": "Proposed, not accepted yet",
         "affected": "Affected content",
         "sources": "Sources",
-        "link": "Decision in Storyarn"
-      }
+        "link": "Decision in Storyarn",
+        "status": {
+          "proposed": "Proposed, not accepted yet",
+          "accepted": "Agreed",
+          "revisionPending": "Agreed, with a revision pending",
+          "withdrawn": "Withdrawn",
+          "superseded": "Superseded by “{title}”",
+          "supersededUnnamed": "Superseded"
+        }
+      },
+      "limitLinks": "20 tasks are linked. Unlink one to link another.",
+      "limitChanges": "This decision has reached its limit of task changes. Linked tasks can still be unlinked."
     },
     "errors": {
       "offline": "Connection interrupted. Your text is kept here. Check the saved decision before retrying.",

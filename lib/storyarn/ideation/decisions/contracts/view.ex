@@ -1,6 +1,8 @@
 defmodule Storyarn.Ideation.Decisions.View do
   @moduledoc false
 
+  alias Storyarn.Ideation.Decisions.Rules.TaskRoom
+
   @pending ~w(not_applied partially_applied)
 
   def decision(decision, context, access) do
@@ -8,6 +10,7 @@ defmodule Storyarn.Ideation.Decisions.View do
     agreement = decision.accepted_version && context.revisions[{decision.id, decision.accepted_version}]
     proposal = revision(head, context)
     accepted = if agreement, do: revision(agreement, context)
+    tasks = Map.get(context.task_links, decision.id, %{links: [], changes: 0})
 
     %{
       id: decision.id,
@@ -19,13 +22,14 @@ defmodule Storyarn.Ideation.Decisions.View do
       proposal: proposal,
       accepted: accepted,
       application: if(accepted, do: application(decision, accepted, context)),
-      tasks: Map.get(context.task_links, decision.id, []),
+      tasks: tasks.links,
       inserted_at: decision.inserted_at,
       updated_at: decision.updated_at
     }
     |> Map.merge(people(decision, head))
     |> Map.merge(links(decision, head, proposal, accepted, context))
     |> Map.merge(permissions(decision, basis(decision, head, agreement), proposal, context, access))
+    |> Map.merge(task_permissions(decision, access, tasks))
   end
 
   # Without a pending revision the agreement in force holds the authority.
@@ -52,20 +56,32 @@ defmodule Storyarn.Ideation.Decisions.View do
     live? = decision.status in [:proposed, :accepted]
     can_revise? = editable? and live? and decision.version < 97
 
-    Map.merge(
+    Map.put(
       %{
         can_revise: can_revise?,
         can_assign: can_revise? and owner_or?(access, head.responsible_id),
         can_accept: can_accept?(decision, proposal, context, access),
         can_withdraw: editable? and decision.status == :proposed and owner_or?(access, head.actor_id)
       },
-      follow_up(decision, editable? and live?)
+      :can_declare,
+      declarable?(decision, editable? and live?)
     )
   end
 
-  # Declaring application and linking tasks follow a live decision in an open session.
-  defp follow_up(decision, writable?),
-    do: %{can_declare: writable? and not is_nil(decision.accepted_version), can_link_tasks: writable?}
+  # Declaring application follows the agreement of a live decision in an open session.
+  defp declarable?(decision, writable?), do: writable? and not is_nil(decision.accepted_version)
+
+  # Tasks follow a live decision in an open session, within the task room left.
+  defp task_permissions(decision, access, %{links: links, changes: changes}) do
+    writable? = access.open? and access.editor? and decision.status in [:proposed, :accepted]
+    active = length(links)
+
+    %{
+      can_link_tasks: writable? and TaskRoom.link?(changes, active),
+      can_edit_tasks: writable? and TaskRoom.edit?(changes, active),
+      can_unlink_tasks: writable? and TaskRoom.unlink?(changes, active)
+    }
+  end
 
   # The project owner, or the one person the rule names.
   defp owner_or?(access, user_id), do: access.owner? or user_id == access.user_id

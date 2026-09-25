@@ -1,0 +1,28 @@
+{
+  "valid": [
+    "https://tracker.example.com/browse/ENG-1",
+    "http://trello.com/c/abc123",
+    "  http://trello.com/c/padded  ",
+    "HTTPS://Example.com/path?q=1#frag",
+    "https://tracker.example.com/@me",
+    "https://example.com:8443/board",
+    "https://example.com/search?q=a%20b"
+  ],
+  "invalid": [
+    "",
+    "javascript:alert(1)",
+    "mailto:someone@example.com",
+    "ftp://files.example.com/task",
+    "https://user:secret@tracker.example.com/1",
+    "https://user@tracker.example.com/1",
+    "tracker.example.com/1",
+    "https:tracker.example.com/a",
+    "https:\\\\tracker.example.com/a",
+    "https://tracker.example.com\\a",
+    "https://ñandú.example/a",
+    "https://tracker example.com",
+    "https://example.com/a\nb",
+    "https://",
+    "https:///path"
+  ]
+}

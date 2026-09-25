@@ -504,6 +504,35 @@ describe("linking tasks", () => {
     expect(pushEvent.mock.calls[0][1].request_key).toEqual(expect.any(String));
   });
 
+  it("keeps the form and its text until the server confirms the link", async () => {
+    const pushEvent = panel({ mode: "detail", selected: accepted({ canLinkTasks: true }) });
+    const popover = () =>
+      wrapper
+        .findAllComponents({ name: "Popover" })
+        .find((candidate) => candidate.find("#decision-link-task").exists())!;
+    popover().vm.$emit("update:open", true);
+    await wrapper.vm.$nextTick();
+    await wrapper.get("#decision-link-task-url").setValue("https://trello.com/c/abc");
+    await wrapper.get("#decision-link-task-title").setValue("Forest scene");
+    await wrapper.get("#decision-link-task-form").trigger("submit");
+    expect(popover().props("open")).toBe(true);
+
+    pushEvent.mock.calls[0][2]({ status: "error", code: "unavailable" });
+    await flushPromises();
+    expect(popover().props("open")).toBe(true);
+    expect(wrapper.get<HTMLInputElement>("#decision-link-task-url").element.value).toBe(
+      "https://trello.com/c/abc",
+    );
+    expect(wrapper.get<HTMLInputElement>("#decision-link-task-title").element.value).toBe(
+      "Forest scene",
+    );
+
+    await wrapper.get("#decision-link-task-form").trigger("submit");
+    pushEvent.mock.calls[1][2]({ status: "ok" });
+    await flushPromises();
+    expect(popover().props("open")).toBe(false);
+  });
+
   it("explains an address it cannot link and sends nothing", async () => {
     const pushEvent = panel({ mode: "detail", selected: accepted({ canLinkTasks: true }) });
     await wrapper
@@ -518,7 +547,12 @@ describe("linking tasks", () => {
   it("opens, edits and unlinks a linked task", async () => {
     const pushEvent = panel({
       mode: "detail",
-      selected: accepted({ canLinkTasks: true, tasks: [task] }),
+      selected: accepted({
+        canLinkTasks: true,
+        canEditTasks: true,
+        canUnlinkTasks: true,
+        tasks: [task],
+      }),
     });
     const open = wrapper.get(`#decision-task-open-${task.key}`);
     expect(open.text()).toBe("Build the forest path");
@@ -543,6 +577,18 @@ describe("linking tasks", () => {
     await wrapper.get(`#decision-unlink-task-${task.key}`).trigger("click");
     expect(pushEvent.mock.calls[1][0]).toBe("decisions_unlink_task");
     expect(pushEvent.mock.calls[1][1]).toMatchObject({ link_key: task.key });
+  });
+
+  it("keeps unlinking available and says why once no more tasks can be linked", () => {
+    const full = Array.from({ length: 20 }, (_, index) => ({ ...task, key: `task-${index}` }));
+    panel({
+      mode: "detail",
+      selected: accepted({ canUnlinkTasks: true, tasks: full }),
+    });
+    expect(wrapper.find("#decision-link-task").exists()).toBe(false);
+    expect(wrapper.find("#decision-edit-task-task-0").exists()).toBe(false);
+    expect(wrapper.find("#decision-unlink-task-task-0").exists()).toBe(true);
+    expect(wrapper.get("#decision-task-limit").text()).toContain("Unlink one to link another");
   });
 
   it("lets readers open tasks without changing them", () => {

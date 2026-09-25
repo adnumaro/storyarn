@@ -107,6 +107,8 @@ export interface DecisionRecord {
   canDeclare: boolean;
   tasks: DecisionTask[];
   canLinkTasks: boolean;
+  canEditTasks: boolean;
+  canUnlinkTasks: boolean;
   updatedAt: string;
 }
 /** A task in an external tracker, linked by hand. Storyarn never reads it. */

@@ -108,21 +108,29 @@ defmodule Storyarn.Ideation.Recovery.DecisionState do
     end) and applications?(rows, revisions)
   end
 
-  # A link starts linked, belongs to one decision and ends once unlinked; at
-  # most 20 are linked at a time.
+  # A link is linked once, belongs to one decision and ends once unlinked. At
+  # most 20 are linked at a time, and every linked task keeps room for its
+  # unlink within the decision's 200 records.
   defp task_links?(rows) do
     histories = rows |> Enum.sort_by(& &1["id"]) |> Enum.group_by(& &1["link_key"])
 
-    Enum.all?(histories, fn {_key, [first | _] = history} ->
-      operations = Enum.map(history, & &1["operation"])
-
-      first["operation"] == "link" and length(Enum.uniq_by(history, & &1["decision_id"])) == 1 and
-        "unlink" not in Enum.drop(operations, -1)
-    end) and
+    active =
       histories
       |> Enum.reject(fn {_key, history} -> List.last(history)["operation"] == "unlink" end)
       |> Enum.frequencies_by(fn {_key, [first | _]} -> first["decision_id"] end)
-      |> Enum.all?(fn {_, n} -> n <= @max_task_links end)
+
+    Enum.all?(histories, fn {_key, history} -> task_history?(history) end) and
+      Enum.all?(active, fn {_, n} -> n <= @max_task_links end) and
+      rows
+      |> Enum.frequencies_by(& &1["decision_id"])
+      |> Enum.all?(fn {id, records} -> records + Map.get(active, id, 0) <= @max_task_changes end)
+  end
+
+  defp task_history?([first | rest] = history) do
+    operations = Enum.map(rest, & &1["operation"])
+
+    first["operation"] == "link" and "link" not in operations and "unlink" not in Enum.drop(operations, -1) and
+      length(Enum.uniq_by(history, & &1["decision_id"])) == 1
   end
 
   # A capsule can only claim a replacement that the replacing decision accepted.

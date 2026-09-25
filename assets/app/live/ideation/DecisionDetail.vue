@@ -35,11 +35,13 @@ const {
   history,
   roundCount = 1,
   pending = null,
+  tasksSaved = 0,
 } = defineProps<{
   decision: DecisionRecord;
   history: DecisionHistoryEntry[];
   roundCount?: number;
   pending?: string | null;
+  tasksSaved?: number;
 }>();
 const emit = defineEmits<{
   accept: [];
@@ -276,6 +278,7 @@ const busy = computed(() => pending !== null);
     <DecisionTasks
       :decision="decision"
       :pending="busy"
+      :saved="tasksSaved"
       @link="(url, title) => emit('linkTask', url, title)"
       @edit="(key, url, title) => emit('editTask', key, url, title)"
       @unlink="(key) => emit('unlinkTask', key)"

@@ -6,6 +6,7 @@ import {
   taskSummary,
   validTaskUrl,
 } from "@app/live/ideation/decisionTask";
+import addresses from "../../../../../test/fixtures/decision_task_urls.json";
 import { accepted, decision, revision, source, target } from "./decisionFixtures";
 
 const t = (key: string, values?: Record<string, unknown>) =>
@@ -17,6 +18,11 @@ const context = {
 };
 
 describe("task addresses", () => {
+  it("follows the address table shared with the server", () => {
+    for (const url of addresses.valid) expect(validTaskUrl(url), url).toBe(true);
+    for (const url of addresses.invalid) expect(validTaskUrl(url), url).toBe(false);
+  });
+
   it("accepts web addresses and rejects other schemes, credentials and spaces", () => {
     expect(validTaskUrl("https://tracker.example.com/browse/ENG-1")).toBe(true);
     expect(validTaskUrl("  http://trello.com/c/abc  ")).toBe(true);
@@ -66,7 +72,7 @@ describe("preparing a task", () => {
     const text = taskSummary(record, ["conclusion", "targets", "nextAction", "sources"], context);
 
     expect(text).toContain("Take the forest path");
-    expect(text).toContain("brainstormingDecisions.tasks.summary.agreed");
+    expect(text).toContain("brainstormingDecisions.tasks.summary.status.accepted");
     expect(text).toContain("The party avoids the road.");
     expect(text).not.toContain("It creates a difficult choice.");
     expect(text).toContain(
@@ -85,9 +91,19 @@ describe("preparing a task", () => {
     ).toBe(true);
   });
 
-  it("says when the decision is only proposed", () => {
-    const text = taskSummary(decision(), ["conclusion"], context);
-    expect(text).toContain("brainstormingDecisions.tasks.summary.proposed");
-    expect(text).not.toContain("brainstormingDecisions.tasks.summary.agreed");
+  it("names the real state of the decision it copies", () => {
+    const state = (record: Parameters<typeof taskSummary>[0]) =>
+      taskSummary(record, ["conclusion"], context).split("\n")[1];
+
+    expect(state(decision())).toContain("summary.status.proposed");
+    expect(state(accepted())).toContain("summary.status.accepted");
+    expect(state(accepted({ status: "proposed" }))).toContain("summary.status.revisionPending");
+    expect(state(decision({ status: "withdrawn" }))).toContain("summary.status.withdrawn");
+    expect(state(accepted({ status: "withdrawn" }))).toContain("summary.status.withdrawn");
+    expect(
+      state(accepted({ status: "superseded", supersededBy: { id: 9, title: "Mara leaves" } })),
+    ).toBe(
+      'brainstormingDecisions.verbs.change · brainstormingDecisions.tasks.summary.status.superseded {"title":"Mara leaves"}',
+    );
   });
 });

@@ -268,12 +268,20 @@
       "copyFailed": "No se ha podido copiar el texto. Selecciónalo y cópialo a mano.",
       "close": "Cerrar",
       "summary": {
-        "agreed": "Acordada",
-        "proposed": "Propuesta, aún sin aceptar",
         "affected": "Contenido afectado",
         "sources": "Fuentes",
-        "link": "Decisión en Storyarn"
-      }
+        "link": "Decisión en Storyarn",
+        "status": {
+          "proposed": "Propuesta, aún sin aceptar",
+          "accepted": "Acordada",
+          "revisionPending": "Acordada, con una revisión pendiente",
+          "withdrawn": "Retirada",
+          "superseded": "Sustituida por «{title}»",
+          "supersededUnnamed": "Sustituida"
+        }
+      },
+      "limitLinks": "Hay 20 tareas enlazadas. Desenlaza una para enlazar otra.",
+      "limitChanges": "Esta decisión ha alcanzado su límite de cambios en tareas. Las tareas enlazadas aún se pueden desenlazar."
     },
     "errors": {
       "offline": "Se ha interrumpido la conexión. Tu texto se conserva aquí. Revisa la decisión guardada antes de reintentar.",

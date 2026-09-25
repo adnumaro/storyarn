@@ -685,22 +685,25 @@ defmodule Storyarn.Ideation.DecisionsTest do
       refute archived.can_link_tasks
     end
 
-    test "only web addresses without credentials are linked, and titles stay short", ctx do
+    test "the address table shared with the browser decides what is linked", ctx do
       assert {:ok, decision} = propose(ctx)
 
-      for url <- [
-            "javascript:alert(1)",
-            "ftp://files.example.com/task",
-            "https://user:secret@tracker.example.com/1",
-            "tracker.example.com/1",
-            "https://tracker example.com",
-            "https://",
-            "",
-            "https://example.com/" <> String.duplicate("a", 2048),
-            nil
-          ] do
+      %{"valid" => valid, "invalid" => invalid} =
+        "test/fixtures/decision_task_urls.json" |> File.read!() |> Jason.decode!()
+
+      for url <- invalid ++ ["https://example.com/" <> String.duplicate("a", 2048)] do
         assert {:error, :invalid_task_link} = link_task(ctx, decision, task_attrs(%{url: url})), inspect(url)
       end
+
+      for url <- valid do
+        assert {:ok, %{tasks: tasks}} = link_task(ctx, decision, task_attrs(%{url: url})), inspect(url)
+        assert List.last(tasks).url == String.trim(url)
+      end
+    end
+
+    test "only web addresses without credentials are linked, and titles stay short", ctx do
+      assert {:ok, decision} = propose(ctx)
+      assert {:error, :invalid_task_link} = link_task(ctx, decision, task_attrs(%{url: nil}))
 
       too_long = task_attrs(%{url: "https://example.com", title: String.duplicate("t", 161)})
       assert {:error, :invalid_task_link} = link_task(ctx, decision, too_long)
@@ -713,6 +716,40 @@ defmodule Storyarn.Ideation.DecisionsTest do
 
       assert task.url == "HTTPS://Example.com/path?q=1#frag"
       assert {:error, :invalid_task_link} = edit_task(ctx, decision, "not-a-key", task_attrs(%{url: task.url}))
+    end
+
+    test "every linked task can still be unlinked once a decision runs out of task changes", ctx do
+      assert {:ok, decision} = propose(ctx)
+
+      [first | _] =
+        keys =
+        for n <- 1..20 do
+          assert {:ok, %{tasks: tasks}} = link_task(ctx, decision, task_attrs(%{url: "https://t.example.com/#{n}"}))
+          List.last(tasks).key
+        end
+
+      # 20 links and 160 edits leave exactly one unlink for each linked task.
+      for n <- 1..160 do
+        assert {:ok, _} = edit_task(ctx, decision, first, task_attrs(%{url: "https://t.example.com/edit/#{n}"}))
+      end
+
+      assert {:error, :task_link_limit_reached} =
+               edit_task(ctx, decision, first, task_attrs(%{url: "https://t.example.com/one-more"}))
+
+      assert {:ok, full} = Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id)
+      refute full.can_link_tasks
+      refute full.can_edit_tasks
+      assert full.can_unlink_tasks
+
+      for key <- keys, do: assert({:ok, _} = unlink_task(ctx, decision, key))
+
+      assert {:ok, %{tasks: []} = emptied} =
+               Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id)
+
+      refute emptied.can_link_tasks
+
+      assert Repo.aggregate(from(t in "ideation_decision_task_links", where: t.decision_id == ^decision.id), :count) ==
+               200
     end
 
     test "a retired decision keeps its tasks but accepts no changes; 20 are linked at a time", ctx do

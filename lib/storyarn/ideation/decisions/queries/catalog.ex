@@ -120,7 +120,7 @@ defmodule Storyarn.Ideation.Decisions.Queries.Catalog do
     from(t in TaskLink, where: t.decision_id in ^ids, order_by: [asc: t.id])
     |> Repo.all()
     |> Enum.group_by(& &1.decision_id)
-    |> Map.new(fn {id, changes} -> {id, View.task_links(changes)} end)
+    |> Map.new(fn {id, changes} -> {id, %{links: View.task_links(changes), changes: length(changes)}} end)
   end
 
   # The decisions a proposal replaces, or that replaced it, named by the

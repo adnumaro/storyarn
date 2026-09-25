@@ -342,6 +342,14 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
         "request_key" => identity()
       })
 
+    # A key is linked once; a second link on the same key has no ordinary origin.
+    relinked =
+      Map.merge(first, %{
+        "id" => first["id"] + 2_000,
+        "recovery_identity" => identity(),
+        "request_key" => identity()
+      })
+
     mutations = [
       fn data ->
         put_in(data, ["rows", "decision_task_links", Access.at(0), "url"], encrypted("javascript:alert(1)"))
@@ -357,7 +365,8 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       fn data -> put_in(data, ["rows", "decision_task_links", Access.at(2), "url"], first["url"]) end,
       fn data -> put_in(data, ["rows", "decision_task_links", Access.at(1), "link_key"], first["link_key"]) end,
       fn data -> put_in(data, ["rows", "decision_task_links", Access.at(0), "decision_id"], ctx.decision.id + 1) end,
-      fn data -> update_in(data, ["rows", "decision_task_links"], &(&1 ++ [after_unlink])) end
+      fn data -> update_in(data, ["rows", "decision_task_links"], &(&1 ++ [after_unlink])) end,
+      fn data -> update_in(data, ["rows", "decision_task_links"], &(&1 ++ [relinked])) end
     ]
 
     for mutate <- mutations do
