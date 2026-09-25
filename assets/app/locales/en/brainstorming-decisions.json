@@ -142,7 +142,10 @@
       "not_applied": "{target} marked not applied",
       "no_change_needed": "{target}: no change needed",
       "decisionNoChange": "No change needed",
-      "decisionNotApplied": "Declaration cleared"
+      "decisionNotApplied": "Declaration cleared",
+      "task_link": "Task linked: {task}",
+      "task_edit": "Task updated: {task}",
+      "task_unlink": "Task unlinked: {task}"
     },
     "historySummaries": {
       "registered": "Proposed by {name} · Accepted by {name}",
@@ -236,6 +239,50 @@
     "changedProposal": "This proposal changed",
     "changedProposalHelp": "Review the current proposal below. Your text is preserved in the form; continuing will let you save it as a new revision.",
     "keepMyProposal": "Continue with my proposal",
+    "tasks": {
+      "heading": "Tasks",
+      "link": "Link a task",
+      "edit": "Edit",
+      "save": "Save",
+      "unlink": "Unlink",
+      "manual": "Manual link",
+      "manualHint": "Storyarn opens this link but never reads or updates the task.",
+      "url": "Task address",
+      "titleOptional": "Title (optional)",
+      "invalidUrl": "Enter a web address that starts with http:// or https://, without a username or password.",
+      "empty": "No tasks linked yet.",
+      "linkedBy": "Linked by {name} · {date}",
+      "prepare": "Prepare task",
+      "prepareTitle": "Prepare a task",
+      "prepareDescription": "Copy the text for your tracker. Only what you tick is copied, and nothing is sent anywhere.",
+      "include": "Include",
+      "parts": {
+        "conclusion": "Conclusion",
+        "reason": "Reason",
+        "targets": "Affected content",
+        "nextAction": "Next action",
+        "sources": "Sources"
+      },
+      "copy": "Copy text",
+      "copied": "Copied",
+      "copyFailed": "The text could not be copied. Select it and copy it by hand.",
+      "close": "Close",
+      "summary": {
+        "affected": "Affected content",
+        "sources": "Sources",
+        "link": "Decision in Storyarn",
+        "status": {
+          "proposed": "Proposed, not accepted yet",
+          "accepted": "Agreed",
+          "revisionPending": "Agreed, with a revision pending",
+          "withdrawn": "Withdrawn",
+          "superseded": "Superseded by “{title}”",
+          "supersededUnnamed": "Superseded"
+        }
+      },
+      "limitLinks": "20 tasks are linked. Unlink one to link another.",
+      "limitChanges": "This decision has reached its limit of task changes. Linked tasks can still be unlinked."
+    },
     "errors": {
       "offline": "Connection interrupted. Your text is kept here. Check the saved decision before retrying.",
       "unavailable": "The decision could not be loaded or saved. Check your access and try again.",
@@ -267,7 +314,10 @@
       "decision_limit_reached": "This exploration has reached its decision limit.",
       "decision_history_limit": "This decision has reached its history limit.",
       "source_context_limit": "These sources contain too much text. Choose a smaller set.",
-      "idempotency_conflict": "This request was already used for different changes. Review the saved decision before trying again."
+      "idempotency_conflict": "This request was already used for different changes. Review the saved decision before trying again.",
+      "invalid_task_link": "Enter a web address that starts with http:// or https://, without a username or password.",
+      "task_link_limit_reached": "This decision has reached its limit of linked tasks.",
+      "task_link_not_found": "This task is no longer linked to the decision."
     },
     "dashboard": {
       "tabs": {

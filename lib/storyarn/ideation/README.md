@@ -81,8 +81,8 @@ Recovery includes groups, memberships and revisions in its sealed inventory.
 ## Decisions capability
 
 Decisions owns what a team agreed to do and how far it has been applied, in
-`ideation_decisions`, `ideation_decision_revisions` and
-`ideation_decision_applications`. A decision is an object: one verb (create,
+`ideation_decisions`, `ideation_decision_revisions`,
+`ideation_decision_applications` and `ideation_decision_task_links`. A decision is an object: one verb (create,
 change, test, keep or discard), up to five affected Sheets, Flows or Scenes or
 free labels for something not yet created, a conclusion, an optional reason and
 an optional next action with its owner. Sources pin shared idea or group
@@ -91,7 +91,11 @@ and creation identity, with its name frozen in encrypted context so a replaced
 target reads as unavailable instead of silently pointing at a newcomer. The
 round of a decision is the newest round among its sources.
 
-Propose, revise, accept, withdraw and declare are distinct atomic commands with
+Tasks in external trackers are linked by URL as manual links that Storyarn never
+fetches; linking, editing and unlinking each write a record, and the latest one
+per link is the link.
+
+Propose, revise, accept, withdraw, declare and the task-link commands are distinct atomic commands with
 current Project and session authorization, optimistic versions and durable
 request receipts. Registering is proposing and accepting in one command when the
 proposer is the responsible person; it writes two consecutive records. Accepting a

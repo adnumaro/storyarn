@@ -99,6 +99,33 @@ declarations remain in the history. While a revision waits, the agreement in
 force still counts as to apply wherever the decision is listed. A superseded decision keeps its application
 records but accepts no new ones.
 
+## Tasks
+
+A decision links up to 20 tasks that live in an external tracker at a time. A
+link is a web address (`http` or `https`, at most 2,048 characters, never with a
+user name or password) and an optional title of up to 160 characters, both
+encrypted at rest. Every link is `manual`: Storyarn opens it but never fetches,
+reads or updates the task, holds no credentials for it and shows no remote
+status. A later provider connection adds its own kind instead of changing manual
+links.
+
+Editors of an open session link, edit and unlink tasks on a proposed or accepted
+decision; every reader can open them. Each change is a new record with its
+actor, time and request receipt, and the latest record per link is the link, so
+the decision history shows who linked, edited or unlinked which task. A
+withdrawn or superseded decision keeps its tasks but accepts no changes. A
+decision holds at most 200 task-link records, and every linked task keeps one in
+reserve for its unlink: linking and editing stop earlier, unlinking never does.
+
+"Prepare task" composes plain text for the reader to copy into their tracker:
+the agreement in force, or the proposal before one exists, with the conclusion,
+reason, affected content, next action and shared sources the reader ticks, and
+links back to the decision and to the affected content. The text states where
+the decision stands: agreed, agreed with a revision pending, proposed, withdrawn
+or superseded by another decision. It uses only what the
+reader already sees. The discussion, private notes and drafts never go in, and
+nothing is sent anywhere.
+
 ## Sources and visibility
 
 Each source pin contains its type, database ID, immutable recovery identity,
@@ -132,7 +159,8 @@ participant, not a cached session role.
 ## Persistence, concurrency and limits
 
 Ideation owns the Decisions capability and `ideation_decisions`,
-`ideation_decision_revisions` and `ideation_decision_applications`. External
+`ideation_decision_revisions`, `ideation_decision_applications` and
+`ideation_decision_task_links`. External
 callers use `Storyarn.Ideation`; other capabilities supply shared sources and
 target names through their own facades. Decisions never edit the original notes,
 group synthesis or referenced authoring tools.
@@ -151,7 +179,8 @@ holds that row, the command returns `responsible_busy` without writing. The
 caller can retry after the change completes; eligibility is checked again.
 
 A session permits at most 100 decisions, each with at most 100 records, 1–20
-sources and 0–5 targets per revision, and 500 application declarations. Titles
+sources and 0–5 targets per revision, 500 application declarations, 20 linked
+tasks at a time and 200 task-link records. Titles
 are limited to 160 characters, conclusions and reasons to 4,000, next actions to
 500, target labels to 160 and declaration notes to 1,000. Frozen source context
 is capped at 256,000 encoded JSON bytes. Reaching a limit produces an explicit
@@ -160,10 +189,11 @@ invalidation and identity information rather than creative text.
 
 ## Recovery
 
-The sealed Ideation inventory version 10 includes the decision records, every
-immutable revision and every application declaration, with their request
-receipts. Inventories before version 10 carry decisions of the earlier model and
-normalize to empty decision collections. The Project snapshot format and the
+The sealed Ideation inventory version 11 includes the decision records, every
+immutable revision, every application declaration and every task-link record,
+with their request receipts. Version 10 inventories carry no task links and
+normalize to none. Inventories before version 10 carry decisions of the earlier
+model and normalize to empty decision collections. The Project snapshot format and the
 outer encrypted compartment format remain unchanged.
 
 Recovery copies encrypted decision text, source and target context and
@@ -260,6 +290,7 @@ to apply`; the `Decisions` tab lists every decision with Status and
 ## Boundaries
 
 Decisions do not create Drafts, materialize authoring entities, apply proposals to
-Sheets, Flows or Scenes, run AI, or send work to external tools. Naming a target never grants access to it, and declaring it
+Sheets, Flows or Scenes, run AI, or send work to external tools; a task link
+only names work tracked elsewhere. Naming a target never grants access to it, and declaring it
 applied never checks it. Those workflows must consume explicit decisions through their
 own authorization and provenance contracts when implemented.

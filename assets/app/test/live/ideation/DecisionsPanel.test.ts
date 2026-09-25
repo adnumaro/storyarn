@@ -479,6 +479,128 @@ describe("revising a replacement", () => {
   });
 });
 
+describe("linking tasks", () => {
+  const task = {
+    key: "task-1",
+    kind: "manual" as const,
+    url: "https://tracker.example.com/browse/ENG-7",
+    title: "Build the forest path",
+    linkedByName: "Alex",
+    linkedAt: "2026-09-13T12:00:00Z",
+  };
+
+  it("links a task by its address and an optional title", async () => {
+    const pushEvent = panel({ mode: "detail", selected: accepted({ canLinkTasks: true }) });
+    expect(wrapper.get("#decision-tasks").text()).toContain("No tasks linked yet.");
+    await wrapper.get("#decision-link-task-url").setValue(" https://trello.com/c/abc ");
+    await wrapper.get("#decision-link-task-title").setValue("Forest scene");
+    await wrapper.get("#decision-link-task-form").trigger("submit");
+    expect(pushEvent.mock.calls[0][0]).toBe("decisions_link_task");
+    expect(pushEvent.mock.calls[0][1]).toMatchObject({
+      decision_id: 4,
+      url: "https://trello.com/c/abc",
+      title: "Forest scene",
+    });
+    expect(pushEvent.mock.calls[0][1].request_key).toEqual(expect.any(String));
+  });
+
+  it("keeps the form and its text until the server confirms the link", async () => {
+    const pushEvent = panel({ mode: "detail", selected: accepted({ canLinkTasks: true }) });
+    const popover = () =>
+      wrapper
+        .findAllComponents({ name: "Popover" })
+        .find((candidate) => candidate.find("#decision-link-task").exists())!;
+    popover().vm.$emit("update:open", true);
+    await wrapper.vm.$nextTick();
+    await wrapper.get("#decision-link-task-url").setValue("https://trello.com/c/abc");
+    await wrapper.get("#decision-link-task-title").setValue("Forest scene");
+    await wrapper.get("#decision-link-task-form").trigger("submit");
+    expect(popover().props("open")).toBe(true);
+
+    pushEvent.mock.calls[0][2]({ status: "error", code: "unavailable" });
+    await flushPromises();
+    expect(popover().props("open")).toBe(true);
+    expect(wrapper.get<HTMLInputElement>("#decision-link-task-url").element.value).toBe(
+      "https://trello.com/c/abc",
+    );
+    expect(wrapper.get<HTMLInputElement>("#decision-link-task-title").element.value).toBe(
+      "Forest scene",
+    );
+
+    await wrapper.get("#decision-link-task-form").trigger("submit");
+    pushEvent.mock.calls[1][2]({ status: "ok" });
+    await flushPromises();
+    expect(popover().props("open")).toBe(false);
+  });
+
+  it("explains an address it cannot link and sends nothing", async () => {
+    const pushEvent = panel({ mode: "detail", selected: accepted({ canLinkTasks: true }) });
+    await wrapper
+      .get("#decision-link-task-url")
+      .setValue("https://user:secret@tracker.example.com");
+    await wrapper.get("#decision-link-task-form").trigger("submit");
+    expect(wrapper.get("#decision-link-task-url-error").text()).toContain("without a username");
+    expect(wrapper.get("#decision-link-task-url").attributes("aria-invalid")).toBe("true");
+    expect(pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("opens, edits and unlinks a linked task", async () => {
+    const pushEvent = panel({
+      mode: "detail",
+      selected: accepted({
+        canLinkTasks: true,
+        canEditTasks: true,
+        canUnlinkTasks: true,
+        tasks: [task],
+      }),
+    });
+    const open = wrapper.get(`#decision-task-open-${task.key}`);
+    expect(open.text()).toBe("Build the forest path");
+    expect(open.attributes("href")).toBe(task.url);
+    expect(open.attributes("target")).toBe("_blank");
+    expect(open.attributes("rel")).toBe("noopener noreferrer");
+    expect(wrapper.get(`#decision-task-${task.key}`).text()).toContain("Manual link");
+
+    const title = wrapper.get<HTMLInputElement>(`#decision-edit-task-${task.key}-title`);
+    expect(title.element.value).toBe("Build the forest path");
+    await title.setValue("Forest path, second pass");
+    await wrapper.get(`#decision-edit-task-${task.key}-form`).trigger("submit");
+    expect(pushEvent.mock.calls[0][0]).toBe("decisions_edit_task");
+    expect(pushEvent.mock.calls[0][1]).toMatchObject({
+      link_key: task.key,
+      url: task.url,
+      title: "Forest path, second pass",
+    });
+
+    pushEvent.mock.calls[0][2]({ status: "ok" });
+    await flushPromises();
+    await wrapper.get(`#decision-unlink-task-${task.key}`).trigger("click");
+    expect(pushEvent.mock.calls[1][0]).toBe("decisions_unlink_task");
+    expect(pushEvent.mock.calls[1][1]).toMatchObject({ link_key: task.key });
+  });
+
+  it("keeps unlinking available and says why once no more tasks can be linked", () => {
+    const full = Array.from({ length: 20 }, (_, index) => ({ ...task, key: `task-${index}` }));
+    panel({
+      mode: "detail",
+      selected: accepted({ canUnlinkTasks: true, tasks: full }),
+    });
+    expect(wrapper.find("#decision-link-task").exists()).toBe(false);
+    expect(wrapper.find("#decision-edit-task-task-0").exists()).toBe(false);
+    expect(wrapper.find("#decision-unlink-task-task-0").exists()).toBe(true);
+    expect(wrapper.get("#decision-task-limit").text()).toContain("Unlink one to link another");
+  });
+
+  it("lets readers open tasks without changing them", () => {
+    panel({ mode: "detail", selected: accepted({ tasks: [task] }) });
+    expect(wrapper.find(`#decision-task-open-${task.key}`).exists()).toBe(true);
+    expect(wrapper.find("#decision-link-task").exists()).toBe(false);
+    expect(wrapper.find(`#decision-edit-task-${task.key}`).exists()).toBe(false);
+    expect(wrapper.find(`#decision-unlink-task-${task.key}`).exists()).toBe(false);
+    expect(wrapper.find("#decision-prepare-task").exists()).toBe(true);
+  });
+});
+
 describe("searching affected content", () => {
   it("sends the latest query even while another request is pending", async () => {
     vi.useFakeTimers();

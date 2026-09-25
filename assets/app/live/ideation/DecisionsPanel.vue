@@ -174,6 +174,23 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
   };
   request("declare", payload, JSON.stringify(["declare", payload]));
 }
+const tasksSaved = ref(0);
+const taskPermission = {
+  link_task: "canLinkTasks",
+  edit_task: "canEditTasks",
+  unlink_task: "canUnlinkTasks",
+} as const;
+function changeTask(
+  action: keyof typeof taskPermission,
+  change: { link_key?: string; url?: string; title?: string | null },
+) {
+  const selected = state.selected;
+  if (!selected?.[taskPermission[action]]) return;
+  const payload = { decision_id: selected.id, ...change };
+  request(action, payload, JSON.stringify([action, payload]), () => {
+    tasksSaved.value += 1;
+  });
+}
 </script>
 <template>
   <Sidebar
@@ -364,7 +381,11 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
         "
         @select="request('select', { decision_id: $event })"
         @load-history="request('history', { decision_id: state.selected?.id })"
+        :tasks-saved="tasksSaved"
         @declare="declare"
+        @link-task="(url, title) => changeTask('link_task', { url, title })"
+        @edit-task="(key, url, title) => changeTask('edit_task', { link_key: key, url, title })"
+        @unlink-task="(key) => changeTask('unlink_task', { link_key: key })"
       >
         <template #discussion>
           <DecisionDiscussion

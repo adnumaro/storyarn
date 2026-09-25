@@ -104,8 +104,9 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   defp valid_links?(row, collection, index) when collection in ~w(references reference_revisions),
     do: ReferenceState.valid?(row, collection, index)
 
-  defp valid_links?(row, collection, index) when collection in ~w(decisions decision_revisions decision_applications),
-    do: DecisionState.valid?(row, collection, index)
+  defp valid_links?(row, collection, index)
+       when collection in ~w(decisions decision_revisions decision_applications decision_task_links),
+       do: DecisionState.valid?(row, collection, index)
 
   defp canvas_valid?(row, index) do
     canvas = Map.get(row, "canvas", %{})
@@ -306,7 +307,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   defp session_id(row, "sessions", _), do: row["id"]
 
   defp session_id(row, collection, _)
-       when collection in ~w(session_revisions rounds timers ideas reveals groups group_memberships group_revisions references reference_revisions decisions decision_revisions decision_applications),
+       when collection in ~w(session_revisions rounds timers ideas reveals groups group_memberships group_revisions references reference_revisions decisions decision_revisions decision_applications decision_task_links),
        do: row["session_id"]
 
   defp session_id(row, _, index), do: get_in(index.ideas, [row["idea_id"], "session_id"])

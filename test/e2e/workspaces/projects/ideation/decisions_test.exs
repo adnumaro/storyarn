@@ -339,6 +339,64 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
     assert [%{application: %{state: "applied", note: "Her sheet says she stays."}}] = current.application.targets
   end
 
+  test "an editor links a task by URL and prepares its text from the agreement", %{conn: conn} do
+    ctx = ideation_fixture()
+
+    idea =
+      idea_fixture(ctx, %{title: "A quieter ending", body: "<p>The player chooses to stay.</p>", visibility: :shared})
+
+    {:ok, [source]} =
+      Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [%{type: "idea", id: idea.id}])
+
+    {:ok, decision} =
+      Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, %{
+        title: "Mara stays",
+        conclusion: "Mara stays at the lighthouse.",
+        verb: "change",
+        targets: [],
+        responsible_id: ctx.author.user.id,
+        register: true,
+        sources: [Map.take(source, [:type, :id, :version, :identity])],
+        request_key: Ecto.UUID.generate()
+      })
+
+    browser =
+      conn
+      |> authenticate(ctx.author.user)
+      |> visit(path(ctx) <> "?decision=#{decision.id}")
+      |> assert_has("#decision-tasks", text: "No tasks linked yet.")
+      |> click("#decision-link-task")
+      |> type("#decision-link-task-url", "ftp://files.example.com/1")
+      |> click("#decision-link-task-confirm")
+      |> assert_has("#decision-link-task-url-error")
+      |> fill_in_url("#decision-link-task-url", "https://tracker.example.com/browse/HARBOR-12")
+      |> type("#decision-link-task-title", "Write the lighthouse ending")
+      |> click("#decision-link-task-confirm")
+      |> assert_has("#decision-tasks a[href='https://tracker.example.com/browse/HARBOR-12']",
+        text: "Write the lighthouse ending"
+      )
+      |> assert_has("#decision-tasks", text: "Manual link")
+
+    browser =
+      browser
+      |> click("#decision-prepare-task")
+      |> assert_has("#decision-task-preview", text: "Mara stays at the lighthouse.")
+      |> refute_has("#decision-task-preview", text: "A quieter ending")
+      |> click("#decision-task-part-sources")
+      |> assert_has("#decision-task-preview", text: "A quieter ending")
+      |> assert_has("#decision-tasks")
+
+    capture(browser, "decisions-task-links")
+
+    assert {:ok, current} = Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id)
+    assert [%{kind: "manual", title: "Write the lighthouse ending"}] = current.tasks
+  end
+
+  defp fill_in_url(browser, selector, value) do
+    {:ok, _} = PlaywrightEx.Frame.fill(browser.frame_id, selector: selector, value: value, timeout: 10_000)
+    browser
+  end
+
   # Fixture members all read "Member"; the responsible person needs a name to be picked.
   defp member_name(_ctx, actor) do
     actor.user |> Ecto.Changeset.change(display_name: "Fern Facilitator") |> Repo.update!()

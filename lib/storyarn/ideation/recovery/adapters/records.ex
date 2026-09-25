@@ -27,7 +27,7 @@ defmodule Storyarn.Ideation.Recovery.Records do
       {:ok,
        %{
          "format" => "storyarn.ideation",
-         "version" => 10,
+         "version" => 11,
          "actors" => actors,
          "rows" =>
            Map.new(rows, fn {collection, entries} ->

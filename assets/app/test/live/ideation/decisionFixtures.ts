@@ -70,6 +70,10 @@ export function decision(overrides: Partial<DecisionRecord> = {}): DecisionRecor
     canAssign: true,
     canWithdraw: true,
     canDeclare: false,
+    tasks: [],
+    canLinkTasks: false,
+    canEditTasks: false,
+    canUnlinkTasks: false,
     updatedAt: "2026-09-13T12:00:00Z",
     ...overrides,
   };

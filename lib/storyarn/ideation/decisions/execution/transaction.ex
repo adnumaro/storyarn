@@ -11,8 +11,11 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
   alias Storyarn.Ideation.Decisions.Queries.Catalog
   alias Storyarn.Ideation.Decisions.Revision
   alias Storyarn.Ideation.Decisions.Rules.Input
+  alias Storyarn.Ideation.Decisions.TaskLink
   alias Storyarn.Ideation.Sessions
   alias Storyarn.Repo
+
+  @task_operations ~w(link_task edit_task unlink_task)
 
   def run(scope, project_id, session_id, command) do
     if Repo.in_transaction?() do
@@ -37,12 +40,16 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
   defp fingerprint(access, identity, %{operation: "declare"} = command),
     do: Input.application_fingerprint(access.session_identity, identity, command.agreement, command.attrs)
 
+  defp fingerprint(access, identity, %{operation: operation} = command) when operation in @task_operations,
+    do: Input.task_fingerprint(access.session_identity, identity, operation, command.link_key, command.attrs)
+
   defp fingerprint(access, identity, command),
     do: Input.fingerprint(command.operation, access.session_identity, identity, command.version, command.attrs)
 
-  # Declarations keep their own receipts; a key is scoped to the record it wrote.
+  # Declarations and task links keep their own receipts; a key is scoped to the
+  # record it wrote.
   defp receipt(access, command) do
-    schema = if command.operation == "declare", do: Application, else: Revision
+    schema = receipt_schema(command.operation)
 
     current =
       Repo.one(
@@ -55,6 +62,10 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
       do: {:error, :idempotency_conflict},
       else: {:ok, current}
   end
+
+  defp receipt_schema("declare"), do: Application
+  defp receipt_schema(operation) when operation in @task_operations, do: TaskLink
+  defp receipt_schema(_operation), do: Revision
 
   defp replaced_receipt?(schema, access, key) do
     # Restoring an older generation must not replay writes that recovery rolled
@@ -95,6 +106,12 @@ defmodule Storyarn.Ideation.Decisions.Execution.Transaction do
          {:ok, delivery} <- Notification.notify(scope, project_id, access, decision, command) do
       {:ok, {decision.id, true, delivery}}
     end
+  end
+
+  # A task link names work elsewhere; it notifies nobody.
+  defp execute(_scope, _project_id, access, decision, nil, %{operation: operation} = command, fingerprint)
+       when operation in @task_operations do
+    with {:ok, decision} <- Mutation.task(access, decision, command, fingerprint), do: {:ok, {decision.id, true, nil}}
   end
 
   defp execute(scope, project_id, access, decision, nil, command, fingerprint) do

@@ -1,6 +1,8 @@
 defmodule Storyarn.Ideation.Decisions.View do
   @moduledoc false
 
+  alias Storyarn.Ideation.Decisions.Rules.TaskRoom
+
   @pending ~w(not_applied partially_applied)
 
   def decision(decision, context, access) do
@@ -8,6 +10,7 @@ defmodule Storyarn.Ideation.Decisions.View do
     agreement = decision.accepted_version && context.revisions[{decision.id, decision.accepted_version}]
     proposal = revision(head, context)
     accepted = if agreement, do: revision(agreement, context)
+    tasks = Map.get(context.task_links, decision.id, %{links: [], changes: 0})
 
     %{
       id: decision.id,
@@ -19,12 +22,14 @@ defmodule Storyarn.Ideation.Decisions.View do
       proposal: proposal,
       accepted: accepted,
       application: if(accepted, do: application(decision, accepted, context)),
+      tasks: tasks.links,
       inserted_at: decision.inserted_at,
       updated_at: decision.updated_at
     }
     |> Map.merge(people(decision, head))
     |> Map.merge(links(decision, head, proposal, accepted, context))
     |> Map.merge(permissions(decision, basis(decision, head, agreement), proposal, context, access))
+    |> Map.merge(task_permissions(decision, access, tasks))
   end
 
   # Without a pending revision the agreement in force holds the authority.
@@ -51,12 +56,30 @@ defmodule Storyarn.Ideation.Decisions.View do
     live? = decision.status in [:proposed, :accepted]
     can_revise? = editable? and live? and decision.version < 97
 
+    Map.put(
+      %{
+        can_revise: can_revise?,
+        can_assign: can_revise? and owner_or?(access, head.responsible_id),
+        can_accept: can_accept?(decision, proposal, context, access),
+        can_withdraw: editable? and decision.status == :proposed and owner_or?(access, head.actor_id)
+      },
+      :can_declare,
+      declarable?(decision, editable? and live?)
+    )
+  end
+
+  # Declaring application follows the agreement of a live decision in an open session.
+  defp declarable?(decision, writable?), do: writable? and not is_nil(decision.accepted_version)
+
+  # Tasks follow a live decision in an open session, within the task room left.
+  defp task_permissions(decision, access, %{links: links, changes: changes}) do
+    writable? = access.open? and access.editor? and decision.status in [:proposed, :accepted]
+    active = length(links)
+
     %{
-      can_revise: can_revise?,
-      can_assign: can_revise? and owner_or?(access, head.responsible_id),
-      can_accept: can_accept?(decision, proposal, context, access),
-      can_withdraw: editable? and decision.status == :proposed and owner_or?(access, head.actor_id),
-      can_declare: editable? and live? and not is_nil(decision.accepted_version)
+      can_link_tasks: writable? and TaskRoom.link?(changes, active),
+      can_edit_tasks: writable? and TaskRoom.edit?(changes, active),
+      can_unlink_tasks: writable? and TaskRoom.unlink?(changes, active)
     }
   end
 
@@ -109,6 +132,52 @@ defmodule Storyarn.Ideation.Decisions.View do
       actor_id: application.actor_id,
       inserted_at: application.inserted_at
     }
+  end
+
+  # The latest change per link counts; an unlinked task leaves the list and
+  # keeps its history. Oldest first, as the rows arrive.
+  def task_links(changes) do
+    changes
+    |> Enum.group_by(& &1.link_key)
+    |> Enum.map(fn {_key, [first | _] = history} -> {first, List.last(history)} end)
+    |> Enum.reject(fn {_first, last} -> last.operation == "unlink" end)
+    |> Enum.sort_by(fn {first, _last} -> first.id end)
+    |> Enum.map(fn {first, last} ->
+      %{
+        key: last.link_key,
+        kind: last.kind,
+        url: last.url,
+        title: last.title,
+        linked_by_id: first.actor_id,
+        linked_at: first.inserted_at,
+        updated_at: last.inserted_at
+      }
+    end)
+  end
+
+  # Unlinking stores no address; the history names the task it removed.
+  def task_history(changes) do
+    {entries, _known} =
+      Enum.map_reduce(changes, %{}, fn change, known ->
+        {url, title} =
+          if change.operation == "unlink",
+            do: Map.get(known, change.link_key, {nil, nil}),
+            else: {change.url, change.title}
+
+        entry = %{
+          key: change.link_key,
+          operation: change.operation,
+          kind: change.kind,
+          url: url,
+          title: title,
+          actor_id: change.actor_id,
+          inserted_at: change.inserted_at
+        }
+
+        {entry, Map.put(known, change.link_key, {url, title})}
+      end)
+
+    entries
   end
 
   # Only the latest statement per target counts; the default is "not applied".

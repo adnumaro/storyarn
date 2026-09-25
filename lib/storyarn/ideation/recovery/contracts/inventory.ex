@@ -38,14 +38,25 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"decision_revisions", "ideation_decision_revisions", :decision_id,
      ~w(id recovery_identity session_id decision_id number operation actor_id responsible_id verb title conclusion reason sources source_context targets target_context next_action next_action_owner_id round_id replaces_id superseded_by_id request_key fingerprint inserted_at)a},
     {"decision_applications", "ideation_decision_applications", :decision_id,
-     ~w(id recovery_identity session_id decision_id agreement target_key state note actor_id request_key fingerprint inserted_at)a}
+     ~w(id recovery_identity session_id decision_id agreement target_key state note actor_id request_key fingerprint inserted_at)a},
+    {"decision_task_links", "ideation_decision_task_links", :decision_id,
+     ~w(id recovery_identity session_id decision_id link_key operation kind url title actor_id request_key fingerprint inserted_at)a}
   ]
   @group_collections ~w(groups group_memberships group_revisions)
   @reference_collections ~w(references reference_revisions)
-  @decision_collections ~w(decisions decision_revisions decision_applications)
+  @decision_collections ~w(decisions decision_revisions decision_applications decision_task_links)
   @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id responsible_id next_action_owner_id)a
   @dates ~w(archived_at deleted_at removed_at inserted_at updated_at completed_at started_at closed_at deadline_at revealed_at)a
   @max_rows 100_000
+  @binary_fields %{
+    "revisions" => [:title, :body],
+    "edits" => [:title, :body],
+    "groups" => [:title, :synthesis],
+    "group_revisions" => [:title, :synthesis],
+    "decision_revisions" => [:title, :conclusion, :reason, :source_context, :target_context, :next_action],
+    "decision_applications" => [:target_key, :note],
+    "decision_task_links" => [:link_key, :url, :title]
+  }
 
   def tables, do: @tables
   def actor_fields, do: @actor_fields
@@ -112,7 +123,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] and is_map(rows) and is_map(actors) do
+      when version in 1..11 and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -224,7 +235,11 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   # Decisions became objects with a verb, affected content and application.
   # Earlier decisions have no expression in that model and are not carried over.
   def normalize(%{"version" => 9, "rows" => rows} = data),
-    do: %{data | "version" => 10, "rows" => Enum.reduce(@decision_collections, rows, &Map.put(&2, &1, []))}
+    do: normalize(%{data | "version" => 10, "rows" => Enum.reduce(@decision_collections, rows, &Map.put(&2, &1, []))})
+
+  # Decisions learnt to link external tasks; earlier captures linked none.
+  def normalize(%{"version" => 10, "rows" => rows} = data),
+    do: %{data | "version" => 11, "rows" => Map.put(rows, "decision_task_links", [])}
 
   def normalize(data), do: data
 
@@ -328,7 +343,8 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   defp strip_timer_reveal(row), do: row
 
-  defp tables_for(10), do: @tables
+  defp tables_for(11), do: @tables
+  defp tables_for(10), do: Enum.reject(tables_for(11), &(elem(&1, 0) == "decision_task_links"))
 
   defp tables_for(9) do
     for {collection, table, parent, fields} <- tables_for(10), collection != "decision_applications" do
@@ -434,12 +450,8 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     end
   end
 
-  defp binary_field?(collection, key) do
-    key in [:recovery_identity, :creation_key, :request_key, :fingerprint] or
-      (collection in ["revisions", "edits"] and key in [:title, :body]) or
-      (collection in ["groups", "group_revisions"] and key in [:title, :synthesis]) or
-      (collection == "decision_revisions" and
-         key in [:title, :conclusion, :reason, :source_context, :target_context, :next_action]) or
-      (collection == "decision_applications" and key in [:target_key, :note])
-  end
+  defp binary_field?(collection, key),
+    do:
+      key in [:recovery_identity, :creation_key, :request_key, :fingerprint] or
+        key in Map.get(@binary_fields, collection, [])
 end

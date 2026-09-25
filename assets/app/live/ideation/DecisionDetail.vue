@@ -19,6 +19,7 @@ import {
 import { Button } from "@components/ui/button";
 import DecisionApplication from "./DecisionApplication.vue";
 import DecisionHistory from "./DecisionHistory.vue";
+import DecisionTasks from "./DecisionTasks.vue";
 import DecisionSources from "./DecisionSources.vue";
 import { revisionPending, roundTag } from "./decisionStatus";
 import type {
@@ -34,11 +35,13 @@ const {
   history,
   roundCount = 1,
   pending = null,
+  tasksSaved = 0,
 } = defineProps<{
   decision: DecisionRecord;
   history: DecisionHistoryEntry[];
   roundCount?: number;
   pending?: string | null;
+  tasksSaved?: number;
 }>();
 const emit = defineEmits<{
   accept: [];
@@ -47,6 +50,9 @@ const emit = defineEmits<{
   select: [id: number];
   loadHistory: [];
   declare: [targetKey: string | null, state: ApplicationState, note: string | null];
+  linkTask: [url: string, title: string | null];
+  editTask: [key: string, url: string, title: string | null];
+  unlinkTask: [key: string];
 }>();
 const { t, locale } = useI18n();
 const targetIcons: Record<DecisionTargetType, Component> = {
@@ -268,6 +274,14 @@ const busy = computed(() => pending !== null);
       :decision="decision"
       :pending="busy"
       @declare="(key, state, note) => emit('declare', key, state, note)"
+    />
+    <DecisionTasks
+      :decision="decision"
+      :pending="busy"
+      :saved="tasksSaved"
+      @link="(url, title) => emit('linkTask', url, title)"
+      @edit="(key, url, title) => emit('editTask', key, url, title)"
+      @unlink="(key) => emit('unlinkTask', key)"
     />
     <slot name="discussion" />
     <div class="flex flex-col gap-2">

@@ -287,7 +287,8 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     end
   end
 
-  defp dispatch(action, params, socket) when action in ~w(create revise accept withdraw declare) do
+  defp dispatch(action, params, socket)
+       when action in ~w(create revise accept withdraw declare link_task edit_task unlink_task) do
     Authorize.with_authorization(socket, :edit_content, &mutate(action, params, &1), fn current, reason ->
       failure(refresh(current), reason)
     end)
@@ -314,6 +315,18 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     end
   end
 
+  # Linking a task, like declaring, keeps the reader on the detail.
+  defp mutate(action, params, socket) when action in ~w(link_task edit_task unlink_task) do
+    %{current_scope: scope, project: project, session_id: id} = socket.assigns
+
+    with {:ok, decision_id} <- Params.positive(params["decision_id"]),
+         {:ok, _decision} <- task_change(action, {scope, project.id, id, decision_id}, params) do
+      socket |> refresh() |> ok()
+    else
+      {:error, reason} -> failure(refresh(socket), reason)
+    end
+  end
+
   defp mutate(action, params, socket) do
     %{current_scope: scope, project: project, session_id: id} = socket.assigns
 
@@ -333,6 +346,17 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
       {:error, reason} -> failure(socket, reason)
     end
   end
+
+  defp task_change("link_task", {scope, project_id, id, decision_id}, params),
+    do: Ideation.link_decision_task(scope, project_id, id, decision_id, Map.take(params, ~w(url title request_key)))
+
+  defp task_change("edit_task", {scope, project_id, id, decision_id}, params) do
+    attrs = Map.take(params, ~w(url title request_key))
+    Ideation.edit_decision_task(scope, project_id, id, decision_id, params["link_key"], attrs)
+  end
+
+  defp task_change("unlink_task", {scope, project_id, id, decision_id}, params),
+    do: Ideation.unlink_decision_task(scope, project_id, id, decision_id, params["link_key"], params["request_key"])
 
   defp proposal_attrs(params) do
     params

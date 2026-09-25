@@ -63,7 +63,8 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
-The inner inventory is version **10**. Version **9** inventories carry decisions
+The inner inventory is version **11**. Version **10** inventories carry no
+decision task links; they normalize to none. Version **9** inventories carry decisions
 without a verb, affected content or application records; they normalize to no
 decisions, decision revisions or application declarations. Version **8**
 inventories carry no timer round: normalization hands each clock to the round in

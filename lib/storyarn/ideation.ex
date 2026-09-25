@@ -49,6 +49,15 @@ defmodule Storyarn.Ideation do
     to: Decisions,
     as: :declare
 
+  @doc "Links a decision to a task in an external tracker by its web address; nothing is fetched."
+  defdelegate link_decision_task(scope, project_id, session_id, id, attrs), to: Decisions, as: :link_task
+
+  @doc "Changes the address or title of a task linked to a decision."
+  defdelegate edit_decision_task(scope, project_id, session_id, id, link_key, attrs), to: Decisions, as: :edit_task
+
+  @doc "Removes a task from a decision; its history stays with the decision."
+  defdelegate unlink_decision_task(scope, project_id, session_id, id, link_key, key), to: Decisions, as: :unlink_task
+
   @doc "Opens an authorized editor context with linked explorations and available open sessions."
   defdelegate get_contextual_brainstorming(scope, project_id, type, id, opts \\ []),
     to: References,

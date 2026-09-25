@@ -105,17 +105,32 @@ export interface DecisionRecord {
   canAssign: boolean;
   canWithdraw: boolean;
   canDeclare: boolean;
+  tasks: DecisionTask[];
+  canLinkTasks: boolean;
+  canEditTasks: boolean;
+  canUnlinkTasks: boolean;
   updatedAt: string;
 }
+/** A task in an external tracker, linked by hand. Storyarn never reads it. */
+export interface DecisionTask {
+  key: string;
+  kind: "manual";
+  url: string;
+  title: string | null;
+  linkedByName: string | null;
+  linkedAt: string;
+}
+export type TaskOperation = "link" | "edit" | "unlink";
 export interface DecisionHistoryEntry {
-  kind: "record" | "application";
+  kind: "record" | "application" | "task";
   id: string;
-  operation: DecisionOperation | "registered" | ApplicationState;
+  operation: DecisionOperation | "registered" | ApplicationState | TaskOperation;
   actorName: string | null;
   responsibleName?: string | null;
   title?: string;
   targetName?: string | null;
   targetType?: DecisionTargetType | null;
+  url?: string | null;
   text: string | null;
   at: string;
 }

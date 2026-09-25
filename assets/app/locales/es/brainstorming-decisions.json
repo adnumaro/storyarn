@@ -142,7 +142,10 @@
       "not_applied": "{target} marcada como no aplicada",
       "no_change_needed": "{target}: sin cambios necesarios",
       "decisionNoChange": "Sin cambios necesarios",
-      "decisionNotApplied": "Declaración retirada"
+      "decisionNotApplied": "Declaración retirada",
+      "task_link": "Tarea enlazada: {task}",
+      "task_edit": "Tarea actualizada: {task}",
+      "task_unlink": "Tarea desenlazada: {task}"
     },
     "historySummaries": {
       "registered": "Propuesta por {name} · Aceptada por {name}",
@@ -236,6 +239,50 @@
     "changedProposal": "Esta propuesta ha cambiado",
     "changedProposalHelp": "Revisa la propuesta actual. Tu texto se conserva en el formulario; si continúas, podrás guardarlo como una revisión nueva.",
     "keepMyProposal": "Continuar con mi propuesta",
+    "tasks": {
+      "heading": "Tareas",
+      "link": "Enlazar tarea",
+      "edit": "Editar",
+      "save": "Guardar",
+      "unlink": "Desenlazar",
+      "manual": "Enlace manual",
+      "manualHint": "Storyarn abre este enlace, pero nunca lee ni actualiza la tarea.",
+      "url": "Dirección de la tarea",
+      "titleOptional": "Título (opcional)",
+      "invalidUrl": "Escribe una dirección web que empiece por http:// o https://, sin usuario ni contraseña.",
+      "empty": "Todavía no hay tareas enlazadas.",
+      "linkedBy": "Enlazada por {name} · {date}",
+      "prepare": "Preparar tarea",
+      "prepareTitle": "Preparar una tarea",
+      "prepareDescription": "Copia el texto para tu gestor de tareas. Solo se copia lo que marques, y no se envía nada a ningún sitio.",
+      "include": "Incluir",
+      "parts": {
+        "conclusion": "Conclusión",
+        "reason": "Motivo",
+        "targets": "Contenido afectado",
+        "nextAction": "Siguiente acción",
+        "sources": "Fuentes"
+      },
+      "copy": "Copiar texto",
+      "copied": "Copiado",
+      "copyFailed": "No se ha podido copiar el texto. Selecciónalo y cópialo a mano.",
+      "close": "Cerrar",
+      "summary": {
+        "affected": "Contenido afectado",
+        "sources": "Fuentes",
+        "link": "Decisión en Storyarn",
+        "status": {
+          "proposed": "Propuesta, aún sin aceptar",
+          "accepted": "Acordada",
+          "revisionPending": "Acordada, con una revisión pendiente",
+          "withdrawn": "Retirada",
+          "superseded": "Sustituida por «{title}»",
+          "supersededUnnamed": "Sustituida"
+        }
+      },
+      "limitLinks": "Hay 20 tareas enlazadas. Desenlaza una para enlazar otra.",
+      "limitChanges": "Esta decisión ha alcanzado su límite de cambios en tareas. Las tareas enlazadas aún se pueden desenlazar."
+    },
     "errors": {
       "offline": "Se ha interrumpido la conexión. Tu texto se conserva aquí. Revisa la decisión guardada antes de reintentar.",
       "unavailable": "No se ha podido cargar ni guardar la decisión. Revisa tu acceso y vuelve a intentarlo.",
@@ -267,7 +314,10 @@
       "decision_limit_reached": "Esta exploración ha alcanzado su límite de decisiones.",
       "decision_history_limit": "Esta decisión ha alcanzado su límite de historial.",
       "source_context_limit": "Estas fuentes contienen demasiado texto. Elige un conjunto más pequeño.",
-      "idempotency_conflict": "Esta solicitud ya se usó para otros cambios. Revisa la decisión guardada antes de volver a intentarlo."
+      "idempotency_conflict": "Esta solicitud ya se usó para otros cambios. Revisa la decisión guardada antes de volver a intentarlo.",
+      "invalid_task_link": "Escribe una dirección web que empiece por http:// o https://, sin usuario ni contraseña.",
+      "task_link_limit_reached": "Esta decisión ha alcanzado su límite de tareas enlazadas.",
+      "task_link_not_found": "Esta tarea ya no está enlazada a la decisión."
     },
     "dashboard": {
       "tabs": {
