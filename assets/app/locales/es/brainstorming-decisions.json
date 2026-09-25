@@ -283,6 +283,16 @@
       "limitLinks": "Hay 20 tareas enlazadas. Desenlaza una para enlazar otra.",
       "limitChanges": "Esta decisión ha alcanzado su límite de cambios en tareas. Las tareas enlazadas aún se pueden desenlazar."
     },
+    "notice": {
+      "to_accept": "te propuso una decisión para que la aceptes",
+      "accepted": "aceptó una decisión",
+      "next_action": "te pidió aplicar una decisión",
+      "next_actionTarget": "te pidió aplicar · {target}",
+      "applied": "marcó una decisión como aplicada",
+      "appliedTarget": "marcó {target} como aplicada",
+      "open": "Abrir",
+      "goApply": "Ir a aplicar"
+    },
     "errors": {
       "offline": "Se ha interrumpido la conexión. Tu texto se conserva aquí. Revisa la decisión guardada antes de reintentar.",
       "unavailable": "No se ha podido cargar ni guardar la decisión. Revisa tu acceso y vuelve a intentarlo.",

@@ -9,6 +9,8 @@ defmodule Storyarn.Ideation.Decisions.Adapters.Notifications do
   def deliver(actor_id, project_id, decision, recipients),
     do: Platform.deliver_decision_activity(actor_id, project_id, decision, recipients)
 
+  def resolve_requests(project_id, decision_id), do: Platform.resolve_decision_requests(project_id, decision_id)
+
   def publish(nil), do: :ok
   def publish(outcome), do: Platform.publish_notification_delivery(outcome)
 

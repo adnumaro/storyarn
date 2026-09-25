@@ -39,7 +39,7 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
 
   @comment_contract [deliver_comment_activity: 4]
   # ENG-236: decision writes deliver their own four inbox kinds.
-  @decision_contract [deliver_decision_activity: 4]
+  @decision_contract [deliver_decision_activity: 4, resolve_decision_requests: 2]
 
   @public_types ~w(notification_delivery_outcome onboarding_summary)a
 
@@ -128,7 +128,9 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
 
     assert decision_docs == [
              {:deliver_decision_activity, 4, ["deliver_decision_activity(actor_id, project_id, decision, recipients)"],
-              %{"en" => "Persists decision activity for the recipients the decision owner selects."}, 0}
+              %{"en" => "Persists decision activity for the recipients the decision owner selects."}, 0},
+             {:resolve_decision_requests, 2, ["resolve_decision_requests(project_id, decision_id)"],
+              %{"en" => "Marks the requests to accept a decision as read once it no longer waits for them."}, 0}
            ]
   end
 
@@ -191,7 +193,15 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
           {:ok, notification_delivery_outcome()} | {:error, term()}
       end
 
-    assert decision_specs == [{:deliver_decision_activity, 4, Macro.to_string(decision_spec)}]
+    resolve_spec =
+      quote do
+        resolve_decision_requests(pos_integer(), pos_integer()) :: {:ok, notification_delivery_outcome()}
+      end
+
+    assert decision_specs == [
+             {:deliver_decision_activity, 4, Macro.to_string(decision_spec)},
+             {:resolve_decision_requests, 2, Macro.to_string(resolve_spec)}
+           ]
   end
 
   defp digest(term) do

@@ -35,6 +35,7 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   @type delivery_outcome ::
           {:created, Notification.t()}
           | {:created, [Notification.t()]}
+          | {:read, [pos_integer()]}
           | :deduplicated
           | :suppressed
 
@@ -100,6 +101,30 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   def deliver_decision_activity(_actor_id, _project_id, _decision, _recipients) do
     ensure_inside_transaction!("deliver_decision_activity/4")
     {:error, :invalid_decision_activity}
+  end
+
+  @doc """
+  Marks the requests to accept a decision as read once it no longer waits for
+  them: it was accepted, withdrawn or replaced by a newer proposal. Runs inside
+  the decision's transaction; publish the returned outcome after it commits.
+  """
+  @spec resolve_decision_requests(pos_integer(), pos_integer()) :: {:ok, delivery_outcome()}
+  def resolve_decision_requests(project_id, decision_id) when valid_id(project_id) and valid_id(decision_id) do
+    ensure_inside_transaction!("resolve_decision_requests/2")
+
+    {_count, recipient_ids} =
+      Repo.update_all(
+        from(notification in Notification,
+          where:
+            notification.project_id == ^project_id and notification.entity_type == "decision" and
+              notification.entity_id == ^decision_id and notification.kind == "decision_to_accept" and
+              is_nil(notification.read_at),
+          select: notification.recipient_id
+        ),
+        set: [read_at: TimeHelpers.now()]
+      )
+
+    {:ok, {:read, Enum.uniq(recipient_ids)}}
   end
 
   @doc """
@@ -461,6 +486,8 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
     outcomes
     |> created_notifications()
     |> Enum.map(& &1.recipient_id)
+    |> Kernel.++(read_recipients(outcomes))
+    |> Enum.uniq()
     |> broadcast_users()
   end
 
@@ -721,6 +748,11 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   defp project_id(%{id: id}), do: id
   defp project_id(nil), do: nil
 
+  defp read_recipients({:read, recipient_ids}), do: recipient_ids
+  defp read_recipients(outcomes) when is_list(outcomes), do: Enum.flat_map(outcomes, &read_recipients/1)
+  defp read_recipients(_outcome), do: []
+
+  defp created_notifications({:read, _recipient_ids}), do: []
   defp created_notifications({:created, %Notification{} = notification}), do: [notification]
   defp created_notifications({:created, notifications}) when is_list(notifications), do: notifications
   defp created_notifications(:deduplicated), do: []

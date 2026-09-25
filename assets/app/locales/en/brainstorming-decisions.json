@@ -283,6 +283,16 @@
       "limitLinks": "20 tasks are linked. Unlink one to link another.",
       "limitChanges": "This decision has reached its limit of task changes. Linked tasks can still be unlinked."
     },
+    "notice": {
+      "to_accept": "proposed a decision for you to accept",
+      "accepted": "accepted a decision",
+      "next_action": "asked you to apply a decision",
+      "next_actionTarget": "asked you to apply · {target}",
+      "applied": "marked a decision as applied",
+      "appliedTarget": "marked {target} as applied",
+      "open": "Open",
+      "goApply": "Go apply"
+    },
     "errors": {
       "offline": "Connection interrupted. Your text is kept here. Check the saved decision before retrying.",
       "unavailable": "The decision could not be loaded or saved. Check your access and try again.",

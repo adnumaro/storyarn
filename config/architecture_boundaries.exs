@@ -4489,6 +4489,18 @@ policy = %{
       reason: "Project comments publish notification updates after commit through the public Platform facade"
     },
     %{
+      source: "lib/storyarn_web/live/shared/decision_notices.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Decision notifications read their decision with current access through the public Ideation facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/decision_notices.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Decision notification cards name their people through the Projects-owned member list"
+    },
+    %{
       source: "lib/storyarn_web/live/shared/notification_helpers.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
