@@ -88,26 +88,23 @@ export function sourceLabel(source: DecisionSource) {
   return source.title.trim() || excerpt(source.preview);
 }
 
+/** The longest title a decision record accepts. */
+const TITLE_MAX = 160;
+
 /**
  * The first sentence of the conclusion names the decision until someone edits
- * it. A longer sentence keeps its first clause, or as many whole words as fit:
- * a title is stored and shown whole, so it never ends in an ellipsis.
+ * it. The title is stored whole and never carries an ellipsis: screens cut a
+ * long title, the record does not. A first sentence longer than any title
+ * allows keeps its whole words up to that limit.
  */
-export function deriveTitle(conclusion: string, max = 60) {
+export function deriveTitle(conclusion: string) {
   const first = (conclusion.trim().split(/(?<=[.!?])\s|\n/)[0] ?? "")
     .replace(/[.!?]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (first.length <= max) return first;
-  const clause = first.split(/\s*[;:—–]\s*/)[0] ?? "";
-  if (clause.length <= max && clause.includes(" ")) return clause;
-  const words = first.slice(0, max + 1).split(" ");
-  return words.length > 1
-    ? words
-        .slice(0, -1)
-        .join(" ")
-        .replace(/[,;:]$/, "")
-    : first.slice(0, max);
+  if (first.length <= TITLE_MAX) return first;
+  const words = first.slice(0, TITLE_MAX + 1).split(" ");
+  return words.length > 1 ? words.slice(0, -1).join(" ") : first.slice(0, TITLE_MAX);
 }
 
 export function targetState(target: DecisionTarget): ApplicationState {

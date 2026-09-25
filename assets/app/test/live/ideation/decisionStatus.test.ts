@@ -69,11 +69,12 @@ describe("decision status", () => {
     );
     expect(
       deriveTitle("Drop the second harbor route; nothing in the project needs to change."),
-    ).toBe("Drop the second harbor route");
-    expect(
-      deriveTitle("Mara keeps the lighthouse and the guild leaves the harbor before the storm."),
-    ).toBe("Mara keeps the lighthouse and the guild leaves the harbor");
-    expect(deriveTitle("a".repeat(80))).toBe("a".repeat(60));
+    ).toBe("Drop the second harbor route; nothing in the project needs to change");
+    const long = `Mara keeps ${"the lighthouse and ".repeat(12)}the guild leaves.`;
+    expect(deriveTitle(long).length).toBeLessThanOrEqual(160);
+    expect(long.startsWith(deriveTitle(long))).toBe(true);
+    expect(deriveTitle(long)).not.toMatch(/…|\.\.\.|\s$/);
+    expect(deriveTitle("a".repeat(200))).toBe("a".repeat(160));
     expect(excerpt("  The   keeper  ")).toBe("The keeper");
     expect(roundTag({ number: 2, prompt: null }, 2)).toBe("R2");
     expect(roundTag({ number: 1, prompt: null }, 1)).toBeNull();

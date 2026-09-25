@@ -130,7 +130,7 @@ function linkedBy(task: DecisionTask) {
         </p>
         <div
           v-if="decision.canEditTasks || decision.canUnlinkTasks"
-          class="mt-2.5 ml-[25px] flex gap-1.5"
+          class="mt-2.5 flex justify-end gap-1.5"
         >
           <Popover
             v-if="decision.canEditTasks"
@@ -146,7 +146,7 @@ function linkedBy(task: DecisionTask) {
                 >{{ t("brainstormingDecisions.tasks.edit") }}<ChevronDown class="size-3"
               /></Button>
             </PopoverTrigger>
-            <PopoverContent align="start" class="w-[320px] p-3">
+            <PopoverContent align="end" class="w-[320px] p-3">
               <DecisionTaskForm
                 :id-prefix="`decision-edit-task-${task.key}`"
                 :initial-url="task.url"

@@ -187,7 +187,7 @@ function when(declaration: DecisionDeclaration) {
         >
           “{{ target.application.note }}”
         </p>
-        <div v-if="decision.canDeclare" class="mt-2.5 ml-[25px] flex gap-1.5">
+        <div v-if="decision.canDeclare" class="mt-2.5 flex justify-end gap-1.5">
           <Button
             v-if="pendingRow(target) && applyHref(target)"
             :id="`decision-go-apply-${target.key}`"
@@ -219,7 +219,7 @@ function when(declaration: DecisionDeclaration) {
                 }}<ChevronDown class="size-3"
               /></Button>
             </PopoverTrigger>
-            <PopoverContent align="start" class="w-[300px] p-3">
+            <PopoverContent align="end" class="w-[300px] p-3">
               <DecisionMarkForm
                 :name="target.name"
                 :id-prefix="`decision-mark-${target.key}`"
