@@ -13,11 +13,13 @@ import {
   UserCheck,
   XCircle,
 } from "@lucide/vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, type Component } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import UserAvatar from "@components/UserAvatar.vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
+import { notificationAttachment } from "./attachments";
 import type { NotificationCenterState, NotificationFilter, NotificationItem } from "./types";
 
 const { locale, t } = useI18n();
@@ -106,7 +108,15 @@ function validItem(item: unknown): item is NotificationItem {
     typeof candidate.kind === "string" &&
     typeof candidate.createdAt === "string" &&
     (candidate.href === null || typeof candidate.href === "string") &&
-    (candidate.readAt === null || typeof candidate.readAt === "string")
+    (candidate.readAt === null || typeof candidate.readAt === "string") &&
+    validAttachment(candidate.attachment)
+  );
+}
+
+function validAttachment(attachment: unknown): boolean {
+  if (attachment === undefined || attachment === null) return true;
+  return (
+    typeof attachment === "object" && typeof (attachment as { type?: unknown }).type === "string"
   );
 }
 
@@ -161,11 +171,37 @@ function markAllRead(): void {
   runRequest("mark_all_notifications_read", {});
 }
 
-function handleNotificationOpen(notification: NotificationItem): void {
-  if (notification.readAt === null) {
+function handleNotificationOpen(notification: NotificationItem, keepUnread = false): void {
+  if (notification.readAt === null && !keepUnread) {
     runRequest("mark_notification_read", { id: notification.id });
   }
   open.value = false;
+}
+
+interface KindIcon {
+  icon: Component;
+  tone?: string;
+}
+const kindIcons: Record<NotificationItem["kind"], KindIcon> = {
+  async_operation: { icon: CheckCircle2 },
+  content_created: { icon: Plus },
+  content_deleted: { icon: Trash2 },
+  comment_mention: { icon: MessageSquare },
+  comment_reply: { icon: MessageSquare },
+  comment_followed: { icon: MessageSquare },
+  decision_to_accept: { icon: UserCheck, tone: "text-blue-700 dark:text-blue-400" },
+  decision_accepted: { icon: Check, tone: "text-emerald-700 dark:text-emerald-400" },
+  decision_next_action: { icon: ArrowRight, tone: "text-amber-700 dark:text-amber-400" },
+  decision_applied: { icon: CircleCheck, tone: "text-emerald-700 dark:text-emerald-400" },
+};
+function kindIcon(notification: NotificationItem): KindIcon {
+  if (notification.status === "failure") return { icon: XCircle };
+  return kindIcons[notification.kind] ?? { icon: Trash2 };
+}
+// A notification whose domain registered a renderer shows its actor and lets
+// the renderer draw the body; any other keeps the plain sentence.
+function attachmentRenderer(notification: NotificationItem): Component | undefined {
+  return notification.attachment ? notificationAttachment(notification.attachment.type) : undefined;
 }
 
 function refreshNotifications(): void {
@@ -386,7 +422,23 @@ function relativeTime(isoDate: string): string {
             notification.readAt === null && 'bg-primary/4',
           ]"
         >
+          <span
+            v-if="attachmentRenderer(notification)"
+            class="relative mt-0.5 inline-flex size-8 shrink-0"
+          >
+            <UserAvatar :display-name="notification.actorName ?? ''" size="md" />
+            <span
+              class="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-popover"
+            >
+              <component
+                :is="kindIcon(notification).icon"
+                class="size-2.5"
+                :class="kindIcon(notification).tone"
+              />
+            </span>
+          </span>
           <div
+            v-else
             :class="[
               'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full',
               notification.status === 'failure'
@@ -394,37 +446,23 @@ function relativeTime(isoDate: string): string {
                 : 'bg-primary/10 text-primary',
             ]"
           >
-            <XCircle v-if="notification.status === 'failure'" class="size-4" />
-            <CheckCircle2 v-else-if="notification.kind === 'async_operation'" class="size-4" />
-            <Plus v-else-if="notification.kind === 'content_created'" class="size-4" />
-            <UserCheck
-              v-else-if="notification.kind === 'decision_to_accept'"
-              class="size-4 text-blue-700 dark:text-blue-400"
-            />
-            <Check
-              v-else-if="notification.kind === 'decision_accepted'"
-              class="size-4 text-emerald-700 dark:text-emerald-400"
-            />
-            <ArrowRight
-              v-else-if="notification.kind === 'decision_next_action'"
-              class="size-4 text-amber-700 dark:text-amber-400"
-            />
-            <CircleCheck
-              v-else-if="notification.kind === 'decision_applied'"
-              class="size-4 text-emerald-700 dark:text-emerald-400"
-            />
-            <MessageSquare
-              v-else-if="
-                notification.kind === 'comment_mention' ||
-                notification.kind === 'comment_reply' ||
-                notification.kind === 'comment_followed'
-              "
+            <component
+              :is="kindIcon(notification).icon"
               class="size-4"
+              :class="kindIcon(notification).tone"
             />
-            <Trash2 v-else class="size-4" />
           </div>
 
-          <div class="min-w-0 flex-1 pr-7">
+          <component
+            :is="attachmentRenderer(notification)"
+            v-if="attachmentRenderer(notification)"
+            class="min-w-0 flex-1 pr-7"
+            :notification="notification"
+            :data="notification.attachment?.data"
+            :when="relativeTime(notification.createdAt)"
+            @open="(keepUnread: boolean) => handleNotificationOpen(notification, keepUnread)"
+          />
+          <div v-else class="min-w-0 flex-1 pr-7">
             <p
               :class="[
                 'text-sm leading-5',

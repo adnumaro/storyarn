@@ -4,6 +4,7 @@ import { defineAsyncComponent, h } from "vue";
 import type { App, Component } from "vue";
 import VueKonva from "vue-konva";
 import { i18n } from "./i18n";
+import { registerNotificationAttachment } from "./components/notifications/attachments";
 import AuthConfirmAccessForm from "./live/auth/confirm-access/AuthConfirmAccessForm.vue";
 import AuthForgotPasswordForm from "./live/auth/reset-password/AuthForgotPasswordForm.vue";
 import AuthResetPasswordForm from "./live/auth/reset-password/AuthResetPasswordForm.vue";
@@ -17,6 +18,12 @@ import LegalPage from "./live/public/legal/LegalPage.vue";
 import DocsContent from "./live/docs/show/DocsContent.vue";
 
 let appCounter = 0;
+
+// Decisions draw their compact card inside the inbox; loaded when first shown.
+registerNotificationAttachment(
+  "decision",
+  defineAsyncComponent(() => import("./live/ideation/DecisionNotice.vue")),
+);
 
 const injectionLayoutComponents = new Set([
   "live/layouts/auth/Layout",

@@ -25,6 +25,9 @@ defmodule Storyarn.NotificationInbox do
     Platform.mark_notification_read(scope, notification_id, comment_visibility: comment_visibility(scope))
   end
 
+  @doc "The producer's event behind a decision notification, so the producer can name what happened."
+  defdelegate decision_event(notification), to: Platform
+
   def mark_all_notifications_read(scope) do
     Platform.mark_all_notifications_read(scope, comment_visibility: comment_visibility(scope))
   end

@@ -28,6 +28,8 @@ defmodule Storyarn.Ideation.Decisions do
   defdelegate list_project(scope, project_id), to: Project, as: :list
   defdelegate session(scope, project_id, id), to: Project
   defdelegate get(scope, project_id, session_id, id), to: Catalog
+  defdelegate get_many(scope, project_id, ids), to: Catalog
+  defdelegate declarations(scope, project_id, events), to: Catalog
   defdelegate history(scope, project_id, session_id, id), to: Catalog
   defdelegate propose(scope, project_id, session_id, attrs), to: Commands.Propose, as: :run
   defdelegate revise(scope, project_id, session_id, id, version, attrs), to: Commands.Revise, as: :run

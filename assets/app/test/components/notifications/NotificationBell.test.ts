@@ -1,6 +1,8 @@
 import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
+import { defineComponent, h } from "vue";
+import { registerNotificationAttachment } from "../../../components/notifications/attachments";
 import NotificationBell from "../../../components/notifications/NotificationBell.vue";
 import type {
   NotificationCenterState,
@@ -145,6 +147,59 @@ describe("NotificationBell", () => {
     );
 
     expect(wrapper.text()).toContain("snapshot import: Recovered story completed");
+  });
+
+  it("lets the renderer a domain registered draw an attached notification", async () => {
+    registerNotificationAttachment(
+      "test-card",
+      defineComponent({
+        name: "TestCard",
+        props: { notification: Object, data: Object, when: String },
+        emits: ["open"],
+        setup(props, { emit }) {
+          return () =>
+            h("div", { "data-test-card": "" }, [
+              h("span", (props.data as { label: string }).label),
+              h("span", props.when),
+              h("button", { "data-keep": "", onClick: () => emit("open", true) }),
+              h("button", { "data-read": "", onClick: () => emit("open", false) }),
+            ]);
+        },
+      }),
+    );
+    const attached: NotificationItem = {
+      ...unreadNotification,
+      kind: "decision_to_accept",
+      entityType: "decision",
+      attachment: { type: "test-card", data: { label: "Mara stays" } },
+    };
+    const { wrapper, pushEvent } = await mountBell(
+      center({
+        items: [
+          attached,
+          { ...unreadNotification, id: 18, attachment: { type: "unknown", data: {} } },
+        ],
+      }),
+    );
+
+    const card = wrapper.get("[data-test-card]");
+    expect(card.text()).toContain("Mara stays");
+    expect(wrapper.text()).toContain("AN");
+    // A type nobody registered keeps the plain sentence.
+    expect(wrapper.get("#notification-link-18, li:nth-child(2)").text()).toContain("Ana created");
+
+    await card.get("[data-keep]").trigger("click");
+    expect(pushEvent).not.toHaveBeenCalledWith(
+      "mark_notification_read",
+      expect.anything(),
+      expect.anything(),
+    );
+    await card.get("[data-read]").trigger("click");
+    expect(pushEvent).toHaveBeenCalledWith(
+      "mark_notification_read",
+      { id: 17 },
+      expect.any(Function),
+    );
   });
 
   it("opens a mentioned conversation through a live link and marks it as read", async () => {

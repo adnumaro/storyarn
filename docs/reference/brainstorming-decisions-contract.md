@@ -280,7 +280,18 @@ needed` take an optional note; the confirmation offers `Undo` for five seconds,
   and the proposer when a target is marked applied. The actor is never told, and
   the notification stores only the session title, never decision text. Its link
   names the project and the decision; the brainstorming route resolves the
-  session after rechecking access.
+  session after rechecking access. In the inbox each one reads actor · what
+  happened · the compact card · one action · time: the card is read when the
+  inbox loads, with the reader's current access, and a decision they can no
+  longer see leaves only the sentence, and every decision of the inbox is read
+  together, one pass per session. `Open` goes to the decision; the next action's
+  notification shows what was asked, and its `Go apply` opens the first content
+  still to apply with its banner, only while the reader can still declare. An
+  application's notification names the content its own declaration marked, never
+  whatever is applied now.
+  A `decision_to_accept` stays unread when opened and is marked read once the
+  decision stops waiting for it: a revision, acceptance or withdrawal settles
+  the earlier requests before any new one is delivered.
 - **Dashboard.** Each session row summarizes `3 decisions · 1 waiting for you · 1
 to apply`; the `Decisions` tab lists every decision with Status and
   Application filters and `Group by affected content`.

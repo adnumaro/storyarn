@@ -29,6 +29,12 @@ defmodule Storyarn.Ideation do
   @doc "Reads a decision and its retained agreement using current session and source access."
   defdelegate get_decision(scope, project_id, session_id, id), to: Decisions, as: :get
 
+  @doc "Reads several decisions of a project at once; decisions the reader cannot see are left out."
+  defdelegate list_decisions_by_ids(scope, project_id, ids), to: Decisions, as: :get_many
+
+  @doc "The application declarations some decision events recorded, for decisions the reader may see."
+  defdelegate decision_event_declarations(scope, project_id, events), to: Decisions, as: :declarations
+
   @doc "Lists a decision's immutable records and application declarations, newest first."
   defdelegate decision_history(scope, project_id, session_id, id), to: Decisions, as: :history
 

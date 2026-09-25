@@ -121,6 +121,14 @@ export interface DecisionTask {
   linkedAt: string;
 }
 export type TaskOperation = "link" | "edit" | "unlink";
+/** What a decision notification attaches: the decision as its reader sees it now. */
+export interface DecisionNoticeData {
+  decision: DecisionRecord;
+  /** The content to apply, or the one the actor marked applied. */
+  target: string | null;
+  action: { kind: "open" | "apply"; href: string };
+  sessionName: string | null;
+}
 export interface DecisionHistoryEntry {
   kind: "record" | "application" | "task";
   id: string;

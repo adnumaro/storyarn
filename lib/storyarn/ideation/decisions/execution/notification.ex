@@ -10,8 +10,47 @@ defmodule Storyarn.Ideation.Decisions.Execution.Notification do
   person when a proposal waits for them, the proposer and the discussion when it
   is accepted, the next action's owner, and the responsible person and proposer
   when content is marked applied. The actor is never told about their own step.
+
+  A request to accept is settled once the decision stops waiting for it: a
+  revision, acceptance or withdrawal marks the earlier requests read before any
+  new one is delivered, and so does superseding the decision it replaces.
   """
   def notify(scope, project_id, access, decision, command) do
+    with {:ok, settled} <- settle(project_id, settled_ids(decision, command)),
+         {:ok, delivered} <- deliver(scope, project_id, access, decision, command) do
+      {:ok, Enum.reject([settled | delivered_list(delivered)], &is_nil/1)}
+    end
+  end
+
+  defp settled_ids(decision, %{operation: operation}) do
+    own = if operation in ~w(revise accept withdraw), do: [decision.id], else: []
+    own ++ replaced(decision)
+  end
+
+  defp replaced(%{status: :accepted} = decision) do
+    case revision(decision, decision.accepted_version) do
+      %Revision{replaces_id: id} when is_integer(id) -> [id]
+      _ -> []
+    end
+  end
+
+  defp replaced(_decision), do: []
+
+  defp settle(_project_id, []), do: {:ok, nil}
+
+  defp settle(project_id, ids) do
+    Enum.reduce_while(ids, {:ok, {:read, []}}, fn id, {:ok, {:read, read}} ->
+      case Notifications.resolve_requests(project_id, id) do
+        {:ok, {:read, more}} -> {:cont, {:ok, {:read, Enum.uniq(read ++ more)}}}
+        {:error, _} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp delivered_list(nil), do: []
+  defp delivered_list(outcome), do: [outcome]
+
+  defp deliver(scope, project_id, access, decision, command) do
     recipients =
       scope |> recipients(project_id, access, decision, command) |> Enum.reject(&(&1.user_id == access.user_id))
 

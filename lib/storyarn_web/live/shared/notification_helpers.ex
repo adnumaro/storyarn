@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
 
   alias Storyarn.NotificationInbox
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.DecisionNotices
 
   @type filter :: :all | :unread
 
@@ -23,17 +24,24 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
 
     comment_ids = for %{entity_type: "comment", entity_id: id} <- notifications, do: id
 
-    destinations =
-      Map.merge(Projects.comment_destinations(scope, comment_ids), decision_destinations(scope, notifications))
+    decision_projects = decision_destinations(scope, notifications)
+    destinations = Map.merge(Projects.comment_destinations(scope, comment_ids), decision_projects)
+
+    cards =
+      DecisionNotices.index(
+        scope,
+        notifications,
+        Map.new(decision_projects, fn {{:decision_project, id}, slugs} -> {id, slugs} end)
+      )
 
     %{
       filter: Atom.to_string(filter),
-      items: Enum.map(notifications, &serialize(&1, destinations)),
+      items: Enum.map(notifications, &serialize(&1, destinations, cards)),
       unreadCount: NotificationInbox.unread_notification_count(scope)
     }
   end
 
-  defp serialize(%{id: _} = notification, destinations) do
+  defp serialize(%{id: _} = notification, destinations, cards) do
     %{
       id: notification.id,
       kind: notification.kind,
@@ -44,7 +52,8 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
       readAt: iso8601(notification.read_at),
       actorName: actor_name(notification.actor),
       projectName: project_name(notification.project),
-      href: destination(notification, destinations)
+      href: destination(notification, destinations),
+      attachment: DecisionNotices.attachment(notification, cards)
     }
   end
 

@@ -21,6 +21,17 @@ export interface NotificationItem {
   actorName: string | null;
   projectName: string | null;
   href: string | null;
+  /** Extra content a domain draws inside the notification; see attachments.ts. */
+  attachment?: NotificationAttachment | null;
+}
+
+/**
+ * Content a domain attaches to its notifications. The inbox knows only its
+ * type and passes the data, unread, to the renderer registered for that type.
+ */
+export interface NotificationAttachment {
+  type: string;
+  data: unknown;
 }
 
 export interface NotificationCenterState {
