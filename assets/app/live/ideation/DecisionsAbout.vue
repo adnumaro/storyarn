@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { ChevronDown, ExternalLink, Lightbulb, ListChecks } from "@lucide/vue";
+import { ChevronDown, ExternalLink } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import LiveLink from "@components/navigation/LiveLink.vue";
@@ -12,8 +12,9 @@ import type { DecisionAbout } from "./explorationTypes";
 
 /**
  * Decisions about the content open in the editor, already in the order to act
- * on them. A row opens its session on the decision; rows still to apply here
- * offer "Go apply" and "Mark applied" to editors.
+ * on them. Those still to apply here are full cards with "Go apply" and "Mark
+ * applied" for editors; the rest are compact rows. Every one opens its session
+ * on the decision.
  */
 const {
   items,
@@ -37,6 +38,9 @@ function declare(item: DecisionAbout, state: ApplicationState, note: string | nu
   marking.value = null;
   emit("declare", item, state, note);
 }
+function actionable(item: DecisionAbout) {
+  return canEdit && item.toApply && item.decision.canDeclare && !!item.targetKey;
+}
 </script>
 <template>
   <section
@@ -44,26 +48,24 @@ function declare(item: DecisionAbout, state: ApplicationState, note: string | nu
     aria-labelledby="exploration-decisions-heading"
     class="space-y-2"
   >
-    <h3 id="exploration-decisions-heading" class="flex items-center gap-2 text-sm font-medium">
-      <ListChecks class="size-4 text-muted-foreground" />
+    <h3 id="exploration-decisions-heading" class="flex items-baseline gap-2 text-sm font-medium">
       {{ t("brainstormingDecisions.about.title", { name }) }}
+      <span class="text-xs font-normal text-muted-foreground">{{ items.length }}</span>
     </h3>
-    <ul class="max-h-80 space-y-2 overflow-y-auto">
+    <ul class="space-y-2">
       <li
         v-for="item in items"
         :key="`${item.sessionId}-${item.decision.id}`"
         :data-decision-about="item.decision.id"
       >
-        <LiveLink
-          :to="item.sessionUrl"
-          class="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <DecisionCard
+          v-if="item.toApply"
+          :decision="item.decision"
+          :href="item.sessionUrl"
+          :session-name="item.sessionTitle"
+          :round-count="item.roundCount"
         >
-          <DecisionCard :decision="item.decision" />
-        </LiveLink>
-        <div class="mt-1.5 flex min-h-7 items-center gap-2 px-1 text-[11px] text-muted-foreground">
-          <Lightbulb class="size-3 shrink-0" />
-          <span class="min-w-0 flex-1 truncate">{{ item.sessionTitle }}</span>
-          <template v-if="canEdit && item.toApply && item.decision.canDeclare && item.targetKey">
+          <template v-if="actionable(item)" #actions>
             <Button
               :id="`exploration-decision-apply-${item.decision.id}`"
               variant="outline"
@@ -98,7 +100,18 @@ function declare(item: DecisionAbout, state: ApplicationState, note: string | nu
               </PopoverContent>
             </Popover>
           </template>
-        </div>
+        </DecisionCard>
+        <LiveLink
+          v-else
+          :to="item.sessionUrl"
+          class="block rounded-lg border border-border px-3 py-2 outline-none hover:border-primary/40 hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <DecisionCard
+            :decision="item.decision"
+            size="compact"
+            :session-name="item.sessionTitle"
+          />
+        </LiveLink>
       </li>
     </ul>
   </section>

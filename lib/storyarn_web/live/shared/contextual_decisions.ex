@@ -177,7 +177,14 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
     items =
       with {:ok, items} <- Ideation.list_decisions_about(scope, project.id, Atom.to_string(type), id),
            {:ok, context} <- context(socket, items) do
-        Enum.map(items, &Map.put(&1, :props, IdeationDecisionData.decision(&1.decision, context.(&1.session.id))))
+        Enum.map(items, fn item ->
+          board = context.(item.session.id)
+
+          Map.merge(item, %{
+            props: IdeationDecisionData.decision(item.decision, board),
+            round_count: length(board.rounds)
+          })
+        end)
       else
         _ -> []
       end
@@ -245,6 +252,7 @@ defmodule StoryarnWeb.Live.Shared.ContextualDecisions do
       sessionId: item.session.id,
       sessionTitle: item.session.title,
       sessionUrl: session_url(socket, item.session.id, item.decision.id),
+      roundCount: Map.get(item, :round_count, 1),
       toApply: to_apply?(item)
     }
   end

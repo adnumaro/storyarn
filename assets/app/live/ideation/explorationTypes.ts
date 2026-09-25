@@ -35,6 +35,8 @@ export interface DecisionAbout {
   sessionId: number;
   sessionTitle: string;
   sessionUrl: string;
+  /** Rounds of that session; the card names the round when there is more than one. */
+  roundCount: number;
   toApply: boolean;
 }
 

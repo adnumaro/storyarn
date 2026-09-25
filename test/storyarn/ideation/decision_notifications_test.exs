@@ -355,7 +355,14 @@ defmodule Storyarn.Ideation.DecisionNotificationsTest do
     parent = self()
     handler = "count-queries-#{inspect(ref)}"
 
-    :telemetry.attach(handler, [:storyarn, :repo, :query], fn _, _, _, _ -> send(parent, {ref, :query}) end, nil)
+    # Other async tests query at the same time; count only this process's queries.
+    :telemetry.attach(
+      handler,
+      [:storyarn, :repo, :query],
+      fn _, _, _, _ -> if self() == parent, do: send(parent, {ref, :query}) end,
+      nil
+    )
+
     fun.()
     :telemetry.detach(handler)
     drain(ref, 0)

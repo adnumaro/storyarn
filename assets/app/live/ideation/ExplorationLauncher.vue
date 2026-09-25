@@ -260,21 +260,6 @@ function link(session: ExplorationSession) {
           </aside>
 
           <div class="min-w-0 space-y-5">
-            <DecisionsAbout
-              v-if="state.about?.length"
-              :items="state.about"
-              :name="state.decisions?.name ?? state.target?.name ?? ''"
-              :can-edit="state.canEdit"
-              :pending="!!pending"
-              @apply="
-                (item) =>
-                  decide('decision_apply', {
-                    session_id: item.sessionId,
-                    decision_id: item.decision.id,
-                  })
-              "
-              @declare="declare"
-            />
             <section aria-labelledby="exploration-linked-heading" class="space-y-2">
               <h3 id="exploration-linked-heading" class="text-sm font-medium">
                 {{ t("brainstormingExplorations.linkedTitle") }}
@@ -348,6 +333,21 @@ function link(session: ExplorationSession) {
                 >
               </div>
             </section>
+            <DecisionsAbout
+              v-if="state.about?.length"
+              :items="state.about"
+              :name="state.decisions?.name ?? state.target?.name ?? ''"
+              :can-edit="state.canEdit"
+              :pending="!!pending"
+              @apply="
+                (item) =>
+                  decide('decision_apply', {
+                    session_id: item.sessionId,
+                    decision_id: item.decision.id,
+                  })
+              "
+              @declare="declare"
+            />
 
             <section
               v-if="state.canEdit && state.target"

@@ -8,12 +8,15 @@ export interface DecisionSessionGroup {
   id: number;
   title: string;
   status: "open" | "archived";
+  /** Rounds of the session; cards name the round when there is more than one. */
+  roundCount: number;
   decisions: DecisionRecord[];
 }
 export interface DashboardDecision {
   decision: DecisionRecord;
   sessionId: number;
   sessionTitle: string;
+  roundCount: number;
 }
 export interface TargetGroup {
   key: string;
@@ -78,7 +81,12 @@ export function dashboardDecisions(
   const { live, retired } = orderDecisions(matching);
   const item = (decision: DecisionRecord): DashboardDecision => {
     const session = sessions.get(decision.id);
-    return { decision, sessionId: session?.id ?? 0, sessionTitle: session?.title ?? "" };
+    return {
+      decision,
+      sessionId: session?.id ?? 0,
+      sessionTitle: session?.title ?? "",
+      roundCount: session?.roundCount ?? 1,
+    };
   };
   return { live: live.map(item), retired: retired.map(item) };
 }
@@ -93,6 +101,25 @@ function pendingHere(decision: DecisionRecord, target: DecisionTarget | null) {
   const declared = decision.application?.targets.find((entry) => entry.key === target.key);
   return (
     declared !== undefined && ["not_applied", "partially_applied"].includes(targetState(declared))
+  );
+}
+
+/**
+ * The content a dashboard card offers to apply: the one of its group when the
+ * list is grouped, otherwise the first still pending that the reader can open.
+ * Only while the reader can declare on the agreement in force.
+ */
+export function applyTarget(item: DashboardDecision, groupKey: string | null = null) {
+  const decision = item.decision;
+  if (!decision.canDeclare || !inForce(decision)) return null;
+  return (
+    (decision.application?.targets ?? []).find(
+      (target) =>
+        ["not_applied", "partially_applied"].includes(targetState(target)) &&
+        target.available &&
+        !!target.href &&
+        (groupKey === null || targetKey(target) === groupKey),
+    ) ?? null
   );
 }
 
