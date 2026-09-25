@@ -1,0 +1,26 @@
+assets/app/components/notifications/NotificationBell.vue
+  s_b5abbfc6259d0c::t_9914b69e9d54a5 431,435,459,503-510,522-527
+assets/app/live/ideation/DecisionNotice.vue
+  s_b5abbfc6259d0c::t_11e746dd5debd3 39
+  s_b5abbfc6259d0c::t_9914b69e9d54a5 53-58
+assets/app/test/components/notifications/NotificationBell.test.ts
+  s_b5abbfc6259d0c::t_a249e9b94e26e5 188-196
+assets/app/test/live/ideation/DecisionNotice.test.ts
+  s_b5abbfc6259d0c::t_eb62bd6fa44e6f 47-51,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "74af5d73ffeffeb79a8037dd89d6d45441e7b359",
+  "prompts": {},
+  "sessions": {
+    "s_b5abbfc6259d0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce0305-91ec-4116-b95d-80eb72980b92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
