@@ -1,0 +1,61 @@
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_510693a4d19e2b 14,19,24,29,34-37,42,52-53,58-59,69,79,84,94,106-109,139,144,149,211,216,221,226,231,236,241,246,251,261,263,268,273,278,283,285,290,295,300,305,320,325,330,335-336,341,346,361
+lib/storyarn/workspaces/README.md
+  s_c335c90a020cdb::t_aadf0cf8f95c50 74,78-80,83-86
+priv/gettext/en/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_510693a4d19e2b 134,139,145,150,155,160,165,170
+assets/app/locales/en/settings.json
+  s_c335c90a020cdb::t_473b26b13b2b23 187
+assets/app/live/workspace/settings/WorkspaceSettingsMembers.vue
+  s_c335c90a020cdb::t_561e9a2b8d62b6 2,67
+lib/storyarn_web/live/shared/contextual_explorations.ex
+  s_c335c90a020cdb::t_e92f46ea43847b 15
+test/storyarn/workspaces/memberships/commands/actor_aware_membership_test.exs
+  s_c335c90a020cdb::t_2232ee9a061ce6 147-154
+lib/storyarn/commercial/execution/limits.ex
+  s_c335c90a020cdb::t_3b38f8ac3e8afe 32-34,36,38
+test/storyarn/architecture/commercial_facade_contract_test.exs
+  s_c335c90a020cdb::t_d2655166d689ac 149,168
+  s_c335c90a020cdb::t_9cb28e46fc866f 61
+  s_c335c90a020cdb::t_d84d135708edb4 63,150
+test/storyarn_web/live/comment_live/overlay_test.exs
+  s_c335c90a020cdb::t_e20d59ac2d4f39 164
+priv/gettext/default.pot
+  s_c335c90a020cdb::t_510693a4d19e2b 134,139,145,150,155,160,165,170
+lib/storyarn/workspaces.ex
+  s_c335c90a020cdb::t_4d908799ef7c00 269-270
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_510693a4d19e2b 14,19,24,29,34-37,42,52-53,58-59,69,79,84,94,106-109,139,144,149,211,216,221,226,231,236,241,246,251,261,263,268,273,278,283,285,290,295,300,305,320,325,330,335-336,341,346,361
+priv/gettext/es/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_510693a4d19e2b 134,139,145,150,155,160,165,170
+priv/gettext/workspaces.pot
+  s_c335c90a020cdb::t_510693a4d19e2b 14,19,24,29,34-37,42,52-53,58-59,69,79,84,94,106-109,139,144,149,211,216,221,226,231,236,241,246,251,261,263,268,273,278,283,285,290,295,300,305,320,325,330,335-336,341,346,361
+lib/storyarn_web/live/ideation_live/board.ex
+  s_c335c90a020cdb::t_9ef0d4fca755e2 421-422
+lib/storyarn_web/live/comment_live/overlay.ex
+  s_c335c90a020cdb::t_e92f46ea43847b 14,308,320
+assets/app/test/live/workspace/settings/WorkspaceSettingsMembers.test.ts
+  s_c335c90a020cdb::t_6d0bf3e2b85c49 1,5
+lib/storyarn_web/live/ideation_live/sidebar.ex
+  s_c335c90a020cdb::t_9ef0d4fca755e2 95-96
+test/storyarn_web/live/settings_live/workspace_members_test.exs
+  s_c335c90a020cdb::t_44bb786240ba84 35
+assets/app/locales/es/settings.json
+  s_c335c90a020cdb::t_473b26b13b2b23 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9977f82a19084feb596b24a81c9d082feafc1d97",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
