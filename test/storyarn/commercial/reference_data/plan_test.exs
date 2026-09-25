@@ -49,7 +49,7 @@ defmodule Storyarn.Commercial.Billing.PlanTest do
       assert %{name: "Studio"} = Plan.get("studio")
     end
 
-    test "the beta caps editors where Pro does not" do
+    test "the beta caps members where Pro does not" do
       assert Plan.limit("beta", :members_per_workspace) == 10
       assert Plan.limit("pro", :members_per_workspace) == :unlimited
     end

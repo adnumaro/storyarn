@@ -43,7 +43,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlanTest do
       assert get_plan_vue(view).props["contact-path"] == "/contact"
     end
 
-    test "sends Pro's unlimited quotas as \"unlimited\" and Beta's editor cap as a number", %{
+    test "sends Pro's unlimited quotas as \"unlimited\" and Beta's member cap as a number", %{
       conn: conn
     } do
       owner = user_fixture()

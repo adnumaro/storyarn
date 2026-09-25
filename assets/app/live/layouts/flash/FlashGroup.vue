@@ -104,8 +104,10 @@ function dismiss(kind: FlashKind, message: string | null): void {
           'group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-lg border p-4 text-left shadow-lg transition-all',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           kind === 'info' && 'border-border bg-background text-foreground',
-          kind === 'warning' && 'border-amber-700 bg-amber-500/20 text-amber-200',
-          kind === 'error' && 'border-red-700 bg-red-500/20 text-red-200',
+          kind === 'warning' &&
+            'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+          kind === 'error' &&
+            'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300',
         ]"
         @click="dismiss(kind, message)"
       >
@@ -133,7 +135,7 @@ function dismiss(kind: FlashKind, message: string | null): void {
       <div
         role="alert"
         data-slot="toast"
-        class="relative flex w-full items-start gap-3 overflow-hidden rounded-lg border border-red-700 bg-red-500/20 p-4 pr-10 text-red-200 shadow-lg"
+        class="relative flex w-full items-start gap-3 overflow-hidden rounded-lg border border-red-300 bg-red-50 p-4 pr-10 text-red-700 shadow-lg dark:border-red-800 dark:bg-red-950 dark:text-red-300"
       >
         <AlertCircle class="mt-0.5 size-4 shrink-0" />
         <div class="min-w-0 flex-1 text-sm">

@@ -29,8 +29,10 @@ defmodule Storyarn.Commercial.Billing.Plan do
         trash_retention_hours: 24
       }
     },
-    # The free beta: Pro's limits with a cap on editors, since nobody pays for
-    # seats while it lasts.
+    # The free beta: Pro's limits with a cap on members, since nobody pays for
+    # seats while it lasts. The cap counts every member of the workspace and its
+    # projects plus pending invitations, viewers included, until ENG-240 turns
+    # it into a count of editor seats.
     "beta" => %{
       name: "Beta",
       limits: %{
