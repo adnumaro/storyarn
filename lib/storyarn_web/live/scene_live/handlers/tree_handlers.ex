@@ -12,6 +12,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
   alias Storyarn.Scenes
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   require Logger
 
@@ -54,9 +55,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
 
       {:error, :limit_reached, _details} ->
         {:noreply,
-         put_flash(
+         PlanLimitFlash.put(
            socket,
-           :error,
+           socket.assigns.project.workspace_id,
            dgettext("assets", "Storage limit reached. Upgrade your plan.")
          )}
 
@@ -149,7 +150,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
            )}
 
         {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, dgettext("scenes", "Item limit reached for your plan"))}
+          {:noreply,
+           PlanLimitFlash.put(
+             socket,
+             socket.assigns.project.workspace_id,
+             dgettext("scenes", "Item limit reached for your plan")
+           )}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create child scene."))}

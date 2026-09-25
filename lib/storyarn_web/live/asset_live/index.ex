@@ -6,6 +6,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
 
@@ -320,7 +321,10 @@ defmodule StoryarnWeb.AssetLive.Index do
         {:noreply,
          socket
          |> assign(:uploading, false)
-         |> put_flash(:error, dgettext("assets", "Storage limit reached. Upgrade your plan."))}
+         |> PlanLimitFlash.put(
+           socket.assigns.project.workspace_id,
+           dgettext("assets", "Storage limit reached. Upgrade your plan.")
+         )}
 
       {:error, reason} ->
         {:noreply,

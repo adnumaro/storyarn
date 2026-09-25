@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SheetLive.VersionEvents do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.SheetLive.VersionHistory
 
   def handle_compare(%{"version_number" => version_number}, socket, config) do
@@ -138,7 +139,7 @@ defmodule StoryarnWeb.SheetLive.VersionEvents do
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
 
       {:error, :limit_reached, _metadata} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        {:noreply, put_named_version_limit_flash(socket)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
@@ -178,7 +179,7 @@ defmodule StoryarnWeb.SheetLive.VersionEvents do
          |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
 
       {:error, :limit_reached, _metadata} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+        {:noreply, put_named_version_limit_flash(socket)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
@@ -307,4 +308,12 @@ defmodule StoryarnWeb.SheetLive.VersionEvents do
   end
 
   defp entity(socket), do: Map.fetch!(socket.assigns, :sheet)
+
+  defp put_named_version_limit_flash(socket) do
+    PlanLimitFlash.put(
+      socket,
+      socket.assigns.project.workspace_id,
+      dgettext("versioning", "Named version limit reached for your plan.")
+    )
+  end
 end

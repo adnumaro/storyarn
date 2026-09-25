@@ -2,13 +2,22 @@
 import { computed, reactive, watch } from "vue";
 import { useLiveVue } from "live_vue";
 import { AlertCircle, AlertTriangle, Info, LoaderCircle, X } from "@lucide/vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
 
-type FlashKind = "info" | "warning" | "error";
+type MessageKind = "info" | "warning" | "error";
+type FlashKind = MessageKind | "limit";
+
+/** A plan limit the actor just hit; `planPath` is set only for those who can manage the plan. */
+interface LimitFlash {
+  message: string;
+  planPath: string | null;
+}
 
 interface FlashMessages {
   info?: string | null;
   warning?: string | null;
   error?: string | null;
+  limit?: LimitFlash | null;
 }
 
 interface NetworkFlash {
@@ -27,6 +36,7 @@ const dismissed = reactive<Record<FlashKind, string | null>>({
   info: null,
   warning: null,
   error: null,
+  limit: null,
 });
 
 watch(
@@ -50,10 +60,21 @@ watch(
   },
 );
 
+watch(
+  () => flash.limit?.message,
+  () => {
+    dismissed.limit = null;
+  },
+);
+
 const flashes = computed(() =>
-  (["info", "warning", "error"] as FlashKind[])
+  (["info", "warning", "error"] as MessageKind[])
     .map((kind) => ({ kind, message: flash[kind] ?? null }))
     .filter(({ kind, message }) => message && dismissed[kind] !== message),
+);
+
+const limit = computed(() =>
+  flash.limit && dismissed.limit !== flash.limit.message ? flash.limit : null,
 );
 
 function dismiss(kind: FlashKind, message: string | null): void {
@@ -83,8 +104,10 @@ function dismiss(kind: FlashKind, message: string | null): void {
           'group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-lg border p-4 text-left shadow-lg transition-all',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           kind === 'info' && 'border-border bg-background text-foreground',
-          kind === 'warning' && 'border-amber-700 bg-amber-500/20 text-amber-200',
-          kind === 'error' && 'border-red-700 bg-red-500/20 text-red-200',
+          kind === 'warning' &&
+            'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+          kind === 'error' &&
+            'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300',
         ]"
         @click="dismiss(kind, message)"
       >
@@ -105,6 +128,37 @@ function dismiss(kind: FlashKind, message: string | null): void {
           <X class="size-3.5" />
         </span>
       </button>
+    </div>
+
+    <!-- Not a dismiss button like the others: it holds a link, so it closes from its own button. -->
+    <div v-if="limit" id="flash-limit" class="bg-background rounded-lg">
+      <div
+        role="alert"
+        data-slot="toast"
+        class="relative flex w-full items-start gap-3 overflow-hidden rounded-lg border border-red-300 bg-red-50 p-4 pr-10 text-red-700 shadow-lg dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+      >
+        <AlertCircle class="mt-0.5 size-4 shrink-0" />
+        <div class="min-w-0 flex-1 text-sm">
+          <p data-slot="toast-description">{{ limit.message }}</p>
+          <LiveLink
+            v-if="limit.planPath"
+            :to="limit.planPath"
+            class="mt-1.5 inline-block font-medium underline underline-offset-2"
+            data-testid="flash-limit-plan-link"
+          >
+            {{ $t("layout.flash.view_plans") }}
+          </LiveLink>
+        </div>
+        <button
+          type="button"
+          data-slot="toast-close"
+          class="absolute top-3 right-3 cursor-pointer rounded-md p-1"
+          :aria-label="$t('common.dismiss')"
+          @click="dismiss('limit', limit.message)"
+        >
+          <X class="size-3.5" />
+        </button>
+      </div>
     </div>
 
     <div

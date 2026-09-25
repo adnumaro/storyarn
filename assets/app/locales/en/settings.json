@@ -298,7 +298,10 @@
         },
         "footer": "Per-project limits (items, backups, named versions) are under each project's Usage page.",
         "plans": {
-          "free": "Free"
+          "free": "Free",
+          "beta": "Beta",
+          "pro": "Pro",
+          "studio": "Studio"
         }
       }
     },

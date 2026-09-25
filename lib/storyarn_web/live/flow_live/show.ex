@@ -36,6 +36,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.ContextualExplorations, as: ExplorationHandlers
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
 
@@ -1982,7 +1983,8 @@ defmodule StoryarnWeb.FlowLive.Show do
          )}
 
       {:error, :limit_reached, _details} ->
-        {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+        {:noreply,
+         PlanLimitFlash.put(socket, socket.assigns.project.workspace_id, gettext("Item limit reached for your plan"))}
 
       {:error, _, _reason, _changes} ->
         {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}

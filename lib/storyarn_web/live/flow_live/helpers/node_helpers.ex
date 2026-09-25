@@ -16,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   @doc """
   Single canonical path for all node data updates.
@@ -183,9 +184,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
       {:error, :limit_reached, _details} ->
         {:noreply,
-         put_flash(
+         PlanLimitFlash.put(
            socket,
-           :error,
+           socket.assigns.project.workspace_id,
            gettext("Item limit reached for your plan")
          )}
 
@@ -239,9 +240,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
       {:error, :limit_reached, _details} ->
         {:noreply,
-         put_flash(
+         PlanLimitFlash.put(
            socket,
-           :error,
+           socket.assigns.project.workspace_id,
            gettext("Item limit reached for your plan")
          )}
 

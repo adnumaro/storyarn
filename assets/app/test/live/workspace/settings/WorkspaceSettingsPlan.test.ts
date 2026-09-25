@@ -59,7 +59,7 @@ describe("WorkspaceSettingsPlan", () => {
 
   it("shows unlimited meters without a bar", () => {
     const wrapper = mountPlan({
-      projects: { used: 7, limit: null },
+      projects: { used: 7, limit: "unlimited" },
       storageBytes: { used: "350", limit: null },
       storage: {
         currentAssetsBytes: "0",
@@ -75,6 +75,16 @@ describe("WorkspaceSettingsPlan", () => {
 
     const projects = wrapper.get('[data-testid="workspace-plan-meter-projects"]');
     expect(projects.attributes("data-meter-status")).toBe("unlimited");
+    expect(projects.text()).toContain("Unlimited");
+    expect(projects.text()).not.toContain("/");
     expect(projects.find('[role="progressbar"]').exists()).toBe(false);
+  });
+
+  it("never presents a missing count limit as unlimited", () => {
+    const wrapper = mountPlan({ members: { used: 3, limit: null } });
+
+    const members = wrapper.get('[data-testid="workspace-plan-meter-members"]');
+    expect(members.attributes("data-meter-status")).toBe("unknown");
+    expect(members.text()).not.toContain("Unlimited");
   });
 });

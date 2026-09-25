@@ -4215,6 +4215,12 @@ policy = %{
       reason: "The contextual exploration coordinator subscribes to inherited access invalidation through Workspaces"
     },
     %{
+      source: "lib/storyarn_web/live/shared/plan_limit_flash.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Plan-limit toasts link to Plan & usage only after Workspaces authorizes the actor to open it"
+    },
+    %{
       source: "lib/storyarn/flows/editor/queries/reference_targets.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],

@@ -1720,6 +1720,30 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
              }
     end
 
+    test "sends an unlimited quota as \"unlimited\" rather than a missing limit", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      subscribe!(project.workspace_id, "pro")
+
+      {:ok, view, _html} = live(conn, settings_path(project, "usage-limits"))
+      usage = get_usage_limits_vue(view).props["usage-limits"]
+
+      assert usage["plan"] == %{"key" => "pro", "name" => "Pro"}
+      assert usage["project"]["items"] == %{"used" => 0, "limit" => "unlimited"}
+      assert usage["project"]["namedVersions"] == %{"used" => 0, "limit" => "unlimited"}
+      assert usage["project"]["projectSnapshots"] == %{"used" => 0, "limit" => 20}
+      assert usage["workspace"]["projects"] == %{"used" => 1, "limit" => "unlimited"}
+
+      {:ok, view, _html} = live(conn, settings_path(project, "version-control"))
+
+      assert get_version_control_vue(view).props["version-usage"]["namedVersions"] == %{
+               "used" => 0,
+               "limit" => "unlimited"
+             }
+    end
+
     test "shows a pending invitation as an occupied member seat", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
@@ -1751,5 +1775,12 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert path =~ "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
       assert flash["error"] =~ "permission"
     end
+  end
+
+  defp subscribe!(workspace_id, plan) do
+    Billing.Subscription
+    |> Repo.get_by!(workspace_id: workspace_id)
+    |> Billing.Subscription.update_changeset(%{plan: plan, status: "active"})
+    |> Repo.update!()
   end
 end

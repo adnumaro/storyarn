@@ -37,8 +37,14 @@ defmodule Storyarn.Commercial do
   @type storage_reservation_receipt :: ProjectStorageReservations.receipt()
   @type storage_reservation_write_error :: ProjectStorageReservations.write_error()
 
-  @doc "Returns the current scalar entitlement for one workspace resource."
-  @spec entitlement_limit(pos_integer(), atom()) :: non_neg_integer() | nil
+  @doc """
+  Returns the current scalar entitlement for one workspace resource.
+
+  The value is a non-negative integer, `:unlimited`, or `nil` when the plan
+  does not define the resource. Callers must treat `nil` as blocked and match
+  `:unlimited` explicitly rather than comparing it with a number.
+  """
+  @spec entitlement_limit(pos_integer(), atom()) :: non_neg_integer() | :unlimited | nil
   defdelegate entitlement_limit(workspace_id, resource), to: Entitlements, as: :limit
 
   # Commercial policy and usage contracts. Billing keeps the implementation

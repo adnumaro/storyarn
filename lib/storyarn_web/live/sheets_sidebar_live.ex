@@ -13,6 +13,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
 
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Sheets
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.Live.TreeSidebarActions
   alias StoryarnWeb.SheetLive.Helpers.PropsSerializer
 
@@ -95,7 +96,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_sheet.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+          {:noreply, PlanLimitFlash.forward(socket, gettext("Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
@@ -112,7 +113,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_sheet.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+          {:noreply, PlanLimitFlash.forward(socket, gettext("Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}

@@ -13,6 +13,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
 
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Scenes
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.Live.TreeSidebarActions
   alias StoryarnWeb.SceneLive.Helpers.PropsSerializer
 
@@ -95,7 +96,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_scene.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("scenes", "Item limit reached for your plan"))}
+          {:noreply, PlanLimitFlash.forward(socket, dgettext("scenes", "Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create scene."))}
@@ -113,7 +114,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_scene.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("scenes", "Item limit reached for your plan"))}
+          {:noreply, PlanLimitFlash.forward(socket, dgettext("scenes", "Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create scene."))}

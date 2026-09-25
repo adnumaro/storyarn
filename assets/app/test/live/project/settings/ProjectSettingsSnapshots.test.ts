@@ -391,6 +391,61 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(wrapper.get('button[type="submit"]').attributes("disabled")).toBeDefined();
   });
 
+  it("offers the plan page when the slot limit is reached", () => {
+    const wrapper = mount(ProjectSettingsSnapshots, {
+      props: {
+        snapshots: [measuredSnapshot],
+        storageUsage,
+        snapshotLimit: { used: 10, limit: 10 },
+        workspacePlanPath: "/users/settings/workspaces/alpha/plan",
+      },
+    });
+
+    expect(wrapper.get('[data-testid="snapshot-slot-plan-link"]').attributes("href")).toBe(
+      "/users/settings/workspaces/alpha/plan",
+    );
+  });
+
+  it("offers the plan page only while a limit refusal is the error on screen", async () => {
+    const live = createMockLive();
+    const wrapper = mountSnapshots(measuredSnapshot, storageUsage, live);
+    const handler = (name: string) =>
+      vi.mocked(live.handleEvent).mock.calls.find(([event]) => event === name)?.[1] as (
+        payload: Record<string, unknown>,
+      ) => void;
+
+    handler("snapshot_request_failed")({
+      reason: "storage_limit_reached",
+      requiredBytes: "2048",
+      availableBytes: "1024",
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="snapshot-request-plan-link"]').attributes("href")).toBe(
+      "/users/settings/workspaces/alpha/plan",
+    );
+
+    handler("snapshot_request_failed")({ reason: "unauthorized" });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="snapshot-request-plan-link"]').exists()).toBe(false);
+  });
+
+  it("keeps creation available when snapshot slots are unlimited", () => {
+    const wrapper = mount(ProjectSettingsSnapshots, {
+      props: {
+        snapshots: [measuredSnapshot],
+        storageUsage,
+        snapshotLimit: { used: 30, limit: "unlimited" },
+      },
+    });
+
+    expect(wrapper.get('[data-testid="snapshot-slot-usage"]').text()).toContain(
+      "Backup slots used: 30 · no limit",
+    );
+    expect(wrapper.get('button[type="submit"]').attributes("disabled")).toBeUndefined();
+  });
+
   it("requires confirmation before requesting durable snapshot deletion", async () => {
     const live = createMockLive();
     const wrapper = mountSnapshots(

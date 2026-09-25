@@ -8,6 +8,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   alias Storyarn.Commercial
   alias Storyarn.Projects
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
   alias StoryarnWeb.PrivateMedia
 
   @impl true
@@ -114,7 +115,12 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         {:noreply, socket}
 
       {:error, :limit_reached, _details} ->
-        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
+        {:noreply,
+         PlanLimitFlash.put(
+           socket,
+           socket.assigns.workspace.id,
+           dgettext("workspaces", "Project limit reached for your plan")
+         )}
 
       {:error, :not_found} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Workspace not found."))}
@@ -154,7 +160,11 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     else
       {:error, :limit_reached, _details} ->
         {:reply, %{status: "error"},
-         put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
+         PlanLimitFlash.put(
+           socket,
+           socket.assigns.workspace.id,
+           dgettext("workspaces", "Project limit reached for your plan")
+         )}
 
       _reason ->
         {:reply, %{status: "error"},

@@ -11,50 +11,50 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/asset_live/index.ex:356
+#: lib/storyarn_web/live/asset_live/index.ex:360
 #, elixir-autogen, elixir-format
 msgid "Asset moved to trash."
 msgstr "Recurso movido a la papelera."
 
-#: lib/storyarn_web/live/asset_live/index.ex:317
+#: lib/storyarn_web/live/asset_live/index.ex:318
 #, elixir-autogen, elixir-format
 msgid "Asset uploaded successfully."
 msgstr "Perfil actualizado exitosamente."
 
-#: lib/storyarn_web/live/asset_live/index.ex:359
+#: lib/storyarn_web/live/asset_live/index.ex:363
 #, elixir-autogen, elixir-format
 msgid "Could not move asset to trash."
 msgstr "No se pudo mover el recurso a la papelera."
 
-#: lib/storyarn_web/live/asset_live/index.ex:333
+#: lib/storyarn_web/live/asset_live/index.ex:337
 #, elixir-autogen, elixir-format
 msgid "Could not save asset."
 msgstr "No se pudo guardar el atajo."
 
-#: lib/storyarn_web/live/asset_live/index.ex:269
-#: lib/storyarn_web/live/asset_live/index.ex:282
+#: lib/storyarn_web/live/asset_live/index.ex:270
+#: lib/storyarn_web/live/asset_live/index.ex:283
 #, elixir-autogen, elixir-format
 msgid "Invalid file data."
 msgstr "Datos de archivo inválidos."
 
-#: lib/storyarn_web/live/asset_live/index.ex:294
+#: lib/storyarn_web/live/asset_live/index.ex:295
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
-#: lib/storyarn_web/live/asset_live/index.ex:334
+#: lib/storyarn_web/live/asset_live/index.ex:338
 #, elixir-autogen, elixir-format
 msgid "Upload failed. Please try again."
 msgstr "Error al subir. Por favor, inténtalo de nuevo."
 
-#: lib/storyarn_web/live/asset_live/index.ex:260
+#: lib/storyarn_web/live/asset_live/index.ex:261
 #, elixir-autogen, elixir-format
 msgid "File too large (max 20MB)."
 msgstr "Archivo demasiado grande (máximo 20MB)."
 
-#: lib/storyarn_web/live/asset_live/index.ex:323
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:60
-#: lib/storyarn_web/live/scene_live/show.ex:2107
+#: lib/storyarn_web/live/asset_live/index.ex:326
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:61
+#: lib/storyarn_web/live/scene_live/show.ex:2108
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr "Límite de almacenamiento alcanzado. Mejora tu plan."

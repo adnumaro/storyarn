@@ -875,24 +875,31 @@ defmodule Storyarn.Sheets.Assets.Commands.Assets do
 
   defp check_storage_capacity(project_id, requested_bytes) when is_integer(requested_bytes) and requested_bytes >= 0 do
     with {:ok, workspace_id} <- project_workspace_id(project_id) do
-      used = workspace_storage_bytes(workspace_id)
-      reserved = workspace_reservation_bytes(workspace_id) + workspace_import_reservation_bytes(workspace_id)
-      limit = Commercial.entitlement_limit(workspace_id, :storage_bytes_per_workspace)
-      available = if is_integer(limit), do: max(limit - used, 0), else: 0
+      workspace_id
+      |> Commercial.entitlement_limit(:storage_bytes_per_workspace)
+      |> check_storage_limit(workspace_id, requested_bytes)
+    end
+  end
 
-      if requested_bytes <= available do
-        :ok
-      else
-        {:error, :limit_reached,
-         %{
-           resource: :storage_bytes_per_workspace,
-           used: used,
-           reserved: reserved,
-           required: requested_bytes,
-           available: available,
-           limit: limit
-         }}
-      end
+  defp check_storage_limit(:unlimited, _workspace_id, _requested_bytes), do: :ok
+
+  defp check_storage_limit(limit, workspace_id, requested_bytes) do
+    used = workspace_storage_bytes(workspace_id)
+    reserved = workspace_reservation_bytes(workspace_id) + workspace_import_reservation_bytes(workspace_id)
+    available = if is_integer(limit), do: max(limit - used, 0), else: 0
+
+    if requested_bytes <= available do
+      :ok
+    else
+      {:error, :limit_reached,
+       %{
+         resource: :storage_bytes_per_workspace,
+         used: used,
+         reserved: reserved,
+         required: requested_bytes,
+         available: available,
+         limit: limit
+       }}
     end
   end
 

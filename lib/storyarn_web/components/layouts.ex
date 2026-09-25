@@ -104,9 +104,18 @@ defmodule StoryarnWeb.Layouts do
     %{
       info: Phoenix.Flash.get(flash, :info),
       warning: Phoenix.Flash.get(flash, :warning),
-      error: Phoenix.Flash.get(flash, :error)
+      error: Phoenix.Flash.get(flash, :error),
+      limit: limit_flash(Phoenix.Flash.get(flash, :limit))
     }
   end
+
+  # Written by `StoryarnWeb.Live.Shared.PlanLimitFlash`.
+  defp limit_flash(%{"message" => message, "planPath" => plan_path})
+       when is_binary(message) and (is_binary(plan_path) or is_nil(plan_path)) do
+    %{message: message, planPath: plan_path}
+  end
+
+  defp limit_flash(_flash), do: nil
 
   defp network_flash_messages do
     %{

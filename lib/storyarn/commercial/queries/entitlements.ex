@@ -9,7 +9,7 @@ defmodule Storyarn.Commercial.Entitlements do
   alias Storyarn.Commercial.Billing.Plan
   alias Storyarn.Commercial.Queries.Subscriptions
 
-  @spec limit(pos_integer(), atom()) :: non_neg_integer() | nil
+  @spec limit(pos_integer(), atom()) :: non_neg_integer() | :unlimited | nil
   def limit(workspace_id, resource) when is_integer(workspace_id) and workspace_id > 0 and is_atom(resource) do
     workspace_id
     |> Subscriptions.plan_for_workspace_id()

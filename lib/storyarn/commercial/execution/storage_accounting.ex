@@ -1526,14 +1526,20 @@ defmodule Storyarn.Commercial.Billing.StorageAccounting do
 
     used = snapshot_slots_used(project_id)
 
-    # The pending snapshot row is created before its build reservation and is
-    # already included in `used`. A second pending row pushes it over the limit.
-    if is_integer(limit) and limit >= 0 and used <= limit,
+    if snapshot_slot_within_limit?(used, limit),
       do: :ok,
       else: {:error, :snapshot_limit_reached, %{resource: :project_snapshots_per_project, used: used, limit: limit}}
   end
 
   defp check_snapshot_slot(_workspace, _attrs), do: {:error, :invalid_snapshot_reservation_project}
+
+  defp snapshot_slot_within_limit?(_used, :unlimited), do: true
+
+  # The pending snapshot row is created before its build reservation and is
+  # already included in `used`. A second pending row pushes it over the limit.
+  defp snapshot_slot_within_limit?(used, limit) when is_integer(limit) and limit >= 0, do: used <= limit
+
+  defp snapshot_slot_within_limit?(_used, _unknown_limit), do: false
 
   defp snapshot_slots_used(project_id) do
     stored_slots =

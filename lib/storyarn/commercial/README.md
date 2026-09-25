@@ -36,7 +36,7 @@ Commercial currently needs these roles:
 | `queries/`        | Subscription, entitlement and cleanup-handoff reads.                                                          |
 | `entities/`       | Commercial-owned mutable subscription and storage-reservation state.                                          |
 | `execution/`      | Limit evaluation and storage-accounting workflows whose locks, fencing and transaction order must stay whole. |
-| `rules/`          | Deterministic storage protocol, cleanup-inventory and lease-policy interpretation.                            |
+| `rules/`          | Deterministic effective-plan, storage protocol, cleanup-inventory and lease-policy interpretation.            |
 | `projections/`    | Read-only Commercial mappings over shared consumer tables used for usage and capacity decisions.              |
 | `reference_data/` | Immutable shipped plan catalog.                                                                               |
 
@@ -52,6 +52,19 @@ facets over that model; the top-level role folders do not turn them into three
 independent capabilities. This exception is not precedent for organizing a new
 context role-first. Revisit it only when the commercial model contains genuinely
 independent capabilities with distinct language, invariants and workflows.
+
+## Plans and limits
+
+A workspace is entitled to its subscription's plan only while the status is
+`active`, `trialing` or `past_due`; every other Stripe status grants the default
+plan (`EffectivePlan`). The database restricts `subscriptions.status` to
+Stripe's statuses. Losing a plan only blocks new work above the lower limits;
+Commercial never deletes stored data because of it.
+
+A limit is a non-negative integer, `:unlimited`, or `nil` when the plan does not
+define the resource. `nil` blocks. Every check, including the tool-owned copies
+behind `entitlement_limit/2`, matches `:unlimited` explicitly and compares only
+integers: Erlang term order would otherwise place every number below any atom.
 
 ## Public and internal facades
 

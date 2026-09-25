@@ -114,6 +114,52 @@ defmodule Storyarn.Commercial.Billing.SubscriptionCrudTest do
     end
   end
 
+  describe "effective plan" do
+    test "grants the contracted plan only while the status entitles it", %{workspace: workspace} do
+      entitled = ~w(active trialing past_due)
+
+      for status <- Subscription.statuses() do
+        set_subscription!(workspace, "pro", status)
+        expected = if status in entitled, do: "pro", else: "free"
+
+        assert SubscriptionCrud.plan_for(workspace) == expected, "status #{status}"
+        assert Billing.plans_for_workspace_ids([workspace.id]) == %{workspace.id => expected}
+
+        assert Commercial.entitlement_limit(workspace.id, :projects_per_workspace) ==
+                 if(expected == "pro", do: :unlimited, else: 3)
+      end
+    end
+
+    test "a canceled Pro workspace reports the Free limits", %{workspace: workspace} do
+      set_subscription!(workspace, "pro", "canceled")
+
+      assert %{plan: "free", projects: %{limit: 3}, members: %{limit: 2}} =
+               Commercial.workspace_usage(workspace)
+    end
+  end
+
+  describe "status" do
+    test "rejects a status Stripe does not define", %{workspace: workspace} do
+      subscription = SubscriptionCrud.get_subscription(workspace.id)
+
+      changeset = Subscription.update_changeset(subscription, %{status: "suspended"})
+
+      refute changeset.valid?
+      assert {"is invalid", _} = changeset.errors[:status]
+    end
+
+    test "the database rejects an unknown status written around the changeset", %{
+      workspace: workspace
+    } do
+      assert_raise Postgrex.Error, ~r/subscriptions_status_must_be_known/, fn ->
+        Repo.update_all(
+          from(subscription in Subscription, where: subscription.workspace_id == ^workspace.id),
+          set: [status: "suspended"]
+        )
+      end
+    end
+  end
+
   describe "get_subscription/1" do
     test "returns subscription", %{workspace: workspace} do
       # workspace already has a subscription from creation
@@ -181,6 +227,13 @@ defmodule Storyarn.Commercial.Billing.SubscriptionCrudTest do
       assert {:error, changeset} = SubscriptionCrud.update_plan(sub, "nonexistent")
       assert {"is invalid", _} = changeset.errors[:plan]
     end
+  end
+
+  defp set_subscription!(workspace, plan, status) do
+    workspace.id
+    |> SubscriptionCrud.get_subscription()
+    |> Subscription.update_changeset(%{plan: plan, status: status})
+    |> Repo.update!()
   end
 
   defp capture_queries(fun) when is_function(fun, 0) do

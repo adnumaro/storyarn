@@ -105,6 +105,24 @@ describe("ProjectSettingsVersionControl entity auto-versioning", () => {
     expect(wrapper.get('a[href="/usage"]').text()).toContain("View usage");
   });
 
+  it("shows an unlimited quota without a limit or a bar", () => {
+    const wrapper = mount(ProjectSettingsVersionControl, {
+      props: {
+        versionUsage: {
+          projectSnapshots: { used: 2, limit: 20 },
+          namedVersions: { used: 40, limit: "unlimited" },
+        },
+      },
+      global: { provide: { _live_vue: createMockLive() } },
+    });
+
+    const row = wrapper.get('[data-testid="version-control-meter-named_versions"]');
+    expect(row.attributes("data-meter-status")).toBe("unlimited");
+    expect(row.text()).toContain("No limit");
+    expect(row.text()).not.toContain("/");
+    expect(wrapper.findAll('[role="progressbar"]')).toHaveLength(1);
+  });
+
   it("renders a determinate bar for a capped quota", () => {
     const wrapper = mount(ProjectSettingsVersionControl, {
       props: {

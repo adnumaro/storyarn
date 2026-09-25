@@ -8,6 +8,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Templates do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   require Logger
 
@@ -177,7 +178,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Templates do
             "details=#{inspect(details)}"
         end)
 
-        put_flash(socket, :error, template_publication_error_message({:limit_reached, details}))
+        PlanLimitFlash.put(
+          socket,
+          socket.assigns.project.workspace_id,
+          template_publication_error_message({:limit_reached, details})
+        )
 
       {:error, reason} ->
         Logger.warning(fn ->

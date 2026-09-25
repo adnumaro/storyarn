@@ -10,6 +10,9 @@ defmodule Storyarn.Commercial.Billing.Subscription do
   alias Storyarn.Commercial.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Commercial.Billing.Plan
 
+  # Stripe's subscription statuses. The database enforces the same set.
+  @statuses ~w(active trialing past_due incomplete incomplete_expired unpaid canceled paused)
+
   schema "subscriptions" do
     field :plan, :string, default: "free"
     field :status, :string, default: "active"
@@ -25,11 +28,16 @@ defmodule Storyarn.Commercial.Billing.Subscription do
     timestamps(type: :utc_datetime)
   end
 
+  @spec statuses() :: [String.t()]
+  def statuses, do: @statuses
+
   def create_changeset(subscription, attrs) do
     subscription
     |> cast(attrs, [:workspace_id, :plan, :status])
     |> validate_required([:workspace_id, :plan, :status])
     |> validate_inclusion(:plan, Map.keys(Plan.all()))
+    |> validate_inclusion(:status, @statuses)
+    |> check_constraint(:status, name: :subscriptions_status_must_be_known)
     |> unique_constraint(:workspace_id)
   end
 
@@ -47,5 +55,7 @@ defmodule Storyarn.Commercial.Billing.Subscription do
     ])
     |> validate_required([:plan, :status])
     |> validate_inclusion(:plan, Map.keys(Plan.all()))
+    |> validate_inclusion(:status, @statuses)
+    |> check_constraint(:status, name: :subscriptions_status_must_be_known)
   end
 end

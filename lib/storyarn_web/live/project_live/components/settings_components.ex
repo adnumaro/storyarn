@@ -12,6 +12,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   @max_pg_bigint 9_223_372_036_854_775_807
 
@@ -70,6 +71,14 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
       limit: serialized_storage_limit(bucket.limit)
     }
   end
+
+  @doc """
+  Serializes a count limit for the settings pages: a number, `"unlimited"`,
+  or `nil` when the plan does not define it.
+  """
+  def serialize_count_limit(:unlimited), do: "unlimited"
+  def serialize_count_limit(limit) when is_integer(limit) and limit >= 0, do: limit
+  def serialize_count_limit(_unknown_limit), do: nil
 
   @doc false
   def serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
@@ -253,7 +262,12 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   defp handle_project_invitation_result({:error, :limit_reached, %{resource: :members_per_workspace}}, socket) do
-    {:noreply, put_flash(socket, :error, dgettext("projects", "Member limit reached for your plan."))}
+    {:noreply,
+     PlanLimitFlash.put(
+       socket,
+       socket.assigns.project.workspace_id,
+       dgettext("projects", "Member limit reached for your plan.")
+     )}
   end
 
   defp handle_project_invitation_result({:error, :unauthorized}, socket) do

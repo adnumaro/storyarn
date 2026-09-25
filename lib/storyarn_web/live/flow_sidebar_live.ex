@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Kernel.IntegerParser
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   @impl true
   def mount(_params, session, socket) do
@@ -89,7 +90,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_flow.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Item limit reached for your plan"))}
+          {:noreply, PlanLimitFlash.forward(socket, dgettext("flows", "Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
@@ -106,7 +107,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_flow.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Item limit reached for your plan"))}
+          {:noreply, PlanLimitFlash.forward(socket, dgettext("flows", "Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}

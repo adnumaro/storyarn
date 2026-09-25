@@ -889,9 +889,16 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
 
   defp check_storage_capacity(workspace_id, requested_bytes)
        when is_integer(requested_bytes) and requested_bytes >= 0 do
+    workspace_id
+    |> Commercial.entitlement_limit(:storage_bytes_per_workspace)
+    |> check_storage_limit(workspace_id, requested_bytes)
+  end
+
+  defp check_storage_limit(:unlimited, _workspace_id, _requested_bytes), do: :ok
+
+  defp check_storage_limit(limit, workspace_id, requested_bytes) do
     used = workspace_storage_bytes(workspace_id)
     reserved = workspace_reservation_bytes(workspace_id) + workspace_import_reservation_bytes(workspace_id)
-    limit = Commercial.entitlement_limit(workspace_id, :storage_bytes_per_workspace)
     available = if is_integer(limit), do: max(limit - used, 0), else: 0
 
     if requested_bytes <= available do

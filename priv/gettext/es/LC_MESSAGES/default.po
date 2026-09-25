@@ -11,17 +11,17 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/components/layouts.ex:115
+#: lib/storyarn_web/components/layouts.ex:124
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/storyarn_web/components/layouts.ex:114
+#: lib/storyarn_web/components/layouts.ex:123
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/storyarn_web/components/layouts.ex:113
+#: lib/storyarn_web/components/layouts.ex:122
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "No podemos encontrar la conexión a internet"
@@ -48,11 +48,11 @@ msgstr "No encontrado"
 msgid "Unknown format"
 msgstr "Formato desconocido"
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:189
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:245
-#: lib/storyarn_web/live/flow_live/show.ex:1985
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:98
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:115
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:190
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:246
+#: lib/storyarn_web/live/flow_live/show.ex:1987
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:99
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr "Límite de elementos alcanzado para tu plan"
@@ -93,7 +93,7 @@ msgstr "Ficha no encontrada"
 msgid "Version not found"
 msgstr "Versión no encontrada"
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:160
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:161
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
@@ -130,7 +130,7 @@ msgstr "No se detectaron cambios"
 #: lib/storyarn_web/helpers/authorize.ex:134
 #: lib/storyarn_web/live/project_settings_live/general.ex:370
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:737
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:169
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:171
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:254
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
