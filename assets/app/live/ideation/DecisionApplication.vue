@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import UserAvatar from "@components/UserAvatar.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import DecisionMarkForm from "./DecisionMarkForm.vue";
+import { sectionHeading } from "./decisionSections";
 import { orderTargets, targetState } from "./decisionStatus";
 import type {
   ApplicationState,
@@ -45,12 +46,14 @@ const stateIcons: Record<ApplicationState, Component> = {
   not_applied: CircleDashed,
   no_change_needed: CircleCheck,
 };
-const stateTones: Record<ApplicationState, string> = {
-  applied: "text-emerald-700 dark:text-emerald-400",
-  partially_applied: "text-amber-700 dark:text-amber-400",
-  not_applied: "text-amber-700 dark:text-amber-400",
-  no_change_needed: "text-muted-foreground",
+const statePills: Record<ApplicationState, string> = {
+  applied: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400",
+  partially_applied: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
+  not_applied: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
+  no_change_needed: "bg-muted text-muted-foreground",
 };
+const pill =
+  "inline-flex h-[22px] shrink-0 items-center gap-[5px] rounded-full px-[9px] text-xs font-medium";
 
 const application = computed(() => decision.application);
 const accepted = computed(() => decision.accepted !== null);
@@ -100,8 +103,8 @@ function when(declaration: DecisionDeclaration) {
 </script>
 <template>
   <section id="decision-application" aria-labelledby="decision-application-heading">
-    <div class="mb-2 flex items-center gap-2">
-      <h3 id="decision-application-heading" class="text-xs font-normal text-muted-foreground">
+    <div class="mb-2.5 flex items-center gap-2">
+      <h3 id="decision-application-heading" :class="sectionHeading">
         {{ t("brainstormingDecisions.application") }}
       </h3>
       <span
@@ -141,47 +144,50 @@ function when(declaration: DecisionDeclaration) {
     >
       {{ t("brainstormingDecisions.applicationAfterAcceptance") }}
     </p>
-    <div v-else-if="rows.length" class="overflow-hidden rounded-xl border border-border">
-      <div
-        v-for="(target, index) in rows"
+    <ul v-else-if="rows.length" class="space-y-2">
+      <li
+        v-for="target in rows"
         :key="target.key"
         :data-application-target="target.key"
         :data-state="targetState(target)"
-        class="px-3 py-2.5"
-        :class="index ? 'border-t border-border' : ''"
+        class="rounded-xl border border-border bg-card/60 p-3"
       >
-        <div class="flex min-h-[26px] flex-wrap items-center gap-x-2 gap-y-1">
-          <component :is="icons[target.type]" class="size-3.5 shrink-0 text-muted-foreground" />
-          <span
-            class="min-w-0 truncate text-[13px] font-medium"
-            :class="target.available ? '' : 'text-muted-foreground line-through'"
-            >{{ target.name }}</span
-          >
-          <span class="shrink-0 text-[11px] text-muted-foreground">{{
-            target.isNew
-              ? t("brainstormingDecisions.targetNew")
-              : t(`brainstormingDecisions.targetTypes.${target.type}`)
-          }}</span>
-          <span class="flex-1" />
-          <span
-            class="inline-flex shrink-0 items-center gap-[5px] text-xs font-medium"
-            :class="stateTones[targetState(target)]"
-            ><component :is="stateIcons[targetState(target)]" class="size-[13px]" />{{
+        <div class="flex items-start gap-2.5">
+          <component
+            :is="icons[target.type]"
+            class="mt-0.5 size-[15px] shrink-0 text-muted-foreground"
+          />
+          <div class="min-w-0 flex-1">
+            <p
+              class="truncate text-[13px] leading-[18px] font-medium"
+              :class="target.available ? '' : 'text-muted-foreground line-through'"
+            >
+              {{ target.name }}
+            </p>
+            <p class="mt-0.5 truncate text-[11px] text-muted-foreground">
+              {{
+                target.isNew
+                  ? t("brainstormingDecisions.targetNew")
+                  : t(`brainstormingDecisions.targetTypes.${target.type}`)
+              }}<template v-if="target.application">
+                · {{ target.application.actorName || t("brainstormingDecisions.formerMember") }} ·
+                {{ when(target.application) }}</template
+              >
+            </p>
+          </div>
+          <span :class="[pill, statePills[targetState(target)]]"
+            ><component :is="stateIcons[targetState(target)]" class="size-3" />{{
               t(`brainstormingDecisions.states.${targetState(target)}`)
             }}</span
-          >
-          <span v-if="target.application" class="shrink-0 text-xs text-muted-foreground"
-            >· {{ target.application.actorName || t("brainstormingDecisions.formerMember") }} ·
-            {{ when(target.application) }}</span
           >
         </div>
         <p
           v-if="target.application?.note"
-          class="mt-1 ml-[22px] text-xs text-muted-foreground italic"
+          class="mt-2 ml-[25px] text-xs text-muted-foreground italic"
         >
           “{{ target.application.note }}”
         </p>
-        <div v-if="decision.canDeclare" class="mt-2 ml-[22px] flex gap-1.5">
+        <div v-if="decision.canDeclare" class="mt-2.5 ml-[25px] flex gap-1.5">
           <Button
             v-if="pendingRow(target) && applyHref(target)"
             :id="`decision-go-apply-${target.key}`"
@@ -227,20 +233,17 @@ function when(declaration: DecisionDeclaration) {
             </PopoverContent>
           </Popover>
         </div>
-      </div>
-    </div>
-    <div v-else-if="application?.decision" class="rounded-xl border border-border px-3 py-2.5">
+      </li>
+    </ul>
+    <div v-else-if="application?.decision" class="rounded-xl border border-border bg-card/60 p-3">
       <div class="flex min-h-[26px] flex-wrap items-center gap-2">
-        <component
-          :is="stateIcons[application.decision.state]"
-          class="size-3.5"
-          :class="stateTones[application.decision.state]"
-        />
-        <span class="text-[13px] font-medium">{{
-          t(`brainstormingDecisions.states.${application.decision.state}`)
-        }}</span>
+        <span :class="[pill, statePills[application.decision.state]]"
+          ><component :is="stateIcons[application.decision.state]" class="size-3" />{{
+            t(`brainstormingDecisions.states.${application.decision.state}`)
+          }}</span
+        >
         <span class="text-xs text-muted-foreground"
-          >· {{ application.decision.actorName || t("brainstormingDecisions.formerMember") }} ·
+          >{{ application.decision.actorName || t("brainstormingDecisions.formerMember") }} ·
           {{ when(application.decision) }}</span
         >
         <span class="flex-1" />
@@ -269,10 +272,7 @@ function when(declaration: DecisionDeclaration) {
           </PopoverContent>
         </Popover>
       </div>
-      <p
-        v-if="application.decision.note"
-        class="mt-1 ml-[22px] text-xs text-muted-foreground italic"
-      >
+      <p v-if="application.decision.note" class="mt-2 text-xs text-muted-foreground italic">
         “{{ application.decision.note }}”
       </p>
     </div>

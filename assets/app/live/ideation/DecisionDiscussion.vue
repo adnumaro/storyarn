@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { MessageSquare } from "@lucide/vue";
 import CommentConversation from "@components/comments/CommentConversation.vue";
 import type { CommentUiConfig } from "@components/comments/types";
 import type { BrainstormingCommentsState } from "@modules/ideation/commentTypes";
 import { useCommentBridge } from "@modules/ideation/composables/useCommentBridge";
+import { sectionHeading } from "./decisionSections";
 
 /**
  * The decision's conversation, inline in its detail. It is the board's comment
@@ -51,20 +51,17 @@ const ui: CommentUiConfig = {
 </script>
 <template>
   <section id="decision-discussion" aria-labelledby="decision-discussion-title">
-    <div class="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-      <MessageSquare class="size-3" />
-      <h3 id="decision-discussion-title" class="font-normal">
+    <div class="mb-2.5 flex items-center gap-1.5 text-muted-foreground">
+      <h3 id="decision-discussion-title" :class="sectionHeading">
         {{ t("brainstormingDecisions.discussion") }}
       </h3>
-      <span v-if="state.thread">· {{ state.thread.message_count }}</span>
+      <span v-if="state.thread" class="text-[11px]">· {{ state.thread.message_count }}</span>
       <span class="flex-1" />
       <span class="text-right text-[11px] text-pretty">{{
         t("brainstormingDecisions.discussionHint")
       }}</span>
     </div>
-    <div
-      class="flex max-h-[420px] flex-col overflow-hidden rounded-xl border border-border bg-popover"
-    >
+    <div class="-mx-3.5 flex max-h-[420px] flex-col overflow-hidden">
       <CommentConversation
         :key="`${epoch}:${sessionId}:${state.context}`"
         :state="panel"

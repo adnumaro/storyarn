@@ -240,7 +240,7 @@ function changeTask(
     ></template>
     <div
       id="brainstorming-decisions-panel"
-      class="space-y-4 pb-2"
+      class="space-y-4 px-1.5 pb-2"
       :aria-busy="!!pending"
       aria-labelledby="decisions-panel-heading"
       @keydown.esc.stop.prevent="exit('close')"
@@ -413,7 +413,7 @@ function changeTask(
 <style scoped>
 @media (min-width: 768px) {
   .decision-panel {
-    width: min(28rem, calc(100vw - 1.5rem));
+    width: min(32rem, calc(100vw - 1.5rem));
   }
 }
 </style>

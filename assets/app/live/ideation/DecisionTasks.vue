@@ -6,6 +6,7 @@ import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import DecisionTaskForm from "./DecisionTaskForm.vue";
 import DecisionTaskPrepare from "./DecisionTaskPrepare.vue";
+import { sectionHeading } from "./decisionSections";
 import { taskHost } from "./decisionTask";
 import type { DecisionRecord, DecisionTask } from "./decisionTypes";
 
@@ -62,8 +63,8 @@ function linkedBy(task: DecisionTask) {
 </script>
 <template>
   <section id="decision-tasks" aria-labelledby="decision-tasks-heading">
-    <div class="mb-2 flex items-center gap-1">
-      <h3 id="decision-tasks-heading" class="text-xs font-normal text-muted-foreground">
+    <div class="mb-2.5 flex items-center gap-1">
+      <h3 id="decision-tasks-heading" :class="sectionHeading">
         {{ t("brainstormingDecisions.tasks.heading") }}
       </h3>
       <span class="flex-1" />
@@ -101,16 +102,15 @@ function linkedBy(task: DecisionTask) {
         </PopoverContent>
       </Popover>
     </div>
-    <div v-if="decision.tasks.length" class="rounded-xl border border-border">
-      <div
-        v-for="(task, index) in decision.tasks"
+    <ul v-if="decision.tasks.length" class="space-y-2">
+      <li
+        v-for="task in decision.tasks"
         :id="`decision-task-${task.key}`"
         :key="task.key"
-        class="px-3 py-2.5"
-        :class="index ? 'border-t border-border' : ''"
+        class="rounded-xl border border-border bg-card/60 p-3"
       >
-        <div class="flex min-h-[26px] flex-wrap items-center gap-x-2 gap-y-1">
-          <ExternalLink class="size-3.5 shrink-0 text-muted-foreground" />
+        <div class="flex min-h-[18px] flex-wrap items-center gap-x-2.5 gap-y-1">
+          <ExternalLink class="size-[15px] shrink-0 text-muted-foreground" />
           <a
             :id="`decision-task-open-${task.key}`"
             :href="task.url"
@@ -125,12 +125,12 @@ function linkedBy(task: DecisionTask) {
             >{{ t("brainstormingDecisions.tasks.manual") }}</span
           >
         </div>
-        <p class="mt-0.5 ml-[22px] truncate text-xs text-muted-foreground">
+        <p class="mt-0.5 ml-[25px] truncate text-[11px] text-muted-foreground">
           <template v-if="task.title">{{ taskHost(task.url) }} · </template>{{ linkedBy(task) }}
         </p>
         <div
           v-if="decision.canEditTasks || decision.canUnlinkTasks"
-          class="mt-2 ml-[22px] flex gap-1.5"
+          class="mt-2.5 ml-[25px] flex gap-1.5"
         >
           <Popover
             v-if="decision.canEditTasks"
@@ -168,8 +168,8 @@ function linkedBy(task: DecisionTask) {
             ><Unlink class="size-3" />{{ t("brainstormingDecisions.tasks.unlink") }}</Button
           >
         </div>
-      </div>
-    </div>
+      </li>
+    </ul>
     <p
       v-else
       class="rounded-xl border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground"
