@@ -38,12 +38,15 @@ const {
   roundCount = 1,
   pending = null,
   tasksSaved = 0,
+  declared = 0,
 } = defineProps<{
   decision: DecisionRecord;
   history: DecisionHistoryEntry[];
   roundCount?: number;
   pending?: string | null;
   tasksSaved?: number;
+  /** Counts confirmed declarations; the mark form closes only once one lands. */
+  declared?: number;
 }>();
 const emit = defineEmits<{
   accept: [];
@@ -301,6 +304,7 @@ const hasActions = computed(
     <DecisionApplication
       :decision="decision"
       :pending="busy"
+      :declared="declared"
       @declare="(key, state, note) => emit('declare', key, state, note)"
     />
     <DecisionTasks

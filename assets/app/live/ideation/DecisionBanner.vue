@@ -54,8 +54,8 @@ const marking = ref<Mark | null>(null);
 const seconds = ref(UNDO_SECONDS);
 let timer: ReturnType<typeof setInterval> | null = null;
 
+// The mark form closes once the mark is confirmed; a failure keeps the note.
 function declare(state: ApplicationState, note: string | null) {
-  marking.value = null;
   emit("declare", state, note);
 }
 // The confirmation stays a few seconds for Undo, then the banner leaves.
@@ -65,6 +65,7 @@ watch(
     if (timer) clearInterval(timer);
     timer = null;
     if (!state) return;
+    marking.value = null;
     seconds.value = UNDO_SECONDS;
     timer = setInterval(() => {
       seconds.value -= 1;

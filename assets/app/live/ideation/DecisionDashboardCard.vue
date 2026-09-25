@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ChevronDown, ExternalLink } from "@lucide/vue";
 import { Button } from "@components/ui/button";
@@ -20,11 +20,14 @@ const {
   href,
   groupKey = null,
   pending = false,
+  declared = 0,
 } = defineProps<{
   item: DashboardDecision;
   href: string;
   groupKey?: string | null;
   pending?: boolean;
+  /** Counts confirmed declarations; the mark form closes only once one lands. */
+  declared?: number;
 }>();
 const emit = defineEmits<{
   declare: [
@@ -43,9 +46,14 @@ const applyHref = computed(() =>
     : null,
 );
 
+// Grouped by content, one decision shows on several cards: each names its content.
+const idBase = computed(() => `dashboard-decision-${item.decision.id}-${target.value?.key}`);
+watch(
+  () => declared,
+  () => (marking.value = false),
+);
 function declare(state: ApplicationState, note: string | null) {
   if (!target.value) return;
-  marking.value = false;
   emit("declare", item, target.value.key, state, note);
 }
 </script>
@@ -59,24 +67,20 @@ function declare(state: ApplicationState, note: string | null) {
   >
     <template v-if="target && applyHref" #actions>
       <Button variant="outline" size="xs" as-child>
-        <LiveLink :id="`dashboard-decision-apply-${item.decision.id}`" :to="applyHref"
+        <LiveLink :id="`${idBase}-apply`" :to="applyHref"
           ><ExternalLink class="size-3" />{{ t("brainstormingDecisions.about.goApply") }}</LiveLink
         >
       </Button>
       <Popover v-model:open="marking">
         <PopoverTrigger as-child>
-          <Button
-            :id="`dashboard-decision-mark-${item.decision.id}`"
-            variant="ghost"
-            size="xs"
-            :disabled="pending"
+          <Button :id="`${idBase}-mark`" variant="ghost" size="xs" :disabled="pending"
             >{{ t("brainstormingDecisions.markApplied") }}<ChevronDown class="size-3"
           /></Button>
         </PopoverTrigger>
         <PopoverContent align="end" class="w-[300px] p-3">
           <DecisionMarkForm
             :name="target.name"
-            :id-prefix="`dashboard-decision-mark-${item.decision.id}`"
+            :id-prefix="`${idBase}-mark`"
             :pending="pending"
             @confirm="declare"
             @cancel="marking = false"

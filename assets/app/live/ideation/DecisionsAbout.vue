@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ChevronDown, ExternalLink } from "@lucide/vue";
 import { Button } from "@components/ui/button";
@@ -21,11 +21,14 @@ const {
   name,
   canEdit = false,
   pending = false,
+  declared = 0,
 } = defineProps<{
   items: DecisionAbout[];
   name: string;
   canEdit?: boolean;
   pending?: boolean;
+  /** Counts confirmed declarations; the mark form closes only once one lands. */
+  declared?: number;
 }>();
 const emit = defineEmits<{
   apply: [item: DecisionAbout];
@@ -34,8 +37,11 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const marking = ref<number | null>(null);
 
+watch(
+  () => declared,
+  () => (marking.value = null),
+);
 function declare(item: DecisionAbout, state: ApplicationState, note: string | null) {
-  marking.value = null;
   emit("declare", item, state, note);
 }
 function actionable(item: DecisionAbout) {

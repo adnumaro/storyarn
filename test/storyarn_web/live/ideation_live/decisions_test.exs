@@ -542,11 +542,24 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     assert_reply(viewer, %{status: "error", code: "unauthorized"})
     assert {:ok, %{application: %{targets: [%{application: nil}]}}} = read(ctx, decision)
 
+    {:ok, watcher, _} = live(log_in_user(ctx.conn, ctx.facilitator.user), "#{base}/brainstorming")
+    render_async(watcher)
+
+    assert [%{"decisions" => [%{"application" => %{"targets" => [%{"application" => nil}]}}]}] =
+             board(watcher)["board"]["decision_sessions"]
+
     declare.(dashboard, :sys.get_state(dashboard.pid).socket.assigns.epoch)
     assert_reply(dashboard, %{status: "ok"})
 
     assert {:ok, %{application: %{targets: [%{application: %{state: "applied", note: "Done from the dashboard"}}]}}} =
              read(ctx, decision)
+
+    # Another open dashboard stops offering the declaration it no longer needs.
+    assert eventually(fn ->
+             render_async(watcher)
+             [%{"decisions" => [card]}] = board(watcher)["board"]["decision_sessions"]
+             match?([%{"application" => %{"state" => "applied"}}], card["application"]["targets"])
+           end)
   end
 
   test "revising after a withdrawn revision starts again from the agreement's sources", ctx do
@@ -653,6 +666,19 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
   defp state(view), do: panels(view)["decisions"]
   defp panels(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props
   defp board(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props
+
+  defp eventually(check, attempts \\ 40) do
+    cond do
+      check.() -> true
+      attempts == 0 -> false
+      true -> retry(check, attempts)
+    end
+  end
+
+  defp retry(check, attempts) do
+    Process.sleep(50)
+    eventually(check, attempts - 1)
+  end
 
   defp discussion_payload(view, ctx, attrs) do
     Map.merge(attrs, %{

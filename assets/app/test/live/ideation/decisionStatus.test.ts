@@ -75,6 +75,11 @@ describe("decision status", () => {
     expect(long.startsWith(deriveTitle(long))).toBe(true);
     expect(deriveTitle(long)).not.toMatch(/…|\.\.\.|\s$/);
     expect(deriveTitle("a".repeat(200))).toBe("a".repeat(160));
+    // A character outside the basic plane is kept whole or left out, never split.
+    const emoji = deriveTitle(`${"a".repeat(159)}😀😀`);
+    expect(emoji).toBe(`${"a".repeat(159)}😀`);
+    expect(() => JSON.parse(JSON.stringify(emoji))).not.toThrow();
+    expect(emoji).not.toMatch(/[\uD800-\uDBFF]$/);
     expect(excerpt("  The   keeper  ")).toBe("The keeper");
     expect(roundTag({ number: 2, prompt: null }, 2)).toBe("R2");
     expect(roundTag({ number: 1, prompt: null }, 1)).toBeNull();

@@ -40,7 +40,7 @@ function item(overrides: Partial<DashboardDecision["decision"]> = {}): Dashboard
 
 function card(entry: DashboardDecision, groupKey: string | null = null) {
   wrapper = mount(Card, {
-    props: { item: entry, href: "/brainstorming/3?decision=4", groupKey },
+    props: { item: entry, href: "/brainstorming/3?decision=4", groupKey, declared: 0 },
     global: {
       stubs: { Popover: passthrough, PopoverTrigger: passthrough, PopoverContent: passthrough },
     },
@@ -52,12 +52,12 @@ describe("a dashboard decision card", () => {
     card(item());
     expect(wrapper.get("[data-decision-session]").text()).toBe("Endings");
     expect(wrapper.text()).toContain("R1");
-    const apply = wrapper.get("#dashboard-decision-apply-4");
+    const apply = wrapper.get("#dashboard-decision-4-act-apply");
     expect(apply.attributes("href")).toBe("/flows/9?decision=4&session=3");
     expect(wrapper.text()).toContain("Mark Act 3 as applied");
 
-    await wrapper.get("#dashboard-decision-mark-4-note").setValue("Done in the flow");
-    await wrapper.get("#dashboard-decision-mark-4-confirm").trigger("click");
+    await wrapper.get("#dashboard-decision-4-act-mark-note").setValue("Done in the flow");
+    await wrapper.get("#dashboard-decision-4-act-mark-confirm").trigger("click");
     expect(wrapper.emitted("declare")?.[0]?.slice(1)).toEqual([
       "act",
       "applied",
@@ -65,19 +65,45 @@ describe("a dashboard decision card", () => {
     ]);
   });
 
+  it("keeps the mark form and its note open until the declaration is confirmed", async () => {
+    const Popover = {
+      props: ["open"],
+      emits: ["update:open"],
+      // Only its trigger opens it; the form's own buttons must not.
+      template: `<div data-popover :data-open="String(open)" @click="$event.target.closest('#dashboard-decision-4-act-mark') && $emit('update:open', true)"><slot /></div>`,
+    };
+    wrapper = mount(Card, {
+      props: { item: item(), href: "/brainstorming/3?decision=4", declared: 0 },
+      global: { stubs: { Popover, PopoverTrigger: passthrough, PopoverContent: passthrough } },
+    });
+    const popover = () => wrapper.get("[data-popover]").attributes("data-open");
+    await wrapper.get("#dashboard-decision-4-act-mark").trigger("click");
+    expect(popover()).toBe("true");
+    await wrapper.get("#dashboard-decision-4-act-mark-note").setValue("Done in the flow");
+    await wrapper.get("#dashboard-decision-4-act-mark-confirm").trigger("click");
+    expect(wrapper.emitted("declare")).toHaveLength(1);
+    // Until the save is confirmed the form stays, so a failure keeps the note.
+    expect(popover()).toBe("true");
+    await wrapper.setProps({ declared: 1 });
+    expect(popover()).toBe("false");
+  });
+
   it("applies the content of its group when grouped", () => {
     const pendingBoth = item();
     pendingBoth.decision.application!.targets = [mara, act];
     card(pendingBoth, "flow:9");
-    expect(wrapper.get("#dashboard-decision-apply-4").attributes("href")).toContain("/flows/9");
+    expect(wrapper.get("#dashboard-decision-4-act-apply").attributes("href")).toContain("/flows/9");
     card(pendingBoth, "sheet:7");
-    expect(wrapper.get("#dashboard-decision-apply-4").attributes("href")).toContain("/sheets/7");
+    // The same decision grouped under another content has its own controls.
+    expect(wrapper.get("#dashboard-decision-4-target-mara-apply").attributes("href")).toContain(
+      "/sheets/7",
+    );
   });
 
   it("offers nothing to apply to a reader who cannot declare, or once it is retired", () => {
     card(item({ canDeclare: false }));
-    expect(wrapper.find("#dashboard-decision-apply-4").exists()).toBe(false);
+    expect(wrapper.find("[id$=-apply]").exists()).toBe(false);
     card(item({ status: "superseded" }));
-    expect(wrapper.find("#dashboard-decision-mark-4").exists()).toBe(false);
+    expect(wrapper.find("[id$=-mark]").exists()).toBe(false);
   });
 });

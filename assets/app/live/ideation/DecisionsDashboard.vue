@@ -29,7 +29,14 @@ const {
   groups,
   baseUrl,
   pending = false,
-} = defineProps<{ groups: DecisionSessionGroup[]; baseUrl: string; pending?: boolean }>();
+  declared = 0,
+} = defineProps<{
+  groups: DecisionSessionGroup[];
+  baseUrl: string;
+  pending?: boolean;
+  /** Counts confirmed declarations; a mark form closes only once one lands. */
+  declared?: number;
+}>();
 const emit = defineEmits<{
   declare: [
     item: DashboardDecision,
@@ -125,6 +132,7 @@ function href(item: DashboardDecision) {
               :href="href(item)"
               :group-key="group.key"
               :pending="pending"
+              :declared="declared"
               @declare="(...args) => emit('declare', ...args)"
             />
           </li>
@@ -137,6 +145,7 @@ function href(item: DashboardDecision) {
           :item="item"
           :href="href(item)"
           :pending="pending"
+          :declared="declared"
           @declare="(...args) => emit('declare', ...args)"
         />
       </li>

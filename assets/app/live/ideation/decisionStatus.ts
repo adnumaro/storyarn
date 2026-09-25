@@ -102,9 +102,14 @@ export function deriveTitle(conclusion: string) {
     .replace(/[.!?]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (first.length <= TITLE_MAX) return first;
-  const words = first.slice(0, TITLE_MAX + 1).split(" ");
-  return words.length > 1 ? words.slice(0, -1).join(" ") : first.slice(0, TITLE_MAX);
+  // Count whole characters: a cut through a UTF-16 pair would not save.
+  const characters = Array.from(first);
+  if (characters.length <= TITLE_MAX) return first;
+  const words = characters
+    .slice(0, TITLE_MAX + 1)
+    .join("")
+    .split(" ");
+  return words.length > 1 ? words.slice(0, -1).join(" ") : characters.slice(0, TITLE_MAX).join("");
 }
 
 export function targetState(target: DecisionTarget): ApplicationState {

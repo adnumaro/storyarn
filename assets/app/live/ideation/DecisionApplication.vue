@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, type Component } from "vue";
+import { computed, ref, watch, type Component } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   ArrowRight,
@@ -27,9 +27,15 @@ import type {
   DecisionTargetType,
 } from "./decisionTypes";
 
-const { decision, pending = false } = defineProps<{
+const {
+  decision,
+  pending = false,
+  declared = 0,
+} = defineProps<{
   decision: DecisionRecord;
   pending?: boolean;
+  /** Counts confirmed declarations; the mark form closes only once one lands. */
+  declared?: number;
 }>();
 const emit = defineEmits<{
   declare: [targetKey: string | null, state: ApplicationState, note: string | null];
@@ -81,9 +87,12 @@ function open(key: string | null, value: boolean) {
   if (value) marking.value = key ?? "decision";
   else if (marking.value === (key ?? "decision")) marking.value = null;
 }
+watch(
+  () => declared,
+  () => (marking.value = null),
+);
 function confirm(target: DecisionTarget | null, state: ApplicationState, note: string | null) {
   emit("declare", target?.key ?? null, state, note);
-  marking.value = null;
 }
 // "Go apply" opens the content with this decision under its header.
 function applyHref(target: DecisionTarget) {
@@ -164,14 +173,22 @@ function when(declaration: DecisionDeclaration) {
             >
               {{ target.name }}
             </p>
-            <p class="mt-0.5 truncate text-[11px] text-muted-foreground">
-              {{
+            <p
+              class="mt-0.5 flex min-w-0 gap-1 text-[11px] whitespace-nowrap text-muted-foreground"
+            >
+              <span class="shrink-0">{{
                 target.isNew
                   ? t("brainstormingDecisions.targetNew")
                   : t(`brainstormingDecisions.targetTypes.${target.type}`)
-              }}<template v-if="target.application">
-                · {{ target.application.actorName || t("brainstormingDecisions.formerMember") }} ·
-                {{ when(target.application) }}</template
+              }}</span
+              ><template v-if="target.application"
+                ><span class="shrink-0">·</span
+                ><span class="min-w-0 truncate" data-application-actor>{{
+                  target.application.actorName || t("brainstormingDecisions.formerMember")
+                }}</span
+                ><span class="shrink-0" data-application-date
+                  >· {{ when(target.application) }}</span
+                ></template
               >
             </p>
           </div>

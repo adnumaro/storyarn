@@ -123,6 +123,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       )
 
       Ideation.subscribe_sessions(socket.assigns.current_scope, project_id)
+      Ideation.subscribe_decisions(socket.assigns.current_scope, project_id)
       Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
       Projects.subscribe_project_ownership_changes(project_id)
       Projects.subscribe_project_membership_changes(project_id)
@@ -416,6 +417,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   def handle_info({:ideation_decisions_changed, id}, %{assigns: %{session_id: id}} = socket),
     do: {:noreply, socket |> DecisionHandlers.load_canvas() |> DecisionHandlers.refresh() |> discussion()}
+
+  # The dashboard lists the decisions of every session, so any of them can change it.
+  def handle_info(
+        {:ideation_project_decisions_changed, id},
+        %{assigns: %{project: %{id: id}, session_id: nil}} = socket
+      ), do: {:noreply, refresh(socket)}
 
   def handle_info({:ideation_references_changed, id}, %{assigns: %{session_id: id}} = socket),
     do: {:noreply, socket |> ReferenceHandlers.refresh() |> ExplorationContextHandlers.refresh()}

@@ -1016,6 +1016,8 @@ function redo() {
 // The dashboard marks application on a decision of any session; the board
 // reloads its decisions once the server confirms.
 const declaring = ref(false);
+// Confirmed dashboard declarations; the mark form stays open, with its note, until one lands.
+const dashboardDeclared = ref(0);
 async function declareFromDashboard(
   item: DashboardDecision,
   targetKey: string,
@@ -1034,7 +1036,8 @@ async function declareFromDashboard(
     request_key: crypto.randomUUID(),
   });
   declaring.value = false;
-  if (reply.status === "error") failure.value = reply.code;
+  if (reply.status === "ok") dashboardDeclared.value += 1;
+  else if (reply.status === "error") failure.value = reply.code;
 }
 
 async function startSession() {
@@ -1235,6 +1238,7 @@ onUnmounted(() => {
             :groups="board.decision_sessions ?? []"
             :base-url="baseUrl"
             :pending="declaring"
+            :declared="dashboardDeclared"
             @declare="declareFromDashboard"
           />
         </TabsContent>
