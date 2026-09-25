@@ -1205,12 +1205,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       )
       |> Repo.update!()
 
+      # `now` is truncated to the second, so a one-second lease could already be
+      # over when a slow run reaches the heartbeat. A minute stays live, and the
+      # TTL assertion below still proves the heartbeat renewed it.
       claim =
         building.object_prefix
         |> SnapshotObjectPublicationClaim.create_changeset(
           String.duplicate("a", 64),
           Ecto.UUID.generate(),
-          DateTime.shift(now, second: 1),
+          DateTime.shift(now, minute: 1),
           reservation.id,
           reservation.lease_token
         )
