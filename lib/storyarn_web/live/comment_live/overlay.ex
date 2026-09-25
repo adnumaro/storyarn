@@ -11,7 +11,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
   @refresh_interval 30_000
   @comment_refresh_delay 150
   @source_refresh_delay 500
-  @access_events ~w(project_membership_changed project_ownership_transferred workspace_membership_changed workspace_ownership_transferred)a
+  @access_events ~w(project_membership_changed project_ownership_transferred workspace_membership_changed)a
 
   @impl true
   def mount(_params, session, socket) do
@@ -305,10 +305,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
 
       socket.assigns.subscribed_workspaces
       |> MapSet.difference(workspace_ids)
-      |> Enum.each(fn id ->
-        Workspaces.unsubscribe_workspace_membership_changes(id)
-        Workspaces.unsubscribe_workspace_ownership_changes(id)
-      end)
+      |> Enum.each(&Workspaces.unsubscribe_workspace_membership_changes/1)
 
       socket.assigns.subscribed_projects
       |> MapSet.difference(project_ids)
@@ -320,10 +317,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
 
       workspace_ids
       |> MapSet.difference(socket.assigns.subscribed_workspaces)
-      |> Enum.each(fn id ->
-        Workspaces.subscribe_workspace_membership_changes(id)
-        Workspaces.subscribe_workspace_ownership_changes(id)
-      end)
+      |> Enum.each(&Workspaces.subscribe_workspace_membership_changes/1)
 
       project_ids
       |> MapSet.difference(socket.assigns.subscribed_projects)

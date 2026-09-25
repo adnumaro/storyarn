@@ -161,7 +161,7 @@ defmodule StoryarnWeb.CommentLive.OverlayTest do
     assert state(view)["contextUrl"] == nil
     refute Enum.any?(state(view)["projects"], &(&1["id"] == ctx.project.id))
     after_topics = MapSet.new(Registry.keys(Storyarn.PubSub, view.pid))
-    assert MapSet.size(MapSet.difference(before_topics, after_topics)) == 5
+    assert MapSet.size(MapSet.difference(before_topics, after_topics)) == 4
     refute MapSet.member?(socket_assigns(view).subscribed_projects, ctx.project.id)
     refute MapSet.member?(socket_assigns(view).subscribed_workspaces, ctx.project.workspace_id)
 

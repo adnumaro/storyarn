@@ -131,43 +131,43 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/general.ex:370
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:737
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:169
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:289
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:254
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:140
+#: lib/storyarn_web/live/ideation_live/board.ex:139
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr ""
 
 #: lib/storyarn_web/live/hooks/palette.ex:656
-#: lib/storyarn_web/live/ideation_live/sidebar.ex:118
+#: lib/storyarn_web/live/ideation_live/sidebar.ex:117
 #, elixir-autogen, elixir-format
 msgid "Untitled session"
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:350
+#: lib/storyarn_web/live/ideation_live/board.ex:349
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""
 
-#: lib/storyarn_web/live/comment_live/overlay.ex:366
+#: lib/storyarn_web/live/comment_live/overlay.ex:360
 #, elixir-autogen, elixir-format
 msgid "Comments could not be loaded. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/comment_live/overlay.ex:356
+#: lib/storyarn_web/live/comment_live/overlay.ex:350
 #, elixir-autogen, elixir-format
 msgid "Narrow your search or filters to see more conversations."
 msgstr ""
 
-#: lib/storyarn_web/live/comment_live/overlay.ex:569
+#: lib/storyarn_web/live/comment_live/overlay.ex:563
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/comment_live/overlay.ex:570
+#: lib/storyarn_web/live/comment_live/overlay.ex:564
 #, elixir-autogen, elixir-format
 msgid "This conversation is no longer available or you do not have permission to change it."
 msgstr ""

@@ -30,12 +30,6 @@ defmodule Storyarn.Workspaces do
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
   @type role :: String.t()
-  @type ownership_transfer_receipt :: %{
-          workspace_id: pos_integer(),
-          previous_owner_id: pos_integer(),
-          new_owner_id: pos_integer(),
-          changed?: boolean()
-        }
   @type action ::
           :manage_workspace
           | :access_workspace_general_settings
@@ -253,34 +247,9 @@ defmodule Storyarn.Workspaces do
              | :membership_change_requires_top_level_transaction}
   defdelegate remove_member(scope, workspace_id, membership_id), to: Memberships
 
-  @doc "Transfers canonical workspace ownership to an existing direct member."
-  @spec transfer_owner(scope(), pos_integer(), pos_integer()) ::
-          {:ok, ownership_transfer_receipt()}
-          | {:error,
-             changeset()
-             | :not_found
-             | :unauthorized
-             | :target_not_member
-             | :ownership_invariant_violation
-             | :ownership_transfer_requires_top_level_transaction
-             | :ownership_transfer_failed}
-          | {:error, :limit_reached, map()}
-  defdelegate transfer_owner(scope, workspace_id, target_user_id), to: Memberships
-
-  @doc "Subscribes the caller to committed ownership changes for a workspace."
-  @spec subscribe_workspace_ownership_changes(pos_integer()) ::
-          :ok | {:error, :invalid_workspace_id}
-  defdelegate subscribe_workspace_ownership_changes(workspace_id),
-    to: Memberships,
-    as: :subscribe_ownership_changes
-
   @doc "Subscribes the caller to committed workspace membership changes that invalidate access."
   @spec subscribe_workspace_membership_changes(pos_integer()) :: :ok | {:error, :invalid_workspace_id}
   defdelegate subscribe_workspace_membership_changes(workspace_id), to: Memberships, as: :subscribe_membership_changes
-
-  @doc "Unsubscribes the caller from a workspace's ownership changes."
-  @spec unsubscribe_workspace_ownership_changes(pos_integer()) :: :ok | {:error, :invalid_workspace_id}
-  defdelegate unsubscribe_workspace_ownership_changes(workspace_id), to: Memberships, as: :unsubscribe_ownership_changes
 
   @doc "Unsubscribes the caller from a workspace's membership changes."
   @spec unsubscribe_workspace_membership_changes(pos_integer()) :: :ok | {:error, :invalid_workspace_id}
@@ -297,8 +266,8 @@ defmodule Storyarn.Workspaces do
 
   - `:manage_workspace` - update settings, delete workspace (owner only)
   - `:manage_members` - invite and revoke invitations (owner, admin). Removing
-    members, changing roles, and transferring ownership are separate actor-aware
-    commands restricted to the canonical owner.
+    members and changing roles are separate actor-aware commands restricted to
+    the canonical owner.
   - `:create_project` - create new projects (owner, admin, member)
   - `:use_ai` - run explicitly initiated single-item AI actions (owner, admin)
   - `:run_bulk_ai` - run bulk AI actions (canonical owner only)
