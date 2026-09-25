@@ -428,11 +428,11 @@ function relativeTime(isoDate: string): string {
           >
             <UserAvatar :display-name="notification.actorName ?? ''" size="md" />
             <span
-              class="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-popover"
+              class="absolute -right-1.5 -bottom-1.5 flex size-[18px] items-center justify-center rounded-full border border-border bg-popover"
             >
               <component
                 :is="kindIcon(notification).icon"
-                class="size-2.5"
+                class="size-3"
                 :class="kindIcon(notification).tone"
               />
             </span>
@@ -456,7 +456,7 @@ function relativeTime(isoDate: string): string {
           <component
             :is="attachmentRenderer(notification)"
             v-if="attachmentRenderer(notification)"
-            class="min-w-0 flex-1 pr-7"
+            class="min-w-0 flex-1"
             :notification="notification"
             :data="notification.attachment?.data"
             :when="relativeTime(notification.createdAt)"
@@ -500,7 +500,14 @@ function relativeTime(isoDate: string): string {
           <button
             v-if="notification.readAt === null"
             type="button"
-            class="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-all hover:bg-background hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 disabled:cursor-wait"
+            :class="[
+              'absolute flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-background hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 disabled:cursor-wait',
+              // A tall attachment keeps one marker level with its first line:
+              // the check takes the dot's place on hover or focus.
+              attachmentRenderer(notification)
+                ? 'right-2 top-2 opacity-0'
+                : 'right-3 top-3 opacity-70',
+            ]"
             :aria-label="t('notifications.mark_read')"
             :title="t('notifications.mark_read')"
             :disabled="pending"
@@ -512,7 +519,12 @@ function relativeTime(isoDate: string): string {
           <span
             v-if="notification.readAt === null"
             aria-hidden="true"
-            class="absolute right-1.5 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-primary"
+            :class="[
+              'absolute size-1.5 rounded-full bg-primary transition-opacity',
+              attachmentRenderer(notification)
+                ? 'right-[19px] top-[19px] group-focus-within:opacity-0 group-hover:opacity-0'
+                : 'right-1.5 top-1/2 -translate-y-1/2',
+            ]"
           />
         </li>
       </ul>

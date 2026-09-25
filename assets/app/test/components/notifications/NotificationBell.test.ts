@@ -185,6 +185,15 @@ describe("NotificationBell", () => {
     const card = wrapper.get("[data-test-card]");
     expect(card.text()).toContain("Mara stays");
     expect(wrapper.text()).toContain("AN");
+    // A tall attachment keeps one unread marker level with its first line; the
+    // check takes the dot's place on hover. Plain notifications keep theirs.
+    const [attachedItem, plainItem] = wrapper.findAll("li");
+    const marker = (item: typeof attachedItem) =>
+      item.get("span.rounded-full.bg-primary").classes();
+    expect(marker(attachedItem)).toContain("top-[19px]");
+    expect(attachedItem.get("button[title]").classes()).toContain("opacity-0");
+    expect(marker(plainItem)).toContain("top-1/2");
+    expect(plainItem.get("button[title]").classes()).toContain("opacity-70");
     // A type nobody registered keeps the plain sentence.
     expect(wrapper.get("#notification-link-18, li:nth-child(2)").text()).toContain("Ana created");
 

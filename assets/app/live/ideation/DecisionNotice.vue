@@ -33,14 +33,10 @@ const assignment = computed(() =>
     ? ((data.decision.accepted ?? data.decision.proposal).nextAction?.text ?? null)
     : null,
 );
-// Asking someone to act is the primary action; news is only opened.
-const primary = computed(() =>
-  ["decision_to_accept", "decision_next_action"].includes(notification.kind),
-);
 </script>
 <template>
   <div :data-decision-notice="notification.id">
-    <p class="text-sm leading-5 text-pretty">
+    <p class="text-sm leading-5 text-pretty" :class="notification.readAt === null ? 'pr-6' : ''">
       <span class="font-semibold">{{
         notification.actorName || t("brainstormingDecisions.formerMember")
       }}</span>
@@ -54,7 +50,12 @@ const primary = computed(() =>
       <DecisionCard :decision="data.decision" size="compact" />
     </div>
     <div class="mt-2 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-      <Button :variant="primary ? 'default' : 'outline'" size="xs" as-child>
+      <time :datetime="notification.createdAt" class="shrink-0">{{ when }}</time>
+      <template v-if="data.sessionName">
+        <span aria-hidden="true">·</span>
+        <span class="truncate">{{ data.sessionName }}</span>
+      </template>
+      <Button variant="outline" size="xs" class="ml-auto shrink-0" as-child>
         <LiveLink
           :id="`notification-action-${notification.id}`"
           :to="data.action.href"
@@ -71,11 +72,6 @@ const primary = computed(() =>
           }}
         </LiveLink>
       </Button>
-      <time :datetime="notification.createdAt" class="shrink-0">{{ when }}</time>
-      <template v-if="data.sessionName">
-        <span aria-hidden="true">·</span>
-        <span class="truncate">{{ data.sessionName }}</span>
-      </template>
     </div>
   </div>
 </template>

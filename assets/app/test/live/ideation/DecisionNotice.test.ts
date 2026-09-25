@@ -44,7 +44,11 @@ describe("a decision notification", () => {
     expect(open.text()).toBe("Open");
     expect(open.attributes("href")).toBe("/brainstorming/3?decision=4");
     expect(open.attributes("data-slot")).toBe("button");
-    expect(open.classes().join(" ")).toContain("bg-primary");
+    // Every notice offers one outline action at the right of its footer.
+    expect(open.classes().join(" ")).not.toContain("bg-primary");
+    expect(open.classes()).toContain("ml-auto");
+    const footer = open.element.parentElement!;
+    expect(footer.lastElementChild).toBe(open.element);
     expect(wrapper.get("time").text()).toBe("12 min ago");
     expect(wrapper.text()).toContain("Endings we could ship");
     open.element.addEventListener("click", (event) => event.preventDefault(), { once: true });
@@ -77,7 +81,7 @@ describe("a decision notification", () => {
   it("names the content an application marked, and only offers to open it", () => {
     notice("decision_applied", { decision: accepted(), target: "Mara" });
     expect(wrapper.text()).toContain("Noor Haddad marked Mara as applied");
-    expect(wrapper.get("#notification-action-7").classes().join(" ")).not.toContain("bg-primary");
+    expect(wrapper.get("#notification-action-7").text()).toBe("Open");
     notice("decision_applied", { decision: accepted() });
     expect(wrapper.text()).toContain("Noor Haddad marked a decision as applied");
   });
