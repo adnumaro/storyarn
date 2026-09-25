@@ -420,6 +420,7 @@ const decisionLane = computed(() => ({
   focusId: focusedDecision.value ?? decisionFocus,
   comments: comments?.decisionCounts ?? {},
   places: decisionLanes.places.value,
+  movable: decisionLanes.movable,
   move: decisionLanes.move,
 }));
 function focusDecision(id: number) {

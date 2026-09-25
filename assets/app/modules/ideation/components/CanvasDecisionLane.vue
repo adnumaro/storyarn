@@ -21,7 +21,7 @@ const {
   roundNumbers,
   roundCount = 1,
   zoom = 1,
-  movable = false,
+  movable = () => false,
   anchor,
 } = defineProps<{
   lanes: LaneLayout[];
@@ -32,8 +32,8 @@ const {
   roundNumbers: Map<number, number>;
   roundCount?: number;
   zoom?: number;
-  /** The whole lane can be dragged, by its frame or by any of its cards. */
-  movable?: boolean;
+  /** Whether a round's lane can be dragged, by its frame or by any of its cards. */
+  movable?: (roundId: number) => boolean;
   /** Where a source sits on the canvas, when the reader can see it. */
   anchor: (source: DecisionSource) => Bounds | null;
 }>();
@@ -119,10 +119,12 @@ function label(lane: LaneLayout) {
     :id="`decision-lane-${lane.roundId}`"
     :key="`lane-${lane.roundId}`"
     :data-decision-lane="lane.roundId"
-    :data-canvas-chrome="movable ? '' : undefined"
+    :data-canvas-chrome="movable(lane.roundId) ? '' : undefined"
     class="absolute left-0 top-0 rounded-xl border border-dashed border-border bg-muted/[0.18]"
     :class="
-      movable ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+      movable(lane.roundId)
+        ? 'pointer-events-auto cursor-grab active:cursor-grabbing'
+        : 'pointer-events-none'
     "
     :style="{
       transform: `translate(${lane.x}px, ${lane.y}px)`,

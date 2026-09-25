@@ -29,7 +29,7 @@ function lane(focusId: number | null = null, movable = false) {
       comments: { "2": 3 },
       roundNumbers: new Map([[20, 1]]),
       roundCount: 2,
-      movable,
+      movable: () => movable,
       anchor,
     },
   });

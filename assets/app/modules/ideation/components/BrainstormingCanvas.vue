@@ -151,7 +151,9 @@ const {
       comments?: Record<string, number>;
       /** Lanes someone moved, by round, in canvas units. */
       places?: Map<number, Point>;
-      move?: (roundId: number, point: Point, from: Point) => Promise<void>;
+      /** Whether the reader may move this round's lane now. */
+      movable?: (roundId: number) => boolean;
+      move?: (roundId: number, point: Point) => Promise<void>;
     };
   };
 }>();
@@ -959,9 +961,11 @@ function lanePointer(event: PointerEvent, roundId: number) {
   };
   capture?.setPointerCapture(event.pointerId);
 }
+function laneMovable(roundId: number) {
+  return permissions.edit && !!decisionLane.value?.movable?.(roundId);
+}
 function movableLane(roundId: number) {
-  const allowed = permissions.edit && !!decisionLane.value?.move && !historyState.busy;
-  if (!allowed || tool.value !== "select") return null;
+  if (!laneMovable(roundId) || historyState.busy || tool.value !== "select") return null;
   return lanes.value.find((item) => item.roundId === roundId) ?? null;
 }
 function emptyGroupBody(event: PointerEvent, move: boolean) {
@@ -1129,7 +1133,7 @@ async function finishLaneDrag(event: PointerEvent, finished: CanvasDrag) {
     finished.capture.releasePointerCapture(event.pointerId);
   const roundId = finished.laneId!;
   const point = laneAnchors.value.get(roundId);
-  if (finished.moved && point) await decisionLane.value?.move?.(roundId, point, finished.origin);
+  if (finished.moved && point) await decisionLane.value?.move?.(roundId, point);
   laneAnchors.value.delete(roundId);
 }
 function cancelDrag(event: PointerEvent) {
@@ -1622,7 +1626,7 @@ onUnmounted(() => {
               :round-numbers="roundNumbers"
               :round-count="orderedRounds.length"
               :zoom="view.zoom"
-              :movable="permissions.edit && !!decisionLane?.move"
+              :movable="laneMovable"
               :anchor="decisionAnchor"
               @pointer="lanePointer"
               @focus="emit('focusDecision', $event)"

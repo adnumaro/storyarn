@@ -356,6 +356,11 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
              })
 
     {ctx, second} = new_round(ctx, %{prompt: "Next"})
+
+    for attrs <- [%{x: 5, y: 5, version: 0}, %{x: nil, y: nil, version: 1}] do
+      assert {:ok, _} = Ideation.move_decision_lane(ctx.author, ctx.project.id, ctx.session.id, second.id, attrs)
+    end
+
     capsule = capture(ctx)
     assert {:ok, data} = Capsule.open(capsule)
     assert data["version"] == 12
@@ -363,7 +368,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert saved_first["status"] == "closed"
     assert saved_first["prompt"] == "Corrected question"
     assert saved_first["decision_lane"] == %{"x" => -40, "y" => 612.5, "version" => 1}
-    assert saved_second["decision_lane"] == %{}
+    assert saved_second["decision_lane"] == %{"version" => 2}
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
@@ -374,7 +379,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert previous.prompt == "Corrected question"
     assert previous.decision_lane == %{"x" => -40, "y" => 612.5, "version" => 1}
     assert current.id == maps["rounds"][second.id]
-    assert current.decision_lane == %{}
+    assert current.decision_lane == %{"version" => 2}
     assert current.status == :active
 
     assert {:ok, [started_revision, update_revision, _original]} =
@@ -394,6 +399,8 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
           fn data -> put_in(data, ["rows", "rounds", Access.at(0), "status"], "planned") end,
           fn data -> put_in(data, ["rows", "rounds", Access.at(0), "decision_lane", "x"], "left") end,
           fn data -> put_in(data, ["rows", "rounds", Access.at(0), "decision_lane", "version"], 0) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "decision_lane", "y"], -1) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(1), "decision_lane"], %{"version" => 0}) end,
           fn data -> put_in(data, ["rows", "rounds", Access.at(1), "decision_lane"], %{"x" => 0, "y" => 0}) end,
           fn data -> put_in(data, ["rows", "rounds", Access.at(1), "decision_lane"], nil) end,
           fn data -> put_in(data, ["rows", "session_revisions", Access.at(1), "snapshot", "round", "number"], -1) end,

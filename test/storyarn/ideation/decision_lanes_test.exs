@@ -47,6 +47,19 @@ defmodule Storyarn.Ideation.DecisionLanesTest do
     assert {:ok, %{x: 200, version: 2}} = move.(ctx.peer, 200, 1)
   end
 
+  test "a lane returns to its automatic place, keeping its version", ctx do
+    lane = fn attrs -> Ideation.move_decision_lane(ctx.author, ctx.project.id, ctx.session.id, ctx.round.id, attrs) end
+
+    assert {:ok, %{version: 1}} = lane.(%{x: 10, y: 40, version: 0})
+    assert {:ok, %{x: nil, y: nil, version: 2}} = lane.(%{x: nil, y: nil, version: 1})
+    assert first_round(ctx).decision_lane == %{"version" => 2}
+
+    Phoenix.PubSub.subscribe(Storyarn.PubSub, "ideation:#{ctx.project.id}:#{ctx.session.id}:shared")
+    assert {:ok, %{version: 2}} = lane.(%{version: 1})
+    refute_receive {:ideation_changed, _}
+    assert {:ok, %{x: 5, version: 3}} = lane.(%{x: 5, y: 0, version: 2})
+  end
+
   test "only contributors of an open session move lanes, and never those of a hidden round", ctx do
     attrs = %{x: 0, y: 0, version: 0}
 
@@ -78,12 +91,14 @@ defmodule Storyarn.Ideation.DecisionLanesTest do
              })
   end
 
-  test "a lane position must be a finite place on the board with a known version", ctx do
+  test "a lane position is a finite place below its round header, with a known version", ctx do
     for attrs <- [
           %{x: "10", y: 0, version: 0},
           %{x: 0, y: 2_000_000, version: 0},
           %{x: 0, y: 0, version: -1},
           %{x: 0, y: 0, version: 1.5},
+          %{x: 0, y: -10, version: 0},
+          %{x: nil, y: 10, version: 0},
           %{x: 0, y: 0}
         ] do
       assert {:error, :invalid_decision_lane} =

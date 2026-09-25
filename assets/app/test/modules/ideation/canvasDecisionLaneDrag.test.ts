@@ -32,7 +32,7 @@ beforeAll(() => {
 const mounted: VueWrapper[] = [];
 afterEach(() => mounted.splice(0).forEach((wrapper) => wrapper.unmount()));
 
-function canvas(places = new Map<number, Point>(), edit = true) {
+function canvas(places = new Map<number, Point>(), edit = true, hidden = false) {
   const move = vi.fn(async () => undefined);
   const wrapper = mount(BrainstormingCanvas, {
     attachTo: document.body,
@@ -46,14 +46,23 @@ function canvas(places = new Map<number, Point>(), edit = true) {
       statuses: {},
       collaboration: { context: { epoch: "a", session_id: 1 }, cursors: true },
       bands: {
-        rounds: [round({ id: 20, number: 1 }), round({ id: 21, number: 2, status: "closed" })],
+        rounds: [
+          round({ id: 20, number: 1, private: hidden }),
+          round({ id: 21, number: 2, status: "closed" }),
+        ],
         offsets: new Map([
           [20, 0],
           [21, 0],
         ]),
         canManage: false,
         pending: false,
-        lanes: { decisions: [decision({ id: 1 })], focusId: null, places, move },
+        lanes: {
+          decisions: [decision({ id: 1 })],
+          focusId: null,
+          places,
+          movable: () => !hidden,
+          move,
+        },
       },
     },
     global: { stubs: { CanvasNote: NoteStub, CanvasCursors: true } },
@@ -80,19 +89,27 @@ describe("dragging a decision lane on the board", () => {
     const card = wrapper.get("#decision-lane-card-1").element;
     const frame = wrapper.get("[data-decision-lane]");
     const before = frame.attributes("style");
+    const [originX, originY] = (before ?? "")
+      .match(/translate\((-?[\d.]+)px, (-?[\d.]+)px\)/)!
+      .slice(1)
+      .map(Number);
     await pointer(card, "pointerdown", 100, 100);
     await pointer(card, "pointermove", 160, 180);
     expect(frame.attributes("style")).not.toBe(before);
     await pointer(card, "pointerup", 160, 180);
     await nextTick();
     expect(move).toHaveBeenCalledOnce();
-    const [roundId, point, from] = move.mock.calls[0] as unknown as [number, Point, Point];
+    const [roundId, point] = move.mock.calls[0] as unknown as [number, Point];
     expect(roundId).toBe(20);
-    expect([point.x - from.x, point.y - from.y]).toEqual([60, 80]);
+    expect([point.x - originX, point.y - originY]).toEqual([60, 80]);
   });
 
-  it("leaves the lane where it is for a reader who cannot edit", async () => {
-    const { wrapper, move } = canvas(new Map(), false);
+  it.each([
+    ["a reader who cannot edit", false, false],
+    ["a private round", true, true],
+  ])("leaves the lane where it is for %s", async (_case, edit, hidden) => {
+    const { wrapper, move } = canvas(new Map(), edit, hidden);
+    expect(wrapper.get("[data-decision-lane]").classes()).toContain("pointer-events-none");
     const card = wrapper.get("#decision-lane-card-1").element;
     await pointer(card, "pointerdown", 100, 100);
     await pointer(card, "pointermove", 160, 180);

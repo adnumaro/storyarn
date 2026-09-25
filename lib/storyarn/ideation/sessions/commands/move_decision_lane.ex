@@ -15,7 +15,9 @@ defmodule Storyarn.Ideation.Sessions.Commands.MoveDecisionLane do
   # Moving a round's decision lane is a placement on the board, like moving a
   # group: whoever can contribute to the open session may do it, the session
   # revision is untouched, and the lane's own version fences concurrent moves.
-  # A retried move that already landed answers with the lane as it is.
+  # A place never rises above the round header (y >= 0); moving to no place at
+  # all (x and y nil) returns the lane to its automatic place under the band's
+  # content. A retried move that already landed answers with the lane as it is.
   def run(scope, project_id, session_id, round_id, attrs) when is_map(attrs) do
     with :ok <- outermost(),
          {:ok, move} <- input(attrs) do
@@ -57,7 +59,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.MoveDecisionLane do
 
     cond do
       current == expected ->
-        moved = %{"x" => x, "y" => y, "version" => expected + 1}
+        moved = placed(x, y, expected + 1)
         round |> change(decision_lane: moved) |> Repo.update!()
         {:ok, {view(round.id, moved), true}}
 
@@ -68,6 +70,9 @@ defmodule Storyarn.Ideation.Sessions.Commands.MoveDecisionLane do
         {:error, :stale_decision_lane}
     end
   end
+
+  defp placed(nil, nil, version), do: %{"version" => version}
+  defp placed(x, y, version), do: %{"x" => x, "y" => y, "version" => version}
 
   defp view(round_id, lane), do: %{round_id: round_id, x: lane["x"], y: lane["y"], version: lane["version"]}
 
@@ -83,10 +88,13 @@ defmodule Storyarn.Ideation.Sessions.Commands.MoveDecisionLane do
     y = MapAccess.get_flexible(attrs, :y)
     version = MapAccess.get_flexible(attrs, :version)
 
-    if coordinate?(x) and coordinate?(y) and is_integer(version) and version >= 0 and version < 2_147_483_647,
+    if place?(x, y) and is_integer(version) and version >= 0 and version < 2_147_483_647,
       do: {:ok, %{x: x, y: y, version: version}},
       else: {:error, :invalid_decision_lane}
   end
+
+  defp place?(nil, nil), do: true
+  defp place?(x, y), do: coordinate?(x) and coordinate?(y) and y >= 0
 
   defp coordinate?(value), do: is_number(value) and abs(value) <= @limit
 end

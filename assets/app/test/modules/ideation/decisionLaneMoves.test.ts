@@ -15,8 +15,8 @@ interface Sent {
 const cleanup: Array<() => void> = [];
 afterEach(() => cleanup.splice(0).forEach((fn) => fn()));
 
-function setup(lane: Round["decision_lane"] = {}) {
-  const source = ref(board({ rounds: [round({ id: 20, decision_lane: lane })] }));
+function setup(lane: Round["decision_lane"] = {}, overrides: Partial<Round> = {}) {
+  const source = ref(board({ rounds: [round({ id: 20, decision_lane: lane, ...overrides })] }));
   const sent: Sent[] = [];
   const send: Request = <T>(event: string, payload: { [key: string]: unknown }) =>
     new Promise<Reply<T>>((resolve) =>
@@ -32,9 +32,7 @@ function setup(lane: Round["decision_lane"] = {}) {
       send,
       history,
       notify,
-      () => {
-        return new Map([[20, 500]]);
-      },
+      () => new Map([[20, 500]]),
     );
     return { history, lanes };
   })!;
@@ -42,27 +40,32 @@ function setup(lane: Round["decision_lane"] = {}) {
   const land = (place: Round["decision_lane"]) => {
     source.value = { ...source.value, rounds: [round({ id: 20, decision_lane: place })] };
   };
-  return { source, sent, notify, land, ...result };
+  // Answers the latest request and lets the board carry what it wrote.
+  const confirm = async (place: Round["decision_lane"]) => {
+    sent.at(-1)!.resolve({ status: "ok", value: {} });
+    await flushPromises();
+    land(place);
+    await flushPromises();
+  };
+  return { source, sent, notify, land, confirm, ...result };
 }
 
 describe("moving a decision lane", () => {
   it("shows the move at once, writes it relative to the round header and keeps it once the board lands", async () => {
-    const { lanes, sent, land } = setup();
+    const { lanes, sent, confirm } = setup();
     expect(lanes.places.value.size).toBe(0);
-    const moved = lanes.move(20, { x: 40, y: 900 }, { x: 0, y: 700 });
+    const moved = lanes.move(20, { x: 40, y: 900 });
     expect(lanes.places.value.get(20)).toEqual({ x: 40, y: 900 });
     expect(sent[0].event).toBe("move_decision_lane");
     expect(sent[0].payload).toEqual({ round_id: 20, x: 40, y: 400, version: 0 });
-    sent[0].resolve({ status: "ok", value: { x: 40, y: 400, version: 1 } });
+    await confirm({ x: 40, y: 400, version: 1 });
     await moved;
-    land({ x: 40, y: 400, version: 1 });
-    await flushPromises();
     expect(lanes.places.value.get(20)).toEqual({ x: 40, y: 900 });
   });
 
   it("puts a rejected move back and says why", async () => {
     const { lanes, sent, notify, history } = setup({ x: 10, y: 20, version: 3 });
-    const moved = lanes.move(20, { x: 300, y: 800 }, { x: 10, y: 520 });
+    const moved = lanes.move(20, { x: 300, y: 800 });
     expect(sent[0].payload).toMatchObject({ version: 3 });
     sent[0].resolve({ status: "error", code: "stale_decision_lane" });
     await moved;
@@ -71,35 +74,53 @@ describe("moving a decision lane", () => {
     expect(history.canUndo.value).toBe(false);
   });
 
-  it("undoes to where the lane was, unless someone moved it since", async () => {
-    const { lanes, sent, land, history } = setup();
-    const moved = lanes.move(20, { x: 40, y: 900 }, { x: 0, y: 700 });
-    sent[0].resolve({ status: "ok", value: {} });
+  it("undoes a lane that had never moved back to its automatic place, and redoes the move", async () => {
+    const { lanes, sent, confirm, history } = setup();
+    const moved = lanes.move(20, { x: 40, y: 900 });
+    await confirm({ x: 40, y: 400, version: 1 });
     await moved;
-    land({ x: 40, y: 400, version: 1 });
-    await flushPromises();
 
     const undone = history.undo();
     await flushPromises();
-    expect(sent[1].payload).toEqual({ round_id: 20, x: 0, y: 200, version: 1 });
-    sent[1].resolve({ status: "ok", value: {} });
+    expect(sent[1].payload).toEqual({ round_id: 20, x: null, y: null, version: 1 });
+    await confirm({ version: 2 });
     await undone;
-    land({ x: 0, y: 200, version: 2 });
-    await flushPromises();
-    expect(lanes.places.value.get(20)).toEqual({ x: 0, y: 700 });
+    expect(lanes.places.value.has(20)).toBe(false);
 
-    // A peer moves it; redoing must not take it back from them.
-    land({ x: 900, y: 10, version: 3 });
-    await history.redo();
-    expect(sent).toHaveLength(2);
-    expect(lanes.places.value.get(20)).toEqual({ x: 900, y: 510 });
+    const redone = history.redo();
+    await flushPromises();
+    expect(sent[2].payload).toEqual({ round_id: 20, x: 40, y: 400, version: 2 });
+    await confirm({ x: 40, y: 400, version: 3 });
+    await redone;
+    expect(lanes.places.value.get(20)).toEqual({ x: 40, y: 900 });
   });
 
-  it("does nothing for a drop where it started or for a reader who cannot edit", async () => {
-    const { lanes, sent, source } = setup();
-    await lanes.move(20, { x: 0, y: 700 }, { x: 0, y: 700 });
-    source.value = { ...source.value, can_edit: false };
-    await lanes.move(20, { x: 5, y: 700 }, { x: 0, y: 700 });
-    expect(sent).toHaveLength(0);
+  it("never undoes over someone else's move, even one that came back to the same spot", async () => {
+    const { lanes, sent, confirm, land, history } = setup({ x: 0, y: 100, version: 1 });
+    const moved = lanes.move(20, { x: 40, y: 900 });
+    await confirm({ x: 40, y: 400, version: 2 });
+    await moved;
+    // A peer moves it away and back: same place, newer version.
+    land({ x: 40, y: 400, version: 4 });
+    await history.undo();
+    expect(sent).toHaveLength(1);
+    expect(lanes.places.value.get(20)).toEqual({ x: 40, y: 900 });
+  });
+
+  it("does nothing for a drop where it already sits, a reader who cannot edit or a private round", async () => {
+    const stays = setup({ x: 0, y: 200, version: 1 });
+    await stays.lanes.move(20, { x: 0, y: 700 });
+    expect(stays.sent).toHaveLength(0);
+
+    const reader = setup();
+    reader.source.value = { ...reader.source.value, can_edit: false };
+    expect(reader.lanes.movable(20)).toBe(false);
+    await reader.lanes.move(20, { x: 5, y: 700 });
+    expect(reader.sent).toHaveLength(0);
+
+    const hidden = setup({}, { private: true });
+    expect(hidden.lanes.movable(20)).toBe(false);
+    await hidden.lanes.move(20, { x: 5, y: 700 });
+    expect(hidden.sent).toHaveLength(0);
   });
 });

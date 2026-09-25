@@ -238,21 +238,26 @@ last, and thin connectors rise to each source the reader can still see. The lane
 is not a note: it has no in-place editing, colour or shape, and grows its band
 like any other content. Selecting a card outlines its sources; double-click or
 Enter opens it in the panel, which keeps its sources outlined while it is shown.
+Resting the pointer on a note that a decision cites directly shows the compact
+cards of those decisions; choosing one opens it.
 
 The lane moves like a group frame: dragging its frame, its label or any of its
 cards moves the whole lane, and a press that does not travel still selects the
 card. Cards keep their order inside it. A lane that was never moved sits under
 the band's lowest note or frame; a moved lane keeps its place, stored on its
-round relative to the round header as `{x, y, version}`. It cannot rise above
-its round header, and the band still grows around it. Whoever can contribute to
-the open session may move a lane of a round that is not private; the move never
-touches the session revision, every reader of the session sees it, and undo
-returns the lane to where it was. The lane's version fences concurrent moves: a
-move or an undo against an older version is rejected with `stale_decision_lane`
-rather than overriding another person's move, and a retried move that already
-landed answers with the lane as it is.
-Resting the pointer on a note that a decision cites directly shows the compact
-cards of those decisions; choosing one opens it.
+round relative to the round header as `{x, y, version}`. The server rejects a
+place above the round header (`y < 0`), and the board keeps the lane below the
+header; the band still grows around the lane and around any note below it.
+Whoever can contribute to the open session may move the lane of a round that is
+not private; a private round's lane is not offered for moving. A move never
+touches the session revision and every reader of the session sees it. Undo
+returns the lane to where it was: to its automatic place, stored as `{version}`
+alone, when it had never been moved. Every move, including a return to the
+automatic place, bumps the lane's version, and each undo or redo step expects
+the version its previous step wrote, so a move by anyone else in between, even
+back to the same spot, ends that history. A stale move is rejected with
+`stale_decision_lane`, and a retried move that already landed answers with the
+lane as it is.
 
 ## Discussion
 
