@@ -1,0 +1,37 @@
+assets/app/live/ideation/DecisionApplication.vue
+  s_b5abbfc6259d0c::t_0c455d23093926 55-56,238
+  s_b5abbfc6259d0c::t_03811d9bd698f5 20,49-53,106-107,147-149,153,155-179,186,190,236-237,240-244,246,275
+assets/app/live/ideation/DecisionsPanel.vue
+  s_b5abbfc6259d0c::t_be9f799195d106 243,416
+assets/app/live/ideation/DecisionDiscussion.vue
+  s_b5abbfc6259d0c::t_0c455d23093926 8
+  s_b5abbfc6259d0c::t_84e6e875d86238 54-55,58
+  s_b5abbfc6259d0c::t_dbcb6a63415f94 64
+assets/app/live/ideation/decisionSections.ts
+  s_b5abbfc6259d0c::t_78fd2cf1305d73 1-3
+assets/app/live/ideation/DecisionTasks.vue
+  s_b5abbfc6259d0c::t_84e6e875d86238 9
+  s_b5abbfc6259d0c::t_15f7149fe9e6ad 66-67,105-107,110,112-113,128,133,171-172
+assets/app/live/ideation/DecisionDetail.vue
+  s_b5abbfc6259d0c::t_0c455d23093926 142-145,147-171,177-186,188-190,192-194,196-207,209-220,222-230,242-263
+  s_b5abbfc6259d0c::t_89d4efb031cd4b 25,127-134,137-141,232-234,236-237,266-271,274-284,286,288,303
+  s_b5abbfc6259d0c::t_dbcb6a63415f94 172-175,187
+  s_b5abbfc6259d0c::t_22f6a54fae7112 238-240
+  s_b5abbfc6259d0c::t_06664810865466 231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "aa1482330a0fa46e55ef77bae37e015652ba07f7",
+  "prompts": {},
+  "sessions": {
+    "s_b5abbfc6259d0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce0305-91ec-4116-b95d-80eb72980b92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
