@@ -13,7 +13,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function lane(focusId: number | null = null) {
+function lane(focusId: number | null = null, movable = false) {
   const first = decision({
     id: 1,
     proposal: revision({ sources: [source({ id: 10 }), source({ id: 11, available: false })] }),
@@ -29,6 +29,7 @@ function lane(focusId: number | null = null) {
       comments: { "2": 3 },
       roundNumbers: new Map([[20, 1]]),
       roundCount: 2,
+      movable,
       anchor,
     },
   });
@@ -60,6 +61,33 @@ describe("the decision lane", () => {
     await card.trigger("keydown", { key: "Enter" });
     expect(view.emitted("focus")).toEqual([[2]]);
     expect(view.emitted("open")).toEqual([[1], [1]]);
+  });
+});
+
+describe("moving the lane", () => {
+  it("hands a press on the frame or a card to the canvas, and a card dragged away is not selected", async () => {
+    const view = lane(null, true);
+    const frame = view.get("[data-decision-lane]");
+    expect(frame.classes()).toContain("pointer-events-auto");
+    const at = (element: Element, type: string, clientX: number) =>
+      element.dispatchEvent(
+        type === "click"
+          ? new MouseEvent(type, { bubbles: true, clientX, clientY: 10 })
+          : new PointerEvent(type, { bubbles: true, pointerId: 1, clientX, clientY: 10 }),
+      );
+    at(frame.element, "pointerdown", 5);
+    const card = view.findAll("#decision-lane-card-1")[0].element;
+    at(card, "pointerdown", 10);
+    at(card, "click", 80);
+    expect(view.emitted("pointer")?.map(([, roundId]) => roundId)).toEqual([20, 20]);
+    expect(view.emitted("focus")).toBeUndefined();
+    at(card, "pointerdown", 10);
+    at(card, "click", 11);
+    expect(view.emitted("focus")).toEqual([[1]]);
+  });
+
+  it("leaves the canvas under a lane that cannot move", () => {
+    expect(lane().get("[data-decision-lane]").classes()).toContain("pointer-events-none");
   });
 });
 

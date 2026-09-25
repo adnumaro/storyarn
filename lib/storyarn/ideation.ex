@@ -243,6 +243,14 @@ defmodule Storyarn.Ideation do
           {:ok, struct()} | {:error, term()}
   defdelegate close_round(scope, project_id, session_id, round_id, revision), to: Sessions
 
+  @doc """
+  Moves a round's decision lane on the board. Whoever can contribute to the open
+  session may move it; the lane's own version fences concurrent moves.
+  """
+  @spec move_decision_lane(map(), pos_integer(), pos_integer(), pos_integer(), map()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate move_decision_lane(scope, project_id, session_id, round_id, attrs), to: Sessions
+
   defdelegate list_session_revisions(scope, project_id, session_id, opts \\ []), to: Sessions
 
   defdelegate update_session(scope, project_id, session_id, revision, attrs), to: Sessions

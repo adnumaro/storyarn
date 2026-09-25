@@ -168,6 +168,12 @@ export interface MaskedIdea {
   round_id: number;
   canvas: { x?: number; y?: number; width?: number };
 }
+/** Where a moved decision lane sits, relative to its round header. Empty while it keeps its automatic place. */
+export interface DecisionLanePlace {
+  x?: number;
+  y?: number;
+  version?: number;
+}
 export interface Round {
   id: number;
   session_id: number;
@@ -180,6 +186,7 @@ export interface Round {
   /** Canvas y of the round header; note positions in the band are relative to it. */
   started_at: string | null;
   closed_at: string | null;
+  decision_lane: DecisionLanePlace;
   inserted_at: string;
   updated_at: string;
 }

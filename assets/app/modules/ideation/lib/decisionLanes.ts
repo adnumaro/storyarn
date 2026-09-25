@@ -47,15 +47,22 @@ export function decisionsByRound(decisions: DecisionRecord[], rounds: Round[]) {
 /**
  * Cards read left to right in the order of the list: what waits for the reader,
  * what is still to apply, proposals, what is done, then what was retired. The
- * lane starts where the band's content starts and is as wide as its cards.
+ * lane starts where the band's content starts and is as wide as its cards,
+ * unless someone moved it: then it sits where it was left.
  */
 export function layoutLane(
   roundId: number,
   decisions: DecisionRecord[],
-  place: { top: number; bottom: number | null; left: number; cardHeight: number },
+  place: {
+    top: number;
+    bottom: number | null;
+    left: number;
+    cardHeight: number;
+    at?: { x: number; y: number } | null;
+  },
 ): LaneLayout {
-  const y = place.top + (place.bottom ?? 0) + LANE_GAP;
-  const x = place.left - LANE_PAD;
+  const y = place.at ? place.at.y : place.top + (place.bottom ?? 0) + LANE_GAP;
+  const x = place.at ? place.at.x : place.left - LANE_PAD;
   const cards = decisions.map((decision, index) => ({
     decision,
     x: x + LANE_PAD + index * (LANE_CARD_WIDTH + LANE_CARD_GAP),

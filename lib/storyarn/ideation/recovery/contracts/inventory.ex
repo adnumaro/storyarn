@@ -10,7 +10,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"session_revisions", "ideation_session_revisions", :session_id,
      ~w(id recovery_identity session_id actor_id number action snapshot inserted_at)a},
     {"rounds", "ideation_rounds", :session_id,
-     ~w(id recovery_identity session_id number prompt status private reveal_on_expiry revealed_at started_at closed_at inserted_at updated_at)a},
+     ~w(id recovery_identity session_id number prompt status private reveal_on_expiry revealed_at started_at closed_at decision_lane inserted_at updated_at)a},
     {"timers", "ideation_timers", :session_id,
      ~w(id recovery_identity session_id round_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
     {"ideas", "ideation_ideas", :session_id,
@@ -123,7 +123,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in 1..11 and is_map(rows) and is_map(actors) do
+      when version in 1..12 and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -239,7 +239,13 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   # Decisions learnt to link external tasks; earlier captures linked none.
   def normalize(%{"version" => 10, "rows" => rows} = data),
-    do: %{data | "version" => 11, "rows" => Map.put(rows, "decision_task_links", [])}
+    do: normalize(%{data | "version" => 11, "rows" => Map.put(rows, "decision_task_links", [])})
+
+  # Decision lanes learnt to move; an earlier lane sits in its automatic place.
+  def normalize(%{"version" => 11, "rows" => rows} = data) do
+    rounds = Enum.map(rows["rounds"], &Map.put(&1, "decision_lane", %{}))
+    %{data | "version" => 12, "rows" => Map.put(rows, "rounds", rounds)}
+  end
 
   def normalize(data), do: data
 
@@ -343,7 +349,14 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   defp strip_timer_reveal(row), do: row
 
-  defp tables_for(11), do: @tables
+  defp tables_for(12), do: @tables
+
+  defp tables_for(11) do
+    for {collection, table, parent, fields} <- tables_for(12) do
+      {collection, table, parent, if(collection == "rounds", do: fields -- [:decision_lane], else: fields)}
+    end
+  end
+
   defp tables_for(10), do: Enum.reject(tables_for(11), &(elem(&1, 0) == "decision_task_links"))
 
   defp tables_for(9) do

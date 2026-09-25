@@ -189,9 +189,11 @@ invalidation and identity information rather than creative text.
 
 ## Recovery
 
-The sealed Ideation inventory version 11 includes the decision records, every
+The sealed Ideation inventory version 12 includes the decision records, every
 immutable revision, every application declaration and every task-link record,
-with their request receipts. Version 10 inventories carry no task links and
+with their request receipts, and the stored place of every moved decision lane
+on its round. Version 11 inventories carry no lane places and normalize every
+lane to its automatic place. Version 10 inventories carry no task links and
 normalize to none. Inventories before version 10 carry decisions of the earlier
 model and normalize to empty decision collections. The Project snapshot format and the
 outer encrypted compartment format remain unchanged.
@@ -236,6 +238,19 @@ last, and thin connectors rise to each source the reader can still see. The lane
 is not a note: it has no in-place editing, colour or shape, and grows its band
 like any other content. Selecting a card outlines its sources; double-click or
 Enter opens it in the panel, which keeps its sources outlined while it is shown.
+
+The lane moves like a group frame: dragging its frame, its label or any of its
+cards moves the whole lane, and a press that does not travel still selects the
+card. Cards keep their order inside it. A lane that was never moved sits under
+the band's lowest note or frame; a moved lane keeps its place, stored on its
+round relative to the round header as `{x, y, version}`. It cannot rise above
+its round header, and the band still grows around it. Whoever can contribute to
+the open session may move a lane of a round that is not private; the move never
+touches the session revision, every reader of the session sees it, and undo
+returns the lane to where it was. The lane's version fences concurrent moves: a
+move or an undo against an older version is rejected with `stale_decision_lane`
+rather than overriding another person's move, and a retried move that already
+landed answers with the lane as it is.
 Resting the pointer on a note that a decision cites directly shows the compact
 cards of those decisions; choosing one opens it.
 

@@ -110,6 +110,8 @@
       "already_grouped": "A selected note already belongs to a group. Remove it from that group first.",
       "invalid_group": "Choose at least two shared notes to create a group.",
       "group_sync_pending": "The group save is taking longer than expected. Your draft is kept. Refresh or try again.",
+      "stale_decision_lane": "Someone moved this decisions lane. It stays where they left it; move it again if you need to.",
+      "invalid_decision_lane": "The decisions lane cannot go there. Refresh the board and try again.",
       "stale_group_canvas": "Some notes moved elsewhere. Refresh and try moving the group again.",
       "invalid_group_members": "Some selected notes are no longer shared or available. Refresh and choose the notes again.",
       "group_limit_reached": "This session has reached the maximum number of groups. Delete a group before creating another.",

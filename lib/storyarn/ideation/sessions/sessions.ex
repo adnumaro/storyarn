@@ -45,6 +45,11 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate new_round(scope, project_id, session_id, revision, attrs), to: Commands.NewRound, as: :run
   defdelegate update_round(scope, project_id, session_id, round_id, revision, attrs), to: Commands.UpdateRound, as: :run
   defdelegate close_round(scope, project_id, session_id, round_id, revision), to: Commands.CloseRound, as: :run
+
+  defdelegate move_decision_lane(scope, project_id, session_id, round_id, attrs),
+    to: Commands.MoveDecisionLane,
+    as: :run
+
   defdelegate authorize_project_read(scope, project_id), to: Queries.ProjectAccess, as: :authorize
 
   defdelegate validate_round_filter(session_id, round_id), to: Queries.Rounds, as: :validate_filter

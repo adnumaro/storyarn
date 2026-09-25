@@ -65,7 +65,8 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   end
 
   defp valid_links?(row, "rounds", index) do
-    Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
+    Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row) and
+      decision_lane?(row["decision_lane"])
   end
 
   # A clock belongs to one round of its own session.
@@ -166,6 +167,14 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   defp round_metadata?(row) do
     positive?(row["number"]) and round_privacy?(row) and round_prompt?(row["prompt"]) and round_timing?(row)
   end
+
+  # A lane in its automatic place stores nothing; a moved lane stores where it is and its version.
+  defp decision_lane?(lane) when lane == %{}, do: true
+
+  defp decision_lane?(%{"x" => x, "y" => y, "version" => version} = lane) when map_size(lane) == 3,
+    do: Enum.all?([x, y], &(is_number(&1) and abs(&1) <= 1_000_000)) and positive?(version)
+
+  defp decision_lane?(_lane), do: false
 
   defp round_prompt?(prompt), do: is_nil(prompt) or (is_binary(prompt) and length(String.to_charlist(prompt)) <= 2000)
 

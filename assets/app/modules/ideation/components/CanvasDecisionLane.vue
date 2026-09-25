@@ -21,6 +21,7 @@ const {
   roundNumbers,
   roundCount = 1,
   zoom = 1,
+  movable = false,
   anchor,
 } = defineProps<{
   lanes: LaneLayout[];
@@ -31,6 +32,8 @@ const {
   roundNumbers: Map<number, number>;
   roundCount?: number;
   zoom?: number;
+  /** The whole lane can be dragged, by its frame or by any of its cards. */
+  movable?: boolean;
   /** Where a source sits on the canvas, when the reader can see it. */
   anchor: (source: DecisionSource) => Bounds | null;
 }>();
@@ -38,6 +41,7 @@ const emit = defineEmits<{
   focus: [id: number];
   open: [id: number];
   measure: [height: number];
+  pointer: [event: PointerEvent, roundId: number];
 }>();
 const { t } = useBoardText();
 
@@ -89,6 +93,19 @@ watch(
 );
 onBeforeUnmount(() => observer?.disconnect());
 
+// Cards stay in place inside the lane, so a press that turns into a drag moves
+// the lane; only a press that stays put selects the card.
+let pressed: { x: number; y: number } | null = null;
+function press(event: PointerEvent, roundId: number) {
+  pressed = { x: event.clientX, y: event.clientY };
+  emit("pointer", event, roundId);
+}
+function choose(event: MouseEvent, id: number) {
+  const dragged = pressed && Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) > 3;
+  pressed = null;
+  if (!dragged) emit("focus", id);
+}
+
 function label(lane: LaneLayout) {
   const count = lane.cards.length;
   return roundCount > 1
@@ -102,12 +119,17 @@ function label(lane: LaneLayout) {
     :id="`decision-lane-${lane.roundId}`"
     :key="`lane-${lane.roundId}`"
     :data-decision-lane="lane.roundId"
-    class="pointer-events-none absolute left-0 top-0 rounded-xl border border-dashed border-border bg-muted/[0.18]"
+    :data-canvas-chrome="movable ? '' : undefined"
+    class="absolute left-0 top-0 rounded-xl border border-dashed border-border bg-muted/[0.18]"
+    :class="
+      movable ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : 'pointer-events-none'
+    "
     :style="{
       transform: `translate(${lane.x}px, ${lane.y}px)`,
       width: `${lane.width}px`,
       height: `${lane.height}px`,
     }"
+    @pointerdown.stop="emit('pointer', $event, lane.roundId)"
   >
     <span
       class="absolute -top-[9px] left-3.5 inline-flex h-[18px] items-center gap-1.5 rounded-full border border-border bg-background px-2 text-[10.5px] font-semibold tracking-[.06em] text-muted-foreground uppercase"
@@ -162,8 +184,8 @@ function label(lane: LaneLayout) {
       class="pointer-events-auto absolute left-0 top-0 cursor-pointer rounded-xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring"
       :class="focusId === card.decision.id ? 'z-10' : ''"
       :style="{ transform: `translate(${card.x}px, ${card.y}px)` }"
-      @pointerdown.stop
-      @click.stop="emit('focus', card.decision.id)"
+      @pointerdown.stop="press($event, lane.roundId)"
+      @click.stop="choose($event, card.decision.id)"
       @dblclick.stop="emit('open', card.decision.id)"
       @keydown.enter.prevent.stop="emit('open', card.decision.id)"
       @keydown.space.prevent.stop="emit('focus', card.decision.id)"

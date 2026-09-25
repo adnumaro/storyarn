@@ -110,6 +110,8 @@
       "already_grouped": "Una nota seleccionada ya pertenece a un grupo. Sácala de ese grupo primero.",
       "invalid_group": "Selecciona al menos dos notas compartidas para crear un grupo.",
       "group_sync_pending": "El guardado del grupo está tardando más de lo previsto. Tu borrador se conserva. Actualiza o vuelve a intentarlo.",
+      "stale_decision_lane": "Alguien ha movido este bloque de decisiones. Se queda donde lo dejó; muévelo otra vez si lo necesitas.",
+      "invalid_decision_lane": "El bloque de decisiones no puede ir ahí. Actualiza el tablero e inténtalo de nuevo.",
       "stale_group_canvas": "Algunas notas se movieron en otra sesión. Actualiza e intenta mover el grupo de nuevo.",
       "invalid_group_members": "Algunas notas seleccionadas ya no están compartidas o disponibles. Actualiza y vuelve a elegirlas.",
       "group_limit_reached": "Esta sesión ha alcanzado el máximo de grupos. Elimina un grupo antes de crear otro.",

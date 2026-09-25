@@ -62,6 +62,18 @@ describe("layoutLane", () => {
     const lane = layoutLane(20, [decision()], { top: 0, bottom: null, left: 0, cardHeight: 100 });
     expect(lane.y).toBe(LANE_GAP);
   });
+
+  it("sits where someone left it once moved, whatever the band holds", () => {
+    const lane = layoutLane(20, [decision({ id: 1 })], {
+      top: 100,
+      bottom: 400,
+      left: 60,
+      cardHeight: 180,
+      at: { x: -30, y: 900 },
+    });
+    expect([lane.x, lane.y]).toEqual([-30, 900]);
+    expect(lane.cards[0]).toMatchObject({ x: -30 + LANE_PAD, y: 900 + LANE_PAD });
+  });
 });
 
 describe("decisionsByNote", () => {

@@ -28,6 +28,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.RoundData do
         :revealed_at,
         :started_at,
         :closed_at,
+        :decision_lane,
         :inserted_at,
         :updated_at
       ])
