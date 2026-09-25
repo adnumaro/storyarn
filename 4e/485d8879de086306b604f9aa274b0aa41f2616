@@ -1,0 +1,19 @@
+assets/app/test/modules/flows/components/FlowDialoguePanel.test.ts
+  s_c335c90a020cdb::t_fd8d64f6fd8c9b 1-2,7-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4e485d8879de086306b604f9aa274b0aa41f2616",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
