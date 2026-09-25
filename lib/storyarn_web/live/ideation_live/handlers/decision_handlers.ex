@@ -14,6 +14,30 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
 
   @target_types ~w(sheet flow scene)
 
+  # The dashboard marks application on a decision of any session the reader
+  # can open, through the same authorization as the panel.
+  def dashboard_declare(params, socket) do
+    Authorize.with_authorization(
+      socket,
+      :edit_content,
+      fn socket ->
+        %{current_scope: scope, project: project} = socket.assigns
+
+        with {:ok, session_id} <- Params.positive(params["decision_session_id"]),
+             {:ok, decision_id} <- Params.positive(params["decision_id"]),
+             {:ok, agreement} <- Params.positive(params["agreement"]),
+             attrs = Map.take(params, ~w(target_key state note request_key)),
+             {:ok, _} <-
+               Ideation.declare_decision_application(scope, project.id, session_id, decision_id, agreement, attrs) do
+          {:reply, %{status: "ok"}, socket}
+        else
+          {:error, reason} -> {:reply, Replies.error(reason), socket}
+        end
+      end,
+      fn socket, reason -> {:reply, Replies.error(reason), socket} end
+    )
+  end
+
   def init(socket) do
     assign(socket,
       decision_source_query: nil,

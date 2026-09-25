@@ -39,7 +39,12 @@ export function useExplorationRequests(context: ExplorationRequestContext) {
     requestKeys.clear();
   });
 
-  function request(action: ExplorationAction, payload: Record<string, unknown> = {}, key?: string) {
+  function request(
+    action: ExplorationAction,
+    payload: Record<string, unknown> = {},
+    key?: string,
+    onSuccess?: () => void,
+  ) {
     if (pending.value || !context.enabled()) return;
     const at = Symbol();
     const source = identity();
@@ -54,6 +59,7 @@ export function useExplorationRequests(context: ExplorationRequestContext) {
       pending.value = null;
       failure.value = code;
       if (!code && key) requestKeys.delete(key);
+      if (!code) onSuccess?.();
     };
 
     live.pushEvent(

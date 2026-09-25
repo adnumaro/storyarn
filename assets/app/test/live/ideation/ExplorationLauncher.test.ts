@@ -434,14 +434,35 @@ describe("decisions about the content", () => {
       sessionId: 3,
       sessionTitle: "Endings",
       sessionUrl: "/brainstorming/3?decision=5",
+      roundCount: 2,
       toApply: true,
     };
+    const done = {
+      ...item,
+      decision: accepted({ id: 6, sessionId: 3, application: null }),
+      targetKey: null,
+      toApply: false,
+    };
     const { wrapper, pushEvent } = launcher({
-      about: [item],
-      decisions: { total: 1, toApply: 1, name: "Hero" },
+      about: [item, done],
+      decisions: { total: 2, toApply: 1, name: "Hero" },
     });
     expect(wrapper.get("#exploration-decisions").text()).toContain("Decisions about Hero");
-    expect(wrapper.get("[data-decision-about='5']").text()).toContain("Endings");
+    // Linked explorations come first, then the decisions about this content.
+    const linked = wrapper.get("#exploration-linked-heading").element;
+    const decisions = wrapper.get("#exploration-decisions").element;
+    expect(
+      linked.compareDocumentPosition(decisions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // Still to apply here: the full card, with its session, round and actions inside.
+    const full = wrapper.get("[data-decision-about='5'] article[data-decision-card]");
+    expect(full.get("[data-decision-session]").text()).toBe("Endings");
+    expect(full.text()).toContain("R1");
+    expect(full.find("#exploration-decision-apply-5").exists()).toBe(true);
+    // Anything else: one compact row.
+    const compact = wrapper.get("[data-decision-about='6']");
+    expect(compact.find("article").exists()).toBe(false);
+    expect(compact.get("[data-decision-session]").text()).toContain("Endings");
     await wrapper.get("#exploration-decision-apply-5").trigger("click");
     expect(pushEvent.mock.calls.at(-1)?.[0]).toBe("exploration_decision_apply");
     expect(pushEvent.mock.calls.at(-1)?.[1]).toMatchObject({

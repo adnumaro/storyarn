@@ -37,7 +37,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
            can_edit and content.session != nil and (owner? or content.session.facilitator_id == scope.user.id),
          decision_sessions:
            if(is_nil(session_id) and Keyword.get(opts, :decisions, true),
-             do: project_decisions(scope, project_id, members),
+             do: project_decisions(scope, project_id, members, Keyword.get(opts, :href)),
              else: []
            )
        })}
@@ -45,16 +45,18 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
   end
 
   # The dashboard reads every decision of the project, grouped by session.
-  defp project_decisions(scope, project_id, members) do
+  defp project_decisions(scope, project_id, members, href) do
     with {:ok, groups} <- Ideation.list_project_decisions(scope, project_id),
          {:ok, rounds} <- Ideation.list_session_rounds(scope, project_id, Enum.map(groups, & &1.session.id)) do
       Enum.map(groups, fn %{session: session, decisions: decisions} ->
-        board = %{members: members, rounds: Map.get(rounds, session.id, [])}
+        session_rounds = Map.get(rounds, session.id, [])
+        board = %{members: members, rounds: session_rounds, href: href}
 
         %{
           id: session.id,
           title: session.title,
           status: session.status,
+          roundCount: length(session_rounds),
           decisions: Enum.map(decisions, &IdeationDecisionData.decision(&1, board))
         }
       end)

@@ -21,7 +21,7 @@ import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import DashboardContent from "@shell/DashboardContent.vue";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import DecisionsDashboard from "@app/live/ideation/DecisionsDashboard.vue";
-import { sessionSummary } from "@app/live/ideation/decisionDashboard";
+import { sessionSummary, type DashboardDecision } from "@app/live/ideation/decisionDashboard";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { registerPaletteCommands } from "@shared/command-palette/registry";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
@@ -57,7 +57,7 @@ import type {
   BoardLink,
 } from "./types";
 import type { BrainstormingCommentsState, BrainstormingCommentTarget } from "./commentTypes";
-import type { DecisionRecord } from "@app/live/ideation/decisionTypes";
+import type { ApplicationState, DecisionRecord } from "@app/live/ideation/decisionTypes";
 import { NOTE_COLOR_IDS, noteColor, noteSwatch } from "./lib/noteColors";
 const {
   board,
@@ -1013,6 +1013,33 @@ function redo() {
   void history.redo();
   canvas.value?.focus();
 }
+// The dashboard marks application on a decision of any session; the board
+// reloads its decisions once the server confirms.
+const declaring = ref(false);
+// Confirmed dashboard declarations; the mark form stays open, with its note, until one lands.
+const dashboardDeclared = ref(0);
+async function declareFromDashboard(
+  item: DashboardDecision,
+  targetKey: string,
+  state: ApplicationState,
+  note: string | null,
+) {
+  if (declaring.value || !item.decision.accepted) return;
+  declaring.value = true;
+  const reply = await request("dashboard_decision_declare", {
+    decision_session_id: item.sessionId,
+    decision_id: item.decision.id,
+    agreement: item.decision.accepted.revision,
+    target_key: targetKey,
+    state,
+    note,
+    request_key: crypto.randomUUID(),
+  });
+  declaring.value = false;
+  if (reply.status === "ok") dashboardDeclared.value += 1;
+  else if (reply.status === "error") failure.value = reply.code;
+}
+
 async function startSession() {
   if (!canStartSession.value) return;
   starting.value = true;
@@ -1207,7 +1234,13 @@ onUnmounted(() => {
           >
         </TabsContent>
         <TabsContent value="decisions">
-          <DecisionsDashboard :groups="board.decision_sessions ?? []" :base-url="baseUrl" />
+          <DecisionsDashboard
+            :groups="board.decision_sessions ?? []"
+            :base-url="baseUrl"
+            :pending="declaring"
+            :declared="dashboardDeclared"
+            @declare="declareFromDashboard"
+          />
         </TabsContent>
       </Tabs>
       <template #supplementary

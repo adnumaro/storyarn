@@ -50,9 +50,10 @@ const groups: DecisionSessionGroup[] = [
     id: 10,
     title: "Endings",
     status: "open",
+    roundCount: 2,
     decisions: [applied, pending, waiting, withdrawn, revising],
   },
-  { id: 11, title: "Act 3", status: "open", decisions: [other] },
+  { id: 11, title: "Act 3", status: "open", roundCount: 1, decisions: [other] },
 ];
 
 describe("the decisions dashboard", () => {

@@ -21,6 +21,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias StoryarnWeb.IdeationLive.Helpers.Params
   alias StoryarnWeb.IdeationLive.Helpers.Replies
   alias StoryarnWeb.Live.Shared.CollaborationHelpers
+  alias StoryarnWeb.Live.Shared.IdeationReferenceData
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
@@ -122,6 +123,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       )
 
       Ideation.subscribe_sessions(socket.assigns.current_scope, project_id)
+      Ideation.subscribe_decisions(socket.assigns.current_scope, project_id)
       Projects.subscribe_ideation_comment_participation(socket.assigns.current_scope)
       Projects.subscribe_project_ownership_changes(project_id)
       Projects.subscribe_project_membership_changes(project_id)
@@ -253,6 +255,17 @@ defmodule StoryarnWeb.IdeationLive.Board do
   end
 
   def handle_event("references_" <> action, params, socket), do: ReferenceHandlers.handle(action, params, socket)
+
+  def handle_event("dashboard_decision_declare", params, socket) do
+    case current_epoch(params, socket) do
+      :ok ->
+        {:reply, reply, socket} = DecisionHandlers.dashboard_declare(params, socket)
+        {:reply, reply, refresh(socket)}
+
+      {:error, reason} ->
+        {:reply, Replies.error(reason), socket}
+    end
+  end
 
   def handle_event("decisions_" <> action, params, socket) do
     {:reply, reply, socket} = DecisionHandlers.handle(action, params, socket)
@@ -404,6 +417,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
   def handle_info({:ideation_decisions_changed, id}, %{assigns: %{session_id: id}} = socket),
     do: {:noreply, socket |> DecisionHandlers.load_canvas() |> DecisionHandlers.refresh() |> discussion()}
 
+  # The dashboard lists the decisions of every session, so any of them can change it.
+  def handle_info(
+        {:ideation_project_decisions_changed, id},
+        %{assigns: %{project: %{id: id}, session_id: nil}} = socket
+      ), do: {:noreply, refresh(socket)}
+
   def handle_info({:ideation_references_changed, id}, %{assigns: %{session_id: id}} = socket),
     do: {:noreply, socket |> ReferenceHandlers.refresh() |> ExplorationContextHandlers.refresh()}
 
@@ -461,11 +480,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
     else
       %{current_scope: scope, project: project, session_id: id, filters: filters} = socket.assigns
       token = make_ref()
+      href = content_href(socket)
 
       socket =
         socket
         |> assign(refresh_running: token, refresh_dirty: false)
-        |> start_async({:board, token}, fn -> BoardData.load(scope, project.id, id, filters) end)
+        |> start_async({:board, token}, fn -> BoardData.load(scope, project.id, id, filters, href: href) end)
 
       {:noreply, socket}
     end
@@ -582,7 +602,17 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   defp load_now(socket) do
     %{current_scope: scope, project: project, session_id: id, filters: filters} = socket.assigns
-    accept_read(socket, {:ok, BoardData.load(scope, project.id, id, filters)})
+    accept_read(socket, {:ok, BoardData.load(scope, project.id, id, filters, href: content_href(socket))})
+  end
+
+  # Links from the dashboard's decisions to the content they affect; built from
+  # the slugs only, so an async read does not copy the socket.
+  defp content_href(socket) do
+    link = %{
+      assigns: %{workspace: %{slug: socket.assigns.workspace.slug}, project: %{slug: socket.assigns.project.slug}}
+    }
+
+    &IdeationReferenceData.destination(&1, link)
   end
 
   # Deep links from the session tree: `?round=` scrolls the canvas to that band

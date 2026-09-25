@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, type Component } from "vue";
 import { useI18n } from "vue-i18n";
-import {
-  ChevronDown,
-  ChevronUp,
-  Clapperboard,
-  FileText,
-  Lightbulb,
-  ListChecks,
-  Workflow,
-} from "@lucide/vue";
+import { ChevronDown, ChevronUp, Clapperboard, FileText, ListChecks, Workflow } from "@lucide/vue";
 import {
   Select,
   SelectContent,
@@ -18,8 +10,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { Switch } from "@components/ui/switch";
-import LiveLink from "@components/navigation/LiveLink.vue";
-import DecisionCard from "./DecisionCard.vue";
+import DecisionDashboardCard from "./DecisionDashboardCard.vue";
 import {
   dashboardDecisions,
   groupByTarget,
@@ -28,13 +19,32 @@ import {
   type DecisionSessionGroup,
   type StatusFilter,
 } from "./decisionDashboard";
-import type { DecisionTargetType } from "./decisionTypes";
+import type { ApplicationState, DecisionTargetType } from "./decisionTypes";
 
 /**
  * Every decision of the project, as the panel lists them, with the session
  * each one belongs to. Rows open their session with the panel on the decision.
  */
-const { groups, baseUrl } = defineProps<{ groups: DecisionSessionGroup[]; baseUrl: string }>();
+const {
+  groups,
+  baseUrl,
+  pending = false,
+  declared = 0,
+} = defineProps<{
+  groups: DecisionSessionGroup[];
+  baseUrl: string;
+  pending?: boolean;
+  /** Counts confirmed declarations; a mark form closes only once one lands. */
+  declared?: number;
+}>();
+const emit = defineEmits<{
+  declare: [
+    item: DashboardDecision,
+    targetKey: string,
+    state: ApplicationState,
+    note: string | null,
+  ];
+}>();
 const { t } = useI18n();
 const icons: Record<DecisionTargetType, Component> = {
   sheet: FileText,
@@ -117,21 +127,27 @@ function href(item: DashboardDecision) {
         </h3>
         <ul class="space-y-2">
           <li v-for="item in group.items" :key="`${group.key}-${item.decision.id}`">
-            <LiveLink :to="href(item)" mode="patch" class="block rounded-xl">
-              <DecisionCard :decision="item.decision" />
-            </LiveLink>
+            <DecisionDashboardCard
+              :item="item"
+              :href="href(item)"
+              :group-key="group.key"
+              :pending="pending"
+              :declared="declared"
+              @declare="(...args) => emit('declare', ...args)"
+            />
           </li>
         </ul>
       </section>
     </template>
     <ul v-else class="space-y-2">
       <li v-for="item in listed.live" :key="item.decision.id" :data-decision-row="item.decision.id">
-        <LiveLink :to="href(item)" mode="patch" class="block rounded-xl">
-          <DecisionCard :decision="item.decision" />
-        </LiveLink>
-        <p class="mt-1 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
-          <Lightbulb class="size-3" />{{ item.sessionTitle }}
-        </p>
+        <DecisionDashboardCard
+          :item="item"
+          :href="href(item)"
+          :pending="pending"
+          :declared="declared"
+          @declare="(...args) => emit('declare', ...args)"
+        />
       </li>
       <li v-if="listed.retired.length" class="pt-1.5">
         <button
@@ -155,12 +171,7 @@ function href(item: DashboardDecision) {
           :key="item.decision.id"
           :data-decision-row="item.decision.id"
         >
-          <LiveLink :to="href(item)" mode="patch" class="block rounded-xl">
-            <DecisionCard :decision="item.decision" />
-          </LiveLink>
-          <p class="mt-1 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
-            <Lightbulb class="size-3" />{{ item.sessionTitle }}
-          </p>
+          <DecisionDashboardCard :item="item" :href="href(item)" />
         </li>
       </template>
     </ul>

@@ -67,7 +67,19 @@ describe("decision status", () => {
     expect(deriveTitle("We ship the ending where Mara stays. The keeper leaves.")).toBe(
       "We ship the ending where Mara stays",
     );
-    expect(deriveTitle("a".repeat(80))).toBe(`${"a".repeat(60)}…`);
+    expect(
+      deriveTitle("Drop the second harbor route; nothing in the project needs to change."),
+    ).toBe("Drop the second harbor route; nothing in the project needs to change");
+    const long = `Mara keeps ${"the lighthouse and ".repeat(12)}the guild leaves.`;
+    expect(deriveTitle(long).length).toBeLessThanOrEqual(160);
+    expect(long.startsWith(deriveTitle(long))).toBe(true);
+    expect(deriveTitle(long)).not.toMatch(/…|\.\.\.|\s$/);
+    expect(deriveTitle("a".repeat(200))).toBe("a".repeat(160));
+    // A character outside the basic plane is kept whole or left out, never split.
+    const emoji = deriveTitle(`${"a".repeat(159)}😀😀`);
+    expect(emoji).toBe(`${"a".repeat(159)}😀`);
+    expect(() => JSON.parse(JSON.stringify(emoji))).not.toThrow();
+    expect(emoji).not.toMatch(/[\uD800-\uDBFF]$/);
     expect(excerpt("  The   keeper  ")).toBe("The keeper");
     expect(roundTag({ number: 2, prompt: null }, 2)).toBe("R2");
     expect(roundTag({ number: 1, prompt: null }, 1)).toBeNull();

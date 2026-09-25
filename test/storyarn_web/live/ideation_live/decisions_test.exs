@@ -499,6 +499,69 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
     refute state(missing)["open"]
   end
 
+  test "the dashboard marks application on a decision of any session, for editors only", ctx do
+    sheet = Storyarn.SheetsFixtures.sheet_fixture(ctx.project, %{name: "Mara"})
+
+    attrs =
+      Map.merge(direct_proposal(ctx), %{
+        targets: [%{type: "sheet", id: sheet.id}],
+        responsible_id: ctx.author.user.id,
+        register: true
+      })
+
+    {:ok, decision} = Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, attrs)
+    [target] = decision.application.targets
+    base = "/workspaces/#{ctx.project.workspace.slug}/projects/#{ctx.project.slug}"
+    {:ok, dashboard, _} = live(log_in_user(ctx.conn, ctx.author.user), "#{base}/brainstorming")
+    render_async(dashboard)
+
+    assert [%{"roundCount" => rounds, "decisions" => [card]}] = board(dashboard)["board"]["decision_sessions"]
+    assert rounds >= 1
+    assert [%{"href" => href}] = card["application"]["targets"]
+    assert href == "#{base}/sheets/#{sheet.id}"
+
+    declare = fn view, epoch ->
+      render_hook(view, "dashboard_decision_declare", %{
+        epoch: epoch,
+        decision_session_id: ctx.session.id,
+        decision_id: decision.id,
+        agreement: decision.accepted_version,
+        target_key: target.key,
+        state: "applied",
+        note: "Done from the dashboard",
+        request_key: Ecto.UUID.generate()
+      })
+    end
+
+    declare.(dashboard, "stale")
+    assert_reply(dashboard, %{status: "error", code: "stale_board"})
+
+    {:ok, viewer, _} = live(log_in_user(ctx.conn, ctx.viewer.user), "#{base}/brainstorming")
+    render_async(viewer)
+    declare.(viewer, :sys.get_state(viewer.pid).socket.assigns.epoch)
+    assert_reply(viewer, %{status: "error", code: "unauthorized"})
+    assert {:ok, %{application: %{targets: [%{application: nil}]}}} = read(ctx, decision)
+
+    {:ok, watcher, _} = live(log_in_user(ctx.conn, ctx.facilitator.user), "#{base}/brainstorming")
+    render_async(watcher)
+
+    assert [%{"decisions" => [%{"application" => %{"targets" => [%{"application" => nil}]}}]}] =
+             board(watcher)["board"]["decision_sessions"]
+
+    declare.(dashboard, :sys.get_state(dashboard.pid).socket.assigns.epoch)
+    assert_reply(dashboard, %{status: "ok"})
+
+    assert {:ok, %{application: %{targets: [%{application: %{state: "applied", note: "Done from the dashboard"}}]}}} =
+             read(ctx, decision)
+
+    # Another open dashboard stops offering the declaration it no longer needs.
+    assert eventually(fn ->
+             render_async(watcher)
+             [%{"decisions" => [card]}] = board(watcher)["board"]["decision_sessions"]
+             match?([%{"application" => %{"state" => "applied"}}], card["application"]["targets"])
+           end)
+  end
+
   test "revising after a withdrawn revision starts again from the agreement's sources", ctx do
     other =
       idea_fixture(ctx, %{title: "A louder ending", body: "<p>The player leaves.</p>", visibility: :shared})
@@ -604,6 +667,19 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
   defp panels(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BoardPanels").props
   defp board(view), do: LiveVue.Test.get_vue(view, name: "live/ideation/BrainstormingBoard").props
 
+  defp eventually(check, attempts \\ 40) do
+    cond do
+      check.() -> true
+      attempts == 0 -> false
+      true -> retry(check, attempts)
+    end
+  end
+
+  defp retry(check, attempts) do
+    Process.sleep(50)
+    eventually(check, attempts - 1)
+  end
+
   defp discussion_payload(view, ctx, attrs) do
     Map.merge(attrs, %{
       epoch: :sys.get_state(view.pid).socket.assigns.epoch,
@@ -611,6 +687,8 @@ defmodule StoryarnWeb.IdeationLive.DecisionsTest do
       comment_context: panels(view)["discussion"]["state"]["context"]
     })
   end
+
+  defp read(ctx, decision), do: Ideation.get_decision(ctx.author, ctx.project.id, ctx.session.id, decision.id)
 
   defp direct_proposal(ctx) do
     {:ok, sources} =

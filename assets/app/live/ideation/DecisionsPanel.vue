@@ -162,6 +162,8 @@ function transition(action: "accept" | "withdraw") {
   const payload = { decision_id: selected.id, revision: selected.version };
   request(action, payload, JSON.stringify([action, payload]));
 }
+// Counts confirmed declarations; a mark form closes only once one lands.
+const declared = ref(0);
 function declare(targetKey: string | null, stateValue: ApplicationState, note: string | null) {
   const selected = state.selected;
   if (!selected?.canDeclare || !selected.accepted) return;
@@ -172,7 +174,9 @@ function declare(targetKey: string | null, stateValue: ApplicationState, note: s
     state: stateValue,
     note,
   };
-  request("declare", payload, JSON.stringify(["declare", payload]));
+  request("declare", payload, JSON.stringify(["declare", payload]), () => {
+    declared.value += 1;
+  });
 }
 const tasksSaved = ref(0);
 const taskPermission = {
@@ -240,7 +244,7 @@ function changeTask(
     ></template>
     <div
       id="brainstorming-decisions-panel"
-      class="space-y-4 pb-2"
+      class="space-y-4 px-1.5 pb-2"
       :aria-busy="!!pending"
       aria-labelledby="decisions-panel-heading"
       @keydown.esc.stop.prevent="exit('close')"
@@ -382,6 +386,7 @@ function changeTask(
         @select="request('select', { decision_id: $event })"
         @load-history="request('history', { decision_id: state.selected?.id })"
         :tasks-saved="tasksSaved"
+        :declared="declared"
         @declare="declare"
         @link-task="(url, title) => changeTask('link_task', { url, title })"
         @edit-task="(key, url, title) => changeTask('edit_task', { link_key: key, url, title })"
@@ -413,7 +418,7 @@ function changeTask(
 <style scoped>
 @media (min-width: 768px) {
   .decision-panel {
-    width: min(28rem, calc(100vw - 1.5rem));
+    width: min(32rem, calc(100vw - 1.5rem));
   }
 }
 </style>

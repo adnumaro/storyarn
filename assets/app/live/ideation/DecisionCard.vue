@@ -10,6 +10,7 @@ import {
   EyeOff,
   FileText,
   Layers,
+  Lightbulb,
   ListChecks,
   MessageSquare,
   Pencil,
@@ -20,6 +21,7 @@ import {
   Workflow,
 } from "@lucide/vue";
 import UserAvatar from "@components/UserAvatar.vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import {
   hasUnavailableSource,
   orderTargets,
@@ -40,6 +42,9 @@ const {
   roundCount = 1,
   selected = false,
   comments = 0,
+  sessionName = null,
+  href = null,
+  linkMode = "navigate",
 } = defineProps<{
   decision: DecisionRecord;
   size?: "row" | "compact" | "canvas";
@@ -47,6 +52,12 @@ const {
   selected?: boolean;
   /** Messages in the decision's open discussion. */
   comments?: number;
+  /** Shown outside the decision's own session (Explorations, dashboard). */
+  sessionName?: string | null;
+  /** Where the whole row card opens; its `actions` slot stays clickable on top. */
+  href?: string | null;
+  /** `patch` when the link stays on the current page (the dashboard). */
+  linkMode?: "navigate" | "patch";
 }>();
 const { t, locale } = useI18n();
 
@@ -148,13 +159,20 @@ const responsible = computed(
     v-if="size === 'row'"
     :data-decision-card="decision.id"
     :data-status="decision.status"
-    class="rounded-xl border bg-surface px-4 py-3.5 transition-colors"
+    class="relative rounded-xl border bg-surface px-4 py-3.5 transition-colors"
     :class="
       selected
         ? 'border-primary/60 ring-1 ring-primary/35'
         : 'border-border hover:border-primary/40 hover:bg-accent/30'
     "
   >
+    <LiveLink
+      v-if="href"
+      :to="href"
+      :mode="linkMode"
+      :aria-label="revision.title"
+      class="absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    />
     <div :class="isRetired ? 'opacity-60' : ''">
       <div class="flex min-h-[22px] items-center gap-2">
         <span
@@ -268,7 +286,17 @@ const responsible = computed(
           }}</span
           ><span class="truncate">{{ round.prompt }}</span>
         </div>
+        <div
+          v-if="sessionName"
+          data-decision-session
+          class="flex min-w-0 items-center gap-1.5 whitespace-nowrap"
+        >
+          <Lightbulb class="size-3 shrink-0" /><span class="truncate">{{ sessionName }}</span>
+        </div>
       </div>
+    </div>
+    <div v-if="$slots.actions" class="relative z-10 mt-3 flex justify-end gap-1.5">
+      <slot name="actions" />
     </div>
   </article>
   <div
@@ -315,6 +343,7 @@ const responsible = computed(
         <span v-if="targets.hidden.length" :title="hiddenTitle" class="whitespace-nowrap">{{
           t("brainstormingDecisions.moreTargets", { count: targets.hidden.length })
         }}</span>
+        <span v-if="sessionName" data-decision-session>· {{ sessionName }}</span>
       </div>
     </div>
   </div>

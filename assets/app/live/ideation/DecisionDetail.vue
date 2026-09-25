@@ -17,11 +17,13 @@ import {
   Workflow,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
+import UserAvatar from "@components/UserAvatar.vue";
 import DecisionApplication from "./DecisionApplication.vue";
 import DecisionHistory from "./DecisionHistory.vue";
 import DecisionTasks from "./DecisionTasks.vue";
 import DecisionSources from "./DecisionSources.vue";
 import { revisionPending, roundTag } from "./decisionStatus";
+import { sectionHeading as heading } from "./decisionSections";
 import type {
   ApplicationState,
   DecisionHistoryEntry,
@@ -36,12 +38,15 @@ const {
   roundCount = 1,
   pending = null,
   tasksSaved = 0,
+  declared = 0,
 } = defineProps<{
   decision: DecisionRecord;
   history: DecisionHistoryEntry[];
   roundCount?: number;
   pending?: string | null;
   tasksSaved?: number;
+  /** Counts confirmed declarations; the mark form closes only once one lands. */
+  declared?: number;
 }>();
 const emit = defineEmits<{
   accept: [];
@@ -123,156 +128,183 @@ const recorded = computed(() => {
       );
 });
 const busy = computed(() => pending !== null);
+const hasActions = computed(
+  () =>
+    decision.canAccept ||
+    decision.canWithdraw ||
+    (decision.canRevise && (decision.status === "proposed" || decision.status === "accepted")) ||
+    decision.status === "withdrawn" ||
+    decision.status === "superseded",
+);
 </script>
 <template>
-  <div class="flex flex-col gap-3.5 text-[13px]" :data-decision="decision.id">
-    <details
-      v-if="pendingRevision && decision.accepted"
-      id="decision-previous-agreement"
-      class="group rounded-[10px] border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5"
-    >
-      <summary
-        class="flex cursor-pointer list-none items-center gap-2 text-[13px] font-medium text-emerald-700 dark:text-emerald-400"
+  <div
+    class="flex flex-col divide-y divide-border text-[13px] *:py-5 *:first:pt-0 *:last:pb-0"
+    :data-decision="decision.id"
+  >
+    <header>
+      <details
+        v-if="pendingRevision && decision.accepted"
+        id="decision-previous-agreement"
+        class="group mb-4 rounded-[10px] border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5"
       >
-        <ChevronRight class="size-3 transition-transform group-open:rotate-90" />{{
-          t("brainstormingDecisions.previousAgreement")
-        }}
-      </summary>
-      <div class="mt-2.5 space-y-1.5 text-foreground">
-        <p class="font-semibold">{{ decision.accepted.title }}</p>
-        <p class="text-xs text-muted-foreground">
-          {{ t(`brainstormingDecisions.verbs.${decision.accepted.verb}`) }}
-          <template v-if="decision.accepted.targets.length">
-            · {{ decision.accepted.targets.map((target) => target.name).join(", ") }}</template
-          >
-        </p>
-        <p class="text-[13px] leading-5 text-pretty">{{ decision.accepted.conclusion }}</p>
-      </div>
-    </details>
-    <div>
-      <div class="flex flex-wrap items-center gap-2">
-        <span
-          id="decision-status"
-          class="inline-flex h-[22px] items-center gap-[5px] rounded-full px-[9px] text-xs font-medium"
-          :class="tones[pill.tone]"
-          ><component :is="pill.icon" class="size-3" />{{ pill.text }}</span
-        ><span v-if="aside" class="text-xs text-muted-foreground">{{ aside }}</span>
-      </div>
-      <h3
-        class="mt-2.5 text-lg leading-6 font-semibold text-pretty break-words"
-        :class="decision.status === 'withdrawn' ? 'line-through' : ''"
-      >
-        {{ revision.title }}
-      </h3>
-      <p class="mt-1 text-xs text-muted-foreground">
-        {{ t("brainstormingDecisions.responsibleLine", { name: responsible }) }} · {{ recorded }}
-      </p>
-      <p
-        v-if="decision.supersedes && decision.status !== 'proposed'"
-        class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
-      >
-        <Replace class="size-3 shrink-0" />{{ t("brainstormingDecisions.supersedes") }}
-        <button
-          type="button"
-          class="truncate text-primary hover:underline"
-          @click="emit('select', decision.supersedes.id)"
+        <summary
+          class="flex cursor-pointer list-none items-center gap-2 text-[13px] font-medium text-emerald-700 dark:text-emerald-400"
         >
-          {{ decision.supersedes.title }}
-        </button>
-      </p>
-      <p
-        v-else-if="decision.replaces && decision.status === 'proposed'"
-        class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
-      >
-        <Replace class="size-3 shrink-0" />{{ t("brainstormingDecisions.replaces") }}
-        <button
-          type="button"
-          class="truncate text-primary hover:underline"
-          @click="emit('select', decision.replaces.id)"
-        >
-          {{ decision.replaces.title }}
-        </button>
-      </p>
-      <p
-        v-if="decision.status === 'superseded' && decision.supersededBy"
-        class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
-      >
-        <Replace class="size-3 shrink-0" />{{ t("brainstormingDecisions.supersededBy") }}
-        <button
-          type="button"
-          class="text-primary hover:underline"
-          @click="emit('select', decision.supersededBy.id)"
-        >
-          {{ decision.supersededBy.title }}</button
-        ><span>· {{ t("brainstormingDecisions.supersededKeepsRecords") }}</span>
-      </p>
-    </div>
-    <div>
-      <p class="mb-1.5 text-xs text-muted-foreground">
-        {{ t("brainstormingDecisions.thisDecisionMeans") }}
-      </p>
-      <div class="flex items-start gap-2.5">
-        <span
-          id="decision-verb"
-          class="shrink-0 text-[13px] leading-[26px] text-muted-foreground"
-          >{{ t(`brainstormingDecisions.verbs.${revision.verb}`) }}</span
-        >
-        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          <span
-            v-if="!revision.targets.length"
-            class="text-[13px] leading-[26px] text-muted-foreground"
-            >· {{ t("brainstormingDecisions.noAffectedContent") }}</span
-          >
-          <span
-            v-for="target in revision.targets"
-            :key="target.key"
-            class="inline-flex h-[26px] max-w-full items-center gap-1.5 rounded-[7px] border border-border pr-2.5 pl-2 text-[13px]"
-            ><component
-              :is="targetIcons[target.type]"
-              class="size-[13px] shrink-0 text-muted-foreground"
-            /><span
-              class="truncate"
-              :class="target.available ? '' : 'text-muted-foreground line-through'"
-              >{{ target.name }}</span
-            ><span class="shrink-0 text-[11px] text-muted-foreground">{{
-              target.isNew
-                ? t("brainstormingDecisions.targetNew")
-                : target.available
-                  ? t(`brainstormingDecisions.targetTypes.${target.type}`)
-                  : t("brainstormingDecisions.targetUnavailable")
-            }}</span></span
-          >
+          <ChevronRight class="size-3 transition-transform group-open:rotate-90" />{{
+            t("brainstormingDecisions.previousAgreement")
+          }}
+        </summary>
+        <div class="mt-2.5 space-y-1.5 text-foreground">
+          <p class="font-semibold">{{ decision.accepted.title }}</p>
+          <p class="text-xs text-muted-foreground">
+            {{ t(`brainstormingDecisions.verbs.${decision.accepted.verb}`) }}
+            <template v-if="decision.accepted.targets.length">
+              · {{ decision.accepted.targets.map((target) => target.name).join(", ") }}</template
+            >
+          </p>
+          <p class="text-[13px] leading-5 text-pretty">{{ decision.accepted.conclusion }}</p>
         </div>
+      </details>
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span
+            id="decision-status"
+            class="inline-flex h-[22px] items-center gap-[5px] rounded-full px-[9px] text-xs font-medium"
+            :class="tones[pill.tone]"
+            ><component :is="pill.icon" class="size-3" />{{ pill.text }}</span
+          ><span v-if="aside" class="text-xs text-muted-foreground">{{ aside }}</span
+          ><span
+            id="decision-responsible"
+            class="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+            :title="t('brainstormingDecisions.responsibleLine', { name: responsible })"
+            ><UserAvatar
+              :display-name="responsible"
+              size="xs"
+              class="!size-4 shrink-0 !text-[7px]"
+            /><span class="truncate" aria-hidden="true">{{ responsible }}</span
+            ><span class="sr-only">{{
+              t("brainstormingDecisions.responsibleLine", { name: responsible })
+            }}</span></span
+          ><span class="ml-auto text-xs whitespace-nowrap text-muted-foreground">{{
+            recorded
+          }}</span>
+        </div>
+        <h3
+          class="mt-2.5 text-lg leading-6 font-semibold text-pretty break-words"
+          :class="decision.status === 'withdrawn' ? 'line-through' : ''"
+        >
+          {{ revision.title }}
+        </h3>
+        <p
+          v-if="tag || revision.round?.prompt"
+          id="decision-round"
+          class="mt-1.5 flex items-baseline gap-1.5 text-sm text-muted-foreground"
+        >
+          <span v-if="tag" class="font-semibold text-foreground/80">{{ tag }}</span
+          ><span>{{ revision.round?.prompt }}</span>
+        </p>
+        <p
+          v-if="decision.supersedes && decision.status !== 'proposed'"
+          class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <Replace class="size-3 shrink-0" />{{ t("brainstormingDecisions.supersedes") }}
+          <button
+            type="button"
+            class="truncate text-primary hover:underline"
+            @click="emit('select', decision.supersedes.id)"
+          >
+            {{ decision.supersedes.title }}
+          </button>
+        </p>
+        <p
+          v-else-if="decision.replaces && decision.status === 'proposed'"
+          class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <Replace class="size-3 shrink-0" />{{ t("brainstormingDecisions.replaces") }}
+          <button
+            type="button"
+            class="truncate text-primary hover:underline"
+            @click="emit('select', decision.replaces.id)"
+          >
+            {{ decision.replaces.title }}
+          </button>
+        </p>
+        <p
+          v-if="decision.status === 'superseded' && decision.supersededBy"
+          class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <Replace class="size-3 shrink-0" />{{ t("brainstormingDecisions.supersededBy") }}
+          <button
+            type="button"
+            class="text-primary hover:underline"
+            @click="emit('select', decision.supersededBy.id)"
+          >
+            {{ decision.supersededBy.title }}</button
+          ><span>· {{ t("brainstormingDecisions.supersededKeepsRecords") }}</span>
+        </p>
       </div>
-      <p
-        v-if="tag || revision.round?.prompt"
-        class="mt-2.5 flex items-baseline gap-1.5 text-xs text-muted-foreground"
-      >
-        <span v-if="tag" class="font-semibold text-foreground/80">{{ tag }}</span
-        ><span>{{ revision.round?.prompt }}</span>
-      </p>
-    </div>
-    <div>
-      <p class="mb-1 text-xs text-muted-foreground">{{ t("brainstormingDecisions.conclusion") }}</p>
-      <p class="text-[15px] leading-[23px] text-pretty break-words whitespace-pre-wrap">
+    </header>
+    <section aria-labelledby="decision-means-heading">
+      <h4 id="decision-means-heading" :class="heading">
+        {{ t("brainstormingDecisions.thisDecisionMeans") }}
+      </h4>
+      <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <span id="decision-verb" class="mr-1 shrink-0 text-sm leading-[26px] font-semibold">{{
+          t(`brainstormingDecisions.verbs.${revision.verb}`)
+        }}</span>
+        <span
+          v-if="!revision.targets.length"
+          class="text-[13px] leading-[26px] text-muted-foreground"
+          >{{ t("brainstormingDecisions.noAffectedContent") }}</span
+        >
+        <span
+          v-for="target in revision.targets"
+          :key="target.key"
+          class="inline-flex h-[26px] max-w-full items-center gap-1.5 rounded-[7px] border border-border pr-2.5 pl-2 text-[13px]"
+          ><component
+            :is="targetIcons[target.type]"
+            class="size-[13px] shrink-0 text-muted-foreground"
+          /><span
+            class="truncate"
+            :class="target.available ? '' : 'text-muted-foreground line-through'"
+            >{{ target.name }}</span
+          ><span class="shrink-0 text-[11px] text-muted-foreground">{{
+            target.isNew
+              ? t("brainstormingDecisions.targetNew")
+              : target.available
+                ? t(`brainstormingDecisions.targetTypes.${target.type}`)
+                : t("brainstormingDecisions.targetUnavailable")
+          }}</span></span
+        >
+      </div>
+    </section>
+    <section aria-labelledby="decision-conclusion-heading">
+      <h4 id="decision-conclusion-heading" :class="heading">
+        {{ t("brainstormingDecisions.conclusion") }}
+      </h4>
+      <p class="mt-2 text-[15px] leading-[23px] text-pretty break-words whitespace-pre-wrap">
         {{ revision.conclusion }}
       </p>
-    </div>
-    <div v-if="revision.reason">
-      <p class="mb-1 text-xs text-muted-foreground">{{ t("brainstormingDecisions.reason") }}</p>
-      <p class="text-[15px] leading-[23px] text-pretty break-words whitespace-pre-wrap">
-        {{ revision.reason }}
-      </p>
-    </div>
-    <div>
-      <p class="mb-2 text-xs text-muted-foreground">
+      <template v-if="revision.reason">
+        <p class="mt-4 text-xs font-medium text-muted-foreground">
+          {{ t("brainstormingDecisions.reason") }}
+        </p>
+        <p class="mt-1 leading-5 text-pretty break-words whitespace-pre-wrap">
+          {{ revision.reason }}
+        </p>
+      </template>
+    </section>
+    <section aria-labelledby="decision-sources-heading">
+      <h4 id="decision-sources-heading" :class="[heading, 'mb-2.5']">
         {{ t("brainstormingDecisions.sourcesCount", { count: revision.sources.length }) }}
-      </p>
+      </h4>
       <DecisionSources :sources="revision.sources" />
-    </div>
+    </section>
     <DecisionApplication
       :decision="decision"
       :pending="busy"
+      :declared="declared"
       @declare="(key, state, note) => emit('declare', key, state, note)"
     />
     <DecisionTasks
@@ -284,7 +316,7 @@ const busy = computed(() => pending !== null);
       @unlink="(key) => emit('unlinkTask', key)"
     />
     <slot name="discussion" />
-    <div class="flex flex-col gap-2">
+    <div v-if="hasActions" class="flex flex-col gap-2">
       <template v-if="decision.canAccept">
         <Button id="decision-accept" class="w-full" :disabled="busy" @click="emit('accept')"
           ><Loader2 v-if="pending === 'accept'" class="size-4 animate-spin" /><Check

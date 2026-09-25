@@ -81,17 +81,24 @@ const launcherElement = computed(() => {
 function decide(
   action: "decision_apply" | "decision_declare" | "decision_undo" | "decision_dismiss",
   payload: Record<string, unknown> = {},
+  onSuccess?: () => void,
 ) {
-  request(action, payload, `${action}:${JSON.stringify(payload)}`);
+  request(action, payload, `${action}:${JSON.stringify(payload)}`, onSuccess);
 }
+// A mark form closes once its declaration is confirmed; a failure keeps the note.
+const declared = ref(0);
 function declare(item: DecisionAbout, stateValue: ApplicationState, note: string | null) {
-  decide("decision_declare", {
-    session_id: item.sessionId,
-    decision_id: item.decision.id,
-    target_key: item.targetKey,
-    state: stateValue,
-    note,
-  });
+  decide(
+    "decision_declare",
+    {
+      session_id: item.sessionId,
+      decision_id: item.decision.id,
+      target_key: item.targetKey,
+      state: stateValue,
+      note,
+    },
+    () => (declared.value += 1),
+  );
 }
 function declareBanner(stateValue: ApplicationState, note: string | null) {
   const banner = state.banner;
@@ -260,21 +267,6 @@ function link(session: ExplorationSession) {
           </aside>
 
           <div class="min-w-0 space-y-5">
-            <DecisionsAbout
-              v-if="state.about?.length"
-              :items="state.about"
-              :name="state.decisions?.name ?? state.target?.name ?? ''"
-              :can-edit="state.canEdit"
-              :pending="!!pending"
-              @apply="
-                (item) =>
-                  decide('decision_apply', {
-                    session_id: item.sessionId,
-                    decision_id: item.decision.id,
-                  })
-              "
-              @declare="declare"
-            />
             <section aria-labelledby="exploration-linked-heading" class="space-y-2">
               <h3 id="exploration-linked-heading" class="text-sm font-medium">
                 {{ t("brainstormingExplorations.linkedTitle") }}
@@ -348,6 +340,22 @@ function link(session: ExplorationSession) {
                 >
               </div>
             </section>
+            <DecisionsAbout
+              v-if="state.about?.length"
+              :items="state.about"
+              :name="state.decisions?.name ?? state.target?.name ?? ''"
+              :can-edit="state.canEdit"
+              :pending="!!pending"
+              :declared="declared"
+              @apply="
+                (item) =>
+                  decide('decision_apply', {
+                    session_id: item.sessionId,
+                    decision_id: item.decision.id,
+                  })
+              "
+              @declare="declare"
+            />
 
             <section
               v-if="state.canEdit && state.target"

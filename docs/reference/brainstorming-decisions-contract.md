@@ -262,9 +262,12 @@ read through its own catalog, so access and source visibility match the panel.
 - **Lightbulb.** The editor's Explorations button counts, in amber, the accepted
   decisions with something still to apply on this content; its label names all
   of them (`2 decisions about Mara · 1 to apply`).
-- **Explorations.** The dialog lists `Decisions about {name}`: still to apply
-  here, then proposals, then what is applied or needs no change. Rows open the
-  session on the decision; editors can `Go apply` or `Mark applied`.
+- **Explorations.** After `Linked explorations`, the dialog lists `Decisions
+about {name}` with their count: still to apply here, then proposals, then what
+  is applied or needs no change. Decisions still to apply here are full cards
+  with their session and round inside and, for editors, `Go apply` and `Mark
+applied` at the bottom right; the rest are compact rows with the session name.
+  Every one opens its session on the decision.
 - **Apply banner.** `Go apply` opens the content with `?decision=&session=`; the
   decision sits under the editor header for that visit, anchored to the header
   as a non-modal reka popover. `Mark applied`, `Partially` and `No change
@@ -294,7 +297,11 @@ needed` take an optional note; the confirmation offers `Undo` for five seconds,
   the earlier requests before any new one is delivered.
 - **Dashboard.** Each session row summarizes `3 decisions · 1 waiting for you · 1
 to apply`; the `Decisions` tab lists every decision with Status and
-  Application filters and `Group by affected content`.
+  Application filters and `Group by affected content`. Its cards carry their
+  session and round inside; a decision still to apply offers `Go apply` and
+  `Mark applied` for the content of its group, or the first one still pending in
+  the plain list, to readers who can declare, through the ordinary decision
+  authorization.
 - **Palette.** Under `Jump to`, the first matched Sheets, Flows and Scenes bring
   the decisions that name them.
 
