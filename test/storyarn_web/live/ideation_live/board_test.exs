@@ -648,6 +648,38 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_reply(manager, %{status: "error", code: "round_not_active"})
   end
 
+  test "any contributor moves a round's decision lane and every participant sees where it went", ctx do
+    round = first_round(ctx)
+    {:ok, author, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    {:ok, peer, _} = live(log_in_user(build_conn(), ctx.peer.user), board_path(ctx, ctx.session.id))
+
+    render_hook(author, "move_decision_lane", payload(author, %{round_id: "#{round.id}", x: 24, y: 360, version: 0}))
+    assert_reply(author, %{status: "ok", value: %{x: 24, y: 360, version: 1}})
+
+    assert_board_eventually(peer, fn board ->
+      assert [%{"decision_lane" => %{"x" => 24, "y" => 360, "version" => 1}}] = board["rounds"]
+      assert board["session"]["revision"] == 1
+    end)
+
+    render_hook(peer, "move_decision_lane", payload(peer, %{round_id: round.id, x: 0, y: 0, version: 0}))
+    assert_reply(peer, %{status: "error", code: "stale_decision_lane"})
+
+    render_hook(peer, "move_decision_lane", %{
+      epoch: data(peer)["epoch"],
+      session_id: -1,
+      round_id: round.id,
+      x: 0,
+      y: 0,
+      version: 1
+    })
+
+    assert_reply(peer, %{status: "error", code: "stale_board"})
+    {:ok, readonly, _} = live(log_in_user(build_conn(), ctx.viewer.user), board_path(ctx, ctx.session.id))
+    render_hook(readonly, "move_decision_lane", payload(readonly, %{round_id: round.id, x: 0, y: 0, version: 1}))
+    assert_reply(readonly, %{status: "error", code: "unauthorized"})
+    assert [%{"decision_lane" => %{"x" => 24}}] = data(readonly)["rounds"]
+  end
+
   test "creation rejects explicit no-round, omitted round uses the one in progress and malformed IDs fail", ctx do
     round = first_round(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))

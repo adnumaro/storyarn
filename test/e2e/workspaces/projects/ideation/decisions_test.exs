@@ -292,6 +292,61 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
     |> assert_has("#decision-discussion", text: "Does the keeper still leave?")
   end
 
+  test "a decisions lane moves like a group, stays where it was left for everyone and undoes",
+       %{conn: conn} = context do
+    ctx = ideation_fixture()
+
+    idea =
+      idea_fixture(ctx, %{title: "A quieter ending", body: "<p>The player chooses to stay.</p>", visibility: :shared})
+
+    {:ok, [source]} =
+      Ideation.preview_decision_sources(ctx.author, ctx.project.id, ctx.session.id, [%{type: "idea", id: idea.id}])
+
+    {:ok, decision} =
+      Ideation.propose_decision(ctx.author, ctx.project.id, ctx.session.id, %{
+        title: "Keep the ending quiet",
+        conclusion: "Let the player choose to stay.",
+        verb: "keep",
+        targets: [],
+        responsible_id: ctx.author.user.id,
+        register: true,
+        sources: [Map.take(source, [:type, :id, :version, :identity])],
+        request_key: Ecto.UUID.generate()
+      })
+
+    card = "#decision-lane-card-#{decision.id}"
+
+    author =
+      conn
+      |> authenticate(ctx.author.user)
+      |> visit(path(ctx))
+      |> assert_has("#brainstorming-canvas")
+      |> assert_has(card)
+
+    placed = lane_offset(author, idea.id, decision.id)
+    drag_by(author, card, 180, 140)
+    assert eventually(fn -> first_round(ctx).decision_lane["version"] == 1 end)
+    moved = lane_offset(author, idea.id, decision.id)
+    assert moved.x > placed.x + 0.3 and moved.y > placed.y + 0.3
+    # Dragging a card moves its lane; it does not select the card.
+    assert_has(author, "#{card}[aria-pressed='false']")
+
+    config = context |> Map.take(Config.setup_keys()) |> Config.validate!()
+
+    peer =
+      config
+      |> Case.new_session(context)
+      |> authenticate(ctx.peer.user)
+      |> visit(path(ctx))
+      |> assert_has(card)
+
+    assert_close(lane_offset(peer, idea.id, decision.id), moved)
+
+    press(author, "#brainstorming-canvas", "Control+z")
+    assert eventually(fn -> first_round(ctx).decision_lane["version"] == 2 end)
+    assert_close(lane_offset(author, idea.id, decision.id), placed)
+  end
+
   test "Go apply opens the content with the decision and marking it is reflected in the decision",
        %{conn: conn} do
     ctx = ideation_fixture()
@@ -406,6 +461,61 @@ defmodule StoryarnWeb.E2E.IdeationDecisionsTest do
   defp click(browser, selector) do
     {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: selector, timeout: 10_000)
     browser
+  end
+
+  # Where the lane's card sits against its source note, in note widths so that
+  # two readers with different zoom compare the same place.
+  defp lane_offset(browser, idea_id, decision_id) do
+    {:ok, offset} =
+      PlaywrightEx.Frame.evaluate(browser.frame_id,
+        expression: """
+        (() => {
+          const note = document.querySelector('#canvas-note-#{idea_id}').getBoundingClientRect();
+          const card = document.querySelector('#decision-lane-card-#{decision_id}').getBoundingClientRect();
+          return { x: (card.left - note.left) / note.width, y: (card.top - note.top) / note.width };
+        })()
+        """,
+        timeout: 10_000
+      )
+
+    %{x: offset["x"], y: offset["y"]}
+  end
+
+  defp drag_by(browser, selector, dx, dy) do
+    {:ok, start} =
+      PlaywrightEx.Frame.evaluate(browser.frame_id,
+        expression: """
+        (() => {
+          const box = document.querySelector('#{selector}').getBoundingClientRect();
+          return { x: box.left + box.width / 2, y: box.top + 24 };
+        })()
+        """,
+        timeout: 10_000
+      )
+
+    page = browser.page_id
+    {:ok, _} = PlaywrightEx.Page.mouse_move(page, x: start["x"], y: start["y"], timeout: 10_000)
+    {:ok, _} = PlaywrightEx.Page.mouse_down(page, timeout: 10_000)
+    {:ok, _} = PlaywrightEx.Page.mouse_move(page, x: start["x"] + dx, y: start["y"] + dy, steps: 8, timeout: 10_000)
+    {:ok, _} = PlaywrightEx.Page.mouse_up(page, timeout: 10_000)
+  end
+
+  defp assert_close(actual, expected) do
+    assert abs(actual.x - expected.x) < 0.02 and abs(actual.y - expected.y) < 0.02,
+           "expected #{inspect(expected)}, got #{inspect(actual)}"
+  end
+
+  defp eventually(check, attempts \\ 50) do
+    cond do
+      check.() -> true
+      attempts == 0 -> false
+      true -> wait_and_retry(check, attempts)
+    end
+  end
+
+  defp wait_and_retry(check, attempts) do
+    Process.sleep(100)
+    eventually(check, attempts - 1)
   end
 
   defp capture(browser, name) do

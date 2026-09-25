@@ -30,6 +30,7 @@ import CanvasShapePicker from "./components/CanvasShapePicker.vue";
 import { useCanvasConnections } from "./composables/useCanvasConnections";
 import GroupSelectionTools from "./components/GroupSelectionTools.vue";
 import { useCanvasGroups } from "./composables/useCanvasGroups";
+import { useDecisionLanes } from "./composables/useDecisionLanes";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
 import RoundStartedToast from "./components/RoundStartedToast.vue";
@@ -277,6 +278,15 @@ const connections = useCanvasConnections({
   },
 });
 const mutationBusy = computed(() => history.busy.value || connections.pending.value !== null);
+const decisionLanes = useDecisionLanes(
+  () => board,
+  request,
+  history,
+  (code) => {
+    failure.value = code;
+  },
+  () => bandOffsets.value,
+);
 const groups = useCanvasGroups(
   () => board,
   request,
@@ -409,6 +419,9 @@ const decisionLane = computed(() => ({
   decisions,
   focusId: focusedDecision.value ?? decisionFocus,
   comments: comments?.decisionCounts ?? {},
+  places: decisionLanes.places.value,
+  movable: decisionLanes.movable,
+  move: decisionLanes.move,
 }));
 function focusDecision(id: number) {
   selectedIds.value = [];

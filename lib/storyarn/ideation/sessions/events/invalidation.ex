@@ -44,6 +44,11 @@ defmodule Storyarn.Ideation.Sessions.Events.Invalidation do
     end
   end
 
+  # A placement on one session's board wakes its readers; the session tree is unchanged.
+  def broadcast_board(project_id, session_id),
+    do:
+      PubSub.broadcast(Storyarn.PubSub, "ideation:#{project_id}:#{session_id}:shared", {:ideation_changed, session_id})
+
   defp notify_comments(project_id, :sources), do: Storyarn.Projects.invalidate_ideation_comment_sources(project_id)
 
   defp notify_comments(project_id, :activity), do: Storyarn.Projects.invalidate_ideation_comment_activity(project_id)

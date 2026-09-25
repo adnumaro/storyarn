@@ -84,6 +84,7 @@ export function round(overrides: Partial<Round> = {}): Round {
     revealed_at: null,
     started_at: "2026-09-08T10:00:00Z",
     closed_at: null,
+    decision_lane: {},
     inserted_at: "2026-09-08T09:00:00Z",
     updated_at: "2026-09-08T10:00:00Z",
     ...overrides,

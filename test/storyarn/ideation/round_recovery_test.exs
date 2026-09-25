@@ -26,7 +26,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert {:ok, _} = Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, ordinary.id, next.id, true)
     capsule = capture(ctx)
 
-    assert {:ok, %{"version" => 11, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 12, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["rounds"]) == 2
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
@@ -118,7 +118,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
       |> update_in(["rows"], &Map.drop(&1, ~w(decision_applications decision_task_links)))
       |> update_in(
         ["rows", "rounds"],
-        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at decision_lane)) end)
       )
       |> update_in(
         ["rows", "timers"],
@@ -156,6 +156,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
       data
       |> Map.put("version", 8)
       |> update_in(["rows"], &Map.drop(&1, ~w(decision_applications decision_task_links)))
+      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "decision_lane") end))
       |> update_in(["rows", "timers"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
 
     {:ok, capsule} = Capsule.seal(legacy)
@@ -248,7 +249,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
       |> Map.put("version", 1)
       |> update_in(
         ["rows", "rounds"],
-        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at decision_lane)) end)
       )
       |> update_in(
         ["rows", "timers"],
@@ -269,7 +270,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 11
+    assert normalized["version"] == 12
     # A session that had no rounds is born its Round 1, in progress, and its notes join it.
     assert [%{"number" => 1, "status" => "active", "private" => false, "session_id" => born_session}] =
              normalized["rows"]["rounds"]
@@ -293,7 +294,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     [round] = data["rows"]["rounds"]
     now = round["started_at"]
     # Rounds learnt their privacy in version 8; the legacy rows never carried it.
-    round = Map.drop(round, ~w(private reveal_on_expiry revealed_at))
+    round = Map.drop(round, ~w(private reveal_on_expiry revealed_at decision_lane))
 
     legacy =
       data
@@ -301,7 +302,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
       |> update_in(["rows"], &Map.drop(&1, ~w(decision_applications decision_task_links)))
       |> update_in(
         ["rows", "rounds"],
-        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at decision_lane)) end)
       )
       |> update_in(
         ["rows", "timers"],
@@ -325,7 +326,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 11
+    assert normalized["version"] == 12
     assert [%{"number" => 1, "status" => "active"} = normalized_round] = normalized["rows"]["rounds"]
     refute Map.has_key?(normalized_round, "canvas_offset_y")
     assert now
@@ -346,13 +347,28 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
              })
 
     ctx = %{ctx | session: updated}
+
+    assert {:ok, _} =
+             Ideation.move_decision_lane(ctx.author, ctx.project.id, ctx.session.id, first.id, %{
+               x: -40,
+               y: 612.5,
+               version: 0
+             })
+
     {ctx, second} = new_round(ctx, %{prompt: "Next"})
+
+    for attrs <- [%{x: 5, y: 5, version: 0}, %{x: nil, y: nil, version: 1}] do
+      assert {:ok, _} = Ideation.move_decision_lane(ctx.author, ctx.project.id, ctx.session.id, second.id, attrs)
+    end
+
     capsule = capture(ctx)
     assert {:ok, data} = Capsule.open(capsule)
-    assert data["version"] == 11
-    assert [saved_first, _saved_second] = data["rows"]["rounds"]
+    assert data["version"] == 12
+    assert [saved_first, saved_second] = data["rows"]["rounds"]
     assert saved_first["status"] == "closed"
     assert saved_first["prompt"] == "Corrected question"
+    assert saved_first["decision_lane"] == %{"x" => -40, "y" => 612.5, "version" => 1}
+    assert saved_second["decision_lane"] == %{"version" => 2}
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
     session_id = maps["sessions"][ctx.session.id]
@@ -361,7 +377,9 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert previous.recovery_identity == first.recovery_identity
     assert previous.status == :closed
     assert previous.prompt == "Corrected question"
+    assert previous.decision_lane == %{"x" => -40, "y" => 612.5, "version" => 1}
     assert current.id == maps["rounds"][second.id]
+    assert current.decision_lane == %{"version" => 2}
     assert current.status == :active
 
     assert {:ok, [started_revision, update_revision, _original]} =
@@ -379,6 +397,12 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
           fn data -> put_in(data, ["rows", "rounds", Access.at(1), "started_at"], nil) end,
           fn data -> put_in(data, ["rows", "rounds", Access.at(1), "closed_at"], "2026-09-08T12:00:00.000000") end,
           fn data -> put_in(data, ["rows", "rounds", Access.at(0), "status"], "planned") end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "decision_lane", "x"], "left") end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "decision_lane", "version"], 0) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(0), "decision_lane", "y"], -1) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(1), "decision_lane"], %{"version" => 0}) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(1), "decision_lane"], %{"x" => 0, "y" => 0}) end,
+          fn data -> put_in(data, ["rows", "rounds", Access.at(1), "decision_lane"], nil) end,
           fn data -> put_in(data, ["rows", "session_revisions", Access.at(1), "snapshot", "round", "number"], -1) end,
           fn data ->
             put_in(
@@ -476,7 +500,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     |> update_in(["rows"], &Map.drop(&1, ~w(decision_applications decision_task_links)))
     |> update_in(
       ["rows", "rounds"],
-      &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+      &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at decision_lane)) end)
     )
     |> update_in(["rows", "groups"], &Enum.map(&1, fn row -> Map.delete(row, "round_id") end))
     |> update_in(

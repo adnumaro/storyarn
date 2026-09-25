@@ -128,6 +128,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       new_round: 5,
       update_round: 6,
       close_round: 5,
+      move_decision_lane: 5,
       list_rounds: 3,
       list_rounds: 4,
       list_session_rounds: 3,

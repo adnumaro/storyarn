@@ -52,7 +52,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert Enum.map(before, & &1.operation) == ~w(propose accept revise)
     assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.second.id, 1)
     capsule = capture(ctx)
-    assert {:ok, %{"version" => 11, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 12, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["decisions"]) == 1
     assert length(rows["decision_revisions"]) == 3
     refute Jason.encode!(rows) =~ "The hero leaves later"
@@ -207,7 +207,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       |> Map.put("version", 5)
       |> update_in(
         ["rows", "rounds"],
-        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at)) end)
+        &Enum.map(&1, fn row -> Map.drop(row, ~w(private reveal_on_expiry revealed_at decision_lane)) end)
       )
       |> update_in(
         ["rows", "timers"],
@@ -218,7 +218,7 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 11
+    assert normalized["version"] == 12
     assert normalized["rows"]["decisions"] == []
     assert normalized["rows"]["decision_revisions"] == []
     maps = restore(ctx, capsule)
@@ -389,13 +389,20 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
     assert restore(ctx, capsule) == maps
   end
 
-  test "version-ten capsules restore with no task links", ctx do
+  test "version-ten capsules restore with no task links and every lane in its automatic place", ctx do
     {:ok, data} = ctx |> capture() |> Capsule.open()
-    legacy = data |> Map.put("version", 10) |> update_in(["rows"], &Map.delete(&1, "decision_task_links"))
+
+    legacy =
+      data
+      |> Map.put("version", 10)
+      |> update_in(["rows"], &Map.delete(&1, "decision_task_links"))
+      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "decision_lane") end))
+
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 11
+    assert normalized["version"] == 12
     assert normalized["rows"]["decision_task_links"] == []
+    assert Enum.map(normalized["rows"]["rounds"], & &1["decision_lane"]) == [%{}]
     assert length(normalized["rows"]["decisions"]) == 1
     maps = restore(ctx, capsule)
     assert map_size(maps["decisions"]) == 1
@@ -541,10 +548,11 @@ defmodule Storyarn.Ideation.DecisionRecoveryTest do
       |> Map.put("version", 9)
       |> update_in(["rows", "decision_revisions"], &Enum.map(&1, fn row -> Map.drop(row, stripped) end))
       |> update_in(["rows"], &Map.drop(&1, ~w(decision_applications decision_task_links)))
+      |> update_in(["rows", "rounds"], &Enum.map(&1, fn row -> Map.delete(row, "decision_lane") end))
 
     assert {:ok, capsule} = Capsule.seal(legacy)
     assert {:ok, normalized} = Capsule.open(capsule)
-    assert normalized["version"] == 11
+    assert normalized["version"] == 12
     assert normalized["rows"]["decisions"] == []
   end
 

@@ -3,6 +3,10 @@ defmodule Storyarn.Ideation.Sessions.Round do
   A session-owned creative round. Rounds are horizontal bands of the session
   canvas, stacked in chronological order. A band is as tall as its content, so
   nothing about its height is stored; note positions are relative to its header.
+  Its decision lane sits under the band's content until someone moves it; a
+  moved lane keeps its `x` and `y`, relative to the header and never above it.
+  Every move bumps the lane's `version`, including a return to the automatic
+  place, which keeps only the version.
   A round in progress can be private: its contributions stay with their authors
   until the facilitator reveals the round, or the timer does when asked to.
   """
@@ -21,6 +25,7 @@ defmodule Storyarn.Ideation.Sessions.Round do
     field :revealed_at, :utc_datetime_usec
     field :started_at, :utc_datetime_usec
     field :closed_at, :utc_datetime_usec
+    field :decision_lane, :map, default: %{}
     timestamps(type: :utc_datetime_usec)
   end
 

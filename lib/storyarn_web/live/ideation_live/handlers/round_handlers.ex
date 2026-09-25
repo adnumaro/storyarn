@@ -3,6 +3,14 @@ defmodule StoryarnWeb.IdeationLive.Handlers.RoundHandlers do
   alias Storyarn.Ideation
   alias StoryarnWeb.IdeationLive.Helpers.Params
 
+  # Moving the decision lane is a placement, fenced by the lane's own version
+  # rather than by the session revision.
+  def run("move_decision_lane", scope, project_id, session_id, params) do
+    with {:ok, id} <- Params.positive(params["round_id"]) do
+      Ideation.move_decision_lane(scope, project_id, session_id, id, Params.fields(params, [:x, :y, :version]))
+    end
+  end
+
   def run(event, scope, project_id, session_id, params) do
     with {:ok, revision} <- Params.positive(params["revision"]),
          {:ok, session} <- execute(event, scope, project_id, session_id, revision, params) do

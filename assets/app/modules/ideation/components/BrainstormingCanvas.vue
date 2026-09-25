@@ -149,6 +149,11 @@ const {
       decisions: DecisionRecord[];
       focusId: number | null;
       comments?: Record<string, number>;
+      /** Lanes someone moved, by round, in canvas units. */
+      places?: Map<number, Point>;
+      /** Whether the reader may move this round's lane now. */
+      movable?: (roundId: number) => boolean;
+      move?: (roundId: number, point: Point) => Promise<void>;
     };
   };
 }>();
@@ -322,6 +327,8 @@ interface CanvasDrag {
   id: number | null;
   groupId?: number;
   groupVersions?: GroupVersions;
+  /** The round whose decision lane is being dragged. */
+  laneId?: number;
   start: Point;
   origin: Point;
   notes: Array<{ id: number; origin: Point }>;
@@ -353,6 +360,7 @@ const marquee = useCanvasMarquee({
 });
 const { active: selectingArea, area: selectionArea } = marquee;
 const groupAnchors = ref(new Map<number, Point>());
+const laneAnchors = ref(new Map<number, Point>());
 const groupHeights = ref(new Map<number, number>());
 const openSyntheses = ref(new Set<number>());
 const layouts = computed(() => {
@@ -442,8 +450,8 @@ watch(
   },
   { immediate: true },
 );
-// Decisions close their band: its lane sits under the lowest note or frame
-// and the band grows around it.
+// Decisions close their band: its lane sits under the lowest note or frame,
+// or where someone moved it, and the band grows around it.
 const laneCardHeight = ref(LANE_CARD_HEIGHT);
 const laneDecisions = computed(() =>
   decisionsByRound(decisionLane.value?.decisions ?? [], bands.rounds),
@@ -463,11 +471,16 @@ function laneFor(roundId: number): LaneLayout | null {
     bottom: contentOnlyBottom(roundId),
     left: contentLeft(roundId),
     cardHeight: laneCardHeight.value,
+    at: laneAnchors.value.get(roundId) ?? decisionLane.value?.places?.get(roundId) ?? null,
   });
 }
+// A moved lane can sit beside or above the band's notes, so the band ends
+// under whichever is lower.
 function contentBottom(roundId: number): number | null {
   const lane = laneFor(roundId);
-  return lane ? laneBottom(lane, offsetOf(roundId)) : contentOnlyBottom(roundId);
+  const content = contentOnlyBottom(roundId);
+  if (!lane) return content;
+  return Math.max(laneBottom(lane, offsetOf(roundId)), content ?? 0);
 }
 const lanes = computed(() =>
   orderedRounds.value
@@ -922,6 +935,39 @@ function groupPointer(event: PointerEvent, group: IdeaGroup, move: boolean) {
     return;
   beginGroupDrag(event, group);
 }
+// A decision lane moves as one block. Its cards keep a press without movement
+// as a selection, so the drag starts only once the pointer travels.
+function lanePointer(event: PointerEvent, roundId: number) {
+  if (drag !== null || selectingArea.value || ![0, 1].includes(event.button)) return;
+  if (panning(event)) {
+    event.preventDefault();
+    focus();
+    beginDrag(event, null, []);
+    return;
+  }
+  const lane = movableLane(roundId);
+  if (!lane) return;
+  event.preventDefault();
+  const capture = event.currentTarget as HTMLElement | null;
+  drag = {
+    pointer: event.pointerId,
+    id: null,
+    laneId: roundId,
+    start: { x: event.clientX, y: event.clientY },
+    origin: { x: lane.x, y: lane.y },
+    notes: [],
+    moved: false,
+    capture,
+  };
+  capture?.setPointerCapture(event.pointerId);
+}
+function laneMovable(roundId: number) {
+  return permissions.edit && !!decisionLane.value?.movable?.(roundId);
+}
+function movableLane(roundId: number) {
+  if (!laneMovable(roundId) || historyState.busy || tool.value !== "select") return null;
+  return lanes.value.find((item) => item.roundId === roundId) ?? null;
+}
 function emptyGroupBody(event: PointerEvent, move: boolean) {
   const target = event.target as HTMLElement;
   return !move && tool.value === "select" && !target.closest("[data-group-content]");
@@ -1001,22 +1047,32 @@ function pointerMove(event: PointerEvent) {
   if (Math.hypot(dx, dy) > 3) drag.moved = true;
   if (!drag.moved) return;
   updateDropTarget(drag, ghost.value);
-  if (drag.groupId !== undefined) {
-    const delta = clampDelta(drag.notes, dy / view.zoom);
-    groupAnchors.value.set(drag.groupId, {
-      x: drag.origin.x + dx / view.zoom,
-      y: drag.origin.y + delta,
+  dragTo(drag, dx, dy);
+}
+function dragTo(current: CanvasDrag, dx: number, dy: number) {
+  if (current.laneId !== undefined) {
+    dragLane(current.laneId, current.origin, dx, dy);
+  } else if (current.groupId !== undefined) {
+    const delta = clampDelta(current.notes, dy / view.zoom);
+    groupAnchors.value.set(current.groupId, {
+      x: current.origin.x + dx / view.zoom,
+      y: current.origin.y + delta,
     });
-    for (const note of drag.notes)
+    for (const note of current.notes)
       positions.value.set(note.id, { x: note.origin.x + dx / view.zoom, y: note.origin.y + delta });
-  } else if (drag.id === null) {
-    view.x = drag.origin.x + dx;
-    view.y = drag.origin.y + dy;
+  } else if (current.id === null) {
+    view.x = current.origin.x + dx;
+    view.y = current.origin.y + dy;
   } else {
-    const delta = clampDelta(drag.notes, dy / view.zoom);
-    for (const note of drag.notes)
+    const delta = clampDelta(current.notes, dy / view.zoom);
+    for (const note of current.notes)
       positions.value.set(note.id, { x: note.origin.x + dx / view.zoom, y: note.origin.y + delta });
   }
+}
+// A lane follows the pointer but never rises above its round header.
+function dragLane(roundId: number, origin: Point, dx: number, dy: number) {
+  const point = { x: origin.x + dx / view.zoom, y: origin.y + dy / view.zoom };
+  laneAnchors.value.set(roundId, clampPoint(point, roundId));
 }
 function updateToolTarget(point: Point) {
   if (tool.value === "connect" && linkSource.value !== null)
@@ -1046,6 +1102,10 @@ async function pointerUp(event: PointerEvent) {
     await finishGroupDrag(event, drag);
     return;
   }
+  if (drag.laneId !== undefined) {
+    await finishLaneDrag(event, drag);
+    return;
+  }
   if (drag.id !== null && drag.moved) finishNoteDrag(drag);
   connectionTarget.value = null;
   dragConnectionSource.value = null;
@@ -1067,6 +1127,15 @@ async function finishGroupDrag(event: PointerEvent, finished: CanvasDrag) {
   groupAnchors.value.delete(finished.groupId!);
   contact.value = new Set();
 }
+async function finishLaneDrag(event: PointerEvent, finished: CanvasDrag) {
+  drag = null;
+  if (finished.capture?.hasPointerCapture(event.pointerId))
+    finished.capture.releasePointerCapture(event.pointerId);
+  const roundId = finished.laneId!;
+  const point = laneAnchors.value.get(roundId);
+  if (finished.moved && point) await decisionLane.value?.move?.(roundId, point);
+  laneAnchors.value.delete(roundId);
+}
 function cancelDrag(event: PointerEvent) {
   marquee.cancel(event);
   connectionTarget.value = null;
@@ -1074,6 +1143,7 @@ function cancelDrag(event: PointerEvent) {
   contact.value = new Set();
   if (!drag || drag.pointer !== event.pointerId) return;
   if (drag?.groupId !== undefined) groupAnchors.value.delete(drag.groupId);
+  if (drag?.laneId !== undefined) laneAnchors.value.delete(drag.laneId);
   for (const note of drag?.notes ?? []) positions.value.delete(note.id);
   drag = null;
 }
@@ -1083,6 +1153,7 @@ function cancelActiveDrag() {
   drag = null;
   for (const note of current.notes) positions.value.delete(note.id);
   if (current.groupId !== undefined) groupAnchors.value.delete(current.groupId);
+  if (current.laneId !== undefined) laneAnchors.value.delete(current.laneId);
   connectionTarget.value = null;
   dragConnectionSource.value = null;
   if (current.capture?.hasPointerCapture(current.pointer))
@@ -1555,7 +1626,9 @@ onUnmounted(() => {
               :round-numbers="roundNumbers"
               :round-count="orderedRounds.length"
               :zoom="view.zoom"
+              :movable="laneMovable"
               :anchor="decisionAnchor"
+              @pointer="lanePointer"
               @focus="emit('focusDecision', $event)"
               @open="emit('openDecision', $event)"
               @measure="(height) => (laneCardHeight = height || LANE_CARD_HEIGHT)"
