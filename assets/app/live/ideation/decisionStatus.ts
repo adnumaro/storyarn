@@ -88,14 +88,26 @@ export function sourceLabel(source: DecisionSource) {
   return source.title.trim() || excerpt(source.preview);
 }
 
-/** The first sentence of the conclusion names the decision until someone edits it. */
-export function deriveTitle(conclusion: string) {
-  const first =
-    conclusion
-      .trim()
-      .split(/(?<=[.!?])\s|\n/)[0]
-      ?.replace(/[.!?]+$/, "") ?? "";
-  return excerpt(first, 60);
+/**
+ * The first sentence of the conclusion names the decision until someone edits
+ * it. A longer sentence keeps its first clause, or as many whole words as fit:
+ * a title is stored and shown whole, so it never ends in an ellipsis.
+ */
+export function deriveTitle(conclusion: string, max = 60) {
+  const first = (conclusion.trim().split(/(?<=[.!?])\s|\n/)[0] ?? "")
+    .replace(/[.!?]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (first.length <= max) return first;
+  const clause = first.split(/\s*[;:—–]\s*/)[0] ?? "";
+  if (clause.length <= max && clause.includes(" ")) return clause;
+  const words = first.slice(0, max + 1).split(" ");
+  return words.length > 1
+    ? words
+        .slice(0, -1)
+        .join(" ")
+        .replace(/[,;:]$/, "")
+    : first.slice(0, max);
 }
 
 export function targetState(target: DecisionTarget): ApplicationState {

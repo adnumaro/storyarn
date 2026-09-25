@@ -61,7 +61,7 @@ const ui: CommentUiConfig = {
         t("brainstormingDecisions.discussionHint")
       }}</span>
     </div>
-    <div class="-mx-3.5 flex max-h-[420px] flex-col overflow-hidden">
+    <div class="-mx-3.5 -my-2.5 flex max-h-[420px] flex-col overflow-hidden">
       <CommentConversation
         :key="`${epoch}:${sessionId}:${state.context}`"
         :state="panel"

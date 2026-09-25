@@ -17,6 +17,7 @@ import {
   Workflow,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
+import UserAvatar from "@components/UserAvatar.vue";
 import DecisionApplication from "./DecisionApplication.vue";
 import DecisionHistory from "./DecisionHistory.vue";
 import DecisionTasks from "./DecisionTasks.vue";
@@ -170,10 +171,21 @@ const hasActions = computed(
             :class="tones[pill.tone]"
             ><component :is="pill.icon" class="size-3" />{{ pill.text }}</span
           ><span v-if="aside" class="text-xs text-muted-foreground">{{ aside }}</span
-          ><span class="text-xs text-muted-foreground"
-            >{{ t("brainstormingDecisions.responsibleLine", { name: responsible }) }} ·
-            {{ recorded }}</span
-          >
+          ><span
+            id="decision-responsible"
+            class="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+            :title="t('brainstormingDecisions.responsibleLine', { name: responsible })"
+            ><UserAvatar
+              :display-name="responsible"
+              size="xs"
+              class="!size-4 shrink-0 !text-[7px]"
+            /><span class="truncate" aria-hidden="true">{{ responsible }}</span
+            ><span class="sr-only">{{
+              t("brainstormingDecisions.responsibleLine", { name: responsible })
+            }}</span></span
+          ><span class="ml-auto text-xs whitespace-nowrap text-muted-foreground">{{
+            recorded
+          }}</span>
         </div>
         <h3
           class="mt-2.5 text-lg leading-6 font-semibold text-pretty break-words"

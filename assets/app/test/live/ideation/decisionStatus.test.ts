@@ -67,7 +67,13 @@ describe("decision status", () => {
     expect(deriveTitle("We ship the ending where Mara stays. The keeper leaves.")).toBe(
       "We ship the ending where Mara stays",
     );
-    expect(deriveTitle("a".repeat(80))).toBe(`${"a".repeat(60)}…`);
+    expect(
+      deriveTitle("Drop the second harbor route; nothing in the project needs to change."),
+    ).toBe("Drop the second harbor route");
+    expect(
+      deriveTitle("Mara keeps the lighthouse and the guild leaves the harbor before the storm."),
+    ).toBe("Mara keeps the lighthouse and the guild leaves the harbor");
+    expect(deriveTitle("a".repeat(80))).toBe("a".repeat(60));
     expect(excerpt("  The   keeper  ")).toBe("The keeper");
     expect(roundTag({ number: 2, prompt: null }, 2)).toBe("R2");
     expect(roundTag({ number: 1, prompt: null }, 1)).toBeNull();
