@@ -79,25 +79,6 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ActorAwareMembershipTest do
     assert %{role: "member"} = Repo.reload!(context.membership)
   end
 
-  test "role changes re-read the target and protect a newly promoted owner", context do
-    assert {:ok, _receipt} =
-             Memberships.transfer_owner(
-               context.owner_scope,
-               context.workspace.id,
-               context.member.id
-             )
-
-    assert {:error, :cannot_change_owner_role} =
-             Memberships.update_member_role(
-               user_scope_fixture(context.member),
-               context.workspace.id,
-               context.membership.id,
-               "viewer"
-             )
-
-    assert %{role: "owner"} = Memberships.get_membership(context.workspace.id, context.member.id)
-  end
-
   test "the current owner can remove a locked current membership", context do
     assert {:ok, _membership} =
              Memberships.remove_member(
@@ -118,24 +99,6 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ActorAwareMembershipTest do
              )
 
     assert Repo.reload!(context.membership)
-  end
-
-  test "removal re-reads the target and protects a newly promoted owner", context do
-    assert {:ok, _receipt} =
-             Memberships.transfer_owner(
-               context.owner_scope,
-               context.workspace.id,
-               context.member.id
-             )
-
-    assert {:error, :cannot_remove_owner} =
-             Memberships.remove_member(
-               user_scope_fixture(context.member),
-               context.workspace.id,
-               context.membership.id
-             )
-
-    assert %{role: "owner"} = Memberships.get_membership(context.workspace.id, context.member.id)
   end
 
   test "cross-workspace membership ids fail without touching another workspace", context do
@@ -180,5 +143,13 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ActorAwareMembershipTest do
     |> User.email_changeset(%{email: unique_user_email()})
     |> User.confirm_changeset()
     |> Repo.insert!()
+  end
+
+  test "workspace ownership cannot be transferred between people" do
+    Code.ensure_loaded!(Storyarn.Workspaces)
+    Code.ensure_loaded!(Memberships)
+
+    refute function_exported?(Storyarn.Workspaces, :transfer_owner, 3)
+    refute function_exported?(Memberships, :transfer_owner, 3)
   end
 end

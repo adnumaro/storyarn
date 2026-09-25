@@ -30,7 +30,6 @@ defmodule Storyarn.Commercial.Billing do
 
   # Limit checks
   defdelegate can_create_workspace?(user), to: Limits
-  defdelegate can_receive_workspace?(user), to: Limits
   defdelegate can_create_project?(workspace), to: Limits
   defdelegate can_publish_reserved_project?(workspace), to: Limits
   defdelegate can_create_project_template?(source_project), to: Limits

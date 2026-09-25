@@ -11,7 +11,6 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
     can_create_project_template?: 1,
     can_create_project_template_version?: 1,
     can_create_workspace?: 1,
-    can_receive_workspace?: 1,
     can_invite_member?: 2,
     can_publish_reserved_project?: 1,
     can_upload_asset?: 2,
@@ -59,9 +58,9 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
     storage_reservation_receipt
     storage_reservation_write_error
   )a
-  @docs_digest "a71f131d08c3946bdd923346a8513863da03e20e9c0ad26fbe123bdb808597bb"
+  @docs_digest "261566d75cb1984f8cb7e752685054cb501f9f2bb0f77228e61415b990788d3b"
   @types_digest "8989f40a036ba7d95841b2bd8b40e1f36b24504f12c8401f2f334488d90cb79f"
-  @specs_digest "35d8c38c7dc14089b9227dfbf934798917309887911d277a156261782beb317b"
+  @specs_digest "b6a4002c664276eecf1fb57e76caf2d57fa5efc32be1432179cb21defaaa40b8"
 
   test "the root facade exposes the complete extracted commercial contract" do
     public_functions =
@@ -147,8 +146,8 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 43
-    assert status_counts == %{documented: 16, hidden: 1, none: 26}
+    assert length(function_docs) == 42
+    assert status_counts == %{documented: 15, hidden: 1, none: 26}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end
@@ -166,7 +165,7 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 17
+    assert length(normalized_specs) == 16
     assert digest(normalized_specs) == @specs_digest
   end
 

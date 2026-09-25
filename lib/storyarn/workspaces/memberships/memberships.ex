@@ -7,7 +7,6 @@ defmodule Storyarn.Workspaces.Memberships do
   alias Storyarn.Workspaces.Memberships.Commands.ManageMembersAuthority
   alias Storyarn.Workspaces.Memberships.Commands.OwnerAuthority
   alias Storyarn.Workspaces.Memberships.Commands.RemoveMember
-  alias Storyarn.Workspaces.Memberships.Commands.TransferOwnership
   alias Storyarn.Workspaces.Memberships.Queries.Authorize
   alias Storyarn.Workspaces.Memberships.Queries.Members
   alias Storyarn.Workspaces.Memberships.Queries.WorkspaceAccess
@@ -31,43 +30,11 @@ defmodule Storyarn.Workspaces.Memberships do
     change_membership(workspace_id, fn -> RemoveMember.remove(scope, workspace_id, membership_id) end)
   end
 
-  def transfer_owner(scope, workspace_id, target_user_id) do
-    if Repo.in_transaction?() do
-      {:error, :ownership_transfer_requires_top_level_transaction}
-    else
-      case TransferOwnership.transfer(scope, workspace_id, target_user_id) do
-        {:ok, %{changed?: true} = receipt} = result ->
-          Phoenix.PubSub.broadcast(
-            Storyarn.PubSub,
-            ownership_topic(receipt.workspace_id),
-            {:workspace_ownership_transferred, receipt}
-          )
-
-          result
-
-        result ->
-          result
-      end
-    end
-  end
-
-  def subscribe_ownership_changes(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
-    Phoenix.PubSub.subscribe(Storyarn.PubSub, ownership_topic(workspace_id))
-  end
-
-  def subscribe_ownership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
-
   def subscribe_membership_changes(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
     Phoenix.PubSub.subscribe(Storyarn.PubSub, membership_topic(workspace_id))
   end
 
   def subscribe_membership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
-
-  def unsubscribe_ownership_changes(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
-    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, ownership_topic(workspace_id))
-  end
-
-  def unsubscribe_ownership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
 
   def unsubscribe_membership_changes(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
     Phoenix.PubSub.unsubscribe(Storyarn.PubSub, membership_topic(workspace_id))
@@ -106,6 +73,5 @@ defmodule Storyarn.Workspaces.Memberships do
     end
   end
 
-  defp ownership_topic(workspace_id), do: "workspaces:#{workspace_id}:ownership"
   defp membership_topic(workspace_id), do: "workspaces:#{workspace_id}:memberships"
 end

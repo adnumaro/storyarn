@@ -12,14 +12,13 @@ defmodule StoryarnWeb.Live.Shared.ContextualExplorations do
   alias StoryarnWeb.Live.Shared.ContextualDecisions
   alias StoryarnWeb.Live.Shared.IdeationReferenceData, as: ReferenceData
 
-  @access_events ~w(project_membership_changed project_ownership_transferred workspace_membership_changed workspace_ownership_transferred)a
+  @access_events ~w(project_membership_changed project_ownership_transferred workspace_membership_changed)a
 
   def init(socket, type) when type in [:sheet, :flow, :scene] do
     if connected?(socket) do
       Projects.subscribe_project_membership_changes(socket.assigns.project.id)
       Projects.subscribe_project_ownership_changes(socket.assigns.project.id)
       Workspaces.subscribe_workspace_membership_changes(socket.assigns.workspace.id)
-      Workspaces.subscribe_workspace_ownership_changes(socket.assigns.workspace.id)
       Ideation.subscribe_sessions(socket.assigns.current_scope, socket.assigns.project.id)
       Ideation.subscribe_decisions(socket.assigns.current_scope, socket.assigns.project.id)
     end

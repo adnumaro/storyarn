@@ -5,7 +5,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Workspaces
-  alias StoryarnWeb.Live.Hooks.SettingsNav
 
   @workspace_invite_roles ~w(admin member viewer)
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -13,10 +12,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   @impl true
   def mount(_params, _session, socket) do
     stale_workspace = socket.assigns.workspace
-
-    if connected?(socket) do
-      :ok = Workspaces.subscribe_workspace_ownership_changes(stale_workspace.id)
-    end
 
     case Workspaces.authorize(
            socket.assigns.current_scope,
@@ -81,7 +76,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         current-user-id={Integer.to_string(@current_scope.user.id)}
         can-invite={Workspaces.can?(@membership.role, :manage_members)}
         can-manage={@workspace.owner_id == @current_scope.user.id}
-        can-transfer-ownership={@workspace.owner_id == @current_scope.user.id}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -112,40 +106,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
     )
   end
 
-  @impl true
-  def handle_event("transfer_owner", %{"user-id" => user_id}, socket) do
-    with_fresh_owner_authorization(
-      socket,
-      dgettext("workspaces", "Only the current workspace owner can transfer ownership."),
-      &do_transfer_owner(&1, user_id)
-    )
-  end
-
-  def handle_event("transfer_owner", _payload, socket) do
-    ownership_transfer_error(
-      socket,
-      dgettext("workspaces", "Workspace ownership could not be transferred.")
-    )
-  end
-
   def handle_event("revoke_invitation", %{"id" => id}, socket) do
     with_fresh_manage_members_authorization(socket, fn socket ->
       do_revoke_invitation(socket, id)
     end)
-  end
-
-  @impl true
-  def handle_info(
-        {:workspace_ownership_transferred, %{workspace_id: workspace_id}},
-        %{assigns: %{workspace: %{id: workspace_id}}} = socket
-      ) do
-    case refresh_workspace_settings_access(socket) do
-      {:ok, refreshed_socket} ->
-        {:noreply, refresh_workspace_navigation(refreshed_socket)}
-
-      {:error, _reason} ->
-        workspace_settings_unavailable(socket)
-    end
   end
 
   # Private helpers
@@ -196,28 +160,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       {:error, reason} ->
         {:error, reason}
     end
-  end
-
-  defp refresh_workspace_navigation(socket) do
-    workspace_data = Workspaces.list_workspaces(socket.assigns.current_scope)
-
-    managed_slugs =
-      workspace_data
-      |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_settings))
-      |> MapSet.new(& &1.workspace.slug)
-
-    general_slugs =
-      workspace_data
-      |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_general_settings))
-      |> MapSet.new(& &1.workspace.slug)
-
-    socket =
-      socket
-      |> assign(:workspaces, Enum.map(workspace_data, & &1.workspace))
-      |> assign(:managed_workspace_slugs, managed_slugs)
-      |> assign(:general_workspace_slugs, general_slugs)
-
-    assign(socket, :settings_nav, SettingsNav.build_nav(socket.assigns))
   end
 
   defp workspace_settings_unavailable(socket) do
@@ -494,63 +436,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to remove member."))}
     end
-  end
-
-  defp do_transfer_owner(socket, user_id) do
-    with {:ok, target_user_id} <- parse_positive_pg_bigint(user_id),
-         {:ok, _receipt} <-
-           Workspaces.transfer_owner(
-             socket.assigns.current_scope,
-             socket.assigns.workspace.id,
-             target_user_id
-           ) do
-      {:noreply,
-       socket
-       |> put_flash(:info, dgettext("workspaces", "Workspace ownership transferred."))
-       |> push_navigate(to: ~p"/users/settings/workspaces/#{socket.assigns.workspace.slug}/members")}
-    else
-      {:error, :limit_reached, _details} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext(
-             "workspaces",
-             "The new owner has reached their workspace limit. They need to free capacity before receiving this workspace."
-           )
-         )}
-
-      {:error, :target_not_member} ->
-        ownership_transfer_error(socket, dgettext("workspaces", "That person is no longer a workspace member."))
-
-      {:error, :ownership_invariant_violation} ->
-        ownership_transfer_error(
-          socket,
-          dgettext(
-            "workspaces",
-            "Ownership could not be transferred because the workspace ownership data is inconsistent."
-          )
-        )
-
-      {:error, :unauthorized} ->
-        ownership_transfer_error(
-          socket,
-          dgettext("workspaces", "Only the current workspace owner can transfer ownership.")
-        )
-
-      {:error, :not_found} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/users/settings")}
-
-      _reason ->
-        ownership_transfer_error(socket, dgettext("workspaces", "Workspace ownership could not be transferred."))
-    end
-  end
-
-  defp ownership_transfer_error(socket, message) do
-    workspace_owner_action_error(socket, message)
   end
 
   defp workspace_owner_action_error(socket, message) do

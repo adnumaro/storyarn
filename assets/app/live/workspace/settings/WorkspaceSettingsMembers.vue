@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Crown, Loader2, Mail, Trash2 } from "@lucide/vue";
+import { Loader2, Mail, Trash2 } from "@lucide/vue";
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
@@ -38,14 +38,12 @@ const {
   currentUserId = null,
   canInvite = false,
   canManage = false,
-  canTransferOwnership = false,
 } = defineProps<{
   members?: WorkspaceMember[];
   pendingInvitations?: PendingInvitation[];
   currentUserId?: string | null;
   canInvite?: boolean;
   canManage?: boolean;
-  canTransferOwnership?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -66,7 +64,7 @@ function changeRole(id: number, role: string): void {
   live.pushEvent("change_role", { "member-id": String(id), role });
 }
 
-// Removal asks for confirmation; ownership transfer keeps its pending-aware dialog.
+// Removal asks for confirmation.
 const removeTarget = ref<WorkspaceMember | null>(null);
 const removeDialogOpen = ref(false);
 
@@ -81,58 +79,6 @@ function removeMember(): void {
   live.pushEvent("remove_member", { id: String(removeTarget.value.id) });
   removeTarget.value = null;
 }
-
-const transferTarget = ref<WorkspaceMember | null>(null);
-const transferDialogOpen = ref(false);
-const transferPending = ref(false);
-const transferTransportFailed = ref(false);
-let transferAttempt = 0;
-
-function requestOwnershipTransfer(member: WorkspaceMember): void {
-  if (!canTransferOwnership) return;
-
-  transferTarget.value = member;
-  transferTransportFailed.value = false;
-  transferDialogOpen.value = true;
-}
-
-function transferOwnership(): void {
-  if (!canTransferOwnership || !transferTarget.value || transferPending.value) return;
-
-  const targetUserId = transferTarget.value.user_id;
-  const attempt = ++transferAttempt;
-  transferPending.value = true;
-  transferTransportFailed.value = false;
-
-  live.pushEvent(
-    "transfer_owner",
-    { "user-id": String(targetUserId) },
-    () => {
-      if (attempt === transferAttempt) resetOwnershipTransfer();
-    },
-    () => {
-      if (attempt !== transferAttempt) return;
-
-      transferPending.value = false;
-      transferTransportFailed.value = true;
-    },
-  );
-}
-
-function resetOwnershipTransfer(): void {
-  transferAttempt += 1;
-  transferTarget.value = null;
-  transferDialogOpen.value = false;
-  transferPending.value = false;
-  transferTransportFailed.value = false;
-}
-
-watch(
-  () => canTransferOwnership,
-  (canTransfer) => {
-    if (!canTransfer) resetOwnershipTransfer();
-  },
-);
 
 watch(
   () => canManage,
@@ -286,18 +232,6 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
         </Badge>
 
         <Button
-          v-if="canTransferOwnership && member.role !== 'owner' && member.user_id !== currentUserId"
-          :id="`transfer-workspace-ownership-${member.user_id}`"
-          type="button"
-          variant="outline"
-          size="sm"
-          @click="requestOwnershipTransfer(member)"
-        >
-          <Crown class="size-3.5" aria-hidden="true" />
-          {{ t("settings.workspace.members.transfer.action") }}
-        </Button>
-
-        <Button
           v-if="manageable(member)"
           :id="`remove-workspace-member-${member.id}`"
           type="button"
@@ -314,30 +248,6 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
 
       <template #footer>{{ t("settings.workspace.members.owner_note") }}</template>
     </SettingsSection>
-
-    <ConfirmDialog
-      v-model:open="transferDialogOpen"
-      :title="t('settings.workspace.members.transfer.title')"
-      :description="
-        t('settings.workspace.members.transfer.description', {
-          name: transferTarget ? memberDisplayName(transferTarget) : '',
-        })
-      "
-      :confirm-text="t('settings.workspace.members.transfer.confirm')"
-      :cancel-text="t('settings.workspace.members.transfer.cancel')"
-      :pending="transferPending"
-      :pending-text="t('settings.workspace.members.transfer.pending')"
-      :close-on-confirm="false"
-      :error="
-        transferTransportFailed
-          ? t('settings.workspace.members.transfer.connection_unconfirmed')
-          : undefined
-      "
-      variant="warning"
-      :icon="Crown"
-      @confirm="transferOwnership"
-      @cancel="resetOwnershipTransfer"
-    />
 
     <ConfirmDialog
       v-if="canManage"

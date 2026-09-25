@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
 
   alias Storyarn.Repo
   alias Storyarn.Workspaces
-  alias StoryarnWeb.SettingsLive.WorkspaceMembers, as: WorkspaceMembersLive
 
   @outside_pg_bigint 9_223_372_036_854_775_808
 
@@ -33,7 +32,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       assert vue.component == "live/workspace/settings/WorkspaceSettingsMembers"
       assert vue.props["can-invite"] == true
       assert vue.props["can-manage"] == true
-      assert vue.props["can-transfer-ownership"] == true
+      refute Map.has_key?(vue.props, "can-transfer-ownership")
       assert vue.props["current-user-id"] == Integer.to_string(user.id)
       assert vue.props["pending-invitations"] == []
     end
@@ -54,38 +53,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       assert vue.component == "live/workspace/settings/WorkspaceSettingsMembers"
       assert vue.props["can-invite"] == true
       assert vue.props["can-manage"] == false
-      assert vue.props["can-transfer-ownership"] == false
-    end
-
-    test "refreshes stale owner assigns before loading member data" do
-      owner = user_fixture()
-      workspace = workspace_fixture(owner)
-      stale_membership = Workspaces.get_membership(workspace.id, owner.id)
-      receiver = user_fixture()
-      receiver_workspace = workspace_fixture(receiver)
-
-      assert {:ok, _deleted_workspace} =
-               Workspaces.delete_workspace(user_scope_fixture(receiver), receiver_workspace.id)
-
-      _receiver_membership = workspace_membership_fixture(workspace, receiver, "member")
-
-      assert {:ok, _receipt} =
-               Workspaces.transfer_owner(user_scope_fixture(owner), workspace.id, receiver.id)
-
-      socket = %Phoenix.LiveView.Socket{
-        assigns: %{
-          __changed__: %{},
-          flash: %{},
-          current_scope: user_scope_fixture(owner),
-          workspace: workspace,
-          membership: stale_membership
-        }
-      }
-
-      assert {:ok, refreshed_socket} = WorkspaceMembersLive.mount(%{}, %{}, socket)
-      assert refreshed_socket.assigns.workspace.owner_id == receiver.id
-      assert refreshed_socket.assigns.membership.role == "admin"
-      assert Enum.find(refreshed_socket.assigns.members, &(&1.user_id == receiver.id)).role == "owner"
     end
 
     test "passes existing members in props", %{conn: conn} do
@@ -554,154 +521,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
 
       assert get_flash_vue(view).props["flash"]["error"] ==
                "Cannot remove the workspace owner."
-    end
-  end
-
-  describe "transfer_owner event" do
-    test "transfers ownership and remounts the former owner as an admin", %{conn: conn} do
-      owner = user_fixture()
-      workspace = workspace_fixture(owner)
-      receiver = user_fixture()
-      receiver_workspace = workspace_fixture(receiver)
-
-      assert {:ok, _deleted_workspace} =
-               Workspaces.delete_workspace(user_scope_fixture(receiver), receiver_workspace.id)
-
-      receiver_membership = workspace_membership_fixture(workspace, receiver, "member")
-
-      {:ok, view, _html} =
-        conn
-        |> log_in_user(owner)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      render_click(view, "transfer_owner", %{"user-id" => to_string(receiver.id)})
-
-      assert_redirect(view, ~p"/users/settings/workspaces/#{workspace.slug}/members")
-      assert Repo.reload!(workspace).owner_id == receiver.id
-      assert Workspaces.get_membership(workspace.id, owner.id).role == "admin"
-      assert Repo.reload!(receiver_membership).role == "owner"
-    end
-
-    test "rejects an ownership target outside PostgreSQL bigint range", %{conn: conn} do
-      owner = user_fixture()
-      workspace = workspace_fixture(owner)
-
-      {:ok, view, _html} =
-        conn
-        |> log_in_user(owner)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      result =
-        render_click(view, "transfer_owner", %{
-          "user-id" => Integer.to_string(@outside_pg_bigint)
-        })
-
-      assert result =~ "Workspace ownership could not be transferred."
-
-      assert render_click(view, "transfer_owner", %{
-               "user-id" => %{"unexpected" => true}
-             }) =~ "Workspace ownership could not be transferred."
-
-      assert render_click(view, "transfer_owner", %{}) =~
-               "Workspace ownership could not be transferred."
-
-      refute_redirected(view)
-      assert Repo.reload!(workspace).owner_id == owner.id
-    end
-
-    test "a stale owner tab stays as admin and hides owner controls after a transfer elsewhere", %{
-      conn: conn
-    } do
-      owner = user_fixture()
-      workspace = workspace_fixture(owner)
-      receiver = user_fixture()
-      receiver_workspace = workspace_fixture(receiver)
-
-      assert {:ok, _deleted_workspace} =
-               Workspaces.delete_workspace(user_scope_fixture(receiver), receiver_workspace.id)
-
-      receiver_membership = workspace_membership_fixture(workspace, receiver, "member")
-
-      {:ok, view, _html} =
-        conn
-        |> log_in_user(owner)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      assert {:ok, _receipt} =
-               Workspaces.transfer_owner(user_scope_fixture(owner), workspace.id, receiver.id)
-
-      refute_redirected(view)
-
-      vue = get_members_vue(view)
-      assert vue.props["can-invite"] == true
-      assert vue.props["can-manage"] == false
-      assert vue.props["can-transfer-ownership"] == false
-
-      owner_id = Integer.to_string(owner.id)
-      receiver_id = Integer.to_string(receiver.id)
-
-      assert Enum.find(vue.props["members"], &(&1["user_id"] == owner_id))["role"] == "admin"
-
-      assert Enum.find(vue.props["members"], &(&1["user_id"] == receiver_id))["role"] ==
-               "owner"
-
-      assert Repo.reload!(receiver_membership).role == "owner"
-    end
-
-    test "synchronizes former and new owner controls across open members tabs", %{conn: conn} do
-      owner = user_fixture()
-      workspace = workspace_fixture(owner)
-      receiver = user_fixture()
-      receiver_workspace = workspace_fixture(receiver)
-
-      assert {:ok, _deleted_workspace} =
-               Workspaces.delete_workspace(user_scope_fixture(receiver), receiver_workspace.id)
-
-      _receiver_membership = workspace_membership_fixture(workspace, receiver, "admin")
-
-      {:ok, former_owner_view, _html} =
-        conn
-        |> log_in_user(owner)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      {:ok, new_owner_view, _html} =
-        build_conn()
-        |> log_in_user(receiver)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      assert get_members_vue(former_owner_view).props["can-manage"] == true
-      assert get_members_vue(new_owner_view).props["can-manage"] == false
-
-      assert {:ok, _receipt} =
-               Workspaces.transfer_owner(user_scope_fixture(owner), workspace.id, receiver.id)
-
-      former_owner_vue = get_members_vue(former_owner_view)
-      new_owner_vue = get_members_vue(new_owner_view)
-
-      assert former_owner_vue.props["can-manage"] == false
-      assert former_owner_vue.props["can-transfer-ownership"] == false
-      assert new_owner_vue.props["can-manage"] == true
-      assert new_owner_vue.props["can-transfer-ownership"] == true
-    end
-
-    test "explains when the receiver has reached their workspace limit", %{conn: conn} do
-      owner = user_fixture()
-      workspace = workspace_fixture(owner)
-      receiver = user_fixture()
-      _receiver_workspace = workspace_fixture(receiver)
-      _receiver_membership = workspace_membership_fixture(workspace, receiver, "member")
-
-      {:ok, view, _html} =
-        conn
-        |> log_in_user(owner)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      result =
-        render_click(view, "transfer_owner", %{"user-id" => to_string(receiver.id)})
-
-      assert result =~ "new owner has reached their workspace limit"
-      assert Repo.reload!(workspace).owner_id == owner.id
-      assert Workspaces.get_membership(workspace.id, owner.id).role == "owner"
     end
   end
 end

@@ -1,8 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { mount } from "@vue/test-utils";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { enableAutoUnmount, mount } from "@vue/test-utils";
 import { createMockLive } from "../../../setup";
 
 const mockLive = createMockLive();
+
+// Unmounting destroys each CodeMirror view, which clears its pending lint
+// timer before the test environment is torn down.
+enableAutoUnmount(afterEach);
 
 vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
