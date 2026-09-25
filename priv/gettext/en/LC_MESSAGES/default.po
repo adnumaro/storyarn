@@ -136,7 +136,7 @@ msgstr ""
 msgid "You don't have permission to perform this action."
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:139
+#: lib/storyarn_web/live/ideation_live/board.ex:140
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr ""
@@ -147,7 +147,7 @@ msgstr ""
 msgid "Untitled session"
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:349
+#: lib/storyarn_web/live/ideation_live/board.ex:350
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""
