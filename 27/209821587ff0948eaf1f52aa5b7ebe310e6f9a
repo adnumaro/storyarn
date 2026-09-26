@@ -1,0 +1,21 @@
+assets/app/live/comments/HubFilters.vue
+  s_b5abbfc6259d0c::t_994260d5b26c00 134,163
+assets/app/test/live/comments/Overlay.test.ts
+  s_b5abbfc6259d0c::t_e8f98dea63930e 126-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "27209821587ff0948eaf1f52aa5b7ebe310e6f9a",
+  "prompts": {},
+  "sessions": {
+    "s_b5abbfc6259d0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce0305-91ec-4116-b95d-80eb72980b92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
