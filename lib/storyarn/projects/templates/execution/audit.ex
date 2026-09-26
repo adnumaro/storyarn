@@ -1144,7 +1144,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Audit do
   end
 
   defp materialized_project_errors(project_id) do
-    snapshot = ProjectSnapshotBuilder.build_snapshot(project_id)
+    snapshot = ProjectSnapshotBuilder.build_snapshot_in_transaction(project_id)
     project_static_errors(project_id, snapshot) ++ materialized_asset_reference_errors(project_id)
   end
 
