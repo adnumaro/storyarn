@@ -1,0 +1,95 @@
+assets/app/modules/flows/editor/components/entities/nodes/JumpNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 42
+assets/app/modules/flows/editor/components/entities/rete/FlowNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 116
+assets/app/modules/flows/editor/expression/domain/instruction-operators.ts
+  s_a86b2b42f8ba47::t_180c7735117bcf 39-45,48-51,53-57,60-63,65-69,72-73,75-80,83-84,86-91,94-95,97-101,104-105,107-111,131-135,137-141
+  s_a86b2b42f8ba47::t_e45d48a0b88508 18,20-21,23,36-37,225,228-235,239-240,242-249
+assets/app/components/builders/condition/ConditionRule.vue
+  s_a86b2b42f8ba47::t_d1f5237323d1c6 65,67-72
+  s_a86b2b42f8ba47::t_59c7c1c46dcb46 10,13,63
+  s_a86b2b42f8ba47::t_366af7a91aebd6 64,75,157,167,176,186,195
+assets/app/locales/es/common.json
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 182-183
+  s_a86b2b42f8ba47::t_2b192ba80d315d 173-181,304-352
+assets/app/modules/flows/editor/components/expression/builders/InstructionBuilder.vue
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 89,96
+assets/app/test/modules/shared/operators/instruction-operators.test.ts
+  s_a86b2b42f8ba47::t_180c7735117bcf 9-10,12-25,102,110,118-123,129-133,139-143,148,154,170,174,242-243,245-248,252-256,259,261-268
+assets/app/locales/es/flows.json
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 486-490
+assets/app/modules/flows/editor/expression/language/linter.ts
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 16,125-127
+assets/app/test/modules/flows/expression/instruction-operators.test.ts
+  s_a86b2b42f8ba47::t_180c7735117bcf 9-10,12-25,102,110,118-123,129-133,139-143,148,154,170,174,242-243,245-248,252-256,259,261-268
+assets/app/locales/en/flows.json
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 486-490
+assets/app/modules/flows/editor/components/expression/builders/instruction/AssignmentRow.vue
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 14-15,233,243,248,252-254,260,271,282,294,304,313
+assets/app/test/modules/flows/expression/condition-operators.test.ts
+  s_a86b2b42f8ba47::t_180c7735117bcf 4,11-24,86-87,95-96,100-104
+assets/app/modules/flows/editor/components/entities/node-shell/NodeSockets.vue
+  s_a86b2b42f8ba47::t_12ec1081fccc5a 4,22
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 26-36,51,58,82,89
+assets/app/modules/flows/editor/components/entities/nodes/SubflowNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 68
+assets/app/locales/en/common.json
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 182-183
+  s_a86b2b42f8ba47::t_333606fe3a3ed1 173-181,304-352
+assets/app/components/builders/ConditionBuilder.vue
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 227-228,235,244,252,258
+assets/app/modules/flows/editor/components/expression/builders/condition/ConditionRule.vue
+  s_a86b2b42f8ba47::t_d1f5237323d1c6 65,67-72
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 13,75,157,167,176,186,195
+  s_a86b2b42f8ba47::t_59c7c1c46dcb46 10,63
+  s_a86b2b42f8ba47::t_89ae730859c779 64
+assets/app/modules/flows/editor/components/entities/nodes/DialogueNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 125
+assets/app/modules/flows/editor/components/entities/nodes/HubNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 40
+assets/app/shared/domain/operators/instruction-operators.ts
+  s_a86b2b42f8ba47::t_180c7735117bcf 39-45,48-51,53-57,60-63,65-69,72-73,75-80,83-84,86-91,94-95,97-101,104-105,107-111,131-135,137-141
+  s_a86b2b42f8ba47::t_1ca85d2bb0679c 18,20-21,23,36-37,225,228-235,239-240,242-249
+assets/app/components/builders/condition/ConditionGroup.vue
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 77-79,88,112
+assets/app/modules/flows/editor/components/entities/nodes/EntryNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 35
+assets/app/modules/flows/editor/components/expression/builders/ConditionBuilder.vue
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 227-228,235,244,252,258
+assets/app/test/modules/shared/operators/condition-operators.test.ts
+  s_a86b2b42f8ba47::t_180c7735117bcf 4,11-24,86-87,95-96,100-104
+assets/app/modules/flows/editor/components/expression/builders/condition/ConditionGroup.vue
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 77-79,88,112
+assets/app/components/builders/InstructionBuilder.vue
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 89,96
+assets/app/modules/flows/editor/components/entities/nodes/ConditionNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 218
+assets/app/plugins/expression-editor/linter.ts
+  s_a86b2b42f8ba47::t_6f7cd461a5cb8f 16,125-127
+assets/app/modules/flows/editor/components/entities/nodes/ExitNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 66
+assets/app/modules/flows/editor/components/entities/nodes/InstructionNode.vue
+  s_a86b2b42f8ba47::t_1afa2bcf43112b 87
+assets/app/components/builders/instruction/AssignmentRow.vue
+  s_a86b2b42f8ba47::t_d710c5a0e3faf8 14-15,233,243,248,252-254,260,271,282,294,304,313
+assets/app/modules/flows/editor/expression/domain/condition-operators.ts
+  s_a86b2b42f8ba47::t_e65ecb29f253be 57,60-76
+assets/app/shared/domain/operators/condition-operators.ts
+  s_a86b2b42f8ba47::t_f6ab78ee5c809e 57,60-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6aadb91ffab081b8cbe2e8ecba6ef74cb9cb227a",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
