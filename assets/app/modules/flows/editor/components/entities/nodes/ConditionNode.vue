@@ -13,6 +13,10 @@ import type {
   ReteEmitFn,
   ReteNodeData,
 } from "../../../../types";
+import {
+  OPERATOR_LABEL_KEYS,
+  type ConditionOperator,
+} from "@modules/flows/editor/expression/domain/condition-operators";
 
 interface ConditionNodeData {
   has_stale_refs?: boolean;
@@ -47,7 +51,11 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 // --- Condition formatting (matching V1 condition.js exactly) ---
 
+// Operators without a symbol read as words, with the same labels as the builder.
+const WORD_OPERATORS = new Set<string>(["is_empty", "is_true", "is_false", "is_nil"]);
+
 function getOperatorSymbol(operator: string): string {
+  if (WORD_OPERATORS.has(operator)) return t(OPERATOR_LABEL_KEYS[operator as ConditionOperator]);
   const symbols: Record<string, string> = {
     equals: "=",
     not_equals: "≠",
@@ -58,10 +66,6 @@ function getOperatorSymbol(operator: string): string {
     contains: "∋",
     starts_with: "^=",
     ends_with: "$=",
-    is_empty: "is empty",
-    is_true: "is true",
-    is_false: "is false",
-    is_nil: "is nil",
     not_contains: "∌",
     before: "<",
     after: ">",
@@ -148,7 +152,7 @@ const summary = computed(() => {
     return formatBlockSummary(condition.blocks, !!d.switch_mode, condition);
   }
   if (!condition?.rules || condition.rules.length === 0) {
-    return d.switch_mode ? "No conditions" : "No condition";
+    return t(`flows.nodes.condition_summary.${d.switch_mode ? "no_conditions" : "no_condition"}`);
   }
   return formatFlatSummary(condition.rules, !!d.switch_mode, condition);
 });
