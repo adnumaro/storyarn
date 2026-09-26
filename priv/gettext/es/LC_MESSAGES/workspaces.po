@@ -352,12 +352,12 @@ msgstr "Solo el propietario del espacio de trabajo puede añadir editores. Inví
 msgid "This invitation cannot be accepted because the workspace has no editor seats left. Ask the workspace owner to free one, then try this invitation again."
 msgstr "Esta invitación no se puede aceptar porque el espacio de trabajo no tiene asientos de editor libres. Pide al propietario que libere uno y vuelve a intentarlo con esta invitación."
 
-#: lib/storyarn_web/live/settings_live/workspace_usage.ex:30
+#: lib/storyarn_web/live/settings_live/workspace_usage.ex:44
 #, elixir-autogen, elixir-format
 msgid "Usage"
 msgstr "Uso"
 
-#: lib/storyarn_web/live/settings_live/workspace_usage.ex:40
+#: lib/storyarn_web/live/settings_live/workspace_usage.ex:54
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to see this workspace's usage."
 msgstr "No tienes permiso para ver el uso de este espacio de trabajo."

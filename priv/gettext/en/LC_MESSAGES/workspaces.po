@@ -352,12 +352,12 @@ msgstr ""
 msgid "This invitation cannot be accepted because the workspace has no editor seats left. Ask the workspace owner to free one, then try this invitation again."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_usage.ex:30
+#: lib/storyarn_web/live/settings_live/workspace_usage.ex:44
 #, elixir-autogen, elixir-format
 msgid "Usage"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_usage.ex:40
+#: lib/storyarn_web/live/settings_live/workspace_usage.ex:54
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to see this workspace's usage."
 msgstr ""

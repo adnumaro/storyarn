@@ -5,7 +5,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceUsage do
   workspace owner's plan, which the owner manages in Plan & billing.
 
   The owner, admins and members see it. Viewers and project-only members get
-  no workspace totals.
+  no workspace totals. The page follows membership changes: someone demoted to
+  viewer or removed while it is open is sent away and receives no more figures.
   """
   use StoryarnWeb, :live_view
 
@@ -17,11 +18,24 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceUsage do
   def mount(_params, _session, socket) do
     stale_workspace = socket.assigns.workspace
 
-    case Workspaces.authorize(
-           socket.assigns.current_scope,
-           stale_workspace.id,
-           :view_workspace_usage
-         ) do
+    case authorize_usage(socket, stale_workspace.id) do
+      {:ok, socket} ->
+        if connected?(socket), do: Workspaces.subscribe_workspace_membership_changes(stale_workspace.id)
+        {:ok, socket}
+
+      {:error, socket} ->
+        {:ok, socket}
+    end
+  end
+
+  @impl true
+  def handle_info({:workspace_membership_changed, %{workspace_id: id}}, %{assigns: %{workspace: %{id: id}}} = socket) do
+    {_result, socket} = authorize_usage(socket, id)
+    {:noreply, socket}
+  end
+
+  defp authorize_usage(socket, workspace_id) do
+    case Workspaces.authorize(socket.assigns.current_scope, workspace_id, :view_workspace_usage) do
       {:ok, workspace, membership} ->
         {:ok,
          socket
@@ -33,7 +47,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceUsage do
          |> assign(:usage, serialize_usage(Commercial.workspace_usage(workspace)))}
 
       {:error, _reason} ->
-        {:ok,
+        {:error,
          socket
          |> put_flash(
            :error,

@@ -69,6 +69,50 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceUsageTest do
       end
     end
 
+    test "sends away a member demoted to viewer while the page is open", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      member = user_fixture()
+      membership = workspace_membership_fixture(workspace, member, "member")
+
+      {:ok, view, _html} = conn |> log_in_user(member) |> live(usage_path(workspace))
+      assert get_usage_vue(view).props["usage"]["projects"]
+
+      {:ok, _viewer} =
+        Storyarn.Workspaces.update_member_role(user_scope_fixture(owner), workspace.id, membership.id, "viewer")
+
+      assert_redirect(view, "/users/settings")
+    end
+
+    test "sends away a member removed while the page is open", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      member = user_fixture()
+      membership = workspace_membership_fixture(workspace, member, "admin")
+
+      {:ok, view, _html} = conn |> log_in_user(member) |> live(usage_path(workspace))
+
+      {:ok, _removed} = Storyarn.Workspaces.remove_member(user_scope_fixture(owner), workspace.id, membership.id)
+
+      assert_redirect(view, "/users/settings")
+    end
+
+    test "stays open for the members who still see the totals", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      member = user_fixture()
+      workspace_membership_fixture(workspace, member, "member")
+      other = workspace_membership_fixture(workspace, user_fixture(), "member")
+
+      {:ok, view, _html} = conn |> log_in_user(member) |> live(usage_path(workspace))
+
+      {:ok, _viewer} =
+        Storyarn.Workspaces.update_member_role(user_scope_fixture(owner), workspace.id, other.id, "viewer")
+
+      assert render(view)
+      assert get_usage_vue(view).props["usage"]["projects"]["limit"] == 3
+    end
+
     test "redirects viewers, who receive no workspace totals", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
