@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
 import { useLive } from "@shared/composables/useLive.ts";
+import { useLiveAction } from "@shared/composables/useLiveAction";
 
 const {
   exportCsvUrl = null,
@@ -47,7 +48,8 @@ const {
 }>();
 
 const live = useLive();
-const translating = ref(false);
+const translateAction = useLiveAction(live);
+const translating = translateAction.pending;
 const importing = ref(false);
 const importInput = ref<HTMLInputElement | null>(null);
 
@@ -77,10 +79,7 @@ const progress = computed(() => {
 });
 
 function translateBatch(): void {
-  translating.value = true;
-  live.pushEvent("translate_batch", {}, () => {
-    translating.value = false;
-  });
+  translateAction.push("translate_batch");
 }
 
 function cancelRun(): void {

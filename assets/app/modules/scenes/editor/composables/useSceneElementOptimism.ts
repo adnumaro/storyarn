@@ -9,6 +9,7 @@ import {
   type Ref,
 } from "vue";
 import { useLive } from "@shared/composables/useLive";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 export type SceneElementType = "annotation" | "connection" | "pin" | "zone";
 
@@ -421,41 +422,73 @@ export function useOptimisticSceneElements<
   });
 
   onMounted(() => {
-    live.handleEvent("pin_created", (payload) => upsertServerElement("pin", pinItems, payload));
-    live.handleEvent("pin_updated", (payload) => upsertServerElement("pin", pinItems, payload));
-    live.handleEvent("pin_drag_update", (payload) =>
-      applyRemoteDragPatch("pin", pinItems, payload),
+    useLiveEvent("pin_created", (payload) => upsertServerElement("pin", pinItems, payload), live);
+    useLiveEvent("pin_updated", (payload) => upsertServerElement("pin", pinItems, payload), live);
+    useLiveEvent(
+      "pin_drag_update",
+      (payload) => applyRemoteDragPatch("pin", pinItems, payload),
+      live,
     );
-    live.handleEvent("pin_deleted", (payload) => removeServerElement("pin", pinItems, payload));
-    live.handleEvent("zone_created", (payload) => upsertServerElement("zone", zoneItems, payload));
-    live.handleEvent("zone_updated", (payload) => upsertServerElement("zone", zoneItems, payload));
-    live.handleEvent("zone_vertices_updated", (payload) =>
-      upsertServerElement("zone", zoneItems, payload),
+    useLiveEvent("pin_deleted", (payload) => removeServerElement("pin", pinItems, payload), live);
+    useLiveEvent(
+      "zone_created",
+      (payload) => upsertServerElement("zone", zoneItems, payload),
+      live,
     );
-    live.handleEvent("zone_drag_update", (payload) =>
-      applyRemoteDragPatch("zone", zoneItems, payload),
+    useLiveEvent(
+      "zone_updated",
+      (payload) => upsertServerElement("zone", zoneItems, payload),
+      live,
     );
-    live.handleEvent("zone_deleted", (payload) => removeServerElement("zone", zoneItems, payload));
-    live.handleEvent("connection_created", (payload) =>
-      upsertServerElement("connection", connectionItems, payload),
+    useLiveEvent(
+      "zone_vertices_updated",
+      (payload) => upsertServerElement("zone", zoneItems, payload),
+      live,
     );
-    live.handleEvent("connection_updated", (payload) =>
-      upsertServerElement("connection", connectionItems, payload),
+    useLiveEvent(
+      "zone_drag_update",
+      (payload) => applyRemoteDragPatch("zone", zoneItems, payload),
+      live,
     );
-    live.handleEvent("connection_deleted", (payload) =>
-      removeServerElement("connection", connectionItems, payload),
+    useLiveEvent(
+      "zone_deleted",
+      (payload) => removeServerElement("zone", zoneItems, payload),
+      live,
     );
-    live.handleEvent("annotation_created", (payload) =>
-      upsertServerElement("annotation", annotationItems, payload),
+    useLiveEvent(
+      "connection_created",
+      (payload) => upsertServerElement("connection", connectionItems, payload),
+      live,
     );
-    live.handleEvent("annotation_updated", (payload) =>
-      upsertServerElement("annotation", annotationItems, payload),
+    useLiveEvent(
+      "connection_updated",
+      (payload) => upsertServerElement("connection", connectionItems, payload),
+      live,
     );
-    live.handleEvent("annotation_drag_update", (payload) =>
-      applyRemoteDragPatch("annotation", annotationItems, payload),
+    useLiveEvent(
+      "connection_deleted",
+      (payload) => removeServerElement("connection", connectionItems, payload),
+      live,
     );
-    live.handleEvent("annotation_deleted", (payload) =>
-      removeServerElement("annotation", annotationItems, payload),
+    useLiveEvent(
+      "annotation_created",
+      (payload) => upsertServerElement("annotation", annotationItems, payload),
+      live,
+    );
+    useLiveEvent(
+      "annotation_updated",
+      (payload) => upsertServerElement("annotation", annotationItems, payload),
+      live,
+    );
+    useLiveEvent(
+      "annotation_drag_update",
+      (payload) => applyRemoteDragPatch("annotation", annotationItems, payload),
+      live,
+    );
+    useLiveEvent(
+      "annotation_deleted",
+      (payload) => removeServerElement("annotation", annotationItems, payload),
+      live,
     );
   });
 

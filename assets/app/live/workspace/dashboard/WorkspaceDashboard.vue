@@ -27,6 +27,7 @@ import NewProjectForm from "../../project/form/ProjectNewProjectForm.vue";
 import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import PageContainer from "@shell/PageContainer.vue";
+import { useLiveAction } from "@shared/composables/useLiveAction";
 
 interface Workspace {
   name: string;
@@ -130,7 +131,8 @@ const localSearch = ref(searchQuery);
 const newProjectMode = ref<"blank" | "private" | "public">("blank");
 const selectedTemplateId = ref<number | null>(null);
 const templateProjectName = ref("");
-const templateSubmissionPending = ref(false);
+const templateSubmission = useLiveAction();
+const templateSubmissionPending = templateSubmission.pending;
 const localNewProjectModalOpen = ref(newProjectModalOpen);
 const dismissedTemplateFailureIds = ref<Set<number>>(new Set());
 
@@ -272,20 +274,16 @@ function selectTemplate(template: ProjectTemplate | null) {
 function createProjectFromTemplate() {
   if (!selectedTemplate.value || !canCreateFromTemplate.value) return;
 
-  templateSubmissionPending.value = true;
-
-  live.pushEvent(
+  templateSubmission.push(
     "create_project_from_template",
     {
       template_id: selectedTemplate.value.id,
       name: templateProjectName.value.trim(),
     },
-    (response: { status?: string }) => {
-      templateSubmissionPending.value = false;
-
-      if (response.status === "queued") {
-        localNewProjectModalOpen.value = false;
-      }
+    {
+      onReply: (response) => {
+        if (response.status === "queued") localNewProjectModalOpen.value = false;
+      },
     },
   );
 }

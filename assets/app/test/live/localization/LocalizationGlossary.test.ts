@@ -1,11 +1,11 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { App } from "vue";
 import LanguagePicker from "../../../components/language/LanguagePicker.vue";
 import type { LanguagePickerOption } from "../../../components/language/types";
 import LocalizationGlossary from "../../../live/localization/glossary/LocalizationGlossary.vue";
 import type { LiveInterface } from "../../../shared/composables/useLive";
-import { createMockLive } from "../../setup";
+import { createMockLive, createPromiseMockLive } from "../../setup";
 
 const english: LanguagePickerOption = {
   value: "en",
@@ -31,12 +31,16 @@ function livePlugin(live: LiveInterface) {
   };
 }
 
-function mountGlossary(live: LiveInterface = createMockLive()) {
+function mountGlossary(
+  live: LiveInterface = createMockLive(),
+  extraProps: Record<string, unknown> = {},
+) {
   return mount(LocalizationGlossary, {
     props: {
       sourceLanguage: english,
       targetLanguages: [spanish],
       selectedLocale: "es",
+      ...extraProps,
     },
     global: {
       plugins: [livePlugin(live)],
@@ -66,5 +70,28 @@ describe("LocalizationGlossary language picker", () => {
     wrapper.getComponent(LanguagePicker).vm.$emit("select", spanish);
 
     expect(live.pushEvent).toHaveBeenCalledWith("change_locale", { locale: "es" }, undefined);
+  });
+});
+
+describe("LocalizationGlossary saving", () => {
+  it("frees the save button and reports the failure when the connection drops", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const live = createPromiseMockLive(
+      {},
+      vi.fn(() => Promise.reject(new Error("disconnected"))),
+    );
+    const wrapper = mountGlossary(live, { canEdit: true });
+    const [source, target] = wrapper.findAll("input:not([type=checkbox])");
+    await source.setValue("Lighthouse");
+    await target.setValue("Faro");
+    const save = wrapper.findAll("button").find((b) => b.text() === "Save term")!;
+
+    await save.trigger("click");
+    await Promise.resolve();
+    await Promise.resolve();
+    await wrapper.vm.$nextTick();
+
+    expect(save.attributes("disabled")).toBeUndefined();
+    expect(wrapper.text()).toContain("Could not save the term. Try again.");
   });
 });

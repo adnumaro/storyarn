@@ -2,6 +2,7 @@ import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useLive } from "./useLive";
 import { formatDate } from "../utils/date-utils";
+import { useLiveEvent } from "./useLiveEvent";
 
 export function useMemberInvitations(defaultRole: string) {
   const live = useLive();
@@ -12,10 +13,14 @@ export function useMemberInvitations(defaultRole: string) {
   const invitationPending = ref(false);
   const revokingInvitationId = ref<number | null>(null);
 
-  live.handleEvent("invitation_sent", () => {
-    inviteEmail.value = "";
-    inviteRole.value = defaultRole;
-  });
+  useLiveEvent(
+    "invitation_sent",
+    () => {
+      inviteEmail.value = "";
+      inviteRole.value = defaultRole;
+    },
+    live,
+  );
 
   function sendInvitation() {
     if (invitationPending.value) return;

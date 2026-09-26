@@ -1,6 +1,7 @@
 import { computed, onMounted, onUnmounted, ref, type Ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import type { KonvaEventObject } from "konva/lib/Node";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 const SELECTION_COLOR = "#6366f1";
 const DELETE_KEYS = new Set(["Delete", "Backspace"]);
@@ -83,17 +84,25 @@ export function useSelection({ activeTool, onCreationClick }: UseSelectionOpts) 
 
   // Listen for server-driven selection (e.g., from SearchPanel focus)
   onMounted(() => {
-    live.handleEvent("element_selected", (payload) => {
-      const type = String(payload.type ?? "");
-      const id = String(payload.id ?? "");
-      selectedType.value = type;
-      selectedId.value = Number(id);
-    });
+    useLiveEvent(
+      "element_selected",
+      (payload) => {
+        const type = String(payload.type ?? "");
+        const id = String(payload.id ?? "");
+        selectedType.value = type;
+        selectedId.value = Number(id);
+      },
+      live,
+    );
 
-    live.handleEvent("element_deselected", () => {
-      selectedType.value = null;
-      selectedId.value = null;
-    });
+    useLiveEvent(
+      "element_deselected",
+      () => {
+        selectedType.value = null;
+        selectedId.value = null;
+      },
+      live,
+    );
 
     window.addEventListener("keydown", onKeyDown);
   });

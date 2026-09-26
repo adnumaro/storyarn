@@ -66,6 +66,7 @@ describe("ReferenceBlock search", () => {
       "search_references",
       { query: "ab", "block-id": 42 },
       expect.any(Function),
+      expect.any(Function),
     );
   });
 

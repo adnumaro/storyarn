@@ -186,13 +186,16 @@ export function useZoneDrag({
     dragOriginalVertices = null;
     dragZoneId = null;
 
-    // Keep override visible until server confirms with new props
+    // Keep override visible until server confirms with new props; if the push
+    // fails, drop it so the zone shows where the server still has it.
+    const clearOverride = () => {
+      zoneDragOverride.value = null;
+    };
     live.pushEvent(
       "update_zone_vertices",
       { id: String(override.id), vertices: override.vertices },
-      () => {
-        zoneDragOverride.value = null;
-      },
+      clearOverride,
+      clearOverride,
     );
   }
 

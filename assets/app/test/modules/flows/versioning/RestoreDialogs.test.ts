@@ -746,3 +746,20 @@ describe("entity restore dialogs", () => {
     warn.mockRestore();
   });
 });
+
+describe("history tab handlers", () => {
+  it("removes its server-event handlers when the tab closes, so reopening it does not add more", () => {
+    const live = createMockLive();
+    let next = 0;
+    vi.mocked(live.handleEvent).mockImplementation(() => ++next);
+
+    for (let open = 0; open < 3; open++) {
+      const { app } = withSetup(() => useVersionHistory(() => true), { live });
+      app.unmount();
+    }
+
+    const registered = vi.mocked(live.handleEvent).mock.calls.length;
+    expect(registered).toBeGreaterThan(0);
+    expect(live.removeHandleEvent).toHaveBeenCalledTimes(registered);
+  });
+});

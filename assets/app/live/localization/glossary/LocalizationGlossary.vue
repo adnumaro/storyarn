@@ -23,6 +23,7 @@ import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive.ts";
 import DashboardContent from "@shell/DashboardContent.vue";
 import PageContainer from "@shell/PageContainer.vue";
+import { useLiveAction } from "@shared/composables/useLiveAction";
 
 interface GlossaryEntry {
   id: number;
@@ -69,8 +70,10 @@ const sourceTerm = ref("");
 const targetTerm = ref("");
 const context = ref("");
 const doNotTranslate = ref(false);
-const saving = ref(false);
-const syncing = ref(false);
+const saveAction = useLiveAction(live);
+const syncAction = useLiveAction(live);
+const saving = saveAction.pending;
+const syncing = syncAction.pending;
 const feedback = ref<"idle" | "saved" | "synced" | "error">("idle");
 const errorMessage = ref("");
 const pendingDelete = ref<GlossaryEntry | null>(null);
@@ -102,10 +105,9 @@ function changeLocale(language: LanguagePickerOption): void {
 
 function saveEntry(): void {
   if (!canEdit || !formReady.value || saving.value) return;
-  saving.value = true;
   feedback.value = "idle";
 
-  live.pushEvent(
+  saveAction.push(
     "save_entry",
     {
       id: editingId.value,
@@ -114,17 +116,23 @@ function saveEntry(): void {
       context: context.value,
       do_not_translate: doNotTranslate.value,
     },
-    (response: EventResponse) => {
-      saving.value = false;
-      if (response?.ok) {
-        resetForm();
-        feedback.value = "saved";
-      } else {
+    {
+      onReply: (reply) => {
+        const response = reply as EventResponse;
+        if (response.ok) {
+          resetForm();
+          feedback.value = "saved";
+        } else {
+          feedback.value = "error";
+          errorMessage.value = response.errors
+            ? Object.values(response.errors).join(" · ")
+            : t("localization.glossary.save_failed");
+        }
+      },
+      onError: () => {
         feedback.value = "error";
-        errorMessage.value = response?.errors
-          ? Object.values(response.errors).join(" · ")
-          : t("localization.glossary.save_failed");
-      }
+        errorMessage.value = t("localization.glossary.save_failed");
+      },
     },
   );
 }
@@ -151,16 +159,19 @@ function confirmDelete(): void {
 
 function syncGlossary(): void {
   if (!hasProvider || syncing.value) return;
-  syncing.value = true;
   feedback.value = "idle";
-  live.pushEvent("sync_glossary", {}, (response: EventResponse) => {
-    syncing.value = false;
-    if (response?.ok) feedback.value = "synced";
-    else {
-      feedback.value = "error";
-      errorMessage.value = t("localization.glossary.sync_failed");
-    }
-  });
+  const failed = () => {
+    feedback.value = "error";
+    errorMessage.value = t("localization.glossary.sync_failed");
+  };
+  syncAction.push(
+    "sync_glossary",
+    {},
+    {
+      onReply: (reply) => ((reply as EventResponse).ok ? (feedback.value = "synced") : failed()),
+      onError: failed,
+    },
+  );
 }
 
 function resetForm(): void {

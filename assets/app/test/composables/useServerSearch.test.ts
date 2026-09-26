@@ -59,6 +59,7 @@ describe("useServerSearch", () => {
         "search",
         { query: "test" },
         expect.any(Function),
+        expect.any(Function),
       );
     });
 
@@ -74,6 +75,7 @@ describe("useServerSearch", () => {
       expect(mockLive.pushEvent).toHaveBeenCalledWith(
         "search",
         { query: "abc" },
+        expect.any(Function),
         expect.any(Function),
       );
     });
@@ -107,6 +109,7 @@ describe("useServerSearch", () => {
       expect(mockLive.pushEvent).toHaveBeenCalledWith(
         "search_sheets",
         { query: "query" },
+        expect.any(Function),
         expect.any(Function),
       );
 

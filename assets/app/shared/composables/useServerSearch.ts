@@ -52,9 +52,10 @@ export function useServerSearch(options: UseServerSearchOptions = {}): UseServer
   const loading = ref(false);
 
   const debouncedSearch = useDebounceFn((q: string) => {
-    live.pushEvent(searchEvent, { query: q, ...extraPayload?.() }, () => {
+    const settle = () => {
       loading.value = false;
-    });
+    };
+    live.pushEvent(searchEvent, { query: q, ...extraPayload?.() }, settle, settle);
   }, debounceMs);
 
   function search(q: string): void {

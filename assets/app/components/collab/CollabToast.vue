@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "../../shared/composables/useLive";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 const { actionLabels = {} } = defineProps<{
   actionLabels?: Record<string, string>;
@@ -17,13 +18,17 @@ const toast = ref<CollabToastData | null>(null);
 let hideTimeout: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(() => {
-  live.handleEvent("collab_toast", (data: Record<string, unknown>) => {
-    toast.value = data as unknown as CollabToastData;
-    if (hideTimeout) clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
-      toast.value = null;
-    }, 4000);
-  });
+  useLiveEvent(
+    "collab_toast",
+    (data: Record<string, unknown>) => {
+      toast.value = data as unknown as CollabToastData;
+      if (hideTimeout) clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        toast.value = null;
+      }, 4000);
+    },
+    live,
+  );
 });
 
 onUnmounted(() => {
