@@ -15,8 +15,11 @@ import {
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive.ts";
 import PageContainer from "@shell/PageContainer.vue";
+import { formatDate } from "@shared/utils/date-utils";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
+import { useLiveAction } from "@shared/composables/useLiveAction";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 interface LocalizedText {
   source_type: string;
@@ -64,8 +67,10 @@ const live = useLive();
 const translatedText = ref(form.params?.translated_text || text.translated_text || "");
 const status = ref(form.params?.status || text.status || "pending");
 const translatorNotes = ref(form.params?.translator_notes || text.translator_notes || "");
-const saving = ref(false);
-const translating = ref(false);
+const saveAction = useLiveAction(live);
+const translateAction = useLiveAction(live);
+const saving = saveAction.pending;
+const translating = translateAction.pending;
 
 const statusOptions = [
   { key: "pending", label: t("localization.edit.status_pending") },
@@ -76,41 +81,33 @@ const statusOptions = [
 ];
 
 function saveTranslation() {
-  saving.value = true;
-  live.pushEvent(
-    "save_translation",
-    {
-      localized_text: {
-        translated_text: translatedText.value,
-        status: status.value,
-        translator_notes: translatorNotes.value,
-      },
+  saveAction.push("save_translation", {
+    localized_text: {
+      translated_text: translatedText.value,
+      status: status.value,
+      translator_notes: translatorNotes.value,
     },
-    () => {
-      saving.value = false;
-    },
-  );
-}
-
-function translateWithDeepL() {
-  translating.value = true;
-  live.pushEvent("translate_with_deepl", {}, () => {
-    translating.value = false;
   });
 }
 
-live.handleEvent("text_updated", (payload) => {
-  if (payload.translated_text !== undefined)
-    translatedText.value = payload.translated_text as string;
-  if (payload.status !== undefined) status.value = payload.status as string;
-  if (payload.translator_notes !== undefined)
-    translatorNotes.value = payload.translator_notes as string;
-});
+function translateWithDeepL() {
+  translateAction.push("translate_with_deepl");
+}
+
+useLiveEvent(
+  "text_updated",
+  (payload) => {
+    if (payload.translated_text !== undefined)
+      translatedText.value = payload.translated_text as string;
+    if (payload.status !== undefined) status.value = payload.status as string;
+    if (payload.translator_notes !== undefined)
+      translatorNotes.value = payload.translator_notes as string;
+  },
+  live,
+);
 
 function formatDateTime(datetime: string | undefined) {
-  if (!datetime) return "";
-  const d = new Date(datetime);
-  return d.toISOString().slice(0, 16).replace("T", " ");
+  return formatDate(datetime, locale.value, "datetime");
 }
 </script>
 

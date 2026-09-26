@@ -110,6 +110,11 @@ tests.
 
 - Reusable Vue components live under `assets/app/components/`; pure TypeScript
   helpers and composables live under `assets/app/shared/`.
+- Server-pushed LiveView events are handled with `useLiveEvent`, which removes
+  the handler when the component unmounts. A push that drives a busy state
+  goes through `useLiveAction`, whose `pending` settles on the reply, a
+  transport error or a timeout. Dates, relative times and byte counts use
+  `shared/utils/date-utils.ts` and `shared/utils/format-bytes.ts`.
 - LiveView helpers live under `lib/storyarn_web/helpers/` or
   `lib/storyarn_web/live/shared/` and may coordinate presentation state only.
 - Background jobs live under `lib/storyarn/workers/{owner}/` and enter business

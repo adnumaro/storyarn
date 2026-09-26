@@ -19,7 +19,7 @@ const { status = "idle" } = defineProps<{
     >
       <Loader2 v-if="status === 'saving'" class="size-3 animate-spin" />
       <Check v-if="status === 'saved'" class="size-3 text-green-500" />
-      <span>{{ status === "saving" ? "Saving..." : "Saved" }}</span>
+      <span>{{ status === "saving" ? $t("common.saving") : $t("common.saved") }}</span>
     </span>
   </Transition>
 </template>

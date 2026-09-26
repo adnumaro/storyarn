@@ -1,4 +1,6 @@
 import { computed, getCurrentScope, onScopeDispose, ref } from "vue";
+import { i18n } from "@app/i18n";
+import { formatBytes } from "../utils/format-bytes";
 
 export type AssetUploadPurpose = "avatar" | "banner" | "scene_background";
 
@@ -48,8 +50,30 @@ interface UploadResponseBody extends Record<string, unknown> {
 
 const ERROR_DISMISS_MS = 6000;
 
-function errorMessage(body: UploadResponseBody, fallback: string): string {
-  return typeof body.error === "string" ? body.error : fallback;
+// The upload endpoints answer with an error code; any other code, or a failure
+// before the server answered, reads as a generic failure.
+const UPLOAD_ERROR_MESSAGES: Record<string, string> = {
+  too_large: "common.assets.api_file_too_large",
+  not_accepted: "common.assets.file_not_accepted",
+  invalid_svg: "common.assets.file_not_accepted",
+  storage_limit_reached: "common.assets.storage_limit_reached",
+  forbidden: "common.assets.upload_forbidden",
+};
+
+class UploadError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
+
+function responseError(body: UploadResponseBody): UploadError {
+  return new UploadError(typeof body.error === "string" ? body.error : "upload_failed");
+}
+
+/** The message for a failed upload, in the viewer's language. */
+export function uploadErrorMessage(reason: unknown): string {
+  const code = reason instanceof UploadError ? reason.code : "upload_failed";
+  return i18n.global.t(UPLOAD_ERROR_MESSAGES[code] ?? "common.assets.upload_failed");
 }
 
 function isUploadResult(body: UploadResponseBody): body is UploadResponseBody & UploadResult {
@@ -90,8 +114,7 @@ async function inspectUpload(
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as UploadResponseBody;
-    throw new Error(errorMessage(body, `Upload inspection failed (${response.status})`));
+    throw responseError((await response.json().catch(() => ({}))) as UploadResponseBody);
   }
 
   return response.json();
@@ -111,8 +134,7 @@ async function materializeUpload(
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as UploadResponseBody;
-    throw new Error(errorMessage(body, `Upload materialization failed (${response.status})`));
+    throw responseError((await response.json().catch(() => ({}))) as UploadResponseBody);
   }
 
   return response.json();
@@ -143,13 +165,13 @@ function uploadFile(
 
       if (request.status >= 200 && request.status < 300) {
         if (isUploadResult(body)) resolve(body);
-        else reject(new Error("Upload response missing asset data"));
+        else reject(new UploadError("upload_failed"));
       } else {
-        reject(new Error(errorMessage(body, `Upload failed (${request.status})`)));
+        reject(responseError(body));
       }
     };
 
-    request.onerror = () => reject(new Error("Upload failed"));
+    request.onerror = () => reject(new UploadError("upload_failed"));
     request.send(form);
   });
 }
@@ -199,12 +221,6 @@ function imageDimensions(file: File): Promise<{ width: number | null; height: nu
 
 function shouldAskForConfirmation(decision: AssetUploadDecision): boolean {
   return decision.source_exists || decision.requires_variant || decision.variant_exists;
-}
-
-function formatBytes(size: number): string {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
 export function useAssetDecisionUpload() {
@@ -284,7 +300,7 @@ export function useAssetDecisionUpload() {
         progress.value = value;
       });
     } catch (reason) {
-      if (active) setError(reason instanceof Error ? reason.message : String(reason));
+      if (active) setError(uploadErrorMessage(reason));
       return null;
     } finally {
       uploading.value = false;
@@ -315,7 +331,7 @@ export function useAssetDecisionUpload() {
   ): Promise<boolean> {
     dialog.value = {
       fileName: file.name,
-      fileSize: formatBytes(file.size),
+      fileSize: formatBytes(file.size, i18n.global.locale.value),
       purpose,
       action: decision.action,
       sourceExists: decision.source_exists,

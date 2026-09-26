@@ -2,6 +2,8 @@
 import { type CellValue, TableColumn, TableRow } from "@modules/sheets/types.ts";
 import { useLive } from "../../../../../../../../shared/composables/useLive.ts";
 import { getCellValue } from "@modules/sheets/components/entities/blocks/fields/table/tbodyCells/get-cell-value-helpers.ts";
+import { useI18n } from "vue-i18n";
+import { formatDate } from "@shared/utils/date-utils";
 
 const {
   column,
@@ -14,21 +16,10 @@ const {
 }>();
 
 const live = useLive();
+const { locale } = useI18n();
 
-function formatDate(val: CellValue): string {
-  if (!val) {
-    return "\u2014";
-  }
-  try {
-    const d = new Date(String(val) + "T00:00:00");
-    return d.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return String(val);
-  }
+function displayDate(val: CellValue): string {
+  return formatDate(val ? String(val) : null, locale.value, "dateLong") || "\u2014";
 }
 
 function updateDate(row: TableRow, column: TableColumn, value: string): void {
@@ -51,7 +42,7 @@ function updateDate(row: TableRow, column: TableColumn, value: string): void {
   />
   <div v-else class="px-2 py-1">
     <span :class="!getCellValue(row, column) && 'text-foreground/40'" class="text-sm">
-      {{ formatDate(getCellValue(row, column)) }}
+      {{ displayDate(getCellValue(row, column)) }}
     </span>
   </div>
 </template>

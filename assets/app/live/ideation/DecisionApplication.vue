@@ -26,6 +26,7 @@ import type {
   DecisionTarget,
   DecisionTargetType,
 } from "./decisionTypes";
+import { formatDate } from "@shared/utils/date-utils";
 
 const {
   decision,
@@ -104,10 +105,7 @@ function pendingRow(target: DecisionTarget) {
   return state === "not_applied" || state === "partially_applied";
 }
 function when(declaration: DecisionDeclaration) {
-  const parsed = new Date(declaration.at);
-  return Number.isNaN(parsed.getTime())
-    ? ""
-    : new Intl.DateTimeFormat(locale.value, { month: "short", day: "numeric" }).format(parsed);
+  return formatDate(declaration.at, locale.value, "monthDay");
 }
 </script>
 <template>

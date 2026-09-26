@@ -35,6 +35,7 @@ import {
   targetState,
 } from "./decisionStatus";
 import type { ApplicationState, DecisionRecord, DecisionTarget } from "./decisionTypes";
+import { formatDate } from "@shared/utils/date-utils";
 
 const {
   decision,
@@ -144,12 +145,7 @@ const round = computed(() => ({
   tag: roundTag(revision.value.round, roundCount),
   prompt: revision.value.round?.prompt ?? null,
 }));
-const date = computed(() => {
-  const parsed = new Date(decision.updatedAt);
-  return Number.isNaN(parsed.getTime())
-    ? ""
-    : new Intl.DateTimeFormat(locale.value, { month: "short", day: "numeric" }).format(parsed);
-});
+const date = computed(() => formatDate(decision.updatedAt, locale.value, "monthDay"));
 const responsible = computed(
   () => revision.value.responsibleName || t("brainstormingDecisions.formerMember"),
 );

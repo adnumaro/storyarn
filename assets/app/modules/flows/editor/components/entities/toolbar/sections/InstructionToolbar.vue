@@ -32,7 +32,7 @@ function openBuilder() {
     variant="secondary"
     class="text-[10px] px-1.5 py-0 rounded-full"
   >
-    {{ nodeData.assignments.length }} assignment{{ nodeData.assignments.length === 1 ? "" : "s" }}
+    {{ $t("flows.instruction_toolbar.assignments", nodeData.assignments.length) }}
   </Badge>
   <ToolbarSeparator />
   <ToolbarTooltip :label="$t('flows.instruction_toolbar.edit_instructions')">

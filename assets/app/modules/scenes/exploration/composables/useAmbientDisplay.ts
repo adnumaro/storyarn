@@ -1,4 +1,6 @@
 import { onMounted, onUnmounted, ref } from "vue";
+import type { LiveInterface } from "@shared/composables/useLive";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 export interface BubbleData {
   pinId: number | string;
@@ -27,14 +29,14 @@ interface ShowSubtitlePayload {
 }
 
 interface UseAmbientDisplayOpts {
-  handleEvent: (event: string, callback: (payload: Record<string, unknown>) => void) => void;
+  live: LiveInterface;
 }
 
 /**
  * Manages ambient flow display: speech bubbles over pins and subtitles.
  * Listens for server push_events and manages auto-dismiss timers.
  */
-export function useAmbientDisplay({ handleEvent }: UseAmbientDisplayOpts) {
+export function useAmbientDisplay({ live }: UseAmbientDisplayOpts) {
   const bubble = ref<BubbleData | null>(null);
   const subtitle = ref<SubtitleData | null>(null);
 
@@ -63,21 +65,29 @@ export function useAmbientDisplay({ handleEvent }: UseAmbientDisplayOpts) {
   }
 
   onMounted(() => {
-    handleEvent("show_bubble", (payload) => {
-      const { pin_id, text, speaker, duration } = payload as unknown as ShowBubblePayload;
-      clearBubble();
-      bubble.value = { pinId: pin_id, text, speaker, duration };
-      bubbleTimer = setTimeout(clearBubble, duration);
-    });
+    useLiveEvent(
+      "show_bubble",
+      (payload) => {
+        const { pin_id, text, speaker, duration } = payload as unknown as ShowBubblePayload;
+        clearBubble();
+        bubble.value = { pinId: pin_id, text, speaker, duration };
+        bubbleTimer = setTimeout(clearBubble, duration);
+      },
+      live,
+    );
 
-    handleEvent("show_subtitle", (payload) => {
-      const { text, speaker, duration } = payload as unknown as ShowSubtitlePayload;
-      clearSubtitle();
-      subtitle.value = { text, speaker, duration };
-      subtitleTimer = setTimeout(clearSubtitle, duration);
-    });
+    useLiveEvent(
+      "show_subtitle",
+      (payload) => {
+        const { text, speaker, duration } = payload as unknown as ShowSubtitlePayload;
+        clearSubtitle();
+        subtitle.value = { text, speaker, duration };
+        subtitleTimer = setTimeout(clearSubtitle, duration);
+      },
+      live,
+    );
 
-    handleEvent("dismiss_ambient", () => dismissAll());
+    useLiveEvent("dismiss_ambient", () => dismissAll(), live);
   });
 
   onUnmounted(dismissAll);

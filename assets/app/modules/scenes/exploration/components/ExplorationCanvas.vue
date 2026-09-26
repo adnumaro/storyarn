@@ -15,6 +15,7 @@ import { useMovement } from "../composables/useMovement";
 import { usePatrols } from "../composables/usePatrols";
 import SpeechBubble from "./SpeechBubble.vue";
 import SubtitleBar from "./SubtitleBar.vue";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 interface SceneData {
   width?: number;
@@ -182,9 +183,7 @@ const { pause: pausePatrols, resume: resumePatrols } = usePatrols({
 });
 
 // --- Ambient display ---
-const { bubble, subtitle } = useAmbientDisplay({
-  handleEvent: live.handleEvent,
-});
+const { bubble, subtitle } = useAmbientDisplay({ live });
 
 // --- Container click: movement (DOM level for reliable click detection) ---
 function onContainerClick(e: MouseEvent) {
@@ -244,22 +243,30 @@ function showClickFeedback(evt: MouseEvent, walkable: boolean) {
 
 // --- Server events: position save/restore ---
 onMounted(() => {
-  live.handleEvent("request_positions", () => {
-    const pos = getPositions();
-    live.pushEvent("report_positions", {
-      leader: pos.leader,
-      party: pos.party,
-      camera: null,
-    });
-  });
+  useLiveEvent(
+    "request_positions",
+    () => {
+      const pos = getPositions();
+      live.pushEvent("report_positions", {
+        leader: pos.leader,
+        party: pos.party,
+        camera: null,
+      });
+    },
+    live,
+  );
 
-  live.handleEvent("restore_positions", (payload) => {
-    const { leader, party } = payload as { leader: unknown; party: unknown };
-    restorePositions(leader, party);
-  });
+  useLiveEvent(
+    "restore_positions",
+    (payload) => {
+      const { leader, party } = payload as { leader: unknown; party: unknown };
+      restorePositions(leader, party);
+    },
+    live,
+  );
 
-  live.handleEvent("patrol_pause", () => pausePatrols());
-  live.handleEvent("patrol_resume", () => resumePatrols());
+  useLiveEvent("patrol_pause", () => pausePatrols(), live);
+  useLiveEvent("patrol_resume", () => resumePatrols(), live);
 });
 
 // --- Composables in read-only mode ---

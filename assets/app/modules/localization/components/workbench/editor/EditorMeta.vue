@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { Textarea } from "@components/ui/textarea";
-import { formatShortDate } from "../../../domain/format";
+import { formatDate } from "@shared/utils/date-utils";
 import { STATUS_I18N, STATUS_KEYS, VO_I18N, VO_STATUS_KEYS } from "../../../domain/status";
 import type { EditorHistory } from "./types";
 
@@ -41,7 +41,7 @@ const statusHint = computed(() =>
 );
 
 const historyLine = computed(() => {
-  const date = formatShortDate(history.lastTranslatedAt, locale.value);
+  const date = formatDate(history.lastTranslatedAt, locale.value);
   if (!date) return t("localization.editor.history_none");
   if (history.translatedBy) {
     return t("localization.editor.history_translated_by", { name: history.translatedBy, date });

@@ -49,7 +49,7 @@ describe("ProjectSettingsTrash assets", () => {
     const row = wrapper.get('[data-testid="trash-item-asset-42"]');
     expect(row.text()).toContain("portrait.png");
     expect(row.text()).toContain("image/png");
-    expect(row.text()).toContain("2.0 KB");
+    expect(row.text()).toContain("2 KB");
     expect(row.text()).toContain("Deleted by a user");
     expect(row.text()).toContain("Recoverable until");
     expect(wrapper.get('[data-testid="trash-filter-asset"]').text()).toContain("Asset");

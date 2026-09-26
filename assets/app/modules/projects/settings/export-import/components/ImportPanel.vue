@@ -30,8 +30,9 @@ import type {
   ImportPanelProps,
   MainFlowImportOutcome,
 } from "../types";
+import { formatBytes } from "@shared/utils/format-bytes";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const {
   canImport,
@@ -432,12 +433,6 @@ function resetImport() {
   });
 }
 
-function formatFileSize(bytes: number) {
-  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
-}
-
 // ---------------------------------------------------------------------------
 // Step header: Upload → Review → Import
 // ---------------------------------------------------------------------------
@@ -568,7 +563,7 @@ watch(replaceDialogOpen, (open) => {
             <div class="min-w-0">
               <span class="block truncate font-medium">{{ entry.client_name }}</span>
               <span class="text-[13px] text-muted-foreground">
-                {{ formatFileSize(entry.client_size) }}
+                {{ formatBytes(entry.client_size, locale) }}
               </span>
             </div>
           </div>

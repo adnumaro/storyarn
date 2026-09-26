@@ -2,6 +2,7 @@ import { computed, inject, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
 import type { Block } from "../types";
+import { useI18n } from "vue-i18n";
 
 interface BlockActionProps {
   block: Block;
@@ -38,7 +39,8 @@ export function useBlockActions(props: BlockActionProps): BlockActionsReturn {
   }
 
   // ── Label ──
-  const label = computed(() => props.block.config?.label || "Untitled");
+  const { t } = useI18n();
+  const label = computed(() => props.block.config?.label || t("common.untitled"));
   const editingLabel = ref(false);
   const localLabel = ref(label.value);
   const labelInput = ref<HTMLInputElement | null>(null);

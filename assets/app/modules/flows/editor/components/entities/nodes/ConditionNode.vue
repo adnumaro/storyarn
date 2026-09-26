@@ -13,6 +13,10 @@ import type {
   ReteEmitFn,
   ReteNodeData,
 } from "../../../../types";
+import {
+  OPERATOR_LABEL_KEYS,
+  type ConditionOperator,
+} from "@modules/flows/editor/expression/domain/condition-operators";
 
 interface ConditionNodeData {
   has_stale_refs?: boolean;
@@ -29,7 +33,6 @@ interface OutputBadge {
 const {
   data,
   emit,
-  config,
   color,
   nodeDataOverride = null,
 } = defineProps<{
@@ -48,7 +51,11 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 // --- Condition formatting (matching V1 condition.js exactly) ---
 
+// Operators without a symbol read as words, with the same labels as the builder.
+const WORD_OPERATORS = new Set<string>(["is_empty", "is_true", "is_false", "is_nil"]);
+
 function getOperatorSymbol(operator: string): string {
+  if (WORD_OPERATORS.has(operator)) return t(OPERATOR_LABEL_KEYS[operator as ConditionOperator]);
   const symbols: Record<string, string> = {
     equals: "=",
     not_equals: "≠",
@@ -59,10 +66,6 @@ function getOperatorSymbol(operator: string): string {
     contains: "∋",
     starts_with: "^=",
     ends_with: "$=",
-    is_empty: "is empty",
-    is_true: "is true",
-    is_false: "is false",
-    is_nil: "is nil",
     not_contains: "∌",
     before: "<",
     after: ">",
@@ -109,16 +112,23 @@ function countRulesInBlocks(blocks: ConditionBlock[]): number {
 
 // --- Summary ---
 
+function logicLabel(condition: Condition): string {
+  return t(`flows.nodes.condition_summary.${condition.logic === "all" ? "and" : "or"}`);
+}
+
 function formatBlockSummary(
   blocks: ConditionBlock[],
   switchMode: boolean,
   condition: Condition,
 ): string {
-  if (blocks.length === 0) return switchMode ? "No conditions" : "No condition";
-  if (switchMode) return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
-  const ruleCount = countRulesInBlocks(blocks);
-  const logic = condition.logic === "all" ? "AND" : "OR";
-  return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
+  if (blocks.length === 0)
+    return t(`flows.nodes.condition_summary.${switchMode ? "no_conditions" : "no_condition"}`);
+  if (switchMode) return t("flows.nodes.condition_summary.outputs", blocks.length);
+  return t("flows.nodes.condition_summary.rules_in_blocks", {
+    rules: t("flows.nodes.condition_summary.rules", countRulesInBlocks(blocks)),
+    blocks: t("flows.nodes.condition_summary.blocks", blocks.length),
+    logic: logicLabel(condition),
+  });
 }
 
 function formatFlatSummary(
@@ -126,10 +136,12 @@ function formatFlatSummary(
   switchMode: boolean,
   condition: Condition,
 ): string {
-  if (switchMode) return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
-  const logic = condition.logic === "all" ? "AND" : "OR";
+  if (switchMode) return t("flows.nodes.condition_summary.outputs", rules.length);
   if (rules.length === 1) return formatRule(rules[0]);
-  return `${rules.length} rules (${logic})`;
+  return t("flows.nodes.condition_summary.rules_with_logic", {
+    rules: t("flows.nodes.condition_summary.rules", rules.length),
+    logic: logicLabel(condition),
+  });
 }
 
 const summary = computed(() => {
@@ -140,7 +152,7 @@ const summary = computed(() => {
     return formatBlockSummary(condition.blocks, !!d.switch_mode, condition);
   }
   if (!condition?.rules || condition.rules.length === 0) {
-    return d.switch_mode ? "No conditions" : "No condition";
+    return t(`flows.nodes.condition_summary.${d.switch_mode ? "no_conditions" : "no_condition"}`);
   }
   return formatFlatSummary(condition.rules, !!d.switch_mode, condition);
 });
@@ -207,7 +219,7 @@ function getOutputBadges(key: string): OutputBadge[] {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="GitBranch" :label="config.label" />
+    <NodeHeader :color="color" :icon="GitBranch" :label="$t('flows.node_types.condition')" />
 
     <!-- Summary preview -->
     <div

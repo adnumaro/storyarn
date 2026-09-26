@@ -25,7 +25,8 @@ import { useLive } from "@shared/composables/useLive";
 import WorkspaceDeletedProjectsList, {
   type DeletedProject,
 } from "./WorkspaceDeletedProjectsList.vue";
-import { formatBytes, type ByteCount } from "@shared/utils/storage-accounting";
+import { formatBytes, type ByteCount } from "@shared/utils/format-bytes";
+import { formatDate } from "@shared/utils/date-utils";
 
 type ImportStatus = "uploading" | "queued" | "running" | "retrying" | "completed" | "failed";
 
@@ -159,15 +160,8 @@ function progressPercent(item: WorkspaceSnapshotImport): number | null {
   return Math.min(Number(basisPoints) / 100, 100);
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  return new Intl.DateTimeFormat(locale.value, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+function formatDateTime(value: string | null): string {
+  return formatDate(value, locale.value, "datetime");
 }
 
 function importTitle(item: WorkspaceSnapshotImport): string {
@@ -175,7 +169,7 @@ function importTitle(item: WorkspaceSnapshotImport): string {
 }
 
 function importMeta(item: WorkspaceSnapshotImport): string {
-  const parts = [formatDate(item.insertedAt)];
+  const parts = [formatDateTime(item.insertedAt)];
   if (item.fileName && item.fileName !== item.projectName) parts.push(item.fileName);
   if (item.progressTotalBytes) parts.push(formatBytes(item.progressTotalBytes, locale.value));
   return parts.filter((part) => part.length > 0).join(" · ");

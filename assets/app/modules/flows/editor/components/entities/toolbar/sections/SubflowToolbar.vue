@@ -69,6 +69,6 @@ function navigateToSubflow(flowId: number | string) {
     variant="secondary"
     class="text-[10px] px-1.5 py-0 rounded-full"
   >
-    {{ subflowExits.length }} exit{{ subflowExits.length === 1 ? "" : "s" }}
+    {{ $t("flows.subflow_toolbar.exits", subflowExits.length) }}
   </Badge>
 </template>

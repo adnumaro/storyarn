@@ -16,6 +16,7 @@ import { useBlockActions } from "../../../../composables/useBlockActions";
 import type { Block, ReferenceSearchResult } from "../../../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 const triggerId = useId();
 
@@ -73,13 +74,17 @@ interface ReferenceResultsPayload {
   results: ReferenceSearchResult[];
 }
 
-live.handleEvent("reference_results", (payload) => {
-  const data = payload as unknown as ReferenceResultsPayload;
-  if (data.block_id === block.id) {
-    searchResults.value = data.results || [];
-    pendingLoad.value = false;
-  }
-});
+useLiveEvent(
+  "reference_results",
+  (payload) => {
+    const data = payload as unknown as ReferenceResultsPayload;
+    if (data.block_id === block.id) {
+      searchResults.value = data.results || [];
+      pendingLoad.value = false;
+    }
+  },
+  live,
+);
 
 watch(open, (v) => {
   if (v) {

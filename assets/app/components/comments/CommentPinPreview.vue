@@ -4,7 +4,7 @@ import { MessageCircle } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import UserAvatar from "@components/UserAvatar.vue";
 import { commentContextIcon } from "./commentTool";
-import { formatCommentTime } from "./commentTime";
+import { formatRelativeTime } from "@shared/utils/date-utils";
 import type { CommentThread, CommentUiConfig } from "./types";
 
 /**
@@ -13,7 +13,7 @@ import type { CommentThread, CommentUiConfig } from "./types";
  */
 const { thread, ui } = defineProps<{ thread: CommentThread; ui: CommentUiConfig }>();
 const { locale } = useI18n();
-const time = computed(() => formatCommentTime(thread.last_activity_at, locale.value));
+const time = computed(() => formatRelativeTime(thread.last_activity_at, locale.value));
 const contextIcon = computed(() =>
   thread.context ? commentContextIcon(thread.context.type, thread.context.preview?.kind) : null,
 );

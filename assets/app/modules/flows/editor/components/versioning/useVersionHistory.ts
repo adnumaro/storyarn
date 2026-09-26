@@ -1,5 +1,6 @@
 import { onMounted, ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 export interface VersionEntry {
   id?: number;
@@ -86,76 +87,88 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
 
   // Server push event handlers
   onMounted(() => {
-    live.handleEvent("show_unsaved_modal", (payload) => {
-      if (!restoreEnabled()) {
-        invalidateRestoreRequest();
-        return;
-      }
+    useLiveEvent(
+      "show_unsaved_modal",
+      (payload) => {
+        if (!restoreEnabled()) {
+          invalidateRestoreRequest();
+          return;
+        }
 
-      const versionNumber = payload.versionNumber;
-      const hasRequestId = Object.prototype.hasOwnProperty.call(payload, "request_id");
-      const requestId = payload.request_id;
-      if (typeof versionNumber !== "number") return;
-      if (hasRequestId && typeof requestId !== "string") return;
+        const versionNumber = payload.versionNumber;
+        const hasRequestId = Object.prototype.hasOwnProperty.call(payload, "request_id");
+        const requestId = payload.request_id;
+        if (typeof versionNumber !== "number") return;
+        if (hasRequestId && typeof requestId !== "string") return;
 
-      const request = matchingRestoreRequest(
-        ["preview"],
-        hasRequestId ? (requestId as string) : undefined,
-        versionNumber,
-      );
-      if (!request) return;
+        const request = matchingRestoreRequest(
+          ["preview"],
+          hasRequestId ? (requestId as string) : undefined,
+          versionNumber,
+        );
+        if (!request) return;
 
-      clearRestoreLoading(request);
-      restoreRequest = { ...request, phase: "unsaved", pending: false };
-      unsavedVersionNumber.value = versionNumber;
-      showUnsavedModal.value = true;
-    });
+        clearRestoreLoading(request);
+        restoreRequest = { ...request, phase: "unsaved", pending: false };
+        unsavedVersionNumber.value = versionNumber;
+        showUnsavedModal.value = true;
+      },
+      live,
+    );
 
-    live.handleEvent("show_restore_modal", (payload) => {
-      if (!restoreEnabled()) {
-        invalidateRestoreRequest();
-        return;
-      }
+    useLiveEvent(
+      "show_restore_modal",
+      (payload) => {
+        if (!restoreEnabled()) {
+          invalidateRestoreRequest();
+          return;
+        }
 
-      const versionNumber = payload.versionNumber;
-      const hasRequestId = Object.prototype.hasOwnProperty.call(payload, "request_id");
-      const requestId = payload.request_id;
-      if (typeof versionNumber !== "number") return;
-      if (hasRequestId && typeof requestId !== "string") return;
+        const versionNumber = payload.versionNumber;
+        const hasRequestId = Object.prototype.hasOwnProperty.call(payload, "request_id");
+        const requestId = payload.request_id;
+        if (typeof versionNumber !== "number") return;
+        if (hasRequestId && typeof requestId !== "string") return;
 
-      const request = matchingRestoreRequest(
-        ["preview", "review"],
-        hasRequestId ? (requestId as string) : undefined,
-        versionNumber,
-      );
-      if (!request) return;
+        const request = matchingRestoreRequest(
+          ["preview", "review"],
+          hasRequestId ? (requestId as string) : undefined,
+          versionNumber,
+        );
+        if (!request) return;
 
-      clearRestoreLoading(request);
-      restoreRequest = { ...request, phase: "ready", pending: false };
-      showUnsavedModal.value = false;
-      restoreData.value = {
-        versionNumber,
-        report: payload.report as RestoreReport,
-      };
-      showRestoreModal.value = true;
-    });
+        clearRestoreLoading(request);
+        restoreRequest = { ...request, phase: "ready", pending: false };
+        showUnsavedModal.value = false;
+        restoreData.value = {
+          versionNumber,
+          report: payload.report as RestoreReport,
+        };
+        showRestoreModal.value = true;
+      },
+      live,
+    );
 
-    live.handleEvent("version_restored", (payload) => {
-      const hasRequestId = Object.prototype.hasOwnProperty.call(payload, "request_id");
-      const requestId = payload.request_id;
-      if (hasRequestId && typeof requestId !== "string") return;
+    useLiveEvent(
+      "version_restored",
+      (payload) => {
+        const hasRequestId = Object.prototype.hasOwnProperty.call(payload, "request_id");
+        const requestId = payload.request_id;
+        if (hasRequestId && typeof requestId !== "string") return;
 
-      const request = matchingRestoreRequest(
-        ["confirm"],
-        hasRequestId ? (requestId as string) : undefined,
-      );
-      if (!request) return;
+        const request = matchingRestoreRequest(
+          ["confirm"],
+          hasRequestId ? (requestId as string) : undefined,
+        );
+        if (!request) return;
 
-      clearRestoreLoading(request);
-      restoreRequest = null;
-      showRestoreModal.value = false;
-      restoreData.value = null;
-    });
+        clearRestoreLoading(request);
+        restoreRequest = null;
+        showRestoreModal.value = false;
+        restoreData.value = null;
+      },
+      live,
+    );
   });
 
   function beginRestoreRequest(

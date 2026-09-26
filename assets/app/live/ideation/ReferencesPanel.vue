@@ -33,6 +33,7 @@ import type {
   ReferenceTargetType,
   ReferencesPanelState,
 } from "./referenceTypes";
+import { formatDate } from "@shared/utils/date-utils";
 
 const { state, epoch, sessionId } = defineProps<{
   state: ReferencesPanelState;
@@ -107,13 +108,7 @@ function errorText(code: string) {
 }
 
 function date(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : new Intl.DateTimeFormat(locale.value, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(parsed);
+  return formatDate(value, locale.value, "datetime");
 }
 
 function request(action: string, payload: Record<string, unknown> = {}, key?: string) {

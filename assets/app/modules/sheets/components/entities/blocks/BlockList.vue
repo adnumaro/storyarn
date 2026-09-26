@@ -18,6 +18,7 @@ import SelectBlock from "./fields/SelectBlock.vue";
 import TableBlock from "./fields/table/TableBlock.vue";
 import TextBlock from "./fields/TextBlock.vue";
 import BlockDndRoot from "../dnd/BlockDndRoot.vue";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 const blockComponents: Record<string, typeof TextBlock> = {
   text: TextBlock,
@@ -194,12 +195,16 @@ onMounted(() => {
   document.addEventListener("keydown", onKeydown);
   document.addEventListener("keydown", onUndoRedo);
 
-  live.handleEvent("block_lock_denied", ({ blockId }) => {
-    if (selectedBlockId.value === blockId) {
-      selectedBlockId.value = null;
-      lockedBlockId.value = null;
-    }
-  });
+  useLiveEvent(
+    "block_lock_denied",
+    ({ blockId }) => {
+      if (selectedBlockId.value === blockId) {
+        selectedBlockId.value = null;
+        lockedBlockId.value = null;
+      }
+    },
+    live,
+  );
 });
 onUnmounted(() => {
   document.removeEventListener("keydown", onKeydown);

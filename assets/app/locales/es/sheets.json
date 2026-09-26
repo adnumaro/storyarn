@@ -372,7 +372,8 @@
       "uploading": "Subiendo...",
       "upload": "Subir",
       "no_audio": "Sin audio",
-      "open_flow": "Abrir en editor de flujos"
+      "open_flow": "Abrir en editor de flujos",
+      "empty_dialogue": "(diálogo vacío)"
     },
     "references_tab": {
       "variable_usage": "Uso de variables",

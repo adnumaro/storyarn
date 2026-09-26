@@ -70,11 +70,13 @@ function updateLogic(newLogic: "all" | "any") {
         <LogicToggle
           v-if="group.blocks.length >= 2"
           :logic="group.logic"
-          of-label="of the blocks in the group"
+          kind="group"
           :disabled="disabled"
           @update:logic="updateLogic"
         />
-        <span v-else class="text-xs text-muted-foreground font-medium">Group</span>
+        <span v-else class="text-xs text-muted-foreground font-medium">{{
+          $t("common.condition_builder.group")
+        }}</span>
       </div>
       <button
         v-if="!disabled"
@@ -83,7 +85,7 @@ function updateLogic(newLogic: "all" | "any") {
         @click="emit('ungroup')"
       >
         <Ungroup class="size-3" />
-        Ungroup
+        {{ $t("common.condition_builder.ungroup") }}
       </button>
     </div>
 
@@ -107,7 +109,7 @@ function updateLogic(newLogic: "all" | "any") {
       @click="addBlock"
     >
       <Plus class="size-3" />
-      Add block
+      {{ $t("common.condition_builder.add_block") }}
     </button>
   </div>
 </template>

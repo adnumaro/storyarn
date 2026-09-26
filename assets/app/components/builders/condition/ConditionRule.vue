@@ -7,9 +7,10 @@
 
 import { X } from "@lucide/vue";
 import { computed, nextTick, useTemplateRef } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   NO_VALUE_OPERATORS,
-  OPERATOR_LABELS,
+  OPERATOR_LABEL_KEYS,
   operatorsForType,
 } from "../../../shared/domain/operators/condition-operators";
 import type { ConditionOperator } from "../../../shared/domain/operators/condition-operators";
@@ -59,11 +60,19 @@ const variableType = computed(() => {
   return v ? v.block_type : null;
 });
 
+const { t } = useI18n();
+
+// Before a variable is chosen the stored operator still shows in words.
 const operatorOptions = computed(() => {
-  if (!variableType.value) return [];
+  if (!variableType.value) {
+    const current = rule.operator as ConditionOperator | undefined;
+    return current && OPERATOR_LABEL_KEYS[current]
+      ? [{ value: current, label: t(OPERATOR_LABEL_KEYS[current]) }]
+      : [];
+  }
   return operatorsForType(variableType.value).map((op) => ({
     value: op,
-    label: OPERATOR_LABELS[op] || op,
+    label: t(OPERATOR_LABEL_KEYS[op]),
   }));
 });
 
@@ -145,7 +154,7 @@ function update(field: string, value: string | null) {
       <VariableCombobox
         :model-value="rule.sheet || ''"
         :options="sheetOptions"
-        placeholder="sheet"
+        :placeholder="$t('common.condition_builder.placeholders.sheet')"
         :disabled="disabled"
         :empty-text="$t('common.condition_builder.empty_sheets')"
         @update:model-value="(v) => update('sheet', v)"
@@ -155,7 +164,7 @@ function update(field: string, value: string | null) {
         ref="variableRef"
         :model-value="rule.variable || ''"
         :groups="variableGroups"
-        placeholder="variable"
+        :placeholder="$t('common.condition_builder.placeholders.variable')"
         :disabled="disabled || !rule.sheet"
         :empty-text="$t('common.condition_builder.empty_variables')"
         @update:model-value="(v) => update('variable', v)"
@@ -164,7 +173,7 @@ function update(field: string, value: string | null) {
         ref="operatorRef"
         :model-value="rule.operator || ''"
         :options="operatorOptions"
-        placeholder="op"
+        :placeholder="$t('common.condition_builder.placeholders.operator')"
         :disabled="disabled || !rule.variable"
         @update:model-value="(v) => update('operator', v)"
       />
@@ -174,7 +183,7 @@ function update(field: string, value: string | null) {
           ref="valueRef"
           :model-value="rule.value || ''"
           :options="valueOptions"
-          placeholder="value"
+          :placeholder="$t('common.condition_builder.placeholders.value')"
           :disabled="disabled || !rule.operator"
           :empty-text="$t('common.condition_builder.empty_values')"
           @update:model-value="(v) => update('value', v)"
@@ -183,7 +192,7 @@ function update(field: string, value: string | null) {
           v-else
           ref="valueRef"
           :model-value="rule.value || ''"
-          placeholder="value"
+          :placeholder="$t('common.condition_builder.placeholders.value')"
           :disabled="disabled || !rule.operator"
           free-text
           @update:model-value="(v) => update('value', v)"

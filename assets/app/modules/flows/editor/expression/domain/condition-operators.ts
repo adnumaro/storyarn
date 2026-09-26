@@ -54,26 +54,26 @@ export const CONDITION_OPERATORS_BY_TYPE: Record<VariableType, ConditionOperator
 };
 
 /**
- * Human-readable labels for condition operators.
+ * Translation keys for the condition operator labels.
  * Must stay in sync with Condition.operator_label/1.
  */
-export const OPERATOR_LABELS: Record<ConditionOperator, string> = {
-  equals: "equals",
-  not_equals: "not equals",
-  contains: "contains",
-  starts_with: "starts with",
-  ends_with: "ends with",
-  is_empty: "is empty",
-  greater_than: "greater than",
-  greater_than_or_equal: "greater than or equal",
-  less_than: "less than",
-  less_than_or_equal: "less than or equal",
-  is_true: "is true",
-  is_false: "is false",
-  is_nil: "is not set",
-  not_contains: "does not contain",
-  before: "before",
-  after: "after",
+export const OPERATOR_LABEL_KEYS: Record<ConditionOperator, string> = {
+  equals: "common.condition_operators.equals",
+  not_equals: "common.condition_operators.not_equals",
+  contains: "common.condition_operators.contains",
+  starts_with: "common.condition_operators.starts_with",
+  ends_with: "common.condition_operators.ends_with",
+  is_empty: "common.condition_operators.is_empty",
+  greater_than: "common.condition_operators.greater_than",
+  greater_than_or_equal: "common.condition_operators.greater_than_or_equal",
+  less_than: "common.condition_operators.less_than",
+  less_than_or_equal: "common.condition_operators.less_than_or_equal",
+  is_true: "common.condition_operators.is_true",
+  is_false: "common.condition_operators.is_false",
+  is_nil: "common.condition_operators.is_nil",
+  not_contains: "common.condition_operators.not_contains",
+  before: "common.condition_operators.before",
+  after: "common.condition_operators.after",
 };
 
 /**

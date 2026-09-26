@@ -5,22 +5,44 @@
 
 const {
   logic = "all",
-  ofLabel = "of the rules",
+  kind = "rules",
   disabled = false,
 } = defineProps<{
   logic?: "all" | "any";
-  ofLabel?: string;
+  /** What the choice applies to; Spanish words agree with it. */
+  kind?: "rules" | "blocks" | "group";
   disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
   "update:logic": [logic: "all" | "any"];
 }>();
+
+const LOGIC_KEYS = {
+  rules: {
+    all: "common.condition_builder.logic.rules.all",
+    any: "common.condition_builder.logic.rules.any",
+    suffixAll: "common.condition_builder.logic.rules.suffix_all",
+    suffixAny: "common.condition_builder.logic.rules.suffix_any",
+  },
+  blocks: {
+    all: "common.condition_builder.logic.blocks.all",
+    any: "common.condition_builder.logic.blocks.any",
+    suffixAll: "common.condition_builder.logic.blocks.suffix_all",
+    suffixAny: "common.condition_builder.logic.blocks.suffix_any",
+  },
+  group: {
+    all: "common.condition_builder.logic.group.all",
+    any: "common.condition_builder.logic.group.any",
+    suffixAll: "common.condition_builder.logic.group.suffix_all",
+    suffixAny: "common.condition_builder.logic.group.suffix_any",
+  },
+} as const;
 </script>
 
 <template>
   <div class="flex items-center gap-1.5 text-xs">
-    <span class="text-muted-foreground">Match</span>
+    <span class="text-muted-foreground">{{ $t("common.condition_builder.logic.match") }}</span>
     <div class="inline-flex rounded-md border border-border overflow-hidden">
       <button
         type="button"
@@ -33,7 +55,7 @@ const emit = defineEmits<{
         :disabled="disabled"
         @click="emit('update:logic', 'all')"
       >
-        all
+        {{ $t(LOGIC_KEYS[kind].all) }}
       </button>
       <button
         type="button"
@@ -46,9 +68,11 @@ const emit = defineEmits<{
         :disabled="disabled"
         @click="emit('update:logic', 'any')"
       >
-        any
+        {{ $t(LOGIC_KEYS[kind].any) }}
       </button>
     </div>
-    <span class="text-muted-foreground">{{ ofLabel }}</span>
+    <span class="text-muted-foreground">{{
+      $t(logic === "all" ? LOGIC_KEYS[kind].suffixAll : LOGIC_KEYS[kind].suffixAny)
+    }}</span>
   </div>
 </template>

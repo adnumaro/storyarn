@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useI18n } from "vue-i18n";
 import { useLiveVue } from "live_vue";
 import { ImagePlus, Upload, X } from "@lucide/vue";
 import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
@@ -106,25 +105,6 @@ const {
   confirmDecision,
   cancelDecision,
 } = useAssetDecisionUpload();
-const { t } = useI18n();
-
-const uploadErrorMessage = computed(() => formatUploadError(uploadError.value));
-function formatUploadError(value: string | null): string | null {
-  switch (value) {
-    case null:
-      return null;
-    case "too_large":
-      return t("common.assets.api_file_too_large");
-    case "not_accepted":
-      return t("common.assets.file_not_accepted");
-    case "storage_limit_reached":
-      return t("common.assets.storage_limit_reached");
-    case "upload_failed":
-      return t("common.assets.upload_failed");
-    default:
-      return t("common.assets.upload_failed");
-  }
-}
 
 function triggerBackgroundUpload(): void {
   backgroundInput.value?.click();
@@ -236,11 +216,11 @@ async function uploadBackground(file: File | null): Promise<void> {
     </div>
 
     <div
-      v-if="uploadErrorMessage"
+      v-if="uploadError"
       role="alert"
       class="absolute bottom-20 left-1/2 z-20 flex max-w-md -translate-x-1/2 items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive shadow-lg"
     >
-      <span>{{ uploadErrorMessage }}</span>
+      <span>{{ uploadError }}</span>
       <button
         type="button"
         class="-mr-1 rounded p-0.5 text-destructive/70 transition-colors hover:bg-destructive/10 hover:text-destructive"

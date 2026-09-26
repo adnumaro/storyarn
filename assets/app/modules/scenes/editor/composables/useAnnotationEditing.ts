@@ -93,21 +93,19 @@ export function useAnnotationEditing({ containerRef, stageConfig }: UseAnnotatio
       textOverrides.value = { ...textOverrides.value, [annId]: newText };
       textarea.remove();
       editingAnnotationId.value = null;
+      // Revert on error, or when the push itself fails, so UI stays in sync with DB
+      const revert = () => {
+        textOverrides.value = { ...textOverrides.value, [annId]: originalText };
+      };
       live.pushEvent(
         "update_annotation",
         { id: String(annId), field: "text", value: newText },
         (reply) => {
           // Clear override on success (server prop will match)
-          // Revert on error so UI stays in sync with DB
-          if (reply?.error) {
-            textOverrides.value = {
-              ...textOverrides.value,
-              [annId]: originalText,
-            };
-          } else {
-            clearOverride(annId);
-          }
+          if (reply?.error) revert();
+          else clearOverride(annId);
         },
+        revert,
       );
     };
 

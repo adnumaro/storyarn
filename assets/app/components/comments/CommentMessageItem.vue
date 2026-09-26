@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { CornerUpLeft } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import UserAvatar from "@components/UserAvatar.vue";
-import { formatCommentDateTime, formatCommentTime } from "./commentTime";
+import { formatDate, formatRelativeTime } from "@shared/utils/date-utils";
 import type { CommentMessage, CommentUiConfig } from "./types";
 
 interface Segment {
@@ -34,8 +34,8 @@ const {
 const emit = defineEmits<{ reply: [message: CommentMessage] }>();
 const { locale } = useI18n();
 const key = (name: string) => `${ui.i18nPrefix}.${name}`;
-const time = computed(() => formatCommentTime(message.inserted_at, locale.value));
-const fullTime = computed(() => formatCommentDateTime(message.inserted_at, locale.value));
+const time = computed(() => formatRelativeTime(message.inserted_at, locale.value));
+const fullTime = computed(() => formatDate(message.inserted_at, locale.value, "datetime"));
 const mentionNames = computed(() =>
   message.mentions.map((member) => member.display_name).filter((name) => name.length > 0),
 );

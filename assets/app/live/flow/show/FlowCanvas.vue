@@ -143,7 +143,7 @@ function safeParse(json: string, fallback: Record<string, unknown> = {}): Record
     v-if="loading"
     class="w-full h-full flex items-center justify-center text-muted-foreground text-sm"
   >
-    Loading...
+    {{ $t("common.loading") }}
   </div>
   <div v-show="!loading" class="w-full h-full relative">
     <div

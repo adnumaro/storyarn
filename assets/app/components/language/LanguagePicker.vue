@@ -67,8 +67,6 @@ const triggerSize = computed(() => appearance.triggerSize ?? "default");
 const triggerClass = computed(() => appearance.triggerClass ?? "");
 const contentClass = computed(() => appearance.contentClass ?? "");
 const placeholder = computed(() => text.placeholder ?? "");
-const searchPlaceholder = computed(() => text.searchPlaceholder ?? "Search languages...");
-const emptyLabel = computed(() => text.emptyLabel ?? "No languages found.");
 
 const selected = computed(() => {
   return selectedOption ?? options.find((option) => option.value === modelValue) ?? null;
@@ -142,9 +140,12 @@ function closeMenu(): void {
       :class="['w-(--reka-popover-trigger-width) min-w-56 overflow-hidden p-0', contentClass]"
     >
       <Command v-if="mode === 'select'" class="max-h-80">
-        <CommandInput v-if="searchable" :placeholder="searchPlaceholder" />
+        <CommandInput
+          v-if="searchable"
+          :placeholder="text.searchPlaceholder ?? $t('common.language_picker.search')"
+        />
         <CommandList>
-          <CommandEmpty>{{ emptyLabel }}</CommandEmpty>
+          <CommandEmpty>{{ text.emptyLabel ?? $t("common.language_picker.empty") }}</CommandEmpty>
           <CommandGroup>
             <CommandItem
               v-for="option in options"

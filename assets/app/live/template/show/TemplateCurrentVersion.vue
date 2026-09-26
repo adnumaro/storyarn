@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
-import { formatTemplateDate } from "../templateFormat";
+import { formatDate } from "@shared/utils/date-utils";
 import type { TemplateCurrentVersion } from "../types";
 
 const { version } = defineProps<{ version: TemplateCurrentVersion | null }>();
@@ -10,9 +10,7 @@ const { t, te, locale } = useI18n();
 // A snapshot counts what it holds by record name; one it does not name keeps that name.
 const countLabel = (key: string) =>
   te(`templates.show.counts.${key}`) ? t(`templates.show.counts.${key}`) : key;
-const published = computed(() =>
-  version ? formatTemplateDate(version.publishedAt, locale.value) : "",
-);
+const published = computed(() => (version ? formatDate(version.publishedAt, locale.value) : ""));
 const previewGroups = computed(() =>
   version
     ? (["sheets", "flows", "scenes"] as const)

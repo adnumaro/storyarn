@@ -14,7 +14,6 @@ interface EntryNodeData {
 const {
   data,
   emit,
-  config,
   color,
   nodeDataOverride = null,
 } = defineProps<{
@@ -33,7 +32,7 @@ const refs = computed<ReferencingFlow[]>(() => nodeData.value.referencing_flows 
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="Play" :label="config.label" />
+    <NodeHeader :color="color" :icon="Play" :label="$t('flows.node_types.entry')" />
     <div
       v-for="ref in refs"
       :key="ref.flow_id"

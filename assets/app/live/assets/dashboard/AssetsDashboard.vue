@@ -6,6 +6,8 @@ import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { useLive } from "@shared/composables/useLive.ts";
 import PageContainer from "@shell/PageContainer.vue";
+import { formatDate } from "@shared/utils/date-utils";
+import { formatBytes } from "@shared/utils/format-bytes";
 
 interface Asset {
   id: number;
@@ -153,7 +155,7 @@ const {
 }>();
 
 const live = useLive();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const showTrashConfirm = ref(false);
 
 const usageSummaries = computed<UsageSummary[]>(() => {
@@ -313,10 +315,7 @@ function isAudio(asset: Asset) {
 }
 
 function formatSize(bytes: number) {
-  if (!bytes) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1048576).toFixed(1)} MB`;
+  return bytes ? formatBytes(bytes, locale.value) : "";
 }
 
 function typeLabel(asset: Asset) {
@@ -329,16 +328,6 @@ function typeBadgeVariant(asset: Asset) {
   if (isImage(asset)) return "default";
   if (isAudio(asset)) return "secondary";
   return "outline";
-}
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function usageFlowHref(usage: { flowId: number }) {
@@ -464,7 +453,7 @@ function usageContext(context: string, trashed = false, archived = false) {
           </div>
           <div>
             <dt class="text-muted-foreground">{{ $t("common.assets.uploaded") }}</dt>
-            <dd>{{ formatDate(selectedAsset.insertedAt) }}</dd>
+            <dd>{{ formatDate(selectedAsset.insertedAt, locale) }}</dd>
           </div>
         </dl>
 

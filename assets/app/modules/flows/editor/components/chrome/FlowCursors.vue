@@ -2,6 +2,8 @@
 import { MousePointer2 } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, reactive } from "vue";
 import { useLive } from "../../../../../shared/composables/useLive";
+import { useI18n } from "vue-i18n";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 interface AreaTransform {
   x: number;
@@ -41,6 +43,7 @@ const {
 }>();
 
 const live = useLive();
+const { t } = useI18n();
 const cursors = reactive(new Map<number | string, CursorEntry>());
 let lastSend = 0;
 const THROTTLE_MS = 50;
@@ -48,7 +51,7 @@ const FADE_MS = 3000;
 let fadeTimers = new Map<number | string, ReturnType<typeof setTimeout>>();
 
 function emailName(email: string | undefined): string {
-  return email?.split("@")[0] || "User";
+  return email?.split("@")[0] || t("flows.node_lock.unknown_user");
 }
 
 // Broadcast local cursor
@@ -71,40 +74,48 @@ function onMouseMove(e: MouseEvent): void {
 }
 
 // Receive remote cursor
-live.handleEvent("cursor_update", (rawData) => {
-  const data = rawData as unknown as CursorUpdatePayload;
-  if (String(data.user_id) === String(currentUserId)) return;
+useLiveEvent(
+  "cursor_update",
+  (rawData) => {
+    const data = rawData as unknown as CursorUpdatePayload;
+    if (String(data.user_id) === String(currentUserId)) return;
 
-  cursors.set(data.user_id, {
-    x: data.x,
-    y: data.y,
-    email: data.user_email,
-    color: data.user_color || "#888",
-    opacity: 1,
-  });
+    cursors.set(data.user_id, {
+      x: data.x,
+      y: data.y,
+      email: data.user_email,
+      color: data.user_color || "#888",
+      opacity: 1,
+    });
 
-  // Fade after inactivity
-  if (fadeTimers.has(data.user_id)) clearTimeout(fadeTimers.get(data.user_id)!);
-  fadeTimers.set(
-    data.user_id,
-    setTimeout(() => {
-      const c = cursors.get(data.user_id);
-      if (c) {
-        c.opacity = 0.3;
-        cursors.set(data.user_id, { ...c });
-      }
-    }, FADE_MS),
-  );
-});
+    // Fade after inactivity
+    if (fadeTimers.has(data.user_id)) clearTimeout(fadeTimers.get(data.user_id)!);
+    fadeTimers.set(
+      data.user_id,
+      setTimeout(() => {
+        const c = cursors.get(data.user_id);
+        if (c) {
+          c.opacity = 0.3;
+          cursors.set(data.user_id, { ...c });
+        }
+      }, FADE_MS),
+    );
+  },
+  live,
+);
 
-live.handleEvent("cursor_leave", (rawData) => {
-  const data = rawData as unknown as CursorLeavePayload;
-  cursors.delete(data.user_id);
-  if (fadeTimers.has(data.user_id)) {
-    clearTimeout(fadeTimers.get(data.user_id)!);
-    fadeTimers.delete(data.user_id);
-  }
-});
+useLiveEvent(
+  "cursor_leave",
+  (rawData) => {
+    const data = rawData as unknown as CursorLeavePayload;
+    cursors.delete(data.user_id);
+    if (fadeTimers.has(data.user_id)) {
+      clearTimeout(fadeTimers.get(data.user_id)!);
+      fadeTimers.delete(data.user_id);
+    }
+  },
+  live,
+);
 
 // Placed at render time so the cursors follow the local pan and zoom.
 const screenCursors = computed(() =>

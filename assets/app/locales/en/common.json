@@ -51,7 +51,11 @@
       "auto_save": "auto-save | auto-saves",
       "no_summary": "No summary",
       "load_more": "Load more",
-      "transport_error": "The request did not complete. Check your connection and try again."
+      "transport_error": "The request did not complete. Check your connection and try again.",
+      "compare_with_current": "Compare with current",
+      "restore_version": "Restore this version",
+      "delete_version": "Delete version",
+      "name_version": "Name this version"
     },
     "create_version_dialog": {
       "title": "Create Version",
@@ -141,12 +145,42 @@
     "condition_builder": {
       "label_placeholder": "label",
       "remove_block": "Remove block",
-      "of_the_rules": "of the rules",
       "add_rule": "Add rule",
       "no_conditions": "No conditions set",
       "empty_sheets": "No sheets with variables. Add a variable block to a sheet first.",
       "empty_variables": "This sheet has no variables yet.",
-      "empty_values": "No values available for this variable."
+      "empty_values": "No values available for this variable.",
+      "logic": {
+        "match": "Match",
+        "rules": {
+          "all": "all",
+          "any": "any",
+          "suffix_all": "of the rules",
+          "suffix_any": "of the rules"
+        },
+        "blocks": {
+          "all": "all",
+          "any": "any",
+          "suffix_all": "of the blocks",
+          "suffix_any": "of the blocks"
+        },
+        "group": {
+          "all": "all",
+          "any": "any",
+          "suffix_all": "of the blocks in the group",
+          "suffix_any": "of the blocks in the group"
+        }
+      },
+      "placeholders": {
+        "sheet": "sheet",
+        "variable": "variable",
+        "operator": "op",
+        "value": "value"
+      },
+      "add_block": "Add block",
+      "group": "Group",
+      "ungroup": "Ungroup",
+      "group_selected": "Group selected ({count})"
     },
     "assignment_row": {
       "change_operator": "Change operator",
@@ -239,6 +273,7 @@
       "file_not_accepted": "File type not supported. Upload a JPEG, PNG, GIF, or WebP image.",
       "storage_limit_reached": "Project storage limit reached. Free up space or raise the project limit before uploading more files.",
       "upload_failed": "Upload failed. Please try again.",
+      "upload_forbidden": "You don't have permission to upload files to this project.",
       "uploading": "Uploading...",
       "upload": "Upload",
       "upload_decision": {
@@ -252,6 +287,69 @@
         "processing": "Uploading and processing image...",
         "confirm": "Continue"
       }
+    },
+    "confirm": "Confirm",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "untitled": "Untitled",
+    "select_placeholder": "Select...",
+    "loading": "Loading...",
+    "language_picker": {
+      "search": "Search languages...",
+      "empty": "No languages found."
+    },
+    "collab_toast": {
+      "message": "{name} {action}",
+      "made_a_change": "made a change"
+    },
+    "condition_operators": {
+      "equals": "equals",
+      "not_equals": "not equals",
+      "contains": "contains",
+      "starts_with": "starts with",
+      "ends_with": "ends with",
+      "is_empty": "is empty",
+      "greater_than": "greater than",
+      "greater_than_or_equal": "greater than or equal",
+      "less_than": "less than",
+      "less_than_or_equal": "less than or equal",
+      "is_true": "is true",
+      "is_false": "is false",
+      "is_nil": "is not set",
+      "not_contains": "does not contain",
+      "before": "before",
+      "after": "after"
+    },
+    "instruction_operators": {
+      "verbs": {
+        "set": "Set",
+        "add": "Add",
+        "subtract": "Subtract",
+        "set_true": "Set",
+        "set_false": "Set",
+        "toggle": "Toggle",
+        "clear": "Clear"
+      },
+      "dropdown": {
+        "set": "Set … to",
+        "add": "Add … to",
+        "subtract": "Subtract … from",
+        "set_true": "Set … to true",
+        "set_false": "Set … to false",
+        "toggle": "Toggle",
+        "clear": "Clear"
+      },
+      "text": {
+        "set_to": "to",
+        "add_to": "to",
+        "subtract_from": "from",
+        "to_true": "to true",
+        "to_false": "to false"
+      }
+    },
+    "instruction_builder": {
+      "add_assignment": "Add assignment",
+      "no_assignments": "No assignments set"
     }
   }
 }

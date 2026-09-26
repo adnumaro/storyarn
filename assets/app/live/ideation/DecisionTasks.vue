@@ -9,6 +9,7 @@ import DecisionTaskPrepare from "./DecisionTaskPrepare.vue";
 import { sectionHeading } from "./decisionSections";
 import { taskHost } from "./decisionTask";
 import type { DecisionRecord, DecisionTask } from "./decisionTypes";
+import { formatDate } from "@shared/utils/date-utils";
 
 /**
  * Tasks in external trackers that carry this decision out. Links are manual:
@@ -51,10 +52,7 @@ const limit = computed(() => {
     : t("brainstormingDecisions.tasks.limitChanges");
 });
 function linkedBy(task: DecisionTask) {
-  const parsed = new Date(task.linkedAt);
-  const when = Number.isNaN(parsed.getTime())
-    ? ""
-    : new Intl.DateTimeFormat(locale.value, { month: "short", day: "numeric" }).format(parsed);
+  const when = formatDate(task.linkedAt, locale.value, "monthDay");
   return t("brainstormingDecisions.tasks.linkedBy", {
     name: task.linkedByName || t("brainstormingDecisions.formerMember"),
     date: when,

@@ -1,6 +1,8 @@
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useLive } from "./useLive";
+import { formatDate } from "../utils/date-utils";
+import { useLiveEvent } from "./useLiveEvent";
 
 export function useMemberInvitations(defaultRole: string) {
   const live = useLive();
@@ -11,10 +13,14 @@ export function useMemberInvitations(defaultRole: string) {
   const invitationPending = ref(false);
   const revokingInvitationId = ref<number | null>(null);
 
-  live.handleEvent("invitation_sent", () => {
-    inviteEmail.value = "";
-    inviteRole.value = defaultRole;
-  });
+  useLiveEvent(
+    "invitation_sent",
+    () => {
+      inviteEmail.value = "";
+      inviteRole.value = defaultRole;
+    },
+    live,
+  );
 
   function sendInvitation() {
     if (invitationPending.value) return;
@@ -45,9 +51,7 @@ export function useMemberInvitations(defaultRole: string) {
   }
 
   function formatExpiry(expiresAt: string) {
-    return new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(
-      new Date(expiresAt),
-    );
+    return formatDate(expiresAt, locale.value);
   }
 
   return {

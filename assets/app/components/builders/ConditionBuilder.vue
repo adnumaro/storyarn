@@ -158,7 +158,7 @@ function groupSelectedBlocks() {
     <LogicToggle
       v-if="blocks.length >= 2 && !switchMode"
       :logic="internalCondition.logic"
-      of-label="of the blocks"
+      kind="blocks"
       :disabled="disabled"
       class="mb-2"
       @update:logic="updateTopLogic"
@@ -224,14 +224,15 @@ function groupSelectedBlocks() {
           :disabled="selectedBlockIds.size < 2"
           @click="groupSelectedBlocks"
         >
-          <Group class="size-3" /> Group selected ({{ selectedBlockIds.size }})
+          <Group class="size-3" />
+          {{ $t("common.condition_builder.group_selected", { count: selectedBlockIds.size }) }}
         </button>
         <button
           type="button"
           class="inline-flex items-center px-2 py-1 text-xs text-muted-foreground rounded hover:bg-accent transition-colors"
           @click="cancelSelectionMode"
         >
-          Cancel
+          {{ $t("common.cancel") }}
         </button>
       </template>
       <template v-else>
@@ -240,7 +241,7 @@ function groupSelectedBlocks() {
           class="inline-flex flex-1 items-center justify-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded hover:bg-accent/50 transition-colors"
           @click="addBlock"
         >
-          <Plus class="size-3" /> Add block
+          <Plus class="size-3" /> {{ $t("common.condition_builder.add_block") }}
         </button>
         <button
           v-if="!switchMode && standAloneBlockCount >= 2"
@@ -248,13 +249,13 @@ function groupSelectedBlocks() {
           class="inline-flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground rounded hover:bg-accent transition-colors"
           @click="enterSelectionMode"
         >
-          <Group class="size-3" /> Group
+          <Group class="size-3" /> {{ $t("common.condition_builder.group") }}
         </button>
       </template>
     </div>
 
     <p v-if="blocks.length === 0 && disabled" class="text-xs text-muted-foreground italic">
-      No conditions set
+      {{ $t("common.condition_builder.no_conditions") }}
     </p>
   </div>
 </template>

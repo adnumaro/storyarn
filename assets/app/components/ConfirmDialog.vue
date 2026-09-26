@@ -14,8 +14,8 @@ import { Button } from "@components/ui/button";
 const {
   title,
   description,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
+  confirmText = "",
+  cancelText = "",
   variant = "default",
   icon,
   pending = false,
@@ -87,7 +87,7 @@ function handleOpenUpdate(nextOpen: boolean): void {
           {{ description }}
         </DialogDescription>
         <p v-if="pending" class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {{ pendingText || confirmText }}
+          {{ pendingText || confirmText || $t("common.confirm") }}
         </p>
         <p v-if="error" role="alert" class="text-sm text-destructive">
           {{ error }}
@@ -95,11 +95,11 @@ function handleOpenUpdate(nextOpen: boolean): void {
       </DialogHeader>
       <DialogFooter :aria-busy="pending">
         <Button variant="outline" size="sm" :disabled="pending" @click="handleCancel">
-          {{ cancelText }}
+          {{ cancelText || $t("common.cancel") }}
         </Button>
         <Button :variant="buttonVariant" size="sm" :disabled="pending" @click="handleConfirm">
           <Loader2 v-if="pending" class="size-4 animate-spin" aria-hidden="true" />
-          {{ confirmText }}
+          {{ confirmText || $t("common.confirm") }}
         </Button>
       </DialogFooter>
     </DialogContent>

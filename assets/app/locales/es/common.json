@@ -51,7 +51,11 @@
       "auto_save": "auto-guardado | auto-guardados",
       "no_summary": "Sin resumen",
       "load_more": "Cargar más",
-      "transport_error": "La solicitud no se completó. Comprueba tu conexión e inténtalo de nuevo."
+      "transport_error": "La solicitud no se completó. Comprueba tu conexión e inténtalo de nuevo.",
+      "compare_with_current": "Comparar con la actual",
+      "restore_version": "Restaurar esta versión",
+      "delete_version": "Eliminar versión",
+      "name_version": "Nombrar esta versión"
     },
     "create_version_dialog": {
       "title": "Crear versión",
@@ -141,12 +145,42 @@
     "condition_builder": {
       "label_placeholder": "etiqueta",
       "remove_block": "Eliminar bloque",
-      "of_the_rules": "de las reglas",
       "add_rule": "Añadir regla",
       "no_conditions": "Sin condiciones",
       "empty_sheets": "No hay sheets con variables. Añade un bloque de variable a un sheet primero.",
       "empty_variables": "Este sheet aún no tiene variables.",
-      "empty_values": "No hay valores disponibles para esta variable."
+      "empty_values": "No hay valores disponibles para esta variable.",
+      "logic": {
+        "match": "Cumplir",
+        "rules": {
+          "all": "todas",
+          "any": "alguna",
+          "suffix_all": "las reglas",
+          "suffix_any": "de las reglas"
+        },
+        "blocks": {
+          "all": "todos",
+          "any": "alguno",
+          "suffix_all": "los bloques",
+          "suffix_any": "de los bloques"
+        },
+        "group": {
+          "all": "todos",
+          "any": "alguno",
+          "suffix_all": "los bloques del grupo",
+          "suffix_any": "de los bloques del grupo"
+        }
+      },
+      "placeholders": {
+        "sheet": "ficha",
+        "variable": "variable",
+        "operator": "op",
+        "value": "valor"
+      },
+      "add_block": "Añadir bloque",
+      "group": "Grupo",
+      "ungroup": "Desagrupar",
+      "group_selected": "Agrupar seleccionados ({count})"
     },
     "assignment_row": {
       "change_operator": "Cambiar operador",
@@ -239,6 +273,7 @@
       "file_not_accepted": "Tipo de archivo no soportado. Sube una imagen JPEG, PNG, GIF o WebP.",
       "storage_limit_reached": "Se ha alcanzado el límite de almacenamiento del proyecto. Libera espacio o aumenta el límite antes de subir más archivos.",
       "upload_failed": "No se pudo subir el archivo. Inténtalo de nuevo.",
+      "upload_forbidden": "No tienes permiso para subir archivos a este proyecto.",
       "uploading": "Subiendo...",
       "upload": "Subir",
       "upload_decision": {
@@ -252,6 +287,69 @@
         "processing": "Subiendo y procesando imagen...",
         "confirm": "Continuar"
       }
+    },
+    "confirm": "Confirmar",
+    "saving": "Guardando...",
+    "saved": "Guardado",
+    "untitled": "Sin título",
+    "select_placeholder": "Selecciona...",
+    "loading": "Cargando...",
+    "language_picker": {
+      "search": "Buscar idiomas...",
+      "empty": "No se encontraron idiomas."
+    },
+    "collab_toast": {
+      "message": "{name} {action}",
+      "made_a_change": "hizo un cambio"
+    },
+    "condition_operators": {
+      "equals": "es igual a",
+      "not_equals": "no es igual a",
+      "contains": "contiene",
+      "starts_with": "empieza por",
+      "ends_with": "termina en",
+      "is_empty": "está vacío",
+      "greater_than": "mayor que",
+      "greater_than_or_equal": "mayor o igual que",
+      "less_than": "menor que",
+      "less_than_or_equal": "menor o igual que",
+      "is_true": "es verdadero",
+      "is_false": "es falso",
+      "is_nil": "no está definido",
+      "not_contains": "no contiene",
+      "before": "antes de",
+      "after": "después de"
+    },
+    "instruction_operators": {
+      "verbs": {
+        "set": "Establecer",
+        "add": "Sumar",
+        "subtract": "Restar",
+        "set_true": "Establecer",
+        "set_false": "Establecer",
+        "toggle": "Alternar",
+        "clear": "Borrar"
+      },
+      "dropdown": {
+        "set": "Establecer … en",
+        "add": "Sumar … a",
+        "subtract": "Restar … de",
+        "set_true": "Establecer … en verdadero",
+        "set_false": "Establecer … en falso",
+        "toggle": "Alternar",
+        "clear": "Borrar"
+      },
+      "text": {
+        "set_to": "en",
+        "add_to": "a",
+        "subtract_from": "de",
+        "to_true": "en verdadero",
+        "to_false": "en falso"
+      }
+    },
+    "instruction_builder": {
+      "add_assignment": "Añadir asignación",
+      "no_assignments": "No hay asignaciones"
     }
   }
 }

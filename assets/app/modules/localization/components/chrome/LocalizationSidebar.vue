@@ -8,6 +8,7 @@ import LanguageFlag from "@components/language/LanguageFlag.vue";
 import LanguagePicker from "@components/language/LanguagePicker.vue";
 import type { LanguagePickerOption } from "@components/language/types";
 import { useLive } from "@shared/composables/useLive.ts";
+import { useLiveAction } from "@shared/composables/useLiveAction";
 
 interface Language {
   id: number;
@@ -43,7 +44,8 @@ const deleteDialogOpen = ref(false);
 const pendingDeleteLanguage = ref<Language | null>(null);
 const sourceChangeDialogOpen = ref(false);
 const pendingSourceLanguage = ref<LanguagePickerOption | null>(null);
-const syncing = ref(false);
+const syncAction = useLiveAction(live);
+const syncing = syncAction.pending;
 
 const selectedSourceOption = computed<LanguagePickerOption | null>(() => {
   if (!sourceLanguage) return null;
@@ -93,10 +95,7 @@ function confirmRemove(): void {
 }
 
 function syncTexts(): void {
-  syncing.value = true;
-  live.pushEvent("sync_texts", {}, () => {
-    syncing.value = false;
-  });
+  syncAction.push("sync_texts");
 }
 </script>
 

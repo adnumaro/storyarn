@@ -107,7 +107,7 @@ const {
   canEdit: boolean;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const pendingDeleteFlow = ref<FlowTableRow | null>(null);
 const deleteDialogOpen = computed({
   get: () => pendingDeleteFlow.value !== null,
@@ -409,7 +409,7 @@ const columns = computed<DashboardTableColumn[]>(() => [
             {{ row.word_count }}
           </TableCell>
           <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
-            {{ formatRelativeTime(row.updated_at) }}
+            {{ formatRelativeTime(row.updated_at, locale) || "—" }}
           </TableCell>
         </template>
 

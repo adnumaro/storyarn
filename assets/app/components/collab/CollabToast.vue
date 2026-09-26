@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "../../shared/composables/useLive";
+import { useLiveEvent } from "@shared/composables/useLiveEvent";
 
 const { actionLabels = {} } = defineProps<{
   actionLabels?: Record<string, string>;
@@ -17,22 +18,22 @@ const toast = ref<CollabToastData | null>(null);
 let hideTimeout: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(() => {
-  live.handleEvent("collab_toast", (data: Record<string, unknown>) => {
-    toast.value = data as unknown as CollabToastData;
-    if (hideTimeout) clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
-      toast.value = null;
-    }, 4000);
-  });
+  useLiveEvent(
+    "collab_toast",
+    (data: Record<string, unknown>) => {
+      toast.value = data as unknown as CollabToastData;
+      if (hideTimeout) clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        toast.value = null;
+      }, 4000);
+    },
+    live,
+  );
 });
 
 onUnmounted(() => {
   if (hideTimeout) clearTimeout(hideTimeout);
 });
-
-function label(action: string) {
-  return actionLabels[action] || "made a change";
-}
 </script>
 
 <template>
@@ -49,10 +50,14 @@ function label(action: string) {
       class="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 shadow-lg"
     >
       <div class="size-2 rounded-full shrink-0" :style="{ backgroundColor: toast.userColor }" />
-      <span class="text-sm text-foreground">
-        <span class="font-medium">{{ toast.userEmail?.split("@")[0] }}</span>
-        {{ " " }}{{ label(toast.action) }}
-      </span>
+      <i18n-t keypath="common.collab_toast.message" tag="span" class="text-sm text-foreground">
+        <template #name>
+          <span class="font-medium">{{ toast.userEmail?.split("@")[0] }}</span>
+        </template>
+        <template #action>{{
+          actionLabels[toast.action] || $t("common.collab_toast.made_a_change")
+        }}</template>
+      </i18n-t>
     </div>
   </Transition>
 </template>
