@@ -1,0 +1,94 @@
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_b5abbfc6259d0c::t_8c667982ec4539 286,292,626
+assets/app/live/localization/texts/LocalizationTextsIndex.vue
+  s_b5abbfc6259d0c::t_fddcb858cee93a 23,216,310
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_b5abbfc6259d0c::t_58df9a3f3d059f 29,284-307,311-317,319-320,322-336,341-345,347-348,350-356,358-369,374-385,387-413,415-464
+assets/app/test/shell/PageContainer.test.ts
+  s_b5abbfc6259d0c::t_1616f9a7fc7693 3,13-21,54-55,59
+  s_b5abbfc6259d0c::t_f3c87d17f98da5 1-2,4-6,9,22,27,31-32,49-50,62-63
+  s_b5abbfc6259d0c::t_559cd59a30675c 7-8,10-12,23-26,28-30,33-48,51-53,56-58,60-61
+assets/app/test/live/localization/LocalizationReport.test.ts
+  s_b5abbfc6259d0c::t_cd3bab7197e6a8 42-46,68-72,100-104,133-137
+assets/app/live/sheet/dashboard/SheetDashboard.vue
+  s_b5abbfc6259d0c::t_58df9a3f3d059f 26,202-225,229-248,250-259,261-284,286-309
+assets/app/live/layouts/workspace/Layout.vue
+  s_b5abbfc6259d0c::t_ba579708b5c4ac 118-119
+assets/app/shell/PageContainer.vue
+  s_b5abbfc6259d0c::t_6e8050808e07b3 1-2,8,21-25,28,42-43
+  s_b5abbfc6259d0c::t_7b69d937741cf9 3-7,9-20,26-27,29-39
+  s_b5abbfc6259d0c::t_2fe496d13468af 40-41
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_b5abbfc6259d0c::t_fddcb858cee93a 8,368,593
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_b5abbfc6259d0c::t_8c667982ec4539 286,292,626
+assets/app/live/project/dashboard/ProjectDashboard.vue
+  s_b5abbfc6259d0c::t_5f519af9a80d35 23,214-231,233-239,241-246,248-262,265-267,271-282,294-300,302-303,305-330,332-343,345-346,349-373,383-408,410-413,416-418
+assets/app/live/localization/glossary/LocalizationGlossary.vue
+  s_b5abbfc6259d0c::t_0e8ad9d7584df2 20,147-148,332-333
+assets/app/live/sheet/show/SheetSurface.vue
+  s_b5abbfc6259d0c::t_ead549f8b401d3 10,119-142,144-173,175,178-180,182,186-191
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_b5abbfc6259d0c::t_58df9a3f3d059f 21,228-251,255-274,276-285,287-310,312-335
+docs/reference/component-registry.md
+  s_b5abbfc6259d0c::t_d018f883fe9f87 141
+  s_b5abbfc6259d0c::t_f3c87d17f98da5 137-138
+  s_b5abbfc6259d0c::t_de4b736524d3d0 139-140,142-159
+assets/app/live/localization/report/LocalizationReport.vue
+  s_b5abbfc6259d0c::t_fddcb858cee93a 18,89,164
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_b5abbfc6259d0c::t_8c667982ec4539 64,101,128-129,206
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_b5abbfc6259d0c::t_8c667982ec4539 64,101,128-129,206
+assets/app/live/localization/texts/LocalizationTextEdit.vue
+  s_b5abbfc6259d0c::t_0e8ad9d7584df2 119,137,210
+  s_b5abbfc6259d0c::t_fddcb858cee93a 17,118,220
+test/mix/tasks/convention_check_test.exs
+  s_b5abbfc6259d0c::t_78c4be9e4ed290 1-27,29-63
+  s_b5abbfc6259d0c::t_87b6118452fbac 28
+assets/app/live/workspace/form/WorkspaceNewWorkspaceForm.vue
+  s_b5abbfc6259d0c::t_0e8ad9d7584df2 7,29-34,38-63,65-75,78
+CLAUDE.md
+  s_b5abbfc6259d0c::t_de4b736524d3d0 150,152-155
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_b5abbfc6259d0c::t_0e8ad9d7584df2 434
+  s_b5abbfc6259d0c::t_fddcb858cee93a 29,352,540
+assets/app/live/layouts/project/Layout.vue
+  s_b5abbfc6259d0c::t_ba579708b5c4ac 202-203
+lib/mix/tasks/convention_check.ex
+  s_b5abbfc6259d0c::t_25f8e18b32be0f 27,49-50,112-118,216-262,406-408
+assets/app/shell/DashboardContent.vue
+  s_b5abbfc6259d0c::t_02b3e1dd7496eb 26,28-52,54,56-60,62,66-67,74-83,85-92,94-98,100-101,103,105
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_b5abbfc6259d0c::t_f89c8a2e91cb3d 22,1208-1216,1218-1266,1556,1625
+priv/gettext/projects.pot
+  s_b5abbfc6259d0c::t_8c667982ec4539 286,292,626
+priv/gettext/workspaces.pot
+  s_b5abbfc6259d0c::t_8c667982ec4539 64,101,128-129,206
+.dependency-cruiser.cjs
+  s_4044b9821390b6::t_98a142ec96b07e 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ceb9c28c4895ea04b3f1ca9d68671632947c87ec",
+  "prompts": {},
+  "sessions": {
+    "s_4044b9821390b6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0dd58-2c2c-7f00-a345-fb587f96d262",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_b5abbfc6259d0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce0305-91ec-4116-b95d-80eb72980b92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
