@@ -6,24 +6,20 @@ defmodule Storyarn.Commercial.Billing.Limits do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial.Billing.EditorSeats
   alias Storyarn.Commercial.Billing.Persistence.EntityVersionRecord
   alias Storyarn.Commercial.Billing.Persistence.FlowNodeRecord
   alias Storyarn.Commercial.Billing.Persistence.FlowRecord
-  alias Storyarn.Commercial.Billing.Persistence.ProjectInvitationRecord, as: ProjectInvitation
-  alias Storyarn.Commercial.Billing.Persistence.ProjectMembershipRecord, as: ProjectMembership
   alias Storyarn.Commercial.Billing.Persistence.ProjectRecord, as: Project
   alias Storyarn.Commercial.Billing.Persistence.ProjectTemplateRecord, as: ProjectTemplate
   alias Storyarn.Commercial.Billing.Persistence.ProjectTemplateVersionRecord, as: ProjectTemplateVersion
   alias Storyarn.Commercial.Billing.Persistence.SceneRecord
   alias Storyarn.Commercial.Billing.Persistence.SheetRecord
-  alias Storyarn.Commercial.Billing.Persistence.WorkspaceInvitationRecord, as: WorkspaceInvitation
-  alias Storyarn.Commercial.Billing.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Commercial.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Commercial.Billing.Persistence.WorkspaceSnapshotImportRecord, as: WorkspaceSnapshotImport
   alias Storyarn.Commercial.Billing.Plan
   alias Storyarn.Commercial.Billing.StorageAccounting
   alias Storyarn.Commercial.Queries.Subscriptions
-  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 
   @doc """
@@ -34,9 +30,9 @@ defmodule Storyarn.Commercial.Billing.Limits do
   new Workspace commits.
   """
   def can_create_workspace?(user) do
-    # Workspace ownership is currently governed by the default user-level
-    # policy. Future user-level plans can replace this resolution.
-    limit = Plan.limit(Plan.default_plan(), :workspaces_per_user)
+    # Only the workspaces the user owns count; being a member of someone
+    # else's workspace does not.
+    limit = user.id |> Subscriptions.plan_for_user() |> Plan.limit(:workspaces_per_user)
     used = count_user_workspaces(user.id)
     check_limit(:workspaces_per_user, used, limit)
   end
@@ -80,52 +76,6 @@ defmodule Storyarn.Commercial.Billing.Limits do
     limit = Plan.limit(plan, :project_template_versions_per_template)
     used = count_project_template_versions(template.id)
     check_limit(:project_template_versions_per_template, used, limit)
-  end
-
-  @doc """
-  Checks if a workspace can have another member (via workspace or project invitation).
-
-  Accepts either a workspace or a project struct — for projects, resolves
-  the workspace_id to check workspace-level member limits.
-  """
-  def can_invite_member?(%{id: _} = workspace) when not is_map_key(workspace, :workspace_id) do
-    check_member_limit(workspace.id)
-  end
-
-  def can_invite_member?(%{id: _, workspace_id: _} = project) do
-    check_member_limit(project.workspace_id)
-  end
-
-  @doc """
-  Checks whether inviting an email would consume another workspace member slot.
-
-  Emails that already occupy a slot through a membership or active invitation
-  may be invited to another project without consuming additional capacity.
-  """
-  def can_invite_member?(%{id: _} = workspace, email)
-      when not is_map_key(workspace, :workspace_id) and is_binary(email) do
-    check_member_limit(workspace.id, email)
-  end
-
-  def can_invite_member?(%{id: _, workspace_id: _} = project, email) when is_binary(email) do
-    check_member_limit(project.workspace_id, email)
-  end
-
-  @doc """
-  Checks whether an invitation can be converted into a membership.
-
-  Unlike `can_invite_member?/2`, this only counts existing memberships. The
-  invitation being accepted already reserves its candidate's slot, while this
-  check protects legacy or externally-created invitations from exceeding the
-  plan when they are accepted.
-  """
-  def can_accept_member?(%{id: _} = workspace, email)
-      when not is_map_key(workspace, :workspace_id) and is_binary(email) do
-    check_membership_limit(workspace.id, email)
-  end
-
-  def can_accept_member?(%{id: _, workspace_id: _} = project, email) when is_binary(email) do
-    check_membership_limit(project.workspace_id, email)
   end
 
   @doc """
@@ -234,11 +184,6 @@ defmodule Storyarn.Commercial.Billing.Limits do
             count_workspace_project_templates(workspace.id),
             Plan.limit(plan, :project_templates_per_workspace)
           ),
-        members:
-          usage_bucket(
-            count_occupied_workspace_member_slots(workspace.id),
-            Plan.limit(plan, :members_per_workspace)
-          ),
         storage_bytes:
           usage_bucket(
             workspace_storage.accounted_bytes,
@@ -267,10 +212,28 @@ defmodule Storyarn.Commercial.Billing.Limits do
       fun.()
     else
       case Repo.repeatable_read(fun, timeout: :infinity) do
+        # ============================================================================
+        # Private count helpers
+        # ============================================================================
         {:ok, usage} -> usage
         {:error, reason} -> raise "project limits usage read failed: #{inspect(reason)}"
       end
     end
+  end
+
+  @doc """
+  Returns an account's plan with the seats and workspaces it uses, for its
+  owner's Plan & billing page. These are totals across every workspace the
+  account owns.
+  """
+  def account_usage(user_id) do
+    plan = Subscriptions.plan_for_user(user_id)
+
+    %{
+      plan: plan_summary(plan),
+      seats: EditorSeats.usage(user_id),
+      workspaces: %{used: count_user_workspaces(user_id), limit: Plan.limit(plan, :workspaces_per_user)}
+    }
   end
 
   @doc """
@@ -286,10 +249,6 @@ defmodule Storyarn.Commercial.Billing.Limits do
         used: count_workspace_projects(workspace.id),
         limit: Plan.limit(plan, :projects_per_workspace)
       },
-      members: %{
-        used: count_occupied_workspace_member_slots(workspace.id),
-        limit: Plan.limit(plan, :members_per_workspace)
-      },
       storage_bytes: %{
         used: storage.accounted_bytes,
         limit: Plan.limit(plan, :storage_bytes_per_workspace)
@@ -297,10 +256,6 @@ defmodule Storyarn.Commercial.Billing.Limits do
       storage: storage
     }
   end
-
-  # ============================================================================
-  # Private count helpers
-  # ============================================================================
 
   defp plan_summary(plan) do
     %{
@@ -352,36 +307,6 @@ defmodule Storyarn.Commercial.Billing.Limits do
     {:error, :limit_reached, %{resource: resource, used: used, limit: limit}}
   end
 
-  defp check_member_limit(workspace_id) do
-    plan = Subscriptions.plan_for_workspace_id(workspace_id)
-    limit = Plan.limit(plan, :members_per_workspace)
-    used = count_occupied_workspace_member_slots(workspace_id)
-    check_limit(:members_per_workspace, used, limit)
-  end
-
-  defp check_member_limit(workspace_id, email) do
-    normalized_email = email |> String.trim() |> String.downcase()
-
-    if workspace_member_slot_occupied?(workspace_id, normalized_email) do
-      :ok
-    else
-      check_member_limit(workspace_id)
-    end
-  end
-
-  defp check_membership_limit(workspace_id, email) do
-    normalized_email = email |> String.trim() |> String.downcase()
-
-    if workspace_membership_slot_occupied?(workspace_id, normalized_email) do
-      :ok
-    else
-      plan = Subscriptions.plan_for_workspace_id(workspace_id)
-      limit = Plan.limit(plan, :members_per_workspace)
-      used = count_workspace_membership_slots(workspace_id)
-      check_limit(:members_per_workspace, used, limit)
-    end
-  end
-
   defp count_user_workspaces(user_id) do
     Repo.aggregate(from(w in Workspace, where: w.owner_id == ^user_id), :count)
   end
@@ -429,100 +354,6 @@ defmodule Storyarn.Commercial.Billing.Limits do
   end
 
   defp plan_for_template(_template), do: nil
-
-  @doc false
-  def count_unique_workspace_users(workspace_id) do
-    # Workspace members
-    wm_query =
-      from(m in WorkspaceMembership,
-        where: m.workspace_id == ^workspace_id,
-        select: m.user_id
-      )
-
-    # Project-only members (users with project membership but no workspace membership)
-    pm_query =
-      from(pm in ProjectMembership,
-        join: p in Project,
-        on: pm.project_id == p.id,
-        where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at),
-        select: pm.user_id
-      )
-
-    union_query = union(wm_query, ^pm_query)
-
-    Repo.one(from(u in subquery(union_query), select: count(u.user_id)))
-  end
-
-  defp count_occupied_workspace_member_slots(workspace_id) do
-    occupied_slots = occupied_workspace_member_slots_query(workspace_id)
-
-    Repo.one(from(slot in subquery(occupied_slots), select: count(slot.email)))
-  end
-
-  defp count_workspace_membership_slots(workspace_id) do
-    membership_slots = workspace_membership_slots_query(workspace_id)
-
-    Repo.one(from(slot in subquery(membership_slots), select: count(slot.email)))
-  end
-
-  defp workspace_member_slot_occupied?(workspace_id, email) do
-    occupied_slots = occupied_workspace_member_slots_query(workspace_id)
-
-    Repo.exists?(from(slot in subquery(occupied_slots), where: slot.email == ^email))
-  end
-
-  defp workspace_membership_slot_occupied?(workspace_id, email) do
-    membership_slots = workspace_membership_slots_query(workspace_id)
-
-    Repo.exists?(from(slot in subquery(membership_slots), where: slot.email == ^email))
-  end
-
-  defp workspace_membership_slots_query(workspace_id) do
-    workspace_members =
-      from(m in WorkspaceMembership,
-        join: user in assoc(m, :user),
-        where: m.workspace_id == ^workspace_id,
-        select: %{email: fragment("lower(?)", user.email)}
-      )
-
-    project_members =
-      from(m in ProjectMembership,
-        join: project in Project,
-        on: m.project_id == project.id,
-        join: user in assoc(m, :user),
-        where: project.workspace_id == ^workspace_id and is_nil(project.deleted_at),
-        select: %{email: fragment("lower(?)", user.email)}
-      )
-
-    union(workspace_members, ^project_members)
-  end
-
-  defp occupied_workspace_member_slots_query(workspace_id) do
-    now = TimeHelpers.now()
-
-    workspace_invitations =
-      from(invitation in WorkspaceInvitation,
-        where: invitation.workspace_id == ^workspace_id,
-        where: is_nil(invitation.accepted_at),
-        where: invitation.expires_at > ^now,
-        select: %{email: fragment("lower(?)", invitation.email)}
-      )
-
-    project_invitations =
-      from(invitation in ProjectInvitation,
-        join: project in Project,
-        on: invitation.project_id == project.id,
-        where: project.workspace_id == ^workspace_id and is_nil(project.deleted_at),
-        where: is_nil(invitation.accepted_at),
-        where: invitation.expires_at > ^now,
-        select: %{email: fragment("lower(?)", invitation.email)}
-      )
-
-    workspace_id
-    |> workspace_membership_slots_query()
-    |> union(^workspace_invitations)
-    |> union(^project_invitations)
-  end
 
   @doc false
   def count_project_items(project_id) do

@@ -140,7 +140,6 @@ defmodule Storyarn.Workspaces do
   @spec create_workspace(scope(), attrs()) ::
           {:ok, workspace()}
           | {:error, changeset()}
-          | {:error, :workspace_provisioning_failed}
           | {:error, :limit_reached, map()}
   defdelegate create_workspace(scope, attrs), to: Lifecycle
 
@@ -150,7 +149,6 @@ defmodule Storyarn.Workspaces do
   @spec create_workspace_with_owner(user(), attrs()) ::
           {:ok, workspace()}
           | {:error, changeset()}
-          | {:error, :workspace_provisioning_failed}
           | {:error, :limit_reached, map()}
   defdelegate create_workspace_with_owner(user, attrs), to: Lifecycle
 
@@ -228,6 +226,7 @@ defmodule Storyarn.Workspaces do
              | :ownership_invariant_violation
              | :unauthorized
              | :membership_change_requires_top_level_transaction}
+          | {:error, :limit_reached, map()}
   defdelegate update_member_role(scope, workspace_id, membership_id, role), to: Memberships
 
   @doc """

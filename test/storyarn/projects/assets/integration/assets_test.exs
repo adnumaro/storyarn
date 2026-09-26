@@ -199,9 +199,9 @@ defmodule Storyarn.AssetsTest do
     } do
       limit = Billing.plan_limit("free", :storage_bytes_per_workspace)
       max_asset_size = 52_428_800
-      assert limit == max_asset_size * 5
+      assert limit == max_asset_size * 10
 
-      Enum.each(1..5, fn index ->
+      Enum.each(1..10, fn index ->
         filename = "fills-workspace-#{index}.pdf"
 
         assert {:ok, _asset} =
@@ -223,7 +223,7 @@ defmodule Storyarn.AssetsTest do
 
       assert details.required == 1
       assert details.available == 0
-      assert Assets.count_assets(project.id) == 5
+      assert Assets.count_assets(project.id) == 10
     end
 
     test "create_asset/3 rejects a project struct spoofing another workspace", %{
@@ -1997,7 +1997,7 @@ defmodule Storyarn.AssetsTest do
       project: project,
       user: user
     } do
-      storage_limit = 250 * 1024 * 1024
+      storage_limit = Billing.plan_limit("free", :storage_bytes_per_workspace)
 
       # Insert an asset that fills the entire storage limit
       %Asset{}

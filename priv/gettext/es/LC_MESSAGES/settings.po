@@ -67,3 +67,8 @@ msgstr "Preferencias"
 #, elixir-autogen, elixir-format
 msgid "The confirmation email could not be sent. Try again."
 msgstr "No se ha podido enviar el correo de confirmación. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/settings_live/plan_billing.ex:21
+#, elixir-autogen, elixir-format
+msgid "Plan & billing"
+msgstr "Plan y facturación"

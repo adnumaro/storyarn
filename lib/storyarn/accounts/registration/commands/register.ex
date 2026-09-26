@@ -4,11 +4,12 @@ defmodule Storyarn.Accounts.Registration.Commands.Register do
   alias Storyarn.Accounts.Registration.Events.UserSignedUp
   alias Storyarn.Accounts.Registration.Rules.DefaultWorkspace
   alias Storyarn.Accounts.User
+  alias Storyarn.Commercial
   alias Storyarn.Repo
   alias Storyarn.Workspaces
 
   @doc """
-  Registers a user and creates a default workspace.
+  Registers a user, creates the account's subscription and a default workspace.
 
   The default workspace is named "{name}'s workspace" (localized).
 
@@ -61,14 +62,31 @@ defmodule Storyarn.Accounts.Registration.Commands.Register do
   defp register_with_default_workspace(attrs, insert_user) do
     Repo.transact(fn ->
       with {:ok, user} <- insert_user.(attrs),
+           :ok <- create_account_subscription(user),
            {:ok, _workspace} <- create_default_workspace(user) do
         {:ok, user}
       else
         {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
-        {:error, :workspace_provisioning_failed} -> {:error, :workspace_provisioning_failed}
         {:error, _} = error -> error
       end
     end)
+  end
+
+  # The plan belongs to the account, so it exists before any workspace takes its
+  # limits from it.
+  defp create_account_subscription(user) do
+    case subscription_provisioner().(user) do
+      {:ok, _receipt} -> :ok
+      {:error, _commercial_error} -> {:error, :account_provisioning_failed}
+    end
+  end
+
+  # The configurable function is a narrow failure-test seam. Production keeps
+  # the explicit cross-context dependency on Commercial's public facade.
+  defp subscription_provisioner do
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:subscription_provisioner, &Commercial.create_account_subscription/1)
   end
 
   defp create_default_workspace(user) do

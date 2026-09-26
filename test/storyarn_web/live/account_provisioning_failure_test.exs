@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.WorkspaceProvisioningFailureTest do
+defmodule StoryarnWeb.AccountProvisioningFailureTest do
   use StoryarnWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
@@ -7,53 +7,26 @@ defmodule StoryarnWeb.WorkspaceProvisioningFailureTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Accounts
+  alias Storyarn.Accounts.Registration.Commands.Register
   alias Storyarn.Accounts.User
+  alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Lifecycle.Commands.CreateWorkspace
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
 
   setup do
-    previous_config = Application.get_env(:storyarn, CreateWorkspace)
+    previous_config = Application.get_env(:storyarn, Register)
 
     on_exit(fn ->
       case previous_config do
-        nil -> Application.delete_env(:storyarn, CreateWorkspace)
-        config -> Application.put_env(:storyarn, CreateWorkspace, config)
+        nil -> Application.delete_env(:storyarn, Register)
+        config -> Application.put_env(:storyarn, Register, config)
       end
     end)
 
     :ok
-  end
-
-  test "manual creation reports provisioning failure, keeps the form values, and rolls back", %{
-    conn: conn
-  } do
-    user = insert(:user)
-    conn = log_in_user(conn, user)
-    before_counts = persistence_counts()
-    fail_subscription_provisioning()
-
-    {:ok, view, _html} = live(conn, ~p"/workspaces/new")
-
-    render_click(view, "save", %{
-      "workspace" => %{
-        "name" => "Still in the form",
-        "description" => "This must survive the failed transaction"
-      }
-    })
-
-    assert get_flash_vue(view).props["flash"]["error"] ==
-             "We couldn't create your workspace. Please try again."
-
-    form = get_new_workspace_vue(view).props["form"]
-    assert form["values"]["name"] == "Still in the form"
-    assert form["values"]["description"] == "This must survive the failed transaction"
-    assert persistence_counts() == before_counts
-    assert Workspaces.list_workspaces_for_user(user) == []
   end
 
   test "public registration reports provisioning failure and rolls the account back", %{conn: conn} do
@@ -120,8 +93,8 @@ defmodule StoryarnWeb.WorkspaceProvisioningFailureTest do
   end
 
   defp fail_subscription_provisioning do
-    Application.put_env(:storyarn, CreateWorkspace,
-      subscription_provisioner: fn _workspace ->
+    Application.put_env(:storyarn, Register,
+      subscription_provisioner: fn _user ->
         {:error, %{code: :subscription_creation_failed, field_errors: %{}}}
       end
     )
@@ -130,13 +103,10 @@ defmodule StoryarnWeb.WorkspaceProvisioningFailureTest do
   defp persistence_counts do
     %{
       users: Repo.aggregate(User, :count, :id),
+      subscriptions: Repo.aggregate(Subscription, :count, :id),
       workspaces: Repo.aggregate(Workspace, :count, :id),
       memberships: Repo.aggregate(WorkspaceMembership, :count, :id)
     }
-  end
-
-  defp get_new_workspace_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/workspace/form/WorkspaceNewWorkspaceForm")
   end
 
   defp get_flash_vue(view) do

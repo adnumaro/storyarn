@@ -218,14 +218,14 @@ defmodule Storyarn.Projects.InvitationOperations do
 
     if changeset.valid? do
       config
-      |> transact_invitation(parent, email, changeset, encoded_token, opts, authorization)
+      |> transact_invitation(parent, email, role, changeset, encoded_token, opts, authorization)
       |> restore_limit_error()
     else
       {:error, changeset}
     end
   end
 
-  defp transact_invitation(config, parent, email, changeset, encoded_token, opts, authorization) do
+  defp transact_invitation(config, parent, email, role, changeset, encoded_token, opts, authorization) do
     result =
       Repo.transact(fn ->
         with {:ok, locked_workspace} <- lock_workspace(parent),
@@ -233,7 +233,10 @@ defmodule Storyarn.Projects.InvitationOperations do
              parent_id = Map.fetch!(locked_parent, :id),
              :ok <- authorize_inviter_locked(config, authorization, parent_id),
              :ok <- ensure_invitation_available(config, parent_id, email),
-             :ok <- normalize_limit_result(Commercial.can_invite_member?(locked_parent, email)),
+             :ok <-
+               normalize_limit_result(
+                 Commercial.check_editor_seat(locked_parent, email, role, seat_actor(authorization))
+               ),
              :ok <- delete_inactive_invitation(config, parent_id, email),
              {:ok, invitation} <- insert_invitation(config, changeset),
              {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do
@@ -250,6 +253,10 @@ defmodule Storyarn.Projects.InvitationOperations do
         error
     end
   end
+
+  # Admin invitations come from the release tasks, run by an operator.
+  defp seat_actor(:trusted), do: :operator
+  defp seat_actor({:actor, %{user: %{id: user_id}}}), do: user_id
 
   defp authorize_inviter_locked(_config, :trusted, _parent_id), do: :ok
 
@@ -382,7 +389,10 @@ defmodule Storyarn.Projects.InvitationOperations do
          {:ok, current_invitation} <- lock_invitation(config, invitation),
          {:ok, current_user} <- lock_user(user),
          :ok <- validate_invitation_acceptance(config, current_invitation, current_user),
-         :ok <- normalize_limit_result(Commercial.can_accept_member?(locked_parent, current_user.email)),
+         :ok <-
+           normalize_limit_result(
+             Commercial.check_editor_seat_acceptance(locked_parent, current_user.email, current_invitation.role)
+           ),
          {:ok, _invitation} <- mark_invitation_accepted(current_invitation),
          {:ok, membership} <-
            config.memberships_module.create_membership(

@@ -16,7 +16,7 @@ bounded contexts or alternative public APIs.
 | Commercial owns                                                                 | Consumers own                                                                                       |
 | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Shipped plan catalog and commercial limits                                      | The product operation being admitted and its domain invariants                                      |
-| Workspace subscription state and plan resolution                                | Authorization to request the operation                                                              |
+| Account subscription state, plan resolution and editor seats                    | Authorization to request the operation                                                              |
 | Entitlement interpretation                                                      | How a quota answer is applied atomically to the consumer's write                                    |
 | Consumer-local usage projections                                                | Source records and ordinary writes in Projects, Workspaces, Flows, Sheets and Scenes                |
 | Billable storage usage and workspace-scoped capacity reservations               | Object keys, provider I/O, reachability, retention, cleanup execution and domain-specific lifecycle |
@@ -55,7 +55,12 @@ independent capabilities with distinct language, invariants and workflows.
 
 ## Plans and limits
 
-A workspace is entitled to its subscription's plan only while the status is
+The plan belongs to the person, not the workspace. Each account has exactly one
+subscription, created at registration, and every workspace takes its limits
+from its owner's subscription; creating a workspace creates none. Being a
+member of someone else's workspace never changes that workspace's plan.
+
+An account is entitled to its subscription's plan only while the status is
 `active`, `trialing` or `past_due`; every other Stripe status grants the default
 plan (`EffectivePlan`). The database restricts `subscriptions.status` to
 Stripe's statuses. Losing a plan only blocks new work above the lower limits;
@@ -65,14 +70,30 @@ A limit is a non-negative integer, `:unlimited`, or `nil` when the plan does not
 define the resource. `nil` blocks. Every check, including the tool-owned copies
 behind `entitlement_limit/2`, matches `:unlimited` explicitly and compares only
 integers: Erlang term order would otherwise place every number below any atom.
+Editors on paid plans are `:paid_seats`, which only `EditorSeats` interprets.
+
+## Editor seats
+
+A seat is a distinct person, by email, with an editing role in any workspace
+the account owns: workspace owner, admin or member, or project owner or
+editor. The owner counts, viewers are free, and a pending editor invitation
+holds its seat. `check_editor_seat/4` admits invitations, role changes and
+project transfers; only the account owner, or an operator, can raise the
+count. Free and Beta cap it; paid plans buy seats one by one (ENG-231).
+
+Every seat check locks the owner's subscription row inside the caller's
+transaction, so admissions in different workspaces of one account serialize.
+Nothing else locks subscription rows, which keeps this lock out of every
+Workspace and Project lock chain.
 
 ## Public and internal facades
 
 `Storyarn.Commercial` is the only cross-context business facade. It exposes:
 
 - entitlement and admission decisions;
-- project/workspace usage summaries and plan lookup;
-- subscription creation through a neutral receipt required by current product workflows;
+- project/workspace/account usage summaries and plan lookup;
+- editor-seat admission for invitations, role changes and project transfers;
+- account subscription creation through a neutral receipt, used by registration;
 - subscription to the Project-scoped snapshot export-lease invalidation;
 - storage-accounting locks and published lease-policy values;
 - transport-neutral reservation receipts and fenced reservation operations.

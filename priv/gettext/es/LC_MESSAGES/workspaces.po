@@ -11,12 +11,12 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:373
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:372
 #, elixir-autogen, elixir-format
 msgid "Cannot change the owner's role."
 msgstr "No se puede cambiar el rol del propietario."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:422
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:436
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the workspace owner."
 msgstr "No se puede eliminar al propietario del espacio de trabajo."
@@ -26,20 +26,20 @@ msgstr "No se puede eliminar al propietario del espacio de trabajo."
 msgid "Failed to delete workspace."
 msgstr "Error al eliminar el espacio de trabajo."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:394
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:396
 #, elixir-autogen, elixir-format
 msgid "Failed to update role."
 msgstr "Error al actualizar el rol."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:351
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:376
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:401
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:425
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:350
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:378
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:415
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:439
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr "Miembro no encontrado."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:417
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:431
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr "Miembro eliminado."
@@ -50,13 +50,13 @@ msgid "New Workspace"
 msgstr "Nuevo espacio de trabajo"
 
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:96
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:381
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:383
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change member roles."
 msgstr "Solo el propietario del espacio de trabajo puede cambiar roles."
 
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:105
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:430
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:444
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can remove members."
 msgstr "Solo el propietario del espacio de trabajo puede eliminar miembros."
@@ -66,7 +66,7 @@ msgstr "Solo el propietario del espacio de trabajo puede eliminar miembros."
 msgid "Project created successfully."
 msgstr "Proyecto creado exitosamente."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:368
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:367
 #, elixir-autogen, elixir-format
 msgid "Role updated successfully."
 msgstr "Rol actualizado exitosamente."
@@ -107,7 +107,6 @@ msgstr "Espacio de trabajo no encontrado."
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:40
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:42
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:171
-#: lib/storyarn_web/live/settings_live/workspace_plan.ex:35
 #: lib/storyarn_web/live/settings_live/workspace_projects.ex:57
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this workspace."
@@ -203,7 +202,7 @@ msgstr "No tienes permiso para crear proyectos en este espacio de trabajo."
 msgid "An invitation has already been sent to this email."
 msgstr "Ya se ha enviado una invitación a este correo."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:294
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:293
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr "No se ha podido enviar la invitación."
@@ -218,20 +217,15 @@ msgstr "Introduce una dirección de correo y un rol válidos."
 msgid "Invitation queued for delivery."
 msgstr "Invitación en cola para su envío."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:322
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:321
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr "Invitación revocada."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:345
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:344
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr "No se ha encontrado la invitación."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:277
-#, elixir-autogen, elixir-format
-msgid "Member limit reached for your plan."
-msgstr "Has alcanzado el límite de miembros de tu plan."
 
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:250
 #, elixir-autogen, elixir-format
@@ -242,11 +236,6 @@ msgstr "Esta persona ya es miembro de este espacio de trabajo."
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:114
-#, elixir-autogen, elixir-format
-msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
-msgstr "Esta invitación no se puede aceptar mientras el espacio de trabajo esté en su límite de miembros. Pide a un propietario o administrador que libere una plaza y vuelve a intentarlo con esta invitación."
 
 #: lib/storyarn_web/live/settings_live/workspace_ai.ex:82
 #: lib/storyarn_web/live/settings_live/workspace_ai.ex:87
@@ -297,17 +286,12 @@ msgstr "Solo el propietario del espacio de trabajo puede cambiar la política de
 msgid "Banner could not be removed."
 msgstr "No se pudo eliminar el banner."
 
-#: lib/storyarn_web/live/workspace_live/new.ex:75
-#, elixir-autogen, elixir-format
-msgid "We couldn't create your workspace. Please try again."
-msgstr "No hemos podido crear tu espacio de trabajo. Inténtalo de nuevo."
-
 #: lib/storyarn_web/live/workspace_live/invitation.ex:67
 #, elixir-autogen, elixir-format
 msgid "We couldn't prepare your account. Please try again."
 msgstr "No hemos podido preparar tu cuenta. Inténtalo de nuevo."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:443
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:457
 #, elixir-autogen, elixir-format
 msgid "Failed to remove member."
 msgstr "No se pudo eliminar al miembro."
@@ -317,7 +301,7 @@ msgstr "No se pudo eliminar al miembro."
 msgid "Only the current workspace owner can update this workspace."
 msgstr "Solo el propietario actual del espacio de trabajo puede actualizar este espacio de trabajo."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:341
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:340
 #, elixir-autogen, elixir-format
 msgid "Could not revoke invitation."
 msgstr "No se ha podido revocar la invitación."
@@ -328,20 +312,15 @@ msgstr "No se ha podido revocar la invitación."
 msgid "Storyarn could not verify the current workspace owner, so no changes were made. Contact support if the problem continues."
 msgstr "Storyarn no ha podido verificar quién es la persona propietaria actual del espacio de trabajo, por lo que no se ha realizado ningún cambio. Contacta con soporte si el problema continúa."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:436
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:450
 #, elixir-autogen, elixir-format
 msgid "The member could not be removed because workspace ownership is inconsistent."
 msgstr "No se pudo eliminar al miembro porque los datos de propiedad del espacio de trabajo son incoherentes."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:387
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:389
 #, elixir-autogen, elixir-format
 msgid "The member role could not be updated because workspace ownership is inconsistent."
 msgstr "No se pudo actualizar el rol del miembro porque los datos de propiedad del espacio de trabajo son incoherentes."
-
-#: lib/storyarn_web/live/settings_live/workspace_plan.ex:26
-#, elixir-autogen, elixir-format
-msgid "Plan & usage"
-msgstr "Plan y uso"
 
 #: lib/storyarn_web/live/settings_live/workspace_projects.ex:35
 #, elixir-autogen, elixir-format
@@ -357,3 +336,28 @@ msgstr "IA del workspace"
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Welcome to %{workspace}."
 msgstr "¡Invitación aceptada! Te damos la bienvenida a %{workspace}."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:404
+#, elixir-autogen, elixir-format
+msgid "Editor limit reached for your plan."
+msgstr "Has alcanzado el límite de editores de tu plan."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:409
+#, elixir-autogen, elixir-format
+msgid "Only the workspace owner can add editors. Invite them as a viewer, or ask the owner."
+msgstr "Solo el propietario del espacio de trabajo puede añadir editores. Invítalo como lector o pídeselo al propietario."
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:114
+#, elixir-autogen, elixir-format
+msgid "This invitation cannot be accepted because the workspace has no editor seats left. Ask the workspace owner to free one, then try this invitation again."
+msgstr "Esta invitación no se puede aceptar porque el espacio de trabajo no tiene asientos de editor libres. Pide al propietario que libere uno y vuelve a intentarlo con esta invitación."
+
+#: lib/storyarn_web/live/settings_live/workspace_usage.ex:44
+#, elixir-autogen, elixir-format
+msgid "Usage"
+msgstr "Uso"
+
+#: lib/storyarn_web/live/settings_live/workspace_usage.ex:54
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to see this workspace's usage."
+msgstr "No tienes permiso para ver el uso de este espacio de trabajo."

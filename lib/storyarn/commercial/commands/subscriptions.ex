@@ -4,9 +4,9 @@ defmodule Storyarn.Commercial.Commands.Subscriptions do
   alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Repo
 
-  def create_subscription(%{id: _} = workspace, plan) do
+  def create_subscription(%{id: _} = user, plan) do
     %Subscription{}
-    |> Subscription.create_changeset(%{workspace_id: workspace.id, plan: plan, status: "active"})
+    |> Subscription.create_changeset(%{user_id: user.id, plan: plan, status: "active"})
     |> Repo.insert()
   end
 

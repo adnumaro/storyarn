@@ -487,7 +487,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert invitation_id == invitation.id
     end
 
-    test "shows the plan limit after the remaining project seat is reserved", %{
+    test "shows the editor limit after the remaining seat is reserved, and viewers stay free", %{
       conn: conn,
       user: user
     } do
@@ -500,13 +500,18 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       html =
         render_click(view, "send_invitation", %{
-          "invite" => %{"email" => "second@example.com", "role" => "viewer"}
+          "invite" => %{"email" => "second@example.com", "role" => "editor"}
         })
 
-      assert html =~ "Member limit reached for your plan"
+      assert html =~ "Editor limit reached for your plan"
 
-      assert Enum.map(Projects.list_pending_invitations(project.id), & &1.email) == [
-               "first@example.com"
+      render_click(view, "send_invitation", %{
+        "invite" => %{"email" => "second@example.com", "role" => "viewer"}
+      })
+
+      assert project.id |> Projects.list_pending_invitations() |> Enum.map(& &1.email) |> Enum.sort() == [
+               "first@example.com",
+               "second@example.com"
              ]
     end
 
@@ -831,6 +836,65 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       refute Map.has_key?(redirected_socket.assigns, :snapshot_access_active)
     end
 
+    test "a storage refusal carries figures only for those who may see the workspace's totals", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      fill_workspace_storage!(project, user)
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      render_click(view, "create_snapshot", %{"idempotency_key" => Ecto.UUID.generate()})
+
+      assert_push_event(view, "snapshot_request_failed", %{
+        reason: "storage_limit_reached",
+        requiredBytes: required,
+        availableBytes: "0",
+        used: 524_288_000,
+        limit: 524_288_000
+      })
+
+      assert is_binary(required)
+
+      outsider_project = project_owned_by_outsider!(user)
+      fill_workspace_storage!(outsider_project, user)
+      {:ok, view, _html} = live(conn, settings_path(outsider_project, "snapshots"))
+
+      render_click(view, "create_snapshot", %{"idempotency_key" => Ecto.UUID.generate()})
+
+      assert_push_event(view, "snapshot_request_failed", %{
+        reason: "storage_limit_reached",
+        requiredBytes: nil,
+        availableBytes: nil,
+        used: nil,
+        limit: nil
+      })
+    end
+
+    test "a member who leaves the workspace with the page open gets no storage figures", %{
+      conn: conn,
+      user: user
+    } do
+      workspace = workspace_fixture(user_fixture())
+      membership = workspace_membership_fixture(workspace, user, "member")
+      project = user |> project_fixture(%{workspace: workspace}) |> Repo.preload(:workspace)
+      fill_workspace_storage!(project, user)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      assert get_snapshots_vue(view).props["storage-usage"]
+
+      Repo.delete!(membership)
+      render_click(view, "create_snapshot", %{"idempotency_key" => Ecto.UUID.generate()})
+
+      assert_push_event(view, "snapshot_request_failed", %{
+        reason: "storage_limit_reached",
+        requiredBytes: nil,
+        availableBytes: nil,
+        used: nil,
+        limit: nil
+      })
+    end
+
     test "ownership drift fails every snapshot mutation with its existing client contract", %{
       conn: conn,
       user: owner
@@ -995,15 +1059,16 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       vue = get_snapshots_vue(view)
 
       assert vue.props |> Map.keys() |> Enum.sort() == [
+               "plan-path",
                "restore-operation-active",
                "snapshot-limit",
                "snapshots",
                "storage-usage",
-               "workspace-plan-path"
+               "workspace-usage-path"
              ]
 
       assert vue.props["restore-operation-active"] == false
-      assert vue.props["snapshot-limit"] == %{"used" => 1, "limit" => 10}
+      assert vue.props["snapshot-limit"] == %{"used" => 1, "limit" => 2}
 
       assert [serialized] = vue.props["snapshots"]
 
@@ -1050,8 +1115,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "fullSnapshotsBytes" => "175",
                "activeReservationsBytes" => "60",
                "totalAccountedBytes" => "2283",
-               "limitBytes" => "262144000",
-               "remainingBytes" => "262141717",
+               "limitBytes" => "524288000",
+               "remainingBytes" => "524285717",
                "limitKind" => "limited"
              }
     end
@@ -1667,7 +1732,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   describe "Usage limits section" do
     setup :register_and_log_in_user
 
-    test "passes project and workspace usage limits to Vue", %{conn: conn, user: user} do
+    test "passes the project's own usage and the owner's links to Vue", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       _sheet = sheet_fixture(project)
       flow = flow_fixture(project)
@@ -1686,7 +1751,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert vue.component == "live/project/settings/ProjectSettingsUsageLimits"
 
       usage = vue.props["usage-limits"]
-      assert usage["plan"] == %{"key" => "free", "name" => "Free"}
+      assert usage |> Map.keys() |> Enum.sort() == ["itemBreakdown", "project"]
       assert usage["project"]["items"] == %{"used" => 6, "limit" => 700}
 
       assert usage["itemBreakdown"] == %{
@@ -1696,28 +1761,29 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "flowNodes" => 3
              }
 
-      assert usage["storage"] == %{
-               "projectAccountedBytes" => "2048",
-               "projectAssetBytes" => "2048",
-               "projectSnapshotBytes" => "0",
-               "projectReservationBytes" => "0",
-               "assetCount" => 1,
-               "workspace" => %{
-                 "currentAssetsBytes" => "2048",
-                 "assetTrashBytes" => "0",
-                 "fullSnapshotsBytes" => "0",
-                 "activeReservationsBytes" => "0",
-                 "totalAccountedBytes" => "2048",
-                 "limitBytes" => "262144000",
-                 "remainingBytes" => "262141952",
-                 "limitKind" => "limited"
-               }
-             }
+      assert vue.props["workspace-usage-path"] == "/users/settings/workspaces/#{project.workspace.slug}/usage"
+      assert vue.props["plan-path"] == "/users/settings/plan"
+    end
 
-      assert usage["workspace"]["storageBytes"] == %{
-               "used" => "2048",
-               "limit" => "262144000"
-             }
+    test "a project owner outside the workspace gets no workspace figures or links", %{
+      conn: conn,
+      user: user
+    } do
+      project = project_owned_by_outsider!(user)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "usage-limits"))
+      vue = get_usage_limits_vue(view)
+
+      assert vue.props["usage-limits"] |> Map.keys() |> Enum.sort() == ["itemBreakdown", "project"]
+      assert is_nil(vue.props["workspace-usage-path"])
+      assert is_nil(vue.props["plan-path"])
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      snapshots_vue = get_snapshots_vue(view)
+
+      assert is_nil(snapshots_vue.props["storage-usage"])
+      assert is_nil(snapshots_vue.props["workspace-usage-path"])
+      assert is_nil(snapshots_vue.props["plan-path"])
     end
 
     test "sends an unlimited quota as \"unlimited\" rather than a missing limit", %{
@@ -1730,37 +1796,15 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       {:ok, view, _html} = live(conn, settings_path(project, "usage-limits"))
       usage = get_usage_limits_vue(view).props["usage-limits"]
 
-      assert usage["plan"] == %{"key" => "pro", "name" => "Pro"}
       assert usage["project"]["items"] == %{"used" => 0, "limit" => "unlimited"}
       assert usage["project"]["namedVersions"] == %{"used" => 0, "limit" => "unlimited"}
       assert usage["project"]["projectSnapshots"] == %{"used" => 0, "limit" => 20}
-      assert usage["workspace"]["projects"] == %{"used" => 1, "limit" => "unlimited"}
 
       {:ok, view, _html} = live(conn, settings_path(project, "version-control"))
 
       assert get_version_control_vue(view).props["version-usage"]["namedVersions"] == %{
                "used" => 0,
                "limit" => "unlimited"
-             }
-    end
-
-    test "shows a pending invitation as an occupied member seat", %{conn: conn, user: user} do
-      project = user |> project_fixture() |> Repo.preload(:workspace)
-
-      assert {:ok, _invitation} =
-               Projects.create_invitation(
-                 user_scope_fixture(user),
-                 project.id,
-                 "usage-pending@example.com",
-                 "editor"
-               )
-
-      {:ok, view, _html} = live(conn, settings_path(project, "usage-limits"))
-      vue = LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsUsageLimits")
-
-      assert vue.props["usage-limits"]["workspace"]["members"] == %{
-               "used" => 2,
-               "limit" => 2
              }
     end
 
@@ -1777,9 +1821,26 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
   end
 
+  # Ten 50 MB assets, the largest a single upload may be, fill Free's 500 MB.
+  defp fill_workspace_storage!(project, user) do
+    for _ <- 1..10, do: asset_fixture(project, user, %{size: 52_428_800})
+  end
+
+  # A project whose owner belongs to the project alone, not to its workspace.
+  defp project_owned_by_outsider!(outsider) do
+    owner = user_fixture()
+    project = owner |> project_fixture() |> Repo.preload(:workspace)
+    membership_fixture(project, outsider, "editor")
+    {:ok, _project} = Projects.transfer_owner(user_scope_fixture(owner), project.id, outsider.id)
+    project
+  end
+
+  # The plan belongs to the workspace's owner.
   defp subscribe!(workspace_id, plan) do
+    owner_id = Repo.get!(Workspace, workspace_id).owner_id
+
     Billing.Subscription
-    |> Repo.get_by!(workspace_id: workspace_id)
+    |> Repo.get_by!(user_id: owner_id)
     |> Billing.Subscription.update_changeset(%{plan: plan, status: "active"})
     |> Repo.update!()
   end

@@ -416,10 +416,10 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
     test "rejects the total before inserting when individual assets would fit", %{target: target} do
       limit = Billing.plan_limit("free", :storage_bytes_per_workspace)
       max_asset_size = 52_428_800
-      assert limit == max_asset_size * 5
+      assert limit == max_asset_size * 10
 
-      Enum.each(1..5, fn index ->
-        size = if index == 5, do: max_asset_size - 700, else: max_asset_size
+      Enum.each(1..10, fn index ->
+        size = if index == 10, do: max_asset_size - 700, else: max_asset_size
 
         Repo.insert!(%Asset{
           project_id: target.id,
@@ -436,7 +436,7 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       assert {:error, :limit_reached, details} = Imports.execute(target, import_plan(data))
       assert details.required == 800
       assert details.available == 700
-      assert Assets.count_assets(target.id) == 5
+      assert Assets.count_assets(target.id) == 10
     end
   end
 

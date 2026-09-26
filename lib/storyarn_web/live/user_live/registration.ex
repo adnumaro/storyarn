@@ -117,7 +117,7 @@ defmodule StoryarnWeb.UserLive.Registration do
          |> push_navigate(to: PublicURLs.home_path(socket.assigns.locale))}
 
       {:error, reason}
-      when reason in [:workspace_limit_reached, :workspace_provisioning_failed] ->
+      when reason in [:workspace_limit_reached, :account_provisioning_failed] ->
         {:noreply,
          put_flash(
            socket,

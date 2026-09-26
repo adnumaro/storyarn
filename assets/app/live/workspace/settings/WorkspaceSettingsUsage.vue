@@ -6,10 +6,10 @@ import {
   METER_WARNING_RATIO,
   SettingsMeterRow,
   SettingsPage,
+  SettingsRow,
   SettingsSection,
   type SettingsMeterStatus,
 } from "@components/settings";
-import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { formatBytes, type ByteCount } from "@shared/utils/format-bytes";
 import { storagePercentage, type WorkspaceStorageUsage } from "@shared/utils/storage-accounting";
@@ -26,9 +26,7 @@ interface StorageBucket {
 }
 
 interface WorkspaceUsage {
-  plan: { key: string };
   projects: CountBucket;
-  members: CountBucket;
   storageBytes: StorageBucket;
   storage: WorkspaceStorageUsage;
 }
@@ -43,23 +41,19 @@ interface Meter {
   status: SettingsMeterStatus;
 }
 
-const { usage, contactPath } = defineProps<{
+const { usage, planPath = null } = defineProps<{
   usage: WorkspaceUsage;
-  contactPath: string;
+  /** Plan & billing, sent only to the workspace owner, whose plan sets these limits. */
+  planPath?: string | null;
 }>();
 
-const { locale, t, te } = useI18n();
-
-const planName = computed(() => {
-  const key = `settings.workspace.plan.plans.${usage.plan.key}`;
-  return te(key) ? t(key) : usage.plan.key;
-});
+const { locale, t } = useI18n();
 
 function countMeter(key: string, bucket: CountBucket, hint: string): Meter {
   const format = new Intl.NumberFormat(locale.value);
   const meter = {
     key,
-    label: t(`settings.workspace.plan.meters.${key}`),
+    label: t(`settings.workspace.usage.meters.${key}`),
     hint,
     used: format.format(bucket.used),
     limit: null,
@@ -95,8 +89,8 @@ const storageMeter = computed<Meter>(() => {
 
   return {
     key: "storage",
-    label: t("settings.workspace.plan.meters.storage"),
-    hint: t("settings.workspace.plan.storage_breakdown", {
+    label: t("settings.workspace.usage.meters.storage"),
+    hint: t("settings.workspace.usage.storage_breakdown", {
       assets: formatBytes(usage.storage.currentAssetsBytes, locale.value),
       trash: formatBytes(usage.storage.assetTrashBytes, locale.value),
       backups: formatBytes(usage.storage.fullSnapshotsBytes, locale.value),
@@ -116,53 +110,44 @@ const storageMeter = computed<Meter>(() => {
 });
 
 const meters = computed<Meter[]>(() => [
-  countMeter("projects", usage.projects, t("settings.workspace.plan.hints.projects")),
-  countMeter("members", usage.members, t("settings.workspace.plan.hints.members")),
+  countMeter("projects", usage.projects, t("settings.workspace.usage.hints.projects")),
   storageMeter.value,
 ]);
 </script>
 
 <template>
-  <SettingsPage :title="t('settings.workspace.plan.title')">
-    <SettingsSection :title="t('settings.workspace.plan.plan_section')">
-      <div
-        class="grid grid-cols-1 items-center gap-x-6 gap-y-2 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto]"
-      >
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="font-medium" data-testid="workspace-plan-name">{{ planName }}</span>
-            <Badge>{{ t("settings.workspace.plan.current_plan") }}</Badge>
-          </div>
-          <div class="text-[13px] text-muted-foreground">
-            {{ t("settings.workspace.plan.plan_hint") }}
-          </div>
-        </div>
-        <div class="flex items-center justify-end">
-          <Button as-child variant="outline" size="sm">
-            <LiveLink :to="contactPath">{{ t("settings.workspace.plan.talk_to_us") }}</LiveLink>
-          </Button>
-        </div>
-      </div>
-    </SettingsSection>
-
+  <SettingsPage :title="t('settings.workspace.usage.title')">
     <SettingsSection
-      :title="t('settings.workspace.plan.limits_section')"
-      :hint="t('settings.workspace.plan.limits_hint')"
+      :title="t('settings.workspace.usage.limits_section')"
+      :hint="t('settings.workspace.usage.limits_hint')"
     >
       <SettingsMeterRow
         v-for="meter in meters"
         :key="meter.key"
-        :data-testid="`workspace-plan-meter-${meter.key}`"
+        :data-testid="`workspace-usage-meter-${meter.key}`"
         :label="meter.label"
         :hint="meter.hint"
         :used="meter.used"
         :limit="meter.limit"
         :percent="meter.percent"
         :status="meter.status"
-        :status-label="t(`settings.workspace.plan.status.${meter.status}`)"
+        :status-label="t(`settings.workspace.usage.status.${meter.status}`)"
       />
 
-      <template #footer>{{ t("settings.workspace.plan.footer") }}</template>
+      <template #footer>{{ t("settings.workspace.usage.footer") }}</template>
+    </SettingsSection>
+
+    <SettingsSection v-if="planPath" :title="t('settings.workspace.usage.plan_section')">
+      <SettingsRow
+        :label="t('settings.workspace.usage.plan_label')"
+        :hint="t('settings.workspace.usage.plan_hint')"
+      >
+        <Button as-child variant="outline" size="sm">
+          <LiveLink :to="planPath" data-testid="workspace-usage-plan-link">
+            {{ t("settings.workspace.usage.plan_link") }}
+          </LiveLink>
+        </Button>
+      </SettingsRow>
     </SettingsSection>
   </SettingsPage>
 </template>

@@ -4,7 +4,6 @@ import ProjectSettingsUsageLimits from "../../../../live/project/settings/Projec
 
 function usageLimits(overrides = {}) {
   return {
-    plan: { key: "free", name: "Free" },
     project: {
       items: { used: 6, limit: 700 },
       projectSnapshots: { used: 2, limit: 10 },
@@ -19,7 +18,8 @@ function mountUsage(props = {}) {
   return mount(ProjectSettingsUsageLimits, {
     props: {
       usageLimits: usageLimits(),
-      workspacePlanPath: "/users/settings/workspaces/acme/plan",
+      workspaceUsagePath: "/users/settings/workspaces/acme/usage",
+      planPath: "/users/settings/plan",
       ...props,
     },
   });
@@ -43,14 +43,29 @@ describe("ProjectSettingsUsageLimits", () => {
     ).toBe("available");
   });
 
-  it("no longer renders workspace-wide storage accounting", () => {
+  it("renders no workspace-wide figures and points to the workspace's Usage page", () => {
     const wrapper = mountUsage();
 
     expect(wrapper.text()).not.toContain("Counted storage");
     expect(wrapper.text()).not.toContain("Workspace limits");
-    expect(wrapper.get('a[href="/users/settings/workspaces/acme/plan"]').text()).toContain(
-      "Plan & usage",
+    expect(wrapper.get('a[href="/users/settings/workspaces/acme/usage"]').text()).toContain(
+      "Workspace › Usage",
     );
+  });
+
+  it("gives a project owner outside the workspace no workspace or plan links", () => {
+    const base = usageLimits();
+    const wrapper = mountUsage({
+      workspaceUsagePath: null,
+      planPath: null,
+      usageLimits: {
+        ...base,
+        project: { ...base.project, namedVersions: { used: 10, limit: 10 } },
+      },
+    });
+
+    expect(wrapper.find("a").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("Plan & billing");
   });
 
   it("fails closed for unknown and zero count limits", () => {
@@ -108,6 +123,6 @@ describe("ProjectSettingsUsageLimits", () => {
     const row = wrapper.get('[data-testid="project-usage-meter-named_versions"]');
     expect(row.attributes("data-meter-status")).toBe("reached");
     expect(row.text()).toContain("Delete a named version or raise the plan limit");
-    expect(row.text()).toContain("Plan & usage");
+    expect(row.get('a[href="/users/settings/plan"]').text()).toBe("Plan & billing");
   });
 });

@@ -137,12 +137,12 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       {token, invitation} =
         create_invitation_with_token(project, owner, invitee.email, "editor")
 
-      membership_fixture(project, existing_member, "viewer")
+      membership_fixture(project, existing_member, "editor")
 
       assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
                live(conn, "/es/projects/invitations/#{token}")
 
-      assert flash["error"] =~ "límite de miembros"
+      assert flash["error"] =~ "asientos de editor libres"
       refute Repo.get_by(ProjectMembership, project_id: project.id, user_id: invitee.id)
       assert is_nil(Repo.get!(ProjectInvitation, invitation.id).accepted_at)
     end

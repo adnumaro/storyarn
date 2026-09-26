@@ -98,7 +98,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       {:ok, _inv1} =
         Workspaces.create_invitation(%{user: owner}, workspace.id, "first@example.com", "member")
 
-      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
+      assert {:error, :limit_reached, %{resource: :editors_per_account, used: 2, limit: 2}} =
                Workspaces.create_invitation(%{user: owner}, workspace.id, "second@example.com", "member")
 
       invitations = Workspaces.list_pending_invitations(workspace.id)
@@ -107,7 +107,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
   end
 
   describe "billing limits" do
-    test "create_invitation returns limit_reached when member limit reached" do
+    test "create_invitation returns limit_reached when the editor limit is reached" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
 
       # Add a second member to reach the limit of 2
@@ -116,7 +116,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
 
       email = unique_user_email()
 
-      assert {:error, :limit_reached, %{resource: :members_per_workspace}} =
+      assert {:error, :limit_reached, %{resource: :editors_per_account}} =
                Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
     end
   end
@@ -133,12 +133,12 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       assert invitation.invited_by_id == owner.id
     end
 
-    test "allows an admin through authorization and reaches capacity policy" do
+    test "allows an admin through authorization but not to add an editor seat" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       admin = user_fixture()
       _membership = workspace_membership_fixture(workspace, admin, "admin")
 
-      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
+      assert {:error, :seat_requires_account_owner} =
                Workspaces.create_invitation(
                  %{user: admin},
                  workspace.id,

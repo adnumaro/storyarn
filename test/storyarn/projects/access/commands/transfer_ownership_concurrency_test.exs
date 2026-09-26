@@ -26,7 +26,8 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnershipConcurrencyTest do
       first_receiver = user_without_workspace()
       second_receiver = user_without_workspace()
       _first_membership = membership_fixture(project, first_receiver, "editor")
-      _second_membership = membership_fixture(project, second_receiver, "viewer")
+      # Both receivers already edit, so neither transfer takes a new seat.
+      _second_membership = membership_fixture(project, second_receiver, "editor")
 
       try do
         tasks =
