@@ -213,12 +213,12 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       {encoded_token, invitation} =
         workspace_invitation_fixture(workspace, owner, invitee.email)
 
-      workspace_membership_fixture(workspace, existing_member, "viewer")
+      workspace_membership_fixture(workspace, existing_member, "member")
 
       assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
                live(conn, "/es/workspaces/invitations/#{encoded_token}")
 
-      assert flash["error"] =~ "límite de miembros"
+      assert flash["error"] =~ "asientos de editor libres"
       refute Repo.get_by(WorkspaceMembership, workspace_id: workspace.id, user_id: invitee.id)
       assert is_nil(Repo.get!(WorkspaceInvitation, invitation.id).accepted_at)
     end

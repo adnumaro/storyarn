@@ -3,7 +3,8 @@ defmodule Storyarn.Commercial.Billing.Plan do
   Static plan configuration. Plans change rarely and live in code, not DB.
 
   A limit is a non-negative integer or `:unlimited`. A resource a plan does
-  not define has no limit value, which callers treat as blocked.
+  not define has no limit value, which callers treat as blocked. Editors on
+  paid plans are `:paid_seats`: the account buys one seat per editor.
   """
 
   @default_plan "free"
@@ -14,14 +15,14 @@ defmodule Storyarn.Commercial.Billing.Plan do
       name: "Free",
       limits: %{
         workspaces_per_user: 1,
+        editors_per_account: 2,
         projects_per_workspace: 3,
-        members_per_workspace: 2,
         items_per_project: 700,
-        storage_bytes_per_workspace: 250 * 1024 * 1024,
+        storage_bytes_per_workspace: 500 * 1024 * 1024,
         project_templates_per_workspace: 10,
         project_template_versions_per_template: 20,
         named_versions_per_project: 10,
-        project_snapshots_per_project: 10,
+        project_snapshots_per_project: 2,
         # Trash retention for soft-deleted entities (sequences, flows).
         # After this window the retention worker hard-deletes the entity
         # (FK CASCADE drops its trash refs automatically). Free tier = 24h
@@ -29,15 +30,14 @@ defmodule Storyarn.Commercial.Billing.Plan do
         trash_retention_hours: 24
       }
     },
-    # The free beta: Pro's limits with a cap on members, since nobody pays for
-    # seats while it lasts. The cap counts every member of the workspace and its
-    # projects plus pending invitations, viewers included, until ENG-240 turns
-    # it into a count of editor seats.
+    # The free beta: Pro's limits with a cap on editors, since nobody pays for
+    # seats while it lasts.
     "beta" => %{
       name: "Beta",
       limits: %{
+        workspaces_per_user: 3,
+        editors_per_account: 10,
         projects_per_workspace: :unlimited,
-        members_per_workspace: 10,
         items_per_project: :unlimited,
         storage_bytes_per_workspace: 10 * @gib,
         project_templates_per_workspace: 50,
@@ -50,8 +50,9 @@ defmodule Storyarn.Commercial.Billing.Plan do
     "pro" => %{
       name: "Pro",
       limits: %{
+        workspaces_per_user: 3,
+        editors_per_account: :paid_seats,
         projects_per_workspace: :unlimited,
-        members_per_workspace: :unlimited,
         items_per_project: :unlimited,
         storage_bytes_per_workspace: 10 * @gib,
         project_templates_per_workspace: 50,
@@ -64,10 +65,11 @@ defmodule Storyarn.Commercial.Billing.Plan do
     "studio" => %{
       name: "Studio",
       limits: %{
+        workspaces_per_user: 10,
+        editors_per_account: :paid_seats,
         projects_per_workspace: :unlimited,
-        members_per_workspace: :unlimited,
         items_per_project: :unlimited,
-        storage_bytes_per_workspace: 50 * @gib,
+        storage_bytes_per_workspace: 20 * @gib,
         project_templates_per_workspace: :unlimited,
         project_template_versions_per_template: :unlimited,
         named_versions_per_project: :unlimited,
@@ -85,7 +87,7 @@ defmodule Storyarn.Commercial.Billing.Plan do
   @doc """
   Returns a specific limit for a plan.
   """
-  @spec limit(String.t(), atom()) :: non_neg_integer() | :unlimited | nil
+  @spec limit(String.t(), atom()) :: non_neg_integer() | :unlimited | :paid_seats | nil
   def limit(plan_key, resource) do
     case get(plan_key) do
       nil -> nil

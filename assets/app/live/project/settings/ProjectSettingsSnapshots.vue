@@ -118,13 +118,21 @@ const {
   storageUsage,
   snapshotLimit,
   restoreOperationActive = false,
-  workspacePlanPath = null,
+  workspaceUsagePath = null,
+  planPath = null,
 } = defineProps<{
   snapshots?: Snapshot[];
-  storageUsage: WorkspaceStorageUsage;
+  /**
+   * Workspace storage totals, `null` for someone who may not see them: a
+   * project owner who is only a member of this project.
+   */
+  storageUsage: WorkspaceStorageUsage | null;
   snapshotLimit: SnapshotLimit;
   restoreOperationActive?: boolean;
-  workspacePlanPath?: string | null;
+  /** Workspace › Usage, for the workspace's owner, admins and members. */
+  workspaceUsagePath?: string | null;
+  /** Plan & billing, for the workspace owner, whose plan sets the limits. */
+  planPath?: string | null;
 }>();
 
 const { locale, t } = useI18n();
@@ -405,6 +413,10 @@ function snapshotRequestError(payload: Record<string, unknown>) {
     return t("project_settings.snapshots.create.unauthorized");
   }
 
+  if (payload.reason === "storage_limit_reached" && typeof payload.requiredBytes !== "string") {
+    return t("project_settings.snapshots.create.storage_limit_reached_without_figures");
+  }
+
   if (payload.reason === "storage_limit_reached") {
     return t("project_settings.snapshots.create.storage_limit_reached", {
       required: formatReplyBytes(payload.requiredBytes),
@@ -445,21 +457,31 @@ function formatSnapshotDate(dateStr: string | undefined) {
 }
 
 const workspacePercentage = computed(() =>
-  storagePercentage(
-    storageUsage.totalAccountedBytes,
-    storageUsage.limitBytes,
-    storageUsage.limitKind,
-  ),
+  storageUsage === null
+    ? null
+    : storagePercentage(
+        storageUsage.totalAccountedBytes,
+        storageUsage.limitBytes,
+        storageUsage.limitKind,
+      ),
 );
 
-const workspacePercentLabel = computed(() => percentageLabel(workspacePercentage.value));
-
-const workspaceHasDeterminateProgress = computed(
-  () =>
-    workspacePercentage.value.basisPoints !== null && workspacePercentage.value.state !== "zero",
+const workspacePercentLabel = computed(() =>
+  workspacePercentage.value === null ? "" : percentageLabel(workspacePercentage.value),
 );
+
+const workspaceProgressPercent = computed(() => {
+  const percentage = workspacePercentage.value;
+  if (percentage === null || percentage.basisPoints === null || percentage.state === "zero") {
+    return null;
+  }
+
+  return percentage.progressPercent;
+});
 
 function snapshotPercentage(snapshot: Snapshot) {
+  if (storageUsage === null) return null;
+
   if (snapshot.accountedSizeBytes === null) {
     return storagePercentage(null, storageUsage.limitBytes, storageUsage.limitKind);
   }
@@ -472,7 +494,8 @@ function snapshotPercentage(snapshot: Snapshot) {
 }
 
 function snapshotPercentLabel(snapshot: Snapshot) {
-  return percentageLabel(snapshotPercentage(snapshot));
+  const percentage = snapshotPercentage(snapshot);
+  return percentage === null ? "" : percentageLabel(percentage);
 }
 
 function percentageLabel(percentage: ReturnType<typeof storagePercentage>) {
@@ -501,13 +524,15 @@ function percentageLabel(percentage: ReturnType<typeof storagePercentage>) {
 }
 
 const storageLimitLabel = computed(() =>
-  storageUsage.limitKind === "limited" && storageUsage.limitBytes !== null
+  storageUsage !== null && storageUsage.limitKind === "limited" && storageUsage.limitBytes !== null
     ? formatBytes(storageUsage.limitBytes, locale.value)
     : null,
 );
 
 const storageMeterStatus = computed<SettingsMeterStatus>(() => {
   const percentage = workspacePercentage.value;
+
+  if (percentage === null) return "unknown";
 
   if (percentage.state === "unlimited") return "unlimited";
   if (percentage.state === "unknown") return "unknown";
@@ -717,8 +742,8 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               {{ snapshotLimitLabel }}
             </span>
             <LiveLink
-              v-if="snapshotLimitReached && workspacePlanPath"
-              :to="workspacePlanPath"
+              v-if="snapshotLimitReached && planPath"
+              :to="planPath"
               class="font-medium underline underline-offset-2"
               data-testid="snapshot-slot-plan-link"
             >
@@ -744,8 +769,8 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
         >
           {{ requestError }}
           <LiveLink
-            v-if="workspacePlanPath && requestError === limitRequestError"
-            :to="workspacePlanPath"
+            v-if="planPath && requestError === limitRequestError"
+            :to="planPath"
             class="ml-1 font-medium underline underline-offset-2"
             data-testid="snapshot-request-plan-link"
           >
@@ -981,6 +1006,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                   }}
                 </span>
                 <span
+                  v-if="storageUsage"
                   :aria-label="
                     $t('project_settings.snapshots.accessibility.snapshot_percentage', {
                       percent: snapshotPercentLabel(snapshot),
@@ -1169,6 +1195,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
     </SettingsSection>
 
     <SettingsSection
+      v-if="storageUsage"
       :title="$t('project_settings.snapshots.storage_section')"
       :hint="$t('project_settings.snapshots.storage_section_hint')"
     >
@@ -1178,7 +1205,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
         :hint="$t('project_settings.snapshots.storage_row_hint')"
         :used="formatBytes(storageUsage.totalAccountedBytes, locale)"
         :limit="storageLimitLabel"
-        :percent="workspaceHasDeterminateProgress ? workspacePercentage.progressPercent : null"
+        :percent="workspaceProgressPercent"
         :status="storageMeterStatus"
         :status-label="workspacePercentLabel"
       />
@@ -1186,8 +1213,8 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
       <template #footer>
         {{ $t("project_settings.snapshots.storage_footer") }}
         <LiveLink
-          v-if="workspacePlanPath"
-          :to="workspacePlanPath"
+          v-if="workspaceUsagePath"
+          :to="workspaceUsagePath"
           class="underline underline-offset-2"
         >
           {{ $t("project_settings.snapshots.storage_footer_link") }}

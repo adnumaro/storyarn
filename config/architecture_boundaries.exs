@@ -1756,6 +1756,7 @@ boundaries = %{
     "lib/storyarn/workers/accounts/",
     "lib/storyarn_web/controllers/user_session_controller.ex",
     "lib/storyarn_web/live/user_live/",
+    "lib/storyarn_web/live/settings_live/plan_billing.ex",
     "lib/storyarn_web/live/settings_live/preferences.ex",
     "lib/storyarn_web/live/settings_live/profile.ex",
     "lib/storyarn_web/live/settings_live/security.ex"
@@ -1768,7 +1769,7 @@ boundaries = %{
     "lib/storyarn_web/live/settings_live/workspace_ai.ex",
     "lib/storyarn_web/live/settings_live/workspace_general.ex",
     "lib/storyarn_web/live/settings_live/workspace_members.ex",
-    "lib/storyarn_web/live/settings_live/workspace_plan.ex",
+    "lib/storyarn_web/live/settings_live/workspace_usage.ex",
     "lib/storyarn_web/live/settings_live/workspace_projects.ex"
   ],
   commercial: [
@@ -4218,7 +4219,20 @@ policy = %{
       source: "lib/storyarn_web/live/shared/plan_limit_flash.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
-      reason: "Plan-limit toasts link to Plan & usage only after Workspaces authorizes the actor to open it"
+      reason: "Plan-limit toasts link to Plan & billing only for the workspace owner Workspaces resolves"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/usage_access.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Usage pages show workspace totals only to roles Workspaces authorizes to see them"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/plan_billing.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason:
+        "The account's Plan & billing page reads its plan, seats and workspaces through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/flows/editor/queries/reference_targets.ex",
@@ -4905,7 +4919,19 @@ policy = %{
       source: "lib/storyarn/projects/access/commands/invitation_operations.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project invitations enforce Commercial-owned member seat policy"
+      reason: "Project invitations enforce Commercial-owned editor seat policy"
+    },
+    %{
+      source: "lib/storyarn/projects/access/memberships.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Project role changes enforce Commercial-owned editor seat policy"
+    },
+    %{
+      source: "lib/storyarn/projects/access/commands/transfer_ownership.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Project ownership transfer enforces Commercial-owned editor seat policy"
     },
     %{
       source: "lib/storyarn/projects/access/commands/invitation_operations.ex",
@@ -5196,7 +5222,7 @@ policy = %{
       source: "lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace creation applies commercial limits and subscriptions through the public Commercial facade"
+      reason: "Workspace creation applies the owner's workspace limit through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
@@ -5282,13 +5308,19 @@ policy = %{
       source: "lib/storyarn/workspaces/invitations/commands/create.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace invitation creation applies Commercial-owned member seat policy"
+      reason: "Workspace invitation creation applies Commercial-owned editor seat policy"
+    },
+    %{
+      source: "lib/storyarn/workspaces/memberships/commands/change_member_role.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Workspace role changes enforce Commercial-owned editor seat policy"
     },
     %{
       source: "lib/storyarn/workspaces/invitations/commands/accept.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace invitation acceptance applies Commercial-owned member seat policy"
+      reason: "Workspace invitation acceptance applies Commercial-owned editor seat policy"
     },
     %{
       source: "lib/storyarn/workspaces/invitations/delivery/content.ex",
@@ -5309,10 +5341,10 @@ policy = %{
       reason: "Workspace AI settings surface the AI policy controls through the public AI facade"
     },
     %{
-      source: "lib/storyarn_web/live/settings_live/workspace_plan.ex",
+      source: "lib/storyarn_web/live/settings_live/workspace_usage.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace plan settings read usage against plan limits through the public Commercial facade"
+      reason: "Workspace usage settings read usage against the owner's plan limits through the public Commercial facade"
     },
     %{
       source: "lib/storyarn_web/live/settings_live/workspace_projects.ex",
@@ -5338,6 +5370,12 @@ policy = %{
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "The workspace home lists and creates projects through the public Projects facade"
+    },
+    %{
+      source: "lib/storyarn/accounts/registration/commands/register.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Registration provisions each new account's subscription through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/accounts/registration/commands/register.ex",

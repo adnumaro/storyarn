@@ -6,6 +6,7 @@ defmodule Storyarn.Commercial.Billing do
   """
 
   alias Ecto.Changeset
+  alias Storyarn.Commercial.Billing.EditorSeats
   alias Storyarn.Commercial.Billing.Limits
   alias Storyarn.Commercial.Billing.Plan
   alias Storyarn.Commercial.Billing.StorageAccounting
@@ -26,7 +27,6 @@ defmodule Storyarn.Commercial.Billing do
 
   # Usage counting (internal, exposed for testing)
   defdelegate count_project_items(project_id), to: Limits
-  defdelegate count_unique_workspace_users(workspace_id), to: Limits
 
   # Limit checks
   defdelegate can_create_workspace?(user), to: Limits
@@ -34,9 +34,10 @@ defmodule Storyarn.Commercial.Billing do
   defdelegate can_publish_reserved_project?(workspace), to: Limits
   defdelegate can_create_project_template?(source_project), to: Limits
   defdelegate can_create_project_template_version?(template), to: Limits
-  defdelegate can_invite_member?(workspace_or_project), to: Limits
-  defdelegate can_invite_member?(workspace_or_project, email), to: Limits
-  defdelegate can_accept_member?(workspace_or_project, email), to: Limits
+  defdelegate check_editor_seat(workspace_or_project, email, role, actor), to: EditorSeats, as: :check
+  defdelegate check_editor_seat_acceptance(workspace_or_project, email, role), to: EditorSeats, as: :check_acceptance
+  defdelegate editor_seat_usage(user_id), to: EditorSeats, as: :usage
+  defdelegate account_usage(user_id), to: Limits
   defdelegate can_upload_asset?(workspace, file_size), to: Limits
   defdelegate can_upload_asset_for_project?(project, file_size), to: Limits
   defdelegate can_create_item?(project), to: Limits
@@ -166,16 +167,16 @@ defmodule Storyarn.Commercial.Billing do
   defdelegate plans_for_workspace_ids(workspace_ids), to: SubscriptionQueries
 
   @doc false
-  @spec create_subscription(map()) ::
+  @spec create_account_subscription(map()) ::
           {:ok, map()}
           | {:error, %{required(:code) => atom(), required(:field_errors) => map()}}
-  def create_subscription(workspace) do
-    case SubscriptionCrud.create_subscription(workspace) do
+  def create_account_subscription(user) do
+    case SubscriptionCrud.create_subscription(user) do
       {:ok, %Subscription{} = subscription} ->
         {:ok,
          %{
            id: subscription.id,
-           workspace_id: subscription.workspace_id,
+           user_id: subscription.user_id,
            plan: subscription.plan,
            status: subscription.status
          }}
@@ -191,7 +192,7 @@ defmodule Storyarn.Commercial.Billing do
   defp subscription_creation_error(%Changeset{errors: errors}) do
     %{
       code:
-        if(Enum.any?(errors, &unique_workspace_constraint?/1),
+        if(Enum.any?(errors, &unique_account_constraint?/1),
           do: :subscription_already_exists,
           else: :invalid_subscription
         ),
@@ -215,12 +216,12 @@ defmodule Storyarn.Commercial.Billing do
     end
   end
 
-  defp unique_workspace_constraint?({:workspace_id, {_message, metadata}}),
-    do: Keyword.get(metadata, :constraint) == :unique
+  defp unique_account_constraint?({:user_id, {_message, metadata}}), do: Keyword.get(metadata, :constraint) == :unique
 
-  defp unique_workspace_constraint?(_error), do: false
+  defp unique_account_constraint?(_error), do: false
 
-  defdelegate create_subscription(workspace, plan), to: SubscriptionCrud
-  defdelegate get_subscription(workspace_id), to: SubscriptionQueries
+  defdelegate create_subscription(user, plan), to: SubscriptionCrud
+  defdelegate get_subscription(user_id), to: SubscriptionQueries
+  defdelegate plan_for_user(user_id), to: SubscriptionQueries
   defdelegate update_plan(subscription, new_plan), to: SubscriptionCrud
 end

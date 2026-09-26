@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnership do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial
   alias Storyarn.Projects.Access.Commands.OwnerAuthority
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
@@ -20,28 +21,34 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnership do
           | :target_not_member
           | :ownership_invariant_violation
           | :ownership_transfer_failed
+          | :seat_requires_account_owner
 
   @spec transfer(map(), pos_integer(), pos_integer(), keyword()) ::
-          {:ok, Project.t()} | {:error, error_reason() | Ecto.Changeset.t()}
+          {:ok, Project.t()}
+          | {:error, error_reason() | Ecto.Changeset.t()}
+          | {:error, :limit_reached, map()}
   def transfer(scope, project_id, target_user_id, opts \\ [])
 
-  def transfer(scope, project_id, target_user_id, opts)
+  def transfer(%{user: %{id: actor_id}} = scope, project_id, target_user_id, opts)
       when valid_id(project_id) and valid_id(target_user_id) and is_list(opts) do
-    OwnerAuthority.transact_as_owner(scope, project_id, fn state ->
-      transfer_locked(state, target_user_id, opts)
+    scope
+    |> OwnerAuthority.transact_as_owner(project_id, fn state ->
+      transfer_locked(state, target_user_id, actor_id, opts)
     end)
+    |> restore_limit_error()
   end
 
   def transfer(_scope, _project_id, _target_user_id, _opts), do: {:error, :not_found}
 
-  defp transfer_locked(%{project: project}, target_user_id, _opts) when project.owner_id == target_user_id do
+  defp transfer_locked(%{project: project}, target_user_id, _actor_id, _opts) when project.owner_id == target_user_id do
     {:ok, project}
   end
 
-  defp transfer_locked(state, target_user_id, opts) do
+  defp transfer_locked(state, target_user_id, actor_id, opts) do
     with %ProjectMembership{} = target_membership <-
            Enum.find(state.memberships, &(&1.user_id == target_user_id)),
-         :ok <- lock_transfer_users(state.owner_membership.user_id, target_user_id),
+         {:ok, target} <- lock_transfer_users(state.owner_membership.user_id, target_user_id),
+         :ok <- check_editor_seat(state.project, target, actor_id),
          {:ok, _former_owner} <- change_role(state.owner_membership, "editor"),
          :ok <- run_after_owner_demotion(opts),
          {:ok, _new_owner} <- change_role(target_membership, "owner"),
@@ -72,11 +79,23 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnership do
       )
 
     if Enum.map(users, & &1.id) == user_ids do
-      :ok
+      {:ok, Enum.find(users, &(&1.id == target_user_id))}
     else
       {:error, :target_not_member}
     end
   end
+
+  # A viewer who becomes the owner takes an editor seat of the workspace
+  # owner's account.
+  defp check_editor_seat(project, target, actor_id) do
+    case Commercial.check_editor_seat(project, target.email, "owner", actor_id) do
+      {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
+      result -> result
+    end
+  end
+
+  defp restore_limit_error({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+  defp restore_limit_error(result), do: result
 
   defp change_role(membership, role) do
     membership

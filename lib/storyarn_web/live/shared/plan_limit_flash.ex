@@ -3,8 +3,8 @@ defmodule StoryarnWeb.Live.Shared.PlanLimitFlash do
   Toasts for a plan limit the actor has just hit.
 
   The notice lives under its own `:limit` flash key so the toaster can link to
-  the workspace's Plan & usage page. Only actors who can open that page get
-  the link, decided by the same authorization the page runs on mount.
+  Plan & billing. The plan belongs to the workspace owner, so only they get the
+  link; admins and editors see the notice without it.
 
   The project sidebars are sticky nested LiveViews: their flash never reaches
   the toaster and they have no parent pid, since they outlive the page. They
@@ -13,12 +13,11 @@ defmodule StoryarnWeb.Live.Shared.PlanLimitFlash do
   it up through the `:receive_forwarded` hook.
   """
 
-  use StoryarnWeb, :verified_routes
-
   import Phoenix.LiveView, only: [attach_hook: 4, connected?: 1, put_flash: 3]
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.UsageAccess
 
   @spec put(Socket.t(), pos_integer() | nil, String.t()) :: Socket.t()
   def put(%Socket{} = socket, workspace_id, message) when is_binary(message) do
@@ -54,8 +53,8 @@ defmodule StoryarnWeb.Live.Shared.PlanLimitFlash do
   defp workspace_id(_assigns), do: nil
 
   defp plan_path(scope, workspace_id) when is_integer(workspace_id) do
-    case Workspaces.authorize(scope, workspace_id, :access_workspace_settings) do
-      {:ok, workspace, _membership} -> ~p"/users/settings/workspaces/#{workspace.slug}/plan"
+    case Workspaces.authorize(scope, workspace_id, :view) do
+      {:ok, workspace, _membership} -> UsageAccess.plan_path(scope, workspace)
       {:error, _reason} -> nil
     end
   end

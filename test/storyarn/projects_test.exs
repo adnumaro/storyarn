@@ -400,7 +400,10 @@ defmodule Storyarn.ProjectsTest do
       assert {:ok, _invitation} =
                Projects.create_invitation(scope, project.id, "first@example.com", "editor")
 
-      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
+      assert {:error, :limit_reached, %{resource: :editors_per_account, used: 2, limit: 2}} =
+               Projects.create_invitation(scope, project.id, "second@example.com", "editor")
+
+      assert {:ok, _viewer_invitation} =
                Projects.create_invitation(scope, project.id, "second@example.com", "viewer")
     end
 
@@ -419,19 +422,19 @@ defmodule Storyarn.ProjectsTest do
       assert {:ok, _membership} = Projects.accept_invitation(first_invitation, invitee)
 
       assert {:ok, second_invitation} =
-               Projects.create_invitation(scope, second_project.id, String.upcase(email), "viewer")
+               Projects.create_invitation(scope, second_project.id, String.upcase(email), "editor")
 
       assert {:ok, second_membership} =
                Projects.accept_invitation(second_invitation, invitee)
 
-      assert second_membership.role == "viewer"
+      assert second_membership.role == "editor"
 
       assert {:error, :limit_reached, %{used: 2, limit: 2}} =
                Projects.create_invitation(
                  scope,
                  second_project.id,
                  "different-collaborator@example.com",
-                 "viewer"
+                 "editor"
                )
     end
 

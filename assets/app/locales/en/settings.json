@@ -9,6 +9,7 @@
       "items": {
         "profile": "Profile",
         "security": "Security",
+        "plan_billing": "Plan & billing",
         "tutorials": "Tutorials",
         "integrations": "AI Integrations",
         "ai_team": "My AI Team",
@@ -19,7 +20,7 @@
         "preferences": "Preferences",
         "workspace_ai": "AI",
         "workspace_projects": "Projects",
-        "workspace_plan": "Plan & usage"
+        "workspace_usage": "Usage"
       },
       "search": "Search settings…",
       "switch_workspace": "Switch workspace",
@@ -72,6 +73,37 @@
       },
       "password_section": "Password",
       "cancel": "Cancel"
+    },
+    "plan_billing": {
+      "title": "Plan & billing",
+      "plan_section": "Plan",
+      "current_plan": "Current plan",
+      "plan_hint": "Every workspace you own takes its limits from this plan.",
+      "talk_to_us": "Talk to us",
+      "usage_section": "Account usage",
+      "usage_hint": "Across every workspace you own",
+      "meters": {
+        "seats": "Editor seats",
+        "workspaces": "Workspaces"
+      },
+      "hints": {
+        "seats": "People who can edit in any of your workspaces, you included, counted once. Viewers are free, and a pending editor invitation holds a seat.",
+        "workspaces": "Workspaces you own. Being a member of someone else's workspace does not count."
+      },
+      "status": {
+        "available": "Available",
+        "warning": "Almost full",
+        "reached": "Limit reached",
+        "unlimited": "Unlimited",
+        "unknown": "Unknown",
+        "paid_seats": "Per paid seat"
+      },
+      "plans": {
+        "free": "Free",
+        "beta": "Beta",
+        "pro": "Pro",
+        "studio": "Studio"
+      }
     },
     "tutorials": {
       "title": "Tutorials",
@@ -271,22 +303,16 @@
         "import_section": "Import",
         "deleted_empty_text": "Projects moved to the workspace trash appear here with who deleted them and when. A downloaded snapshot can always be re-imported above."
       },
-      "plan": {
-        "title": "Plan & usage",
-        "plan_section": "Plan",
-        "current_plan": "Current plan",
-        "plan_hint": "Limits combine each project's quotas with quotas shared across the workspace.",
-        "talk_to_us": "Talk to us",
+      "usage": {
+        "title": "Usage",
         "limits_section": "Workspace limits",
         "limits_hint": "Shared by every project",
         "meters": {
           "projects": "Projects",
-          "members": "Members",
           "storage": "Storage"
         },
         "hints": {
-          "projects": "Active projects in this workspace.",
-          "members": "Unique workspace and project members. New invitations are blocked until a seat frees up."
+          "projects": "Active projects in this workspace."
         },
         "storage_breakdown": "Assets {assets} · Recoverable trash {trash} · Backups {backups} · Reservations {reservations}",
         "status": {
@@ -297,12 +323,10 @@
           "unknown": "Unknown"
         },
         "footer": "Per-project limits (items, backups, named versions) are under each project's Usage page.",
-        "plans": {
-          "free": "Free",
-          "beta": "Beta",
-          "pro": "Pro",
-          "studio": "Studio"
-        }
+        "plan_section": "Plan",
+        "plan_label": "Your plan",
+        "plan_hint": "These limits come from your plan, which applies to every workspace you own.",
+        "plan_link": "Plan & billing"
       }
     },
     "reauth": {

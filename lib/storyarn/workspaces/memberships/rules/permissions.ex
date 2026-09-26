@@ -16,9 +16,13 @@ defmodule Storyarn.Workspaces.Memberships.Rules.Permissions do
   def allowed?("admin", :create_project), do: true
   def allowed?("admin", :use_ai), do: true
   def allowed?("admin", :view), do: true
+  def allowed?("admin", :view_workspace_usage), do: true
   def allowed?("member", :access_workspace_general_settings), do: true
   def allowed?("member", :create_project), do: true
   def allowed?("member", :view), do: true
+  # A workspace's totals (storage, projects) belong to the people who edit it.
+  # Viewers and project-only members receive none.
+  def allowed?("member", :view_workspace_usage), do: true
   def allowed?("viewer", :view), do: true
   def allowed?(_role, _action), do: false
 end

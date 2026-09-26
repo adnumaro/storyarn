@@ -145,11 +145,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       second_project = project_fixture(second_user)
       second_sheet = sheet_fixture(second_project)
 
-      Repo.delete_all(
-        from(subscription in Subscription,
-          where: subscription.workspace_id == ^second_project.workspace_id
-        )
-      )
+      Repo.delete_all(from(subscription in Subscription, where: subscription.user_id == ^second_user.id))
 
       assert {:ok, _deleted} = Sheets.delete_sheet(first_sheet)
       assert {:ok, _deleted} = Sheets.delete_sheet(second_sheet)
@@ -402,6 +398,6 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   end
 
   defp subscription_queries(queries) do
-    Enum.filter(queries, &String.contains?(&1, ~s(FROM "subscriptions")))
+    Enum.filter(queries, &String.contains?(&1, ~s("subscriptions")))
   end
 end

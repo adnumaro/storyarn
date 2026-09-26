@@ -269,13 +269,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
      )}
   end
 
-  defp handle_workspace_invitation_result({:error, :limit_reached, %{resource: :members_per_workspace}}, socket) do
-    {:noreply,
-     PlanLimitFlash.put(
-       socket,
-       socket.assigns.workspace.id,
-       dgettext("workspaces", "Member limit reached for your plan.")
-     )}
+  defp handle_workspace_invitation_result({:error, :limit_reached, %{resource: :editors_per_account}}, socket) do
+    {:noreply, editor_limit_flash(socket)}
+  end
+
+  defp handle_workspace_invitation_result({:error, :seat_requires_account_owner}, socket) do
+    {:noreply, put_flash(socket, :error, seat_requires_owner_message())}
   end
 
   defp handle_workspace_invitation_result({:error, :unauthorized}, socket) do
@@ -372,6 +371,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       {:error, :cannot_change_owner_role} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Cannot change the owner's role."))}
 
+      {:error, :limit_reached, %{resource: :editors_per_account}} ->
+        {:noreply, editor_limit_flash(socket)}
+
       {:error, :not_found} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Member not found."))}
 
@@ -393,6 +395,18 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to update role."))}
     end
+  end
+
+  defp editor_limit_flash(socket) do
+    PlanLimitFlash.put(
+      socket,
+      socket.assigns.workspace.id,
+      dgettext("workspaces", "Editor limit reached for your plan.")
+    )
+  end
+
+  defp seat_requires_owner_message do
+    dgettext("workspaces", "Only the workspace owner can add editors. Invite them as a viewer, or ask the owner.")
   end
 
   defp do_remove_member(socket, id) do

@@ -3,16 +3,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.ProjectLive.Components.SettingsComponents,
-    only: [
-      serialize_byte_count: 1,
-      serialize_count_limit: 1,
-      serialize_storage_bucket: 1,
-      serialize_storage_usage: 2
-    ]
+  import StoryarnWeb.ProjectLive.Components.SettingsComponents, only: [serialize_count_limit: 1]
 
   alias Storyarn.Commercial
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.UsageAccess
 
   # ===========================================================================
   # Render
@@ -34,7 +29,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
         v-inject="settings-layout"
         id="project-settings-usage-limits"
         usage-limits={serialize_usage_limits(@usage_limits)}
-        workspace-plan-path={workspace_plan_path(@settings_nav)}
+        workspace-usage-path={@workspace_usage_path}
+        plan-path={@plan_path}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -44,39 +40,21 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
   # Serialization helpers
   # ===========================================================================
 
+  # A project owner may only be a member of this project, so the page gets the
+  # project's own counters and nothing about the workspace: its totals are for
+  # the workspace's owner, admins and members, on Workspace › Usage.
   defp serialize_usage_limits(usage) do
     %{
-      plan: %{
-        key: usage.plan.key,
-        name: usage.plan.name
-      },
       project: %{
         items: serialize_bucket(usage.project.items),
         projectSnapshots: serialize_bucket(usage.project.project_snapshots),
         namedVersions: serialize_bucket(usage.project.named_versions)
-      },
-      workspace: %{
-        projects: serialize_bucket(usage.workspace.projects),
-        members: serialize_bucket(usage.workspace.members),
-        storageBytes: serialize_storage_bucket(usage.workspace.storage_bytes)
       },
       itemBreakdown: %{
         sheets: usage.item_breakdown.sheets,
         flows: usage.item_breakdown.flows,
         scenes: usage.item_breakdown.scenes,
         flowNodes: usage.item_breakdown.flow_nodes
-      },
-      storage: %{
-        projectAccountedBytes: serialize_byte_count(usage.storage.project_bytes),
-        projectAssetBytes: serialize_byte_count(usage.storage.project_asset_bytes),
-        projectSnapshotBytes: serialize_byte_count(usage.storage.project_snapshot_bytes),
-        projectReservationBytes: serialize_byte_count(usage.storage.project_reservation_bytes),
-        assetCount: usage.storage.asset_count,
-        workspace:
-          serialize_storage_usage(
-            usage.storage.workspace,
-            usage.workspace.storage_bytes.limit
-          )
       }
     }
   end
@@ -108,6 +86,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
           |> assign(:membership, membership)
           |> assign(:current_workspace, project.workspace)
           |> assign(:usage_limits, Commercial.project_limits_usage(project))
+          |> assign_usage_links(project)
 
         {:ok, socket}
 
@@ -142,7 +121,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
        |> assign(:project, project)
        |> assign(:membership, membership)
        |> assign(:current_workspace, project.workspace)
-       |> assign(:usage_limits, Commercial.project_limits_usage(project))}
+       |> assign(:usage_limits, Commercial.project_limits_usage(project))
+       |> assign_usage_links(project)}
     else
       _lost_access ->
         project = socket.assigns.project
@@ -155,6 +135,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
          )
          |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
     end
+  end
+
+  defp assign_usage_links(socket, project) do
+    scope = socket.assigns.current_scope
+
+    socket
+    |> assign(:workspace_usage_path, UsageAccess.workspace_usage_path(scope, project.workspace))
+    |> assign(:plan_path, UsageAccess.plan_path(scope, project.workspace))
   end
 
   defp reload_project_owner(socket, project_id) do
@@ -177,12 +165,4 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
      )
      |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
   end
-
-  # Only workspace owners and admins can open Plan & usage; everyone else gets
-  # no link rather than an authorization redirect.
-  defp workspace_plan_path(%{workspace: %{access: "manage", slug: slug}}) do
-    ~p"/users/settings/workspaces/#{slug}/plan"
-  end
-
-  defp workspace_plan_path(_settings_nav), do: nil
 end

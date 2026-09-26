@@ -4,20 +4,21 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
   alias Storyarn.Commercial
 
   @public_contract [
+    account_usage: 1,
     acquire_project_snapshot_export_lease: 1,
     active_project_snapshot_reservations: 1,
-    can_accept_member?: 2,
     can_create_project?: 1,
     can_create_project_template?: 1,
     can_create_project_template_version?: 1,
     can_create_workspace?: 1,
-    can_invite_member?: 2,
     can_publish_reserved_project?: 1,
     can_upload_asset?: 2,
     can_upload_asset_for_project?: 2,
+    check_editor_seat: 4,
+    check_editor_seat_acceptance: 3,
     commit_project_snapshot_restore_storage_reservation: 6,
     commit_project_storage_reservation: 5,
-    create_subscription: 1,
+    create_account_subscription: 1,
     entitlement_limit: 2,
     extend_project_storage_reservation: 4,
     mark_project_storage_reservation_started: 4,
@@ -58,9 +59,9 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
     storage_reservation_receipt
     storage_reservation_write_error
   )a
-  @docs_digest "2e50a2f6da17838b8c15a6f73b302f5dc865e07962c506e1be6bd7a008816bce"
-  @types_digest "8989f40a036ba7d95841b2bd8b40e1f36b24504f12c8401f2f334488d90cb79f"
-  @specs_digest "8345611dc2e81e5ec8ebdc51d01a97711abdd64c1c36887e4bb4e1113e7cb251"
+  @docs_digest "e8a9666d39336af627a84f1dc59f4265656e37c26c9b118e889ee1d630446e28"
+  @types_digest "6130a97836c513e4c568b1b983d11825b2ad03b12991070404447dfc155be407"
+  @specs_digest "2b6520a076e03744df239c77069fe19d159f3dabeadcbe0ce053a9432112e2e4"
 
   test "the root facade exposes the complete extracted commercial contract" do
     public_functions =
@@ -146,8 +147,8 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 42
-    assert status_counts == %{documented: 15, hidden: 1, none: 26}
+    assert length(function_docs) == 43
+    assert status_counts == %{documented: 18, hidden: 1, none: 24}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end
@@ -165,7 +166,7 @@ defmodule Storyarn.Architecture.CommercialFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 16
+    assert length(normalized_specs) == 19
     assert digest(normalized_specs) == @specs_digest
   end
 

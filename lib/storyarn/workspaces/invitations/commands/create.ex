@@ -31,7 +31,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
     scope
     |> Memberships.transact_manage_members(workspace_id, fn %{workspace: workspace} ->
       with :ok <- check_invitation_rate_limit(workspace.id, actor.id) do
-        persist_locked_invitation(workspace, actor, normalized_email, role, [])
+        persist_locked_invitation(workspace, actor, normalized_email, role, actor.id, [])
       end
     end)
     |> finalize_invitation([])
@@ -43,7 +43,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
     result =
       Repo.transact(fn ->
         with {:ok, locked_workspace} <- lock_workspace(workspace.id) do
-          persist_locked_invitation(locked_workspace, nil, Email.normalize(email), role, opts)
+          persist_locked_invitation(locked_workspace, nil, Email.normalize(email), role, :operator, opts)
         end
       end)
 
@@ -64,7 +64,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
     )
   end
 
-  defp persist_locked_invitation(workspace, invited_by, email, role, opts) do
+  defp persist_locked_invitation(workspace, invited_by, email, role, seat_actor, opts) do
     {encoded_token, invitation} = Issuer.issue(workspace, invited_by, email, role)
 
     changeset =
@@ -76,7 +76,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
 
     if changeset.valid? do
       with :ok <- ensure_invitation_available(workspace.id, email),
-           :ok <- normalize_limit_result(Commercial.can_invite_member?(workspace, email)),
+           :ok <- normalize_limit_result(Commercial.check_editor_seat(workspace, email, role, seat_actor)),
            :ok <- delete_inactive_invitation(workspace.id, email),
            {:ok, invitation} <- insert_invitation(changeset),
            {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do

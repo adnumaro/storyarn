@@ -9,6 +9,7 @@ import {
   Check,
   ChevronLeft,
   ChevronsUpDown,
+  CreditCard,
   Gauge,
   GitBranch,
   Languages,
@@ -200,6 +201,13 @@ const personalGroup = computed<SettingsGroup>(() => {
       icon: ShieldCheck,
       locked: false,
     },
+    {
+      key: "plan_billing",
+      label: t("settings.nav.items.plan_billing"),
+      path: "/users/settings/plan",
+      icon: CreditCard,
+      locked: false,
+    },
   ];
 
   if (featureFlags.aiIntegrations) {
@@ -252,6 +260,15 @@ const workspaceGroup = computed<SettingsGroup | null>(() => {
     locked: !workspace.owner,
   };
 
+  // Owners, admins and members edit the workspace, so all of them see its usage.
+  const usage: SettingsItem = {
+    key: "workspace_usage",
+    label: t("settings.nav.items.workspace_usage"),
+    path: `${base}/usage`,
+    icon: Gauge,
+    locked: false,
+  };
+
   const items: SettingsItem[] =
     workspace.access === "manage"
       ? [
@@ -281,15 +298,9 @@ const workspaceGroup = computed<SettingsGroup | null>(() => {
             icon: LayoutGrid,
             locked: false,
           },
-          {
-            key: "workspace_plan",
-            label: t("settings.nav.items.workspace_plan"),
-            path: `${base}/plan`,
-            icon: Gauge,
-            locked: false,
-          },
+          usage,
         ]
-      : [general];
+      : [general, usage];
 
   const options = (settingsNav?.workspaces ?? []).map((option) => ({
     key: option.slug,

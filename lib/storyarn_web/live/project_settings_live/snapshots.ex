@@ -8,6 +8,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   alias Storyarn.Commercial
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.UsageAccess
 
   @active_restore_statuses ~w(queued running retrying)
   @build_status_refresh_ms 2_000
@@ -41,9 +42,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
           )
         }
         restore-operation-active={project_restore_active?(@snapshot_restores)}
-        storage-usage={serialize_storage_usage(@storage_usage, @storage_limit)}
+        storage-usage={if @workspace_totals_visible, do: serialize_storage_usage(@storage_usage, @storage_limit)}
         snapshot-limit={serialize_snapshot_limit(@snapshot_slots_used, @snapshot_slots_limit)}
-        workspace-plan-path={workspace_plan_path(@settings_nav)}
+        workspace-usage-path={if @workspace_totals_visible, do: workspace_usage_path(@project.workspace)}
+        plan-path={UsageAccess.plan_path(@current_scope, @project.workspace)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -274,6 +276,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
        |> assign(:snapshot_build_statuses, Projects.project_snapshot_build_statuses(accounting.snapshots))
        |> assign(:snapshot_build_status_timer, nil)
        |> assign(:snapshot_access_active, true)
+       |> assign_workspace_totals_visibility(project)
        |> schedule_build_status_refresh()}
     else
       _lost_access ->
@@ -623,6 +626,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         |> assign(:membership, membership)
         |> assign(:current_workspace, project.workspace)
         |> assign(:snapshot_access_active, true)
+        |> assign_workspace_totals_visibility(project)
 
       {:ok, authorized_socket, accounting}
     else
@@ -679,14 +683,36 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     end
   end
 
+  # A storage refusal's figures are workspace totals: only the people allowed
+  # to see them get them, and everyone else reads that there is not enough
+  # space. The permission is checked again here, not taken from mount, since
+  # the actor may have left the workspace while the page stayed open. A
+  # snapshot-slot refusal counts the project's own backups.
   defp push_snapshot_request_error(socket, reason, details) do
+    figures =
+      if reason == "storage_limit_reached" and not workspace_totals_visible_now?(socket),
+        do: %{},
+        else: details
+
     push_event(socket, "snapshot_request_failed", %{
       reason: reason,
-      requiredBytes: serialize_optional_byte_count(details[:required]),
-      availableBytes: serialize_optional_byte_count(details[:available]),
-      used: details[:used],
-      limit: details[:limit]
+      requiredBytes: serialize_optional_byte_count(figures[:required]),
+      availableBytes: serialize_optional_byte_count(figures[:available]),
+      used: figures[:used],
+      limit: figures[:limit]
     })
+  end
+
+  defp workspace_totals_visible_now?(socket) do
+    UsageAccess.workspace_totals_visible?(socket.assigns.current_scope, socket.assigns.project.workspace_id)
+  end
+
+  defp assign_workspace_totals_visibility(socket, project) do
+    assign(
+      socket,
+      :workspace_totals_visible,
+      UsageAccess.workspace_totals_visible?(socket.assigns.current_scope, project.workspace_id)
+    )
   end
 
   defp push_snapshot_restore_error(socket, snapshot_id, reason) do
@@ -778,11 +804,5 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     end
   end
 
-  # Only workspace owners and admins can open Plan & usage; everyone else gets
-  # no link rather than an authorization redirect.
-  defp workspace_plan_path(%{workspace: %{access: "manage", slug: slug}}) do
-    ~p"/users/settings/workspaces/#{slug}/plan"
-  end
-
-  defp workspace_plan_path(_settings_nav), do: nil
+  defp workspace_usage_path(workspace), do: ~p"/users/settings/workspaces/#{workspace.slug}/usage"
 end

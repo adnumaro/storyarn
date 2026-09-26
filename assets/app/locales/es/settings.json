@@ -9,6 +9,7 @@
       "items": {
         "profile": "Perfil",
         "security": "Seguridad",
+        "plan_billing": "Plan y facturación",
         "tutorials": "Tutoriales",
         "integrations": "Integraciones IA",
         "ai_team": "Mi equipo IA",
@@ -19,7 +20,7 @@
         "preferences": "Preferencias",
         "workspace_ai": "IA",
         "workspace_projects": "Proyectos",
-        "workspace_plan": "Plan y uso"
+        "workspace_usage": "Uso"
       },
       "search": "Buscar ajustes…",
       "switch_workspace": "Cambiar de workspace",
@@ -72,6 +73,37 @@
       },
       "password_section": "Contraseña",
       "cancel": "Cancelar"
+    },
+    "plan_billing": {
+      "title": "Plan y facturación",
+      "plan_section": "Plan",
+      "current_plan": "Plan actual",
+      "plan_hint": "Todos los workspaces que posees toman sus límites de este plan.",
+      "talk_to_us": "Habla con nosotros",
+      "usage_section": "Uso de la cuenta",
+      "usage_hint": "En todos los workspaces que posees",
+      "meters": {
+        "seats": "Asientos de editor",
+        "workspaces": "Workspaces"
+      },
+      "hints": {
+        "seats": "Personas que pueden editar en cualquiera de tus workspaces, tú incluido, contadas una sola vez. Los lectores son gratis y una invitación de editor pendiente ocupa un asiento.",
+        "workspaces": "Workspaces que posees. Ser miembro del workspace de otra persona no cuenta."
+      },
+      "status": {
+        "available": "Disponible",
+        "warning": "Casi lleno",
+        "reached": "Límite alcanzado",
+        "unlimited": "Sin límite",
+        "unknown": "Desconocido",
+        "paid_seats": "Por asiento de pago"
+      },
+      "plans": {
+        "free": "Free",
+        "beta": "Beta",
+        "pro": "Pro",
+        "studio": "Studio"
+      }
     },
     "tutorials": {
       "title": "Tutoriales",
@@ -271,22 +303,16 @@
         "import_section": "Importar",
         "deleted_empty_text": "Los proyectos enviados a la papelera del workspace aparecen aquí con quién los eliminó y cuándo. Un snapshot descargado siempre se puede volver a importar arriba."
       },
-      "plan": {
-        "title": "Plan y uso",
-        "plan_section": "Plan",
-        "current_plan": "Plan actual",
-        "plan_hint": "Los límites combinan las cuotas de cada proyecto con las cuotas compartidas del workspace.",
-        "talk_to_us": "Habla con nosotros",
+      "usage": {
+        "title": "Uso",
         "limits_section": "Límites del workspace",
         "limits_hint": "Compartidos por todos los proyectos",
         "meters": {
           "projects": "Proyectos",
-          "members": "Miembros",
           "storage": "Almacenamiento"
         },
         "hints": {
-          "projects": "Proyectos activos en este workspace.",
-          "members": "Miembros únicos del workspace y de sus proyectos. Las invitaciones nuevas se bloquean hasta que se libere un asiento."
+          "projects": "Proyectos activos en este workspace."
         },
         "storage_breakdown": "Assets {assets} · Papelera recuperable {trash} · Copias de seguridad {backups} · Reservas {reservations}",
         "status": {
@@ -297,12 +323,10 @@
           "unknown": "Desconocido"
         },
         "footer": "Los límites por proyecto (elementos, copias de seguridad, versiones con nombre) están en la página Uso de cada proyecto.",
-        "plans": {
-          "free": "Free",
-          "beta": "Beta",
-          "pro": "Pro",
-          "studio": "Studio"
-        }
+        "plan_section": "Plan",
+        "plan_label": "Tu plan",
+        "plan_hint": "Estos límites vienen de tu plan, que se aplica a todos los workspaces que posees.",
+        "plan_link": "Plan y facturación"
       }
     },
     "reauth": {

@@ -261,12 +261,24 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
      )}
   end
 
-  defp handle_project_invitation_result({:error, :limit_reached, %{resource: :members_per_workspace}}, socket) do
+  defp handle_project_invitation_result({:error, :limit_reached, %{resource: :editors_per_account}}, socket) do
     {:noreply,
      PlanLimitFlash.put(
        socket,
        socket.assigns.project.workspace_id,
-       dgettext("projects", "Member limit reached for your plan.")
+       dgettext("projects", "Editor limit reached for your plan.")
+     )}
+  end
+
+  defp handle_project_invitation_result({:error, :seat_requires_account_owner}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext(
+         "projects",
+         "Only the workspace owner can add editors. Invite them as a viewer, or ask the workspace owner."
+       )
      )}
   end
 

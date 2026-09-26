@@ -780,7 +780,9 @@ defmodule Storyarn.Projects do
              | :ownership_invariant_violation
              | :cannot_assign_owner_role
              | :cannot_change_owner_role
+             | :seat_requires_account_owner
              | :membership_change_requires_top_level_transaction}
+          | {:error, :limit_reached, map()}
   defdelegate update_member_role(scope, project_id, membership_id, role), to: Access
 
   @doc """
@@ -810,7 +812,9 @@ defmodule Storyarn.Projects do
              | :target_not_member
              | :ownership_invariant_violation
              | :ownership_transfer_requires_top_level_transaction
-             | :ownership_transfer_failed}
+             | :ownership_transfer_failed
+             | :seat_requires_account_owner}
+          | {:error, :limit_reached, map()}
   defdelegate transfer_owner(scope, project_id, target_user_id), to: Access
 
   @doc "Subscribes the caller to committed ownership changes for a project."

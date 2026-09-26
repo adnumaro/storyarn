@@ -229,6 +229,7 @@
         "submit": "Create backup",
         "submitting": "Capturing…",
         "storage_limit_reached": "This snapshot requires {required}, but only {available} is available.",
+        "storage_limit_reached_without_figures": "There isn't enough storage left in this workspace for this snapshot.",
         "snapshot_limit_reached": "This project uses {used} of {limit} snapshot slots.",
         "ownership_invariant": "The snapshot could not be requested because project ownership is inconsistent. Contact support before retrying.",
         "unauthorized": "You no longer have permission to create snapshots for this project.",
@@ -342,7 +343,7 @@
       "storage_row": "Workspace storage",
       "storage_row_hint": "Assets, recoverable trash, backups and active reservations.",
       "storage_footer": "Full breakdown in",
-      "storage_footer_link": "Workspace › Plan & usage"
+      "storage_footer_link": "Workspace › Usage"
     },
     "trash": {
       "title": "Trash",
@@ -471,9 +472,9 @@
         "backups": "Delete a backup or raise the plan limit to create another one.",
         "named_versions": "Delete a named version or raise the plan limit to promote another one."
       },
-      "plan_link": "Plan & usage",
-      "workspace_note": "Workspace-wide limits (projects, members, storage) live in",
-      "workspace_note_link": "Workspace › Plan & usage",
+      "plan_link": "Plan & billing",
+      "workspace_note": "Workspace-wide limits (projects, storage) live in",
+      "workspace_note_link": "Workspace › Usage",
       "meter_status": {
         "available": "Available",
         "warning": "Near limit",
