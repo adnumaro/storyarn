@@ -1,0 +1,66 @@
+assets/app/test/modules/flows/components/FlowDialoguePanel.test.ts
+  s_a86b2b42f8ba47::t_42c47f14d8c917 20
+assets/app/shared/navigation/historyScroll.ts
+  s_a86b2b42f8ba47::t_2547bce146ae9b 170-173
+CLAUDE.md
+  s_a86b2b42f8ba47::t_8faa5a6cc81f9c 75,91
+  s_a86b2b42f8ba47::t_390290d4b701db 81,181,197
+assets/app/locales/es/flows.json
+  s_a86b2b42f8ba47::t_308a378130ccec 497
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_a86b2b42f8ba47::t_3c73ef6e0ae62e 22,38
+assets/app/modules/flows/editor/components/panels/FlowDialoguePanel.vue
+  s_a86b2b42f8ba47::t_5232b5bf07d52a 18
+assets/app/modules/flows/editor/components/sequence/sequence-playback.ts
+  s_a86b2b42f8ba47::t_144926620930a2 8-26
+posthog-setup-report.md
+  s_a86b2b42f8ba47::t_5232b5bf07d52a 18-21
+docs/reference/component-registry.md
+  s_a86b2b42f8ba47::t_390290d4b701db 99,119-121,128,132
+assets/app/test/live/sheet/show/SheetCommentsChrome.test.ts
+  s_a86b2b42f8ba47::t_42c47f14d8c917 4-5,211
+AGENTS.md
+  s_a86b2b42f8ba47::t_390290d4b701db 49
+assets/app/modules/ideation/index.ts
+  s_a86b2b42f8ba47::t_5232b5bf07d52a 5
+justfile
+  s_a86b2b42f8ba47::t_32a30ca0c86455 72
+vite.config.mjs
+  s_a86b2b42f8ba47::t_959d29d023a6fd 24
+assets/app/test/modules/scenes/editor/sceneCommentGeometry.test.ts
+  s_a86b2b42f8ba47::t_2547bce146ae9b 78
+assets/app/shared/command-palette/registry.ts
+  s_a86b2b42f8ba47::t_2547bce146ae9b 91-94
+assets/app/test/modules/sheets/commentGeometry.test.ts
+  s_a86b2b42f8ba47::t_2547bce146ae9b 52
+assets/app/test/modules/flows/components/FlowCommentPopover.test.ts
+  s_a86b2b42f8ba47::t_fc0e71ce6b5860 4-5,27,234
+.github/workflows/ci.yml
+  s_a86b2b42f8ba47::t_32a30ca0c86455 123-126
+assets/app/modules/flows/types/comments.ts
+  s_a86b2b42f8ba47::t_5232b5bf07d52a 1
+assets/app/shared/command-palette/aiDestinationRouter.ts
+  s_a86b2b42f8ba47::t_2547bce146ae9b 15-19,50-53
+knip.config.ts
+  s_a86b2b42f8ba47::t_9fe7f941b1fd2f 1-10,13-21,27-28,32-53,61,69-70
+  s_a86b2b42f8ba47::t_1a5c4f399c856b 54-60
+  s_a86b2b42f8ba47::t_5232b5bf07d52a 11-12,22-26,29-31,62-68
+assets/app/locales/en/flows.json
+  s_a86b2b42f8ba47::t_308a378130ccec 497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e0a843908b46a52c01bf8c7f7c08aef04d75e3eb",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
