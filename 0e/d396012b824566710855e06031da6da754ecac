@@ -1,0 +1,27 @@
+lib/storyarn_web/live/settings_live/workspace_usage.ex
+  s_c335c90a020cdb::t_d79f71d2372edd 8-9,21-38,50
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_213e6b07b4010e 355,360
+priv/gettext/workspaces.pot
+  s_c335c90a020cdb::t_213e6b07b4010e 355,360
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_213e6b07b4010e 355,360
+test/storyarn_web/live/settings_live/workspace_usage_test.exs
+  s_c335c90a020cdb::t_e8da879a784e21 72-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0ed396012b824566710855e06031da6da754ecac",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
