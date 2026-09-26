@@ -7,6 +7,8 @@ defmodule Storyarn.BlogTest do
   @slug "introducing-storyarn"
   @version_control_slug "version-control-branching-narratives"
   @version_control_spanish_slug "control-versiones-narrativa-ramificada"
+  @brainstorming_slug "what-a-brainstorm-leaves-behind"
+  @brainstorming_spanish_slug "lo-que-deja-una-lluvia-de-ideas"
   @debug_image_path Path.expand(
                       "../../../priv/static/images/blog/introducing-storyarn-debug-session.jpg",
                       __DIR__
@@ -38,11 +40,33 @@ defmodule Storyarn.BlogTest do
     assert post.reading_time >= 5
   end
 
-  test "publishes the version-control article as the latest complete bilingual entry" do
+  test "publishes the brainstorming article as the latest complete bilingual entry" do
     [english | _] = Blog.list_posts("en")
     [spanish | _] = Blog.list_posts("es")
 
-    assert english.slug == @version_control_slug
+    assert english.slug == @brainstorming_slug
+    assert english.translation_key == "brainstorming-decisions"
+    assert english.published_on == ~D[2026-09-24]
+    assert english.title == "What a Brainstorm Leaves Behind"
+    assert english.seo_title == "Brainstorming and Decisions in Narrative Design"
+    assert english.image == "/images/blog/brainstorming-decisions-reach-the-story.jpg"
+    assert english.reading_time in 7..9
+
+    assert spanish.slug == @brainstorming_spanish_slug
+    assert spanish.translation_key == english.translation_key
+    assert spanish.published_on == english.published_on
+    assert spanish.title == "Lo que deja una lluvia de ideas"
+    assert spanish.seo_title == "Brainstorming y decisiones en diseño narrativo"
+    assert spanish.reading_time in 7..9
+    assert abs(english.reading_time - spanish.reading_time) <= 1
+
+    assert Blog.list_translations(english.translation_key) == [english, spanish]
+  end
+
+  test "keeps the version-control article as a complete bilingual entry" do
+    english = Blog.get_post(@version_control_slug)
+    spanish = Blog.get_post(@version_control_spanish_slug, "es")
+
     assert english.translation_key == "version-control-branching-narratives"
     assert english.published_on == ~D[2026-07-17]
     assert english.title == "Going Back Without Breaking the Story"
@@ -50,7 +74,6 @@ defmodule Storyarn.BlogTest do
     assert english.image == "/images/blog/version-control-branching-narratives.svg"
     assert english.reading_time in 6..8
 
-    assert spanish.slug == @version_control_spanish_slug
     assert spanish.translation_key == english.translation_key
     assert spanish.published_on == english.published_on
     assert spanish.title == "Volver atrás sin romper la historia"
@@ -59,6 +82,40 @@ defmodule Storyarn.BlogTest do
     assert abs(english.reading_time - spanish.reading_time) <= 1
 
     assert Blog.list_translations(english.translation_key) == [english, spanish]
+  end
+
+  test "keeps the brainstorming article problem-led, sourced, and explicit about limits" do
+    english = Blog.get_post(@brainstorming_slug)
+    spanish = Blog.get_post(@brainstorming_spanish_slug, "es")
+
+    assert english.body =~ "A brainstorm can go well and still leave nothing behind."
+    assert english.body =~ "we will not invent a number"
+    assert english.body =~ "Storyarn never applies a decision to your content"
+    assert english.body =~ "we are not trying to replace them"
+    assert english.body =~ "does not measure narrative teams"
+
+    assert spanish.body =~ "Una lluvia de ideas puede salir bien y aun así no dejar nada."
+    assert spanish.body =~ "no vamos a inventarnos una cifra"
+    assert spanish.body =~ "Storyarn nunca aplica una decisión a tu contenido"
+    assert spanish.body =~ "no pretendemos sustituirlas"
+    assert spanish.body =~ "no mide equipos narrativos"
+
+    for {post, docs_path} <- [
+          {english, "/docs/brainstorming/brainstorming-overview"},
+          {spanish, "/es/docs/brainstorming/brainstorming-overview"}
+        ] do
+      assert post.body =~ "https://doi.org/10.1037/0022-3514.53.3.497"
+      assert post.body =~ "https://doi.org/10.1207/s15324834basp1201_1"
+      assert post.body =~ "https://doi.org/10.1016/j.jesp.2005.04.005"
+      assert post.body =~ "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions"
+      assert post.body =~ "https://www.pcgamesn.com/baldurs-gate-3/rewritten-companion"
+      assert post.body =~ "https://kotaku.com/baldurs-gate-3-bg3-wyll-rewrite-cut-content-scene-story-2000658493"
+      assert post.body =~ ~s(href="#{docs_path}")
+      assert post.body =~ ~s(data-phx-link="redirect")
+      refute post.body =~ "<table>"
+      refute post.body =~ "<ol>"
+      refute post.body =~ ~r/<h2[^>]*>[^<]*\b(Miro|FigJam|Figma|Mural|articy|Arcweave)\b/i
+    end
   end
 
   test "keeps compiled entries separate from posts visible by publication date" do
