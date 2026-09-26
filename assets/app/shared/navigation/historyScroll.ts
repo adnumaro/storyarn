@@ -167,6 +167,10 @@ export function clearPendingHistoryScroll(): void {
   storageRemove(PENDING_HISTORY_SCROLL_KEY);
 }
 
+/**
+ * Test-only: forgets the scroll position remembered for a history entry.
+ * @internal
+ */
 export function clearRememberedHistoryScroll(state: unknown): void {
   const key = historyEntryKey(state as HistoryStateWithScroll | null);
   if (key) storageRemove(key);

@@ -6,7 +6,6 @@ import type {
   HealthStatus,
   HealthStatusDetails,
   HealthStatusItem,
-  HealthStatusReason,
   HealthStatusSeverity,
 } from "@shared/types/health";
 
@@ -116,7 +115,6 @@ export interface Sheet {
 }
 
 export type SheetHealthDetails = HealthStatusDetails;
-export type SheetHealthReason = HealthStatusReason;
 export type SheetHealthSeverity = HealthStatusSeverity;
 
 export interface SheetHealthItem extends HealthStatusItem {

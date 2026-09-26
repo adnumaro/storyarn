@@ -1,11 +1,8 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockLive } from "@app/test/setup";
-import type {
-  SheetCommentMessage,
-  SheetCommentsPanelState,
-  SheetCommentThread,
-} from "@modules/sheets/types/comments";
+import type { CommentMessage } from "@components/comments/types";
+import type { SheetCommentsPanelState, SheetCommentThread } from "@modules/sheets/types/comments";
 
 const live = createMockLive();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => live }));
@@ -211,7 +208,7 @@ describe("Sheet comments chrome wiring", () => {
       root_message_id: 21,
       position: storedDraft.position,
     };
-    const rootMessage: SheetCommentMessage = {
+    const rootMessage: CommentMessage = {
       id: 21,
       thread_id: thread.id,
       parent_id: null,

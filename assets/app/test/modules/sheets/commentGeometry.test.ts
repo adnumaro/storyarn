@@ -3,7 +3,6 @@ import {
   clampSheetCommentPosition,
   constrainSheetCommentPositionToSurface,
   sheetCommentCanvasPoint,
-  sheetCommentPointFromClient,
   sheetCommentPositionForSurface,
   sheetCommentScreenPoint,
 } from "@modules/sheets/lib/comment-geometry";
@@ -50,11 +49,7 @@ afterEach(() => {
 });
 
 describe("sheet comment geometry", () => {
-  it("normalizes horizontal coordinates, keeps vertical pixels, and insets pins at the edges", () => {
-    const surface = rect(100, 200, 400, 160);
-
-    expect(sheetCommentPointFromClient({ x: 300, y: 240 }, surface)).toEqual({ x: 50, y: 40 });
-    expect(sheetCommentPointFromClient({ x: 20, y: 500 }, surface)).toEqual({ x: 4, y: 144 });
+  it("clamps a position to the sheet surface", () => {
     expect(clampSheetCommentPosition({ x: 120, y: -5 })).toEqual({ x: 100, y: 0 });
   });
 

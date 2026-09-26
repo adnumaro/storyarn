@@ -247,11 +247,6 @@ export interface BoardContext {
   epoch: string;
   session_id: number | null;
 }
-export interface Reveal {
-  id: number;
-  count: number;
-  status: string;
-}
 export interface Conflict {
   current: Idea;
   receipt: EditReceipt;

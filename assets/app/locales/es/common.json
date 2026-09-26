@@ -189,12 +189,6 @@
     "toolbar_size": {
       "size": "Tamaño"
     },
-    "mention_list": {
-      "no_results": "Sin resultados"
-    },
-    "variable_list": {
-      "no_results": "No se encontraron variables"
-    },
     "variable_combobox": {
       "no_results": "Sin resultados.",
       "no_options": "No hay opciones disponibles."

@@ -19,14 +19,11 @@ import { Switch } from "@components/ui/switch";
 import { useLive } from "@shared/composables/useLive";
 import { capture } from "@/js/utils/posthog";
 import type {
-  ExportOptions,
-  FormatConfig,
+  ExportPanelProps,
   FormatOption,
   LocalizationMode,
   LocalizationPolicy,
-  SectionConfig,
   ValidationFinding,
-  ValidationResult,
 } from "../types";
 
 const { t } = useI18n();
@@ -38,14 +35,7 @@ const {
   options,
   validation = null,
   exportDownloadUrl,
-} = defineProps<{
-  canExport: boolean;
-  formatConfig: FormatConfig;
-  sectionConfig: SectionConfig;
-  options: ExportOptions;
-  validation?: ValidationResult | null;
-  exportDownloadUrl: string;
-}>();
+} = defineProps<ExportPanelProps>();
 
 const live = useLive();
 const validating = ref(false);

@@ -15,17 +15,8 @@ import { BookOpen, FileText, Maximize2, MessageSquare, Volume2, X } from "@lucid
 import { computed } from "vue";
 import { Button } from "@components/ui/button";
 import Sidebar from "../../../../../shell/Sidebar.vue";
-import FlowDialogueEditorBody, {
-  type AudioAssetItem,
-  type DialoguePanelData,
-  type DialogueResponseShape,
-  type SheetOption,
-} from "./FlowDialogueEditorBody.vue";
+import FlowDialogueEditorBody, { type DialoguePanelData } from "./FlowDialogueEditorBody.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
-
-// Re-export the body's types so existing test fixtures (and any other
-// importer that points at this panel) keep working without churn.
-export type { AudioAssetItem, DialoguePanelData, DialogueResponseShape, SheetOption };
 
 const {
   open = false,

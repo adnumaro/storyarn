@@ -28,19 +28,6 @@ function clampCenter(value: number, size: number, inset: number): number {
   return Math.max(bounds.min, Math.min(bounds.max, value));
 }
 
-export function sheetCommentPointFromClient(
-  point: SheetCommentPosition,
-  surfaceRect: Pick<DOMRect, "left" | "top" | "width" | "height">,
-  inset = SHEET_COMMENT_PIN_RADIUS,
-): SheetCommentPosition {
-  if (surfaceRect.width <= 0 || surfaceRect.height <= 0) return { x: 0, y: 0 };
-
-  const x = clampCenter(point.x - surfaceRect.left, surfaceRect.width, inset);
-  const y = clampCenter(point.y - surfaceRect.top, surfaceRect.height, inset);
-
-  return { x: (x / surfaceRect.width) * 100, y };
-}
-
 export function sheetCommentCanvasPoint(
   thread: SheetCommentThread,
   position = thread.position,

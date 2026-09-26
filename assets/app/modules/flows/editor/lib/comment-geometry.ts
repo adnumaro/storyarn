@@ -19,15 +19,6 @@ export type ResolvableFlowCommentContext = CommentContextReference & {
   status?: "available" | "unavailable";
 };
 
-export function commentNodeId(thread: FlowCommentThread): number | null {
-  if (thread.source.status !== "available") return null;
-  if (thread.source.type === "flow_node") return thread.source.id;
-  const context = thread.context;
-  if (context?.type !== "flow_node" || context.status !== "available") return null;
-  const id = Number(context.id);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
 /** Rete stores sequence children in absolute canvas coordinates as well. */
 export function commentCanvasPoint(
   thread: FlowCommentThread,

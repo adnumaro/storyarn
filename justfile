@@ -69,7 +69,7 @@ quality:
 quality-lint:
     pnpm run fmt && pnpm run lint:fix
     pnpm run typecheck
-    pnpm arch & pnpm knip
+    pnpm arch && pnpm knip && pnpm knip --production --include files,exports,types
     mix format
     mix gettext.extract --check-up-to-date
     mix sobelow --config

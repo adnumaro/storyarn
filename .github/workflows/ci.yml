@@ -120,6 +120,10 @@ jobs:
       - name: Check frontend architecture
         run: pnpm arch
 
+      # Fails when a file, export, type or dependency loses its last user.
+      - name: Check for dead frontend code
+        run: pnpm knip && pnpm knip --production --include files,exports,types
+
       # Vitest has exited 0 before running anything; require a report with tests in it.
       - name: Run JS tests (Vitest)
         run: |

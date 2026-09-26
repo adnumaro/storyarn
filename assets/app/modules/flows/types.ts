@@ -147,18 +147,6 @@ export interface InstructionAssignment {
 }
 
 // ---------------------------------------------------------------------------
-// Dialogue response
-// ---------------------------------------------------------------------------
-
-export interface DialogueResponse {
-  id: string;
-  text?: string;
-  has_type_warnings?: boolean;
-  condition?: unknown;
-  instruction_assignments?: unknown[];
-}
-
-// ---------------------------------------------------------------------------
 // Flow context (injected via provide/inject)
 // ---------------------------------------------------------------------------
 

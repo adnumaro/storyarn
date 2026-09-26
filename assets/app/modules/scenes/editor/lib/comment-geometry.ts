@@ -62,18 +62,3 @@ export function sceneCommentPointFromClient(
 
   return clampSceneCommentPosition(projection.pixelToPercent(world.x, world.y));
 }
-
-export function sceneCommentDragPosition(
-  start: SceneCommentPosition,
-  delta: SceneCommentPosition,
-  stage: SceneCommentStageTransform,
-  projection: SceneCommentProjection,
-): SceneCommentPosition {
-  const world = projection.percentToPixel(start.x, start.y);
-  const nextWorld = {
-    x: world.x + delta.x / (stage.scaleX || 1),
-    y: world.y + delta.y / (stage.scaleY || 1),
-  };
-
-  return clampSceneCommentPosition(projection.pixelToPercent(nextWorld.x, nextWorld.y));
-}

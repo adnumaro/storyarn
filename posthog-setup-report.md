@@ -10,19 +10,15 @@ The wizard has completed a deep integration of PostHog analytics into Storyarn. 
 | `assets/js/utils/posthog.js`                                                    | Added 4 new events to the frontend allowlist                                                                                            |
 | `lib/storyarn/analytics.ex`                                                     | Added `flow player started` to the backend allowlist                                                                                    |
 | `lib/storyarn_web/live/flow_live/player_live.ex`                                | Track `flow player started` on connected mount                                                                                          |
-| `assets/app/modules/flows/player/components/PlayerOutcome.vue`                  | Track `flow player completed` on outcome mount                                                                                          |
 | `assets/app/modules/projects/settings/export-import/components/ExportPanel.vue` | Track `project exported` on download click                                                                                              |
-| `assets/app/modules/projects/settings/export-import/components/ImportPanel.vue` | Track `project imported` when step reaches `done`                                                                                       |
 | `.env`                                                                          | Set `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST`, `POSTHOG_ENABLED`, `POSTHOG_FRONTEND_ENABLED`, `POSTHOG_FRONTEND_ERROR_TRACKING_ENABLED` |
 
 **Events added:**
 
-| Event                   | Description                                  | File                | Properties                              |
-| ----------------------- | -------------------------------------------- | ------------------- | --------------------------------------- |
-| `flow player started`   | User begins a flow playback session          | `player_live.ex`    | `project_id`                            |
-| `flow player completed` | User reaches an outcome node (end of a flow) | `PlayerOutcome.vue` | `step_count`, `choices_made`            |
-| `project exported`      | User downloads a project export file         | `ExportPanel.vue`   | `format`, `asset_mode`, `section_count` |
-| `project imported`      | User successfully completes a project import | `ImportPanel.vue`   | `has_conflicts`                         |
+| Event                 | Description                          | File              | Properties                              |
+| --------------------- | ------------------------------------ | ----------------- | --------------------------------------- |
+| `flow player started` | User begins a flow playback session  | `player_live.ex`  | `project_id`                            |
+| `project exported`    | User downloads a project export file | `ExportPanel.vue` | `format`, `asset_mode`, `section_count` |
 
 **Pre-existing events (unchanged):**
 
