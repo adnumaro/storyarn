@@ -20,6 +20,7 @@ import type {
   WorkbenchProgress,
 } from "@modules/localization/domain/types";
 import { useLive } from "@shared/composables/useLive.ts";
+import PageContainer from "@shell/PageContainer.vue";
 
 interface WorkbenchLanguages {
   current: WorkbenchLanguage | null;
@@ -212,7 +213,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col gap-4">
+  <PageContainer width="full" fill>
     <div
       v-if="!hasTargetLanguages || !languages.current"
       class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center"
@@ -306,5 +307,5 @@ onBeforeUnmount(() => {
         />
       </div>
     </template>
-  </div>
+  </PageContainer>
 </template>

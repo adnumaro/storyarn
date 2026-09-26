@@ -115,9 +115,8 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:px-6 lg:py-6">
-        <slot />
-      </div>
+      <!-- Each screen brings its own PageContainer as main's direct child. -->
+      <slot />
     </main>
 
     <OnboardingDialog

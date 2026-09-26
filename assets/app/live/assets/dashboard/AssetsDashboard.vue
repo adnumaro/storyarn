@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { useLive } from "@shared/composables/useLive.ts";
+import PageContainer from "@shell/PageContainer.vue";
 
 interface Asset {
   id: number;
@@ -364,7 +365,7 @@ function usageContext(context: string, trashed = false, archived = false) {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-6xl px-4 py-4">
+  <PageContainer>
     <!-- Empty state -->
     <div
       v-if="assets.length === 0"
@@ -589,5 +590,5 @@ function usageContext(context: string, trashed = false, archived = false) {
         </div>
       </div>
     </Teleport>
-  </div>
+  </PageContainer>
 </template>

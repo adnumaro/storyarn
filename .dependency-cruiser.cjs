@@ -49,7 +49,7 @@ const flowSharedTechnicalPorts = [
   "^assets/app/shared/composables/(useAssetDecisionUpload|useColumnResize|useLive|useRemotePickerSearch|useUpload|useVerticalResize)\\.ts$",
   "^assets/app/shared/components/assets/AssetUploadDecisionDialog\\.vue$",
   "^assets/app/shared/utils/date-utils\\.ts$",
-  "^assets/app/shell/(DashboardContent|Sidebar|SidebarFrame)\\.vue$",
+  "^assets/app/shell/(DashboardContent|PageContainer|Sidebar|SidebarFrame)\\.vue$",
 ];
 const flowModuleApprovedPorts = ["^assets/app/modules/flows/", ...flowSharedTechnicalPorts];
 const flowLiveApprovedPorts = [

@@ -20,6 +20,7 @@ import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import DashboardContent from "@shell/DashboardContent.vue";
+import PageContainer from "@shell/PageContainer.vue";
 import type { DashboardLoadStatus } from "@components/dashboard/types";
 
 interface ProjectStats {
@@ -210,100 +211,79 @@ function retryHealth(): void {
 </script>
 
 <template>
-  <DashboardContent
-    :loading="overviewStatus === 'loading'"
-    :loading-label="$t('common.dashboard.loading_overview')"
-    :failure="overviewFailure"
-    @retry="retryOverview"
-  >
-    <!-- Project totals -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <a
-        v-for="stat in statCards"
-        :key="stat.key"
-        :href="stat.href"
-        :data-testid="`project-stat-${stat.key}`"
-        data-phx-link="redirect"
-        data-phx-link-state="push"
-        class="rounded-lg border border-border bg-surface p-4 space-y-2 transition-colors"
-        :class="stat.href ? 'hover:bg-muted/30 cursor-pointer' : 'cursor-default'"
-      >
-        <div class="flex items-center gap-2 text-xs text-muted-foreground">
-          <component :is="stat.icon" class="size-4" />
-          {{ $t(`workspace.project_dashboard.stats.${stat.key}`) }}
-        </div>
-        <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
-      </a>
-    </div>
-
-    <template #supplementary>
-      <!-- Per-tool health -->
-      <section
-        data-testid="project-tool-health"
-        class="space-y-3"
-        :aria-busy="issuesStatus === 'loading' || issuesStatus === 'refreshing'"
-      >
-        <div class="flex min-h-6 items-center justify-between gap-3">
-          <h2 class="text-sm font-medium">
-            {{ $t("workspace.project_dashboard.health.title") }}
-          </h2>
-          <div
-            v-if="issuesStatus === 'refreshing'"
-            data-testid="project-health-refreshing"
-            class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
-            role="status"
-            aria-live="polite"
-          >
-            <LoaderCircle class="size-3.5 animate-spin" aria-hidden="true" />
-            <span>{{ $t("common.dashboard.refreshing_issues") }}</span>
+  <PageContainer>
+    <DashboardContent
+      :loading="overviewStatus === 'loading'"
+      :loading-label="$t('common.dashboard.loading_overview')"
+      :failure="overviewFailure"
+      @retry="retryOverview"
+    >
+      <!-- Project totals -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <a
+          v-for="stat in statCards"
+          :key="stat.key"
+          :href="stat.href"
+          :data-testid="`project-stat-${stat.key}`"
+          data-phx-link="redirect"
+          data-phx-link-state="push"
+          class="rounded-lg border border-border bg-surface p-4 space-y-2 transition-colors"
+          :class="stat.href ? 'hover:bg-muted/30 cursor-pointer' : 'cursor-default'"
+        >
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <component :is="stat.icon" class="size-4" />
+            {{ $t(`workspace.project_dashboard.stats.${stat.key}`) }}
           </div>
-        </div>
+          <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
+        </a>
+      </div>
 
-        <div
-          v-if="issuesStatus === 'loading'"
-          data-testid="project-health-loading"
-          class="flex items-center justify-center rounded-lg border border-border py-8"
-          role="status"
-          aria-live="polite"
+      <template #supplementary>
+        <!-- Per-tool health -->
+        <section
+          data-testid="project-tool-health"
+          class="space-y-3"
+          :aria-busy="issuesStatus === 'loading' || issuesStatus === 'refreshing'"
         >
-          <LoaderCircle class="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-          <span class="sr-only">{{ $t("common.dashboard.loading_issues") }}</span>
-        </div>
+          <div class="flex min-h-6 items-center justify-between gap-3">
+            <h2 class="text-sm font-medium">
+              {{ $t("workspace.project_dashboard.health.title") }}
+            </h2>
+            <div
+              v-if="issuesStatus === 'refreshing'"
+              data-testid="project-health-refreshing"
+              class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <LoaderCircle class="size-3.5 animate-spin" aria-hidden="true" />
+              <span>{{ $t("common.dashboard.refreshing_issues") }}</span>
+            </div>
+          </div>
 
-        <div
-          v-else-if="issuesStatus === 'error'"
-          data-testid="project-health-error"
-          class="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
-          role="alert"
-        >
-          <p class="text-sm text-destructive">
-            {{ $t("common.dashboard.issues_load_failed") }}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="project-health-retry"
-            @click="retryHealth"
-          >
-            {{ $t("common.dashboard.retry") }}
-          </Button>
-        </div>
-
-        <template v-else>
           <div
-            v-if="issuesStatus === 'stale'"
-            data-testid="project-health-stale"
-            class="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3"
+            v-if="issuesStatus === 'loading'"
+            data-testid="project-health-loading"
+            class="flex items-center justify-center rounded-lg border border-border py-8"
             role="status"
             aria-live="polite"
           >
-            <p class="text-sm text-amber-700 dark:text-amber-300">
-              {{ $t("common.dashboard.issues_stale") }}
+            <LoaderCircle class="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+            <span class="sr-only">{{ $t("common.dashboard.loading_issues") }}</span>
+          </div>
+
+          <div
+            v-else-if="issuesStatus === 'error'"
+            data-testid="project-health-error"
+            class="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
+            role="alert"
+          >
+            <p class="text-sm text-destructive">
+              {{ $t("common.dashboard.issues_load_failed") }}
             </p>
             <Button
               variant="outline"
               size="sm"
-              class="shrink-0"
               data-testid="project-health-retry"
               @click="retryHealth"
             >
@@ -311,64 +291,86 @@ function retryHealth(): void {
             </Button>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <a
-              v-for="card in healthCards"
-              :key="card.tool"
-              :href="card.href"
-              :data-testid="`project-health-${card.tool}`"
-              :data-state="card.state"
-              data-phx-link="redirect"
-              data-phx-link-state="push"
-              class="rounded-lg border border-border bg-surface p-4 space-y-2 transition-colors hover:bg-muted/30"
+          <template v-else>
+            <div
+              v-if="issuesStatus === 'stale'"
+              data-testid="project-health-stale"
+              class="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3"
+              role="status"
+              aria-live="polite"
             >
-              <div class="flex items-center justify-between gap-2">
-                <span class="flex items-center gap-2 text-xs text-muted-foreground">
-                  <component :is="card.icon" class="size-4" />
-                  {{ $t(`workspace.project_dashboard.health.tools.${card.tool}`) }}
-                </span>
-                <component
-                  :is="stateIcons[card.state]"
-                  :class="['size-4 shrink-0', stateClasses[card.state]]"
-                  aria-hidden="true"
-                />
-              </div>
-
-              <p v-if="card.clean" class="text-sm font-medium">
-                {{ $t("workspace.project_dashboard.health.clean") }}
+              <p class="text-sm text-amber-700 dark:text-amber-300">
+                {{ $t("common.dashboard.issues_stale") }}
               </p>
-              <template v-else>
-                <p class="text-sm font-medium">
-                  {{
-                    $t("workspace.project_dashboard.health.issues", {
-                      count: card.counts.actionable,
-                    })
-                  }}
-                </p>
-                <p class="text-xs text-muted-foreground tabular-nums">
-                  <span v-if="card.counts.error > 0">
-                    {{
-                      $t("workspace.project_dashboard.health.errors", {
-                        count: card.counts.error,
-                      })
-                    }}
-                  </span>
-                  <span v-if="card.counts.error > 0 && card.counts.warning > 0"> &middot; </span>
-                  <span v-if="card.counts.warning > 0">
-                    {{
-                      $t("workspace.project_dashboard.health.warnings", {
-                        count: card.counts.warning,
-                      })
-                    }}
-                  </span>
-                </p>
-              </template>
-            </a>
-          </div>
-        </template>
-      </section>
+              <Button
+                variant="outline"
+                size="sm"
+                class="shrink-0"
+                data-testid="project-health-retry"
+                @click="retryHealth"
+              >
+                {{ $t("common.dashboard.retry") }}
+              </Button>
+            </div>
 
-      <!-- Recent activity — loaded by the OVERVIEW, so it is gated on the
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <a
+                v-for="card in healthCards"
+                :key="card.tool"
+                :href="card.href"
+                :data-testid="`project-health-${card.tool}`"
+                :data-state="card.state"
+                data-phx-link="redirect"
+                data-phx-link-state="push"
+                class="rounded-lg border border-border bg-surface p-4 space-y-2 transition-colors hover:bg-muted/30"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span class="flex items-center gap-2 text-xs text-muted-foreground">
+                    <component :is="card.icon" class="size-4" />
+                    {{ $t(`workspace.project_dashboard.health.tools.${card.tool}`) }}
+                  </span>
+                  <component
+                    :is="stateIcons[card.state]"
+                    :class="['size-4 shrink-0', stateClasses[card.state]]"
+                    aria-hidden="true"
+                  />
+                </div>
+
+                <p v-if="card.clean" class="text-sm font-medium">
+                  {{ $t("workspace.project_dashboard.health.clean") }}
+                </p>
+                <template v-else>
+                  <p class="text-sm font-medium">
+                    {{
+                      $t("workspace.project_dashboard.health.issues", {
+                        count: card.counts.actionable,
+                      })
+                    }}
+                  </p>
+                  <p class="text-xs text-muted-foreground tabular-nums">
+                    <span v-if="card.counts.error > 0">
+                      {{
+                        $t("workspace.project_dashboard.health.errors", {
+                          count: card.counts.error,
+                        })
+                      }}
+                    </span>
+                    <span v-if="card.counts.error > 0 && card.counts.warning > 0"> &middot; </span>
+                    <span v-if="card.counts.warning > 0">
+                      {{
+                        $t("workspace.project_dashboard.health.warnings", {
+                          count: card.counts.warning,
+                        })
+                      }}
+                    </span>
+                  </p>
+                </template>
+              </a>
+            </div>
+          </template>
+        </section>
+
+        <!-- Recent activity — loaded by the OVERVIEW, so it is gated on the
            overview having data. Rendering its "no activity yet" empty state
            next to an overview error told the reader the project was empty when
            the truth was that nothing had loaded.
@@ -378,34 +380,40 @@ function retryHealth(): void {
            below a ten-row list. DashboardContent always paints #supplementary
            last, so this is the only way to reach totals -> health -> activity
            without gating health on the overview too. -->
-      <div
-        v-if="showActivity"
-        data-testid="project-recent-activity"
-        class="rounded-lg border border-border bg-surface p-4 space-y-3"
-      >
-        <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.recent_activity") }}</h2>
-        <div v-if="activity.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
-          {{ $t("workspace.project_dashboard.no_activity") }}
-        </div>
-        <div v-else class="space-y-0.5">
-          <div v-for="(item, i) in activity" :key="i" class="flex items-center gap-3 py-1.5">
-            <component
-              :is="activityIcon(item.type)"
-              class="size-4 text-muted-foreground/40 shrink-0"
-            />
-            <span class="text-sm flex-1 min-w-0">
-              <span class="font-medium truncate">{{ item.name }}</span>
-              <span class="text-muted-foreground/50">
-                &middot;
-                {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
+        <div
+          v-if="showActivity"
+          data-testid="project-recent-activity"
+          class="rounded-lg border border-border bg-surface p-4 space-y-3"
+        >
+          <h2 class="text-sm font-medium">
+            {{ $t("workspace.project_dashboard.recent_activity") }}
+          </h2>
+          <div
+            v-if="activity.length === 0"
+            class="text-sm text-muted-foreground/50 py-2 text-center"
+          >
+            {{ $t("workspace.project_dashboard.no_activity") }}
+          </div>
+          <div v-else class="space-y-0.5">
+            <div v-for="(item, i) in activity" :key="i" class="flex items-center gap-3 py-1.5">
+              <component
+                :is="activityIcon(item.type)"
+                class="size-4 text-muted-foreground/40 shrink-0"
+              />
+              <span class="text-sm flex-1 min-w-0">
+                <span class="font-medium truncate">{{ item.name }}</span>
+                <span class="text-muted-foreground/50">
+                  &middot;
+                  {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
+                </span>
               </span>
-            </span>
-            <span class="text-xs text-muted-foreground/40 shrink-0">
-              {{ formatRelativeTime(item.updated_at) }}
-            </span>
+              <span class="text-xs text-muted-foreground/40 shrink-0">
+                {{ formatRelativeTime(item.updated_at) }}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </template>
-  </DashboardContent>
+      </template>
+    </DashboardContent>
+  </PageContainer>
 </template>

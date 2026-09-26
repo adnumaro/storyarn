@@ -283,13 +283,13 @@ msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr "set_if_unset emite un set incondicional en Yarn (no hay tipo null)"
 
 #: lib/storyarn_web/live/template_live/show.ex:457
-#: lib/storyarn_web/live/workspace_live/show.ex:157
+#: lib/storyarn_web/live/workspace_live/show.ex:156
 #, elixir-autogen, elixir-format
 msgid "Template installation started."
 msgstr "La instalación de la template ha comenzado."
 
 #: lib/storyarn_web/live/template_live/show.ex:591
-#: lib/storyarn_web/live/workspace_live/show.ex:200
+#: lib/storyarn_web/live/workspace_live/show.ex:199
 #, elixir-autogen, elixir-format
 msgid "Your project is ready."
 msgstr "Tu proyecto está listo."
@@ -623,7 +623,7 @@ msgstr "No se pudo eliminar la template."
 
 #: lib/storyarn_web/live/template_live/show.ex:466
 #: lib/storyarn_web/live/template_live/show.ex:469
-#: lib/storyarn_web/live/workspace_live/show.ex:171
+#: lib/storyarn_web/live/workspace_live/show.ex:170
 #, elixir-autogen, elixir-format
 msgid "Template could not be installed."
 msgstr "No se pudo instalar la template."

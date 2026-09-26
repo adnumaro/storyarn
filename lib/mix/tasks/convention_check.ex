@@ -24,6 +24,7 @@ defmodule Mix.Tasks.Convention.Check do
   | put_flash_without_gettext| web only  | put_flash must use gettext/dgettext             |
   | native_dialog            | all       | No window.confirm/alert/prompt or data-confirm  |
   | inline_slugify           | all       | Use NameNormalizer, not private slugify          |
+  | vue_tag_layout           | web only  | Injected <.vue> pages carry no layout classes    |
 
   ## Suppression
 
@@ -45,7 +46,8 @@ defmodule Mix.Tasks.Convention.Check do
     :sql_interpolation,
     :put_flash_without_gettext,
     :native_dialog,
-    :inline_slugify
+    :inline_slugify,
+    :vue_tag_layout
   ]
 
   # This is a deliberately small, fast textual guard for stable internal module
@@ -107,9 +109,13 @@ defmodule Mix.Tasks.Convention.Check do
     is_web = String.contains?(file_path, "storyarn_web")
     suppressed = build_suppression_map(lines)
 
-    lines
-    |> Enum.with_index(1)
-    |> Enum.flat_map(&check_line(&1, file_path, is_web, suppressed))
+    line_violations =
+      lines
+      |> Enum.with_index(1)
+      |> Enum.flat_map(&check_line(&1, file_path, is_web, suppressed))
+
+    tag_violations = if is_web, do: check_vue_tags(content, file_path, suppressed), else: []
+    line_violations ++ tag_violations
   end
 
   defp check_line({line, line_num}, file_path, is_web, suppressed) do
@@ -206,6 +212,53 @@ defmodule Mix.Tasks.Convention.Check do
   end
 
   # === RULES ===
+
+  # A page injected into a Vue layout starts with its own PageContainer, which
+  # owns width, padding and section layout. Its <.vue> tag may only fill the
+  # mount point or keep functional classes (contents, relative, overflow-*,
+  # pointer-events-*). The tag spans several lines, so it is read whole.
+  @vue_layout_class ~r/^(-?m[trblxy]?-|p[trblxy]?-|gap-|space-[xy]-|(inline-)?(flex|grid|block|table)$|inline$|flex-|grid-|col-|row-|items-|justify-|place-|self-|basis-|grow|shrink|order-|max-[wh]-|min-[wh]-|size-|container$|w-(?!full$)|h-(?!full$))/
+
+  defp check_vue_tags(content, file, suppressed) do
+    ~r/<\.vue\b/
+    |> Regex.scan(content, return: :index)
+    |> Enum.flat_map(fn [{start, _}] -> vue_tag_violations(content, start, file) end)
+    |> Enum.reject(fn {rule, _, line_num, _} -> rule_suppressed?(suppressed, line_num, rule) end)
+  end
+
+  defp vue_tag_violations(content, start, file) do
+    tag = tag_source(content, start)
+
+    with true <- String.contains?(tag, "v-inject"),
+         [_, {offset, length}] <- Regex.run(~r/\sclass="([^"]*)"/, tag, return: :index),
+         [_ | _] = found <-
+           tag |> binary_part(offset, length) |> String.split() |> Enum.filter(&Regex.match?(@vue_layout_class, &1)) do
+      line_num = content |> binary_part(0, start + offset) |> String.split("\n") |> length()
+
+      [
+        {:vue_tag_layout, file, line_num,
+         "Layout classes on an injected <.vue> (#{Enum.join(found, " ")}) — the page's PageContainer owns layout"}
+      ]
+    else
+      _ -> []
+    end
+  end
+
+  defp tag_source(content, start) do
+    rest = binary_part(content, start, byte_size(content) - start)
+    binary_part(rest, 0, tag_length(rest, 0, 0, false))
+  end
+
+  # Ends at the first `>` outside quotes and `{...}` expressions.
+  defp tag_length(<<>>, length, _depth, _quoted), do: length
+  defp tag_length(<<?", rest::binary>>, length, 0, quoted), do: tag_length(rest, length + 1, 0, not quoted)
+  defp tag_length(<<?{, rest::binary>>, length, depth, false), do: tag_length(rest, length + 1, depth + 1, false)
+
+  defp tag_length(<<?}, rest::binary>>, length, depth, false) when depth > 0,
+    do: tag_length(rest, length + 1, depth - 1, false)
+
+  defp tag_length(<<?>, _rest::binary>>, length, 0, false), do: length + 1
+  defp tag_length(<<_, rest::binary>>, length, depth, quoted), do: tag_length(rest, length + 1, depth, quoted)
 
   defp check_raw_without_sanitizer(line, line_num, file, _trimmed) do
     if String.match?(line, ~r/\braw\(/) and
@@ -350,4 +403,7 @@ defmodule Mix.Tasks.Convention.Check do
   defp fix_suggestion(:native_dialog), do: "Use ConfirmDialog.vue component instead"
 
   defp fix_suggestion(:inline_slugify), do: "Use NameNormalizer.slugify/1, variablify/1, or shortcutify/1"
+
+  defp fix_suggestion(:vue_tag_layout),
+    do: "Remove the classes from the <.vue> tag and lay the page out with PageContainer in its Vue component"
 end

@@ -26,6 +26,7 @@ import { useLiveVue, type Form } from "live_vue";
 import NewProjectForm from "../../project/form/ProjectNewProjectForm.vue";
 import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { formatRelativeTime } from "@shared/utils/date-utils";
+import PageContainer from "@shell/PageContainer.vue";
 
 interface Workspace {
   name: string;
@@ -348,7 +349,7 @@ function templateCountLabel(template: ProjectTemplate) {
 </script>
 
 <template>
-  <div class="h-full w-full flex flex-col">
+  <PageContainer width="full">
     <!-- Workspace Banner -->
     <header class="relative">
       <div
@@ -430,7 +431,7 @@ function templateCountLabel(template: ProjectTemplate) {
       </div>
     </header>
 
-    <div class="flex-1">
+    <div>
       <!-- Empty states -->
       <div
         v-if="
@@ -536,7 +537,7 @@ function templateCountLabel(template: ProjectTemplate) {
         </a>
       </div>
     </div>
-  </div>
+  </PageContainer>
 
   <Dialog v-if="currentTemplateFailure" :open="true" @update:open="setTemplateFailureOpen">
     <DialogContent data-testid="template-installation-failure-dialog" class="sm:max-w-lg">

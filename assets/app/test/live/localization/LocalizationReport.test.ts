@@ -39,7 +39,11 @@ describe("LocalizationReport", () => {
         targetLanguages,
         selectedLocale: "es",
       },
-      global: { config: { globalProperties: { $live: live } as never } },
+      global: {
+        config: { globalProperties: { $live: live } as never },
+        // The page container only frames the report; render what it holds.
+        stubs: { PageContainer: false },
+      },
     });
 
     const tabs = wrapper.getComponent(Tabs);
@@ -61,7 +65,11 @@ describe("LocalizationReport", () => {
         voProgress: { none: 30, needed: 6, recorded: 3, approved: 3 },
         typeCounts: { flow_node: 42, block: 6, sheet: 4 },
       },
-      global: { config: { globalProperties: { $live: live } as never } },
+      global: {
+        config: { globalProperties: { $live: live } as never },
+        // The page container only frames the report; render what it holds.
+        stubs: { PageContainer: false },
+      },
     });
 
     const card = wrapper.get('[data-testid="localization-language-card-es"]');
@@ -89,7 +97,11 @@ describe("LocalizationReport", () => {
           settingsUrl: "/settings/localization",
         },
       },
-      global: { config: { globalProperties: { $live: live } as never } },
+      global: {
+        config: { globalProperties: { $live: live } as never },
+        // The page container only frames the report; render what it holds.
+        stubs: { PageContainer: false },
+      },
     });
 
     const submit = wrapper.get('[data-testid="localization-overview-add-language-submit"]');
@@ -118,7 +130,11 @@ describe("LocalizationReport", () => {
         sourceLanguage: { localeCode: "en", name: "English", flagCode: "gb", shortLabel: "EN" },
         capabilities: { canEdit: false, hasProvider: false },
       },
-      global: { config: { globalProperties: { $live: live } as never } },
+      global: {
+        config: { globalProperties: { $live: live } as never },
+        // The page container only frames the report; render what it holds.
+        stubs: { PageContainer: false },
+      },
     });
 
     expect(wrapper.find("form").exists()).toBe(false);

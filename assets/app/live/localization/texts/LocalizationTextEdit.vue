@@ -14,6 +14,7 @@ import {
 } from "@components/ui/select";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive.ts";
+import PageContainer from "@shell/PageContainer.vue";
 
 const { t } = useI18n();
 
@@ -114,8 +115,8 @@ function formatDateTime(datetime: string | undefined) {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
-    <div class="flex items-center justify-between mb-6">
+  <PageContainer>
+    <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold tracking-tight">{{ $t("localization.edit.title") }}</h1>
         <p class="text-sm text-muted-foreground mt-1">
@@ -133,7 +134,7 @@ function formatDateTime(datetime: string | undefined) {
       </a>
     </div>
 
-    <div class="grid grid-cols-2 gap-6 mt-6">
+    <div class="grid grid-cols-2 gap-6">
       <!-- Source text -->
       <div>
         <h4 class="font-medium text-sm mb-2 text-muted-foreground">
@@ -206,7 +207,7 @@ function formatDateTime(datetime: string | undefined) {
     </div>
 
     <!-- Metadata -->
-    <div class="mt-6 text-sm text-muted-foreground flex items-center gap-2">
+    <div class="text-sm text-muted-foreground flex items-center gap-2">
       <Badge v-if="text.machine_translated" variant="outline">{{
         $t("localization.edit.machine_translated")
       }}</Badge>
@@ -216,5 +217,5 @@ function formatDateTime(datetime: string | undefined) {
         }}
       </span>
     </div>
-  </div>
+  </PageContainer>
 </template>

@@ -61,7 +61,7 @@ msgstr ""
 msgid "Only the workspace owner can remove members."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:112
+#: lib/storyarn_web/live/workspace_live/show.ex:111
 #, elixir-autogen, elixir-format
 msgid "Project created successfully."
 msgstr ""
@@ -98,7 +98,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/hooks/workspace_scope.ex:63
 #: lib/storyarn_web/live/project_live/form.ex:78
-#: lib/storyarn_web/live/workspace_live/show.ex:126
+#: lib/storyarn_web/live/workspace_live/show.ex:125
 #, elixir-autogen, elixir-format
 msgid "Workspace not found."
 msgstr ""
@@ -125,8 +125,8 @@ msgstr ""
 
 #: lib/storyarn_web/live/project_live/form.ex:75
 #: lib/storyarn_web/live/template_live/show.ex:463
-#: lib/storyarn_web/live/workspace_live/show.ex:122
-#: lib/storyarn_web/live/workspace_live/show.ex:166
+#: lib/storyarn_web/live/workspace_live/show.ex:121
+#: lib/storyarn_web/live/workspace_live/show.ex:165
 #, elixir-autogen, elixir-format
 msgid "Project limit reached for your plan"
 msgstr ""
@@ -203,7 +203,7 @@ msgid "Workspaces"
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/form.ex:85
-#: lib/storyarn_web/live/workspace_live/show.ex:133
+#: lib/storyarn_web/live/workspace_live/show.ex:132
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to create projects in this workspace."
 msgstr ""
