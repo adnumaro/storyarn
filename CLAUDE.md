@@ -72,13 +72,13 @@ assets/app/
 ├── live/             — LiveVue page components; mirrors lib/storyarn_web/live/
 │                       and is addressed as v-component="live/{domain}/{page}/{Name}"
 ├── shell/            — App chrome: sidebars, project navbar, dashboard frame
-├── components/       — Shared UI. ui/ = shadcn-vue/reka-ui primitives; also ai/,
+├── components/       — Shared UI. ui/ = shadcn-vue/reka-ui primitives; also
 │                       builders/, collab/, command-palette/, dashboard/, forms/,
 │                       health/, invitations/, language/, navigation/, onboarding/,
 │                       toolbar/, versioning/
 ├── shared/           — Cross-domain code
 │   ├── utils/          — Pure utilities (utils.ts, date-utils.ts)
-│   ├── composables/    — Shared composables (useLive, usePresence, etc.)
+│   ├── composables/    — Shared composables (useLive, useLiveEvent, useLiveAction, etc.)
 │   ├── domain/         — Shared business logic (variables, operators)
 │   ├── components/, navigation/, command-palette/, types/
 ├── modules/          — Heavy domain editors
@@ -88,7 +88,7 @@ assets/app/
 │   ├── localization/   — Localization UI
 │   ├── projects/       — Project settings (export/import)
 │   └── public/         — Landing page
-├── plugins/          — Third-party extensions (tiptap/, expression-editor/)
+├── plugins/          — Third-party extensions (expression-editor/)
 ├── locales/          — i18n translations (en/, es/)
 └── test/             — Vitest suites, mirroring the source tree
 ```
@@ -178,7 +178,7 @@ Block types: `number`, `select`, `multi_select`, `boolean`, `text`, `rich_text`,
 
 ## Flow Editor
 
-Node types (`@node_types` in `lib/storyarn/flows/flow_node.ex`): `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `subflow`, `annotation`, `sequence`
+Node types (`@node_types` in `lib/storyarn/flows/editor/entities/flow_node.ex`): `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `subflow`, `annotation`, `sequence`
 
 Per-type architecture: each `lib/storyarn_web/live/flow_live/nodes/{type}/node.ex` contains all metadata and handlers, dispatched through `flow_live/node_type_registry.ex`.
 
@@ -194,7 +194,7 @@ Canvas-side node metadata mirrors this list in `assets/app/modules/flows/editor/
 - HEEx: `<.icon name="box" class="size-3" />` from `StoryarnWeb.Components.IconComponents` (auto-imported)
 - Dynamic icon by string: declare a module-level `Record<string, Component>` map and render `<component :is="map[key]" />`. Never build the name at runtime.
 
-`<.icon>` renders from a hardcoded `@icons` path map in `icon_components.ex` and uses `Map.fetch!/2` — **an unlisted name raises at render time.** Add the Lucide paths to that map before using a new icon in HEEx. It currently carries 12 icons, all for public/auth/docs surfaces; app surfaces are Vue and use `@lucide/vue`.
+`<.icon>` renders from a hardcoded `@icons` path map in `icon_components.ex` and uses `Map.fetch!/2` — **an unlisted name raises at render time.** Add the Lucide paths to that map before using a new icon in HEEx. It currently carries 11 icons, all for public/auth/docs surfaces; app surfaces are Vue and use `@lucide/vue`.
 
 ## Dialog & Confirmation Policy
 

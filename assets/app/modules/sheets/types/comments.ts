@@ -1,5 +1,4 @@
 import type {
-  CommentMessage,
   CommentPosition,
   CommentSource,
   CommentsPanelState,
@@ -13,7 +12,6 @@ export interface SheetCommentSource extends CommentSource {
 
 export type SheetCommentPosition = CommentPosition;
 export type SheetCommentThread = CommentThread<SheetCommentSource>;
-export type SheetCommentMessage = CommentMessage;
 
 export type SheetCommentsPanelState = Omit<
   CommentsPanelState<SheetCommentSource>,

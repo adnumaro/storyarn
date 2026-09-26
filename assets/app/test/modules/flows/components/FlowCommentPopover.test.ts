@@ -1,19 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createMockLive } from "@app/test/setup";
-import type {
-  FlowCommentMessage,
-  FlowCommentPosition,
-  FlowCommentsPanelState,
-  FlowCommentThread,
-} from "@modules/flows/types/comments";
+import type { CommentMessage } from "@components/comments/types";
+import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
 
 const mockLive = createMockLive();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => mockLive }));
 const { default: FlowCommentPopover } =
   await import("@modules/flows/editor/components/panels/FlowCommentPopover.vue");
-const { default: FlowCommentComposer } =
-  await import("@modules/flows/editor/components/panels/comments/FlowCommentComposer.vue");
 
 const author = { id: 4, display_name: "Ada", avatar_url: null };
 const member = { id: 8, display_name: "Grace", avatar_url: null };
@@ -30,7 +24,7 @@ const thread: FlowCommentThread = {
   preview: "Why does the guard leave?",
   source: { type: "flow_node", id: 42, flow_id: 7, label: "Dialogue #42", status: "available" },
 };
-const message: FlowCommentMessage = {
+const message: CommentMessage = {
   id: 21,
   thread_id: 12,
   parent_id: null,
@@ -63,22 +57,6 @@ const stubs = {
 function panel(overrides: Partial<FlowCommentsPanelState> = {}) {
   return mount(FlowCommentPopover, {
     props: { state: { ...base, ...overrides } },
-    global: { stubs },
-  });
-}
-
-function composer(
-  overrides: Partial<{
-    nodeId: number | null;
-    threadId: number | null;
-    parentId: number | null;
-    position: FlowCommentPosition | null;
-    draftId: string | null;
-    disabled: boolean;
-  }> = {},
-) {
-  return mount(FlowCommentComposer, {
-    props: { nodeId: 42, members: [author, member], ...overrides },
     global: { stubs },
   });
 }
@@ -253,7 +231,7 @@ describe("Flow comment popover", () => {
   );
 
   it("submits an explicit reply to the chosen message", async () => {
-    const reply: FlowCommentMessage = {
+    const reply: CommentMessage = {
       ...message,
       id: 22,
       parent_id: 21,
@@ -270,179 +248,5 @@ describe("Flow comment popover", () => {
       expect.any(Function),
       expect.any(Function),
     );
-  });
-});
-
-describe("Flow comment composer delivery", () => {
-  beforeEach(() => vi.mocked(mockLive.pushEvent).mockClear());
-
-  it("retains a failed draft and reuses the request id when retrying", async () => {
-    const wrapper = composer();
-    await wrapper.get("textarea").setValue("  Reconsider this response.  ");
-    await wrapper.get("form").trigger("submit");
-    const firstPayload = vi.mocked(mockLive.pushEvent).mock.calls[0][1];
-    expect(firstPayload).toMatchObject({
-      node_id: 42,
-      body: "Reconsider this response.",
-      mention_user_ids: [],
-    });
-    expect(firstPayload?.client_request_id).toMatch(/^[a-f0-9-]{36}$/);
-    lastReply()({ ok: false, error: "Please retry." });
-    await wrapper.vm.$nextTick();
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toContain(
-      "Reconsider this response.",
-    );
-    await wrapper.get("form").trigger("submit");
-    expect(vi.mocked(mockLive.pushEvent).mock.calls[1][1]).toEqual(firstPayload);
-    lastReply()({ ok: true });
-    await wrapper.vm.$nextTick();
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("");
-  });
-
-  it("preserves independent drafts and retry ids for free canvas positions", async () => {
-    const firstPosition = { x: -125.5, y: 250 };
-    const secondPosition = { x: 80, y: 250 };
-    const wrapper = composer({ nodeId: null, position: firstPosition });
-    await wrapper.get("textarea").setValue("First canvas draft");
-    await wrapper.get("form").trigger("submit");
-    const request = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
-    request[3]!(new Error("Response lost"));
-    await wrapper.setProps({ position: secondPosition });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("");
-    await wrapper.get("textarea").setValue("Second canvas draft");
-    await wrapper.setProps({ nodeId: 42, position: null });
-    await wrapper.get("textarea").setValue("Node draft");
-    await wrapper.setProps({ nodeId: null, position: { ...firstPosition } });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
-      "First canvas draft",
-    );
-    await wrapper.get("form").trigger("submit");
-    expect(vi.mocked(mockLive.pushEvent).mock.calls.at(-1)![1]).toEqual(request[1]);
-    await wrapper.setProps({ position: secondPosition });
-    lastReply()({ ok: true });
-    await wrapper.vm.$nextTick();
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
-      "Second canvas draft",
-    );
-    expect(wrapper.emitted("sent")).toBeUndefined();
-    await wrapper.setProps({ nodeId: 42, position: null });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("Node draft");
-  });
-
-  it("does not send an unplaced draft or include a position in replies", async () => {
-    const wrapper = composer({ nodeId: null });
-    await wrapper.get("textarea").setValue("Needs a position");
-    await wrapper.get("form").trigger("submit");
-    expect(mockLive.pushEvent).not.toHaveBeenCalled();
-    await wrapper.setProps({ threadId: 12, parentId: 21, position: { x: 50, y: 60 } });
-    await wrapper.get("textarea").setValue("A reply");
-    await wrapper.get("form").trigger("submit");
-    expect(vi.mocked(mockLive.pushEvent).mock.calls.at(-1)![1]).not.toHaveProperty("position");
-  });
-
-  it("keeps the same draft when its pin moves and uses the new position when sending", async () => {
-    const firstPosition = { x: 20, y: 30 };
-    const movedPosition = { x: 90, y: 110 };
-    const wrapper = composer({ nodeId: null, position: firstPosition, draftId: "draft-a" });
-    await wrapper.get("textarea").setValue("Move this comment closer to the ending.");
-    await wrapper.setProps({ position: movedPosition });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
-      "Move this comment closer to the ending.",
-    );
-    await wrapper.get("form").trigger("submit");
-    const movedRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
-    expect(movedRequest[1]).toMatchObject({ node_id: null, position: movedPosition });
-    movedRequest[2]!({ ok: false });
-    await wrapper.setProps({ position: firstPosition });
-    await wrapper.get("form").trigger("submit");
-    const nextRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
-    expect(nextRequest[1]?.client_request_id).not.toBe(movedRequest[1]?.client_request_id);
-    expect(nextRequest[1]?.position).toEqual(firstPosition);
-    await wrapper.setProps({ draftId: "draft-b" });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("");
-    await wrapper.setProps({ draftId: "draft-a" });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
-      "Move this comment closer to the ending.",
-    );
-  });
-
-  it("keeps drafts for different nodes separate and survives transport errors", async () => {
-    const wrapper = composer();
-    await wrapper.get("textarea").setValue("Node 42 draft");
-    await wrapper.get("form").trigger("submit");
-    vi.mocked(mockLive.pushEvent).mock.calls[0][3]!(new Error("Disconnected"));
-    await wrapper.setProps({ nodeId: 43 });
-    await wrapper.get("textarea").setValue("Node 43 draft");
-    await wrapper.setProps({ nodeId: 42 });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("Node 42 draft");
-    expect(wrapper.get('[role="alert"]').text()).toContain("Your draft is saved");
-  });
-
-  it("sends mentions as explicit member ids and rotates id after content changes", async () => {
-    const wrapper = composer();
-    await wrapper
-      .findAll("li[role='option']")
-      .find((option) => option.text().endsWith("Grace"))!
-      .trigger("click");
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("@Grace ");
-    await wrapper.get("textarea").setValue("@Grace Please review.");
-    await wrapper.get("form").trigger("submit");
-    const first = vi.mocked(mockLive.pushEvent).mock.calls[0][1];
-    expect(first?.mention_user_ids).toEqual([8]);
-    lastReply()({ ok: false });
-    await wrapper.vm.$nextTick();
-    await wrapper.get("textarea").setValue("@Grace Please review the ending.");
-    await wrapper.get("form").trigger("submit");
-    expect(vi.mocked(mockLive.pushEvent).mock.calls[1][1]?.client_request_id).not.toBe(
-      first?.client_request_id,
-    );
-  });
-
-  it("drops a mention when its name is edited out of the text", async () => {
-    const wrapper = composer();
-    await wrapper
-      .findAll("li[role='option']")
-      .find((option) => option.text().endsWith("Grace"))!
-      .trigger("click");
-    await wrapper.get("textarea").setValue("Please review.");
-    await wrapper.get("form").trigger("submit");
-    expect(vi.mocked(mockLive.pushEvent).mock.calls[0][1]?.mention_user_ids).toEqual([]);
-  });
-
-  it("reuses the same request after a lost response with the same mentions", async () => {
-    const wrapper = composer();
-    const thirdMember = { id: 20, display_name: "Lin", avatar_url: null };
-    await wrapper.setProps({ members: [author, member, thirdMember] });
-    for (const name of ["Ada", "Grace", "Lin"]) {
-      await wrapper
-        .findAll("li[role='option']")
-        .find((option) => option.text().endsWith(name))!
-        .trigger("click");
-    }
-    await wrapper.get("textarea").setValue("@Lin @Grace @Ada Please review this scene.");
-    await wrapper.get("form").trigger("submit");
-    const originalRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
-    originalRequest[3]!(new Error("Response lost after commit"));
-    await wrapper.vm.$nextTick();
-
-    await wrapper.get("form").trigger("submit");
-    const retry = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
-
-    expect(retry[1]).toEqual(originalRequest[1]);
-    expect(retry[1]?.mention_user_ids).toEqual([4, 8, 20]);
-  });
-
-  it("clears only the submitted draft if context changes before acknowledgment", async () => {
-    const wrapper = composer();
-    await wrapper.get("textarea").setValue("First draft");
-    await wrapper.get("form").trigger("submit");
-    const reply = lastReply();
-    await wrapper.setProps({ nodeId: 43 });
-    await wrapper.get("textarea").setValue("Second draft");
-    reply({ ok: true });
-    await wrapper.vm.$nextTick();
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("Second draft");
-    await wrapper.setProps({ nodeId: 42 });
-    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("");
   });
 });

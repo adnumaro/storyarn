@@ -6,7 +6,6 @@ import { readCommentDraft, updateCommentDraft } from "@components/comments/comme
 import type { FlowCommentThread, FlowCommentsPanelState } from "@modules/flows/types/comments";
 import {
   commentCanvasPoint,
-  commentNodeId,
   commentPopoverPosition,
 } from "@modules/flows/editor/lib/comment-geometry";
 import { createContextMenuItems } from "@modules/flows/editor/lib/context_menu_items";
@@ -242,8 +241,6 @@ describe("spatial comment geometry and interactions", () => {
     };
     const nodes = new Map([["node-42", { position: { x: 500, y: 600 } }]]);
     expect(commentCanvasPoint(detached, nodes)).toEqual(thread.position);
-    expect(commentNodeId(detached)).toBeNull();
-    expect(commentNodeId(thread)).toBe(42);
     expect(commentCanvasPoint(thread, nodes)).toEqual({ x: 510, y: 620 });
   });
 

@@ -12,6 +12,11 @@ interface DestinationRegistration {
 
 const handlers = new Map<string, DestinationRegistration>();
 
+/**
+ * Where an AI surface registers the handler that opens its destinations from the
+ * palette. No surface registers one yet; openAIDestination is already wired.
+ * @public
+ */
 export function registerAIDestination(
   destination: Exclude<AIDestination, { type: "none" }>,
   handler: DestinationHandler,
@@ -42,7 +47,10 @@ export async function openAIDestination(
   await registration.handler(destination, context);
 }
 
-/** Test-only: clears all destination handlers. */
+/**
+ * Test-only: clears all destination handlers.
+ * @internal
+ */
 export function resetAIDestinations(): void {
   handlers.clear();
 }

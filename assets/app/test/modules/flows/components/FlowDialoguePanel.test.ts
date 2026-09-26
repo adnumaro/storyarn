@@ -17,7 +17,7 @@ const { default: FlowDialoguePanel } =
 // Importing the panel's own DialoguePanelData interface gives the fixture
 // the exact same nominal type the prop expects — no structural-mismatch
 // false positives from the IDE's TS server.
-import type { DialoguePanelData } from "../../../../modules/flows/editor/components/panels/FlowDialoguePanel.vue";
+import type { DialoguePanelData } from "../../../../modules/flows/editor/components/panels/FlowDialogueEditorBody.vue";
 
 const BASE_DATA: DialoguePanelData = {
   nodeId: 36,

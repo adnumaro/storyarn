@@ -1,5 +1,4 @@
 import type {
-  CommentMessage,
   CommentPosition,
   CommentSource,
   CommentsPanelState,
@@ -13,7 +12,6 @@ export interface SceneCommentSource extends CommentSource {
 
 export type SceneCommentPosition = CommentPosition;
 export type SceneCommentThread = CommentThread<SceneCommentSource>;
-export type SceneCommentMessage = CommentMessage;
 
 export interface SceneCommentsPanelState extends Omit<
   CommentsPanelState<SceneCommentSource>,

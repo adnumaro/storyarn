@@ -88,7 +88,10 @@ export const primarySurface = computed<string>(() => {
   return current;
 });
 
-/** Test-only: drops every registration so specs start from a clean slate. */
+/**
+ * Test-only: drops every registration so specs start from a clean slate.
+ * @internal
+ */
 export function resetPaletteRegistry(): void {
   entries.clear();
 }

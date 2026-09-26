@@ -14,17 +14,6 @@ export type VoStatus = (typeof VO_STATUS_KEYS)[number];
 export const SOURCE_TYPE_KEYS = ["flow_node", "block", "sheet"] as const;
 export type SourceType = (typeof SOURCE_TYPE_KEYS)[number];
 
-export const CONTENT_ROLE_KEYS = [
-  "dialogue",
-  "response",
-  "stage_direction",
-  "menu",
-  "exit",
-  "runtime_value",
-  "speaker_name",
-] as const;
-export type ContentRole = (typeof CONTENT_ROLE_KEYS)[number];
-
 export type Tone =
   | TranslationStatus
   | "outdated"
@@ -124,10 +113,6 @@ export const SOURCE_TYPE_I18N: Record<SourceType, string> = {
 
 export function isTranslationStatus(value: string): value is TranslationStatus {
   return (STATUS_KEYS as readonly string[]).includes(value);
-}
-
-export function isVoStatus(value: string): value is VoStatus {
-  return (VO_STATUS_KEYS as readonly string[]).includes(value);
 }
 
 export function voTone(status: VoStatus): Tone {

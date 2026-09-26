@@ -10,12 +10,10 @@ const eventPropertyAllowlist = new Map([
       "size_bucket",
     ]),
   ],
-  ["flow player completed", new Set(["step_count", "choices_made"])],
   ["flow player started", new Set(["project_id"])],
   ["page viewed", new Set(["content_locale", "route_family"])],
   ["project created", new Set(["project_id", "workspace_id"])],
   ["project exported", new Set(["format", "asset_mode", "section_count"])],
-  ["project imported", new Set(["has_conflicts"])],
   ["user logged in", new Set(["auth_method"])],
   ["user signed up", new Set(["auth_method"])],
   ["workspace created", new Set(["workspace_id"])],
@@ -233,10 +231,6 @@ export function saveCookieConsent({ analytics }) {
   return consent;
 }
 
-export function openCookiePreferences() {
-  window.dispatchEvent(new CustomEvent("storyarn:open-cookie-settings"));
-}
-
 function enablePostHogCapture() {
   if (initialized && posthog) {
     posthog.opt_in_capturing?.();
@@ -354,12 +348,4 @@ export function postHogInitOptions(config) {
     person_profiles: "identified_only",
     before_send: scrubPostHogEvent,
   };
-}
-
-export function resetPostHogForTest() {
-  initialized = false;
-  initializing = false;
-  lastPageviewKey = null;
-  posthog = null;
-  posthogLoadPromise = null;
 }

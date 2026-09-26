@@ -5,8 +5,25 @@ import type {
   SequenceLocalizationState,
 } from "@modules/flows/sequence/types";
 import type { PlayerAudioTrack } from "@modules/flows/player/components/PlayerAudioTracks.vue";
-import type { ResponseData } from "@modules/flows/player/components/PlayerChoices.vue";
-import type { SlideData } from "@modules/flows/player/components/PlayerSlide.vue";
+
+export interface SlideData {
+  type: "dialogue" | "empty" | "outcome";
+  // dialogue fields
+  speaker_name?: string | null;
+  speaker_initials?: string;
+  speaker_avatar_url?: string | null;
+  speaker_color?: string | null;
+  text?: string;
+  stage_directions?: string;
+}
+
+export interface ResponseData {
+  id: string;
+  text: string;
+  valid: boolean;
+  number: number;
+  has_condition: boolean;
+}
 
 export type SequencePlaybackAction = "start" | "stop" | "continue" | "choose" | "back" | "restart";
 

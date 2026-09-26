@@ -491,18 +491,10 @@
     },
     "player": {
       "continue": "Continue",
-      "mode_player": "Player",
-      "mode_analysis": "Analysis",
-      "steps": "Steps:",
-      "choices": "Choices:",
-      "variables_changed": "Variables changed:",
       "play_again": "Play again",
-      "back_to_editor": "Back to editor",
       "back": "Back",
       "restart": "Restart",
-      "toggle_mode": "Switch between player mode and review of blocked or conditional responses",
-      "no_content": "No content to display.",
-      "enable_audio": "Enable audio"
+      "no_content": "No content to display."
     },
     "health": {
       "review": "Review flow health",

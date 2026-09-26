@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   clampSceneCommentPosition,
   sceneCommentCanvasPoint,
-  sceneCommentDragPosition,
   sceneCommentPointFromClient,
   sceneCommentScreenPoint,
 } from "@modules/scenes/editor/lib/comment-geometry";
@@ -76,23 +75,7 @@ describe("Scene comment geometry", () => {
     ).toEqual({ x: 0, y: 100 });
   });
 
-  it("converts screen drag deltas back to percentages at any zoom and clamps every edge", () => {
-    expect(
-      sceneCommentDragPosition(
-        { x: 25, y: 75 },
-        { x: 160, y: -80 },
-        { x: 500, y: 300, scaleX: 2, scaleY: 2 },
-        projection,
-      ),
-    ).toEqual({ x: 35, y: 65 });
-    expect(
-      sceneCommentDragPosition(
-        { x: 99, y: 1 },
-        { x: 1_000, y: -1_000 },
-        { x: 0, y: 0, scaleX: 0.5, scaleY: 0.5 },
-        projection,
-      ),
-    ).toEqual({ x: 100, y: 0 });
+  it("clamps every edge", () => {
     expect(clampSceneCommentPosition({ x: -0.1, y: 100.1 })).toEqual({ x: 0, y: 100 });
   });
 
