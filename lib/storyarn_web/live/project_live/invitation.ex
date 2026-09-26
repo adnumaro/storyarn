@@ -59,7 +59,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
       {:ok, {:registration_required, registration_token}} ->
         redirect_to_registration(socket, invitation, token, registration_token)
 
-      {:error, :workspace_provisioning_failed} ->
+      {:error, :account_provisioning_failed} ->
         {:ok,
          put_flash(
            socket,
@@ -107,7 +107,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
           error,
           dgettext(
             "projects",
-            "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
+            "This invitation cannot be accepted because the workspace has no editor seats left. Ask the workspace owner to free one, then try this invitation again."
           ),
           public_home_path(socket.assigns.locale)
         )

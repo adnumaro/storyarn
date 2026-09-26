@@ -18,15 +18,11 @@ interface CountUsageBucket {
 }
 
 /**
- * The LiveView still serializes the workspace quotas and storage accounting
- * alongside the project counters; this page only reads the project half.
- * Workspace-wide meters live on Workspace › Plan & usage.
+ * Only the project's own counters: a project owner may be a member of this
+ * project alone, and the workspace's totals are for its owner, admins and
+ * members, on Workspace › Usage.
  */
 interface UsageLimits {
-  plan: {
-    key: string;
-    name: string;
-  };
   project: {
     items: CountUsageBucket;
     projectSnapshots: CountUsageBucket;
@@ -50,9 +46,16 @@ interface Meter {
   status: SettingsMeterStatus;
 }
 
-const { usageLimits, workspacePlanPath = null } = defineProps<{
+const {
+  usageLimits,
+  workspaceUsagePath = null,
+  planPath = null,
+} = defineProps<{
   usageLimits: UsageLimits;
-  workspacePlanPath?: string | null;
+  /** Workspace › Usage, for the workspace's owner, admins and members. */
+  workspaceUsagePath?: string | null;
+  /** Plan & billing, for the workspace owner, whose plan sets the limits. */
+  planPath?: string | null;
 }>();
 
 const { locale, t } = useI18n();
@@ -150,14 +153,8 @@ function statusLabel(status: SettingsMeterStatus): string {
       >
         <template v-if="row.status === 'reached'" #footer>
           <span>{{ t(`project_settings.usage_limits.reached_hint.${row.key}`) }}</span>
-          <Button
-            v-if="workspacePlanPath"
-            as-child
-            variant="link"
-            size="sm"
-            class="h-auto p-0 text-xs"
-          >
-            <LiveLink :to="workspacePlanPath">
+          <Button v-if="planPath" as-child variant="link" size="sm" class="h-auto p-0 text-xs">
+            <LiveLink :to="planPath">
               {{ t("project_settings.usage_limits.plan_link") }}
             </LiveLink>
           </Button>
@@ -167,8 +164,8 @@ function statusLabel(status: SettingsMeterStatus): string {
       <template #footer>
         {{ t("project_settings.usage_limits.workspace_note") }}
         <LiveLink
-          v-if="workspacePlanPath"
-          :to="workspacePlanPath"
+          v-if="workspaceUsagePath"
+          :to="workspaceUsagePath"
           class="underline underline-offset-2"
         >
           {{ t("project_settings.usage_limits.workspace_note_link") }}

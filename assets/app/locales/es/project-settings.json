@@ -229,6 +229,7 @@
         "submit": "Crear copia de seguridad",
         "submitting": "Capturando…",
         "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles.",
+        "storage_limit_reached_without_figures": "No queda almacenamiento suficiente en este workspace para esta snapshot.",
         "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots.",
         "ownership_invariant": "No se pudo solicitar la snapshot porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo.",
         "unauthorized": "Ya no tienes permiso para crear snapshots de este proyecto.",
@@ -342,7 +343,7 @@
       "storage_row": "Almacenamiento del workspace",
       "storage_row_hint": "Recursos, papelera recuperable, copias de seguridad y reservas activas.",
       "storage_footer": "Desglose completo en",
-      "storage_footer_link": "Workspace › Plan y uso"
+      "storage_footer_link": "Workspace › Uso"
     },
     "trash": {
       "title": "Papelera",
@@ -471,9 +472,9 @@
         "backups": "Elimina una copia de seguridad o amplía el límite del plan para crear otra.",
         "named_versions": "Elimina una versión con nombre o amplía el límite del plan para promocionar otra."
       },
-      "plan_link": "Plan y uso",
-      "workspace_note": "Los límites del workspace (proyectos, miembros, almacenamiento) están en",
-      "workspace_note_link": "Workspace › Plan y uso",
+      "plan_link": "Plan y facturación",
+      "workspace_note": "Los límites del workspace (proyectos, almacenamiento) están en",
+      "workspace_note_link": "Workspace › Uso",
       "meter_status": {
         "available": "Disponible",
         "warning": "Cerca del límite",

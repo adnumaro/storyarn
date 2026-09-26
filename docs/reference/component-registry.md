@@ -194,7 +194,8 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 | `DashboardHelpers`  | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sorting, pagination, issue filtering, and load-state helpers for Vue dashboards                                                                       |
 | `DashboardHandlers` | `use StoryarnWeb.Live.Shared.DashboardHandlers`   | Injects debounced dashboard-invalidation `handle_info` clauses                                                                                        |
 | `SudoReauth`        | `alias StoryarnWeb.Live.Shared.SudoReauth`        | In-place re-authentication for settings pages: `assign_reauth/2`, `reauth_props/3`, `confirm/2`, `with_sudo/2` (locks the page instead of navigating) |
-| `PlanLimitFlash`    | `alias StoryarnWeb.Live.Shared.PlanLimitFlash`    | Plan-limit toasts: `put/3` sets the `:limit` flash, which links to Plan & usage for workspace owners and admins; sticky sidebars call `forward/2`     |
+| `PlanLimitFlash`    | `alias StoryarnWeb.Live.Shared.PlanLimitFlash`    | Plan-limit toasts: `put/3` sets the `:limit` flash, which links to Plan & billing for the workspace owner only; sticky sidebars call `forward/2`      |
+| `UsageAccess`       | `alias StoryarnWeb.Live.Shared.UsageAccess`       | Who sees usage figures: workspace totals for its owner, admins and members; the Plan & billing link for the workspace owner                           |
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
 `InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`)

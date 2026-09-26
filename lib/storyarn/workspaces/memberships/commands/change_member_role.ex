@@ -1,6 +1,7 @@
 defmodule Storyarn.Workspaces.Memberships.Commands.ChangeMemberRole do
   @moduledoc false
 
+  alias Storyarn.Commercial
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Memberships.Commands.OwnerAuthority
   alias Storyarn.Workspaces.Memberships.Rules.OwnerProtection
@@ -20,11 +21,15 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ChangeMemberRole do
              | :not_found
              | :ownership_invariant_violation
              | :unauthorized}
-  def change(scope, workspace_id, membership_id, role) when valid_id(workspace_id) and valid_id(membership_id) do
-    OwnerAuthority.transact_as_owner(scope, workspace_id, fn state ->
+          | {:error, :limit_reached, map()}
+  def change(%{user: %{id: actor_id}} = scope, workspace_id, membership_id, role)
+      when valid_id(workspace_id) and valid_id(membership_id) do
+    scope
+    |> OwnerAuthority.transact_as_owner(workspace_id, fn state ->
       with %WorkspaceMembership{} = locked_membership <- find_membership(state.memberships, membership_id),
            :ok <- OwnerProtection.allow_role_change(locked_membership),
-           :ok <- OwnerProtection.allow_role_assignment(role) do
+           :ok <- OwnerProtection.allow_role_assignment(role),
+           :ok <- check_editor_seat(state.workspace, locked_membership, role, actor_id) do
         locked_membership
         |> WorkspaceMembership.changeset(%{role: role})
         |> Repo.update()
@@ -33,9 +38,23 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ChangeMemberRole do
         error -> error
       end
     end)
+    |> restore_limit_error()
   end
 
   def change(_scope, _workspace_id, _membership_id, _role), do: {:error, :not_found}
+
+  # Turning a viewer into an editor can take a new seat of the account.
+  defp check_editor_seat(workspace, membership, role, actor_id) do
+    %{user: %{email: email}} = Repo.preload(membership, :user)
+
+    case Commercial.check_editor_seat(workspace, email, role, actor_id) do
+      {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
+      result -> result
+    end
+  end
+
+  defp restore_limit_error({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+  defp restore_limit_error(result), do: result
 
   defp find_membership(memberships, membership_id) do
     Enum.find(memberships, &(&1.id == membership_id))

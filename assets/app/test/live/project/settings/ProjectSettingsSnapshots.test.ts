@@ -130,7 +130,8 @@ function mountSnapshots(
       snapshots: [snapshot],
       storageUsage: workspaceStorage,
       snapshotLimit: { used: 2, limit: 10 },
-      workspacePlanPath: "/users/settings/workspaces/alpha/plan",
+      workspaceUsagePath: "/users/settings/workspaces/alpha/usage",
+      planPath: "/users/settings/plan",
     },
     global: {
       provide: { _live_vue: live },
@@ -143,7 +144,7 @@ function mountSnapshots(
 afterEach(() => setTestLocale("en"));
 
 describe("ProjectSettingsSnapshots storage accounting", () => {
-  it("renders one plan-counted workspace storage meter and points to Plan & usage", () => {
+  it("renders one plan-counted workspace storage meter and points to the workspace's Usage", () => {
     const wrapper = mountSnapshots();
     const meter = wrapper.get('[data-testid="backups-storage-meter"]');
 
@@ -154,9 +155,39 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     meter.get('[role="progressbar"]');
 
     expect(wrapper.text()).not.toContain("Recoverable asset trash");
-    expect(wrapper.get('a[href="/users/settings/workspaces/alpha/plan"]').text()).toContain(
-      "Plan & usage",
+    expect(wrapper.get('a[href="/users/settings/workspaces/alpha/usage"]').text()).toContain(
+      "Workspace › Usage",
     );
+  });
+
+  it("shows no workspace storage to a project owner who may not see it", async () => {
+    const live = createMockLive();
+    const wrapper = mount(ProjectSettingsSnapshots, {
+      props: {
+        snapshots: [measuredSnapshot],
+        storageUsage: null,
+        snapshotLimit: { used: 2, limit: 10 },
+      },
+      global: { provide: { _live_vue: live } },
+    });
+
+    expect(wrapper.find('[data-testid="backups-storage-meter"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("4 MB");
+    expect(wrapper.text()).not.toContain("%");
+
+    const handler = vi
+      .mocked(live.handleEvent)
+      .mock.calls.find(([event]) => event === "snapshot_request_failed")?.[1] as (
+      payload: Record<string, unknown>,
+    ) => void;
+
+    handler({ reason: "storage_limit_reached", requiredBytes: null, availableBytes: null });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="snapshot-request-error"]').text()).toContain(
+      "There isn't enough storage left in this workspace for this snapshot.",
+    );
+    expect(wrapper.find('[data-testid="snapshot-request-plan-link"]').exists()).toBe(false);
   });
 
   it("renders canonical snapshot size, exact percentage, breakdown, inventory, and states", () => {
@@ -397,12 +428,12 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
         snapshots: [measuredSnapshot],
         storageUsage,
         snapshotLimit: { used: 10, limit: 10 },
-        workspacePlanPath: "/users/settings/workspaces/alpha/plan",
+        planPath: "/users/settings/plan",
       },
     });
 
     expect(wrapper.get('[data-testid="snapshot-slot-plan-link"]').attributes("href")).toBe(
-      "/users/settings/workspaces/alpha/plan",
+      "/users/settings/plan",
     );
   });
 
@@ -422,7 +453,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.get('[data-testid="snapshot-request-plan-link"]').attributes("href")).toBe(
-      "/users/settings/workspaces/alpha/plan",
+      "/users/settings/plan",
     );
 
     handler("snapshot_request_failed")({ reason: "unauthorized" });
@@ -530,7 +561,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
         ],
         storageUsage,
         snapshotLimit: { used: 2, limit: 10 },
-        workspacePlanPath: "/users/settings/workspaces/alpha/plan",
+        planPath: "/users/settings/plan",
         restoreOperationActive: true,
       },
     });

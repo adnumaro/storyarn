@@ -1,13 +1,17 @@
-defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
+defmodule StoryarnWeb.SettingsLive.WorkspaceUsage do
   @moduledoc """
-  Workspace › Plan & usage: the current plan and the limits every project in
-  the workspace shares (projects, members, storage). Read-only; the page
-  reserves the contact action for plan changes.
+  Workspace › Usage: the limits every project in the workspace shares
+  (projects, storage) and how much of them it uses. The limits come from the
+  workspace owner's plan, which the owner manages in Plan & billing.
+
+  The owner, admins and members see it. Viewers and project-only members get
+  no workspace totals.
   """
   use StoryarnWeb, :live_view
 
   alias Storyarn.Commercial
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.UsageAccess
 
   @impl true
   def mount(_params, _session, socket) do
@@ -16,15 +20,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
     case Workspaces.authorize(
            socket.assigns.current_scope,
            stale_workspace.id,
-           :access_workspace_settings
+           :view_workspace_usage
          ) do
       {:ok, workspace, membership} ->
         {:ok,
          socket
          |> assign(:workspace, workspace)
          |> assign(:membership, membership)
-         |> assign(:page_title, dgettext("workspaces", "Plan & usage"))
-         |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/plan")
+         |> assign(:page_title, dgettext("workspaces", "Usage"))
+         |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/usage")
+         |> assign(:plan_path, UsageAccess.plan_path(socket.assigns.current_scope, workspace))
          |> assign(:usage, serialize_usage(Commercial.workspace_usage(workspace)))}
 
       {:error, _reason} ->
@@ -32,7 +37,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
          socket
          |> put_flash(
            :error,
-           dgettext("workspaces", "You don't have permission to manage this workspace.")
+           dgettext("workspaces", "You don't have permission to see this workspace's usage.")
          )
          |> push_navigate(to: ~p"/users/settings")}
     end
@@ -49,12 +54,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
       settings_nav={@settings_nav}
     >
       <.vue
-        v-component="live/workspace/settings/WorkspaceSettingsPlan"
+        v-component="live/workspace/settings/WorkspaceSettingsUsage"
         v-socket={@socket}
         v-inject="settings-layout"
-        id="workspace-settings-plan"
+        id="workspace-settings-usage"
         usage={@usage}
-        contact-path={~p"/contact"}
+        plan-path={@plan_path}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -62,9 +67,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
 
   defp serialize_usage(usage) do
     %{
-      plan: %{key: to_string(usage.plan)},
       projects: serialize_count_bucket(usage.projects),
-      members: serialize_count_bucket(usage.members),
       storageBytes: serialize_storage_bucket(usage.storage_bytes),
       storage: serialize_storage_usage(usage.storage, usage.storage_bytes.limit)
     }
@@ -79,7 +82,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
   defp serialize_count_limit(_unknown_limit), do: nil
 
   # Workspace-owned copy of the storage serializers: the Project settings
-  # components belong to another boundary, and the Plan page must not depend
+  # components belong to another boundary, and the Usage page must not depend
   # on them (see `config/architecture_boundaries.exs`).
   defp serialize_storage_usage(storage, limit) do
     %{

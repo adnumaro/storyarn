@@ -7,6 +7,7 @@ defmodule Storyarn.Commercial.Billing.Persistence.ProjectInvitationRecord do
 
   schema "project_invitations" do
     field :email, :string
+    field :role, :string
     field :project_id, :id
     field :accepted_at, :utc_datetime
     field :expires_at, :utc_datetime

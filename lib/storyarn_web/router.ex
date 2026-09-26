@@ -206,6 +206,7 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/preferences", SettingsLive.Preferences, :edit
       live "/users/settings/security", SettingsLive.Security, :edit
       live "/users/settings/tutorials", SettingsLive.Tutorials, :edit
+      live "/users/settings/plan", SettingsLive.PlanBilling, :show
       live "/users/settings/integrations", SettingsLive.Integrations, :edit
       live "/users/settings/integrations/:provider", SettingsLive.IntegrationDetail, :edit
       live "/users/settings/ai-team", SettingsLive.AITeamOverview, :index
@@ -360,7 +361,7 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
       live "/users/settings/workspaces/:slug/ai", SettingsLive.WorkspaceAI, :edit
       live "/users/settings/workspaces/:slug/projects", SettingsLive.WorkspaceProjects, :index
-      live "/users/settings/workspaces/:slug/plan", SettingsLive.WorkspacePlan, :show
+      live "/users/settings/workspaces/:slug/usage", SettingsLive.WorkspaceUsage, :show
 
       # Former pages, merged into Projects. Kept so old links keep working.
       live "/users/settings/workspaces/:slug/imports",

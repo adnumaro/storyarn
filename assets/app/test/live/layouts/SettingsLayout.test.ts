@@ -104,6 +104,7 @@ describe("SettingsLayout rail", () => {
 
     expect(links).toContain("/users/settings");
     expect(links).toContain("/users/settings/security");
+    expect(links).toContain("/users/settings/plan");
     expect(links).toContain("/users/settings/tutorials");
     expect(links.some((href) => href?.includes("/workspaces/"))).toBe(false);
   });
@@ -115,7 +116,7 @@ describe("SettingsLayout rail", () => {
     expect(links).toContain("/users/settings/workspaces/admin/general");
     expect(links).toContain("/users/settings/workspaces/admin/members");
     expect(links).toContain("/users/settings/workspaces/admin/projects");
-    expect(links).toContain("/users/settings/workspaces/admin/plan");
+    expect(links).toContain("/users/settings/workspaces/admin/usage");
     expect(links).not.toContain("/users/settings/workspaces/admin/ai");
     expect(wrapper.find('[data-settings-group="workspace"]').text()).toContain("Admin workspace");
     expect(wrapper.findAll("[data-settings-locked]")).toHaveLength(0);
@@ -132,13 +133,14 @@ describe("SettingsLayout rail", () => {
     expect(general?.find("[data-settings-locked]").exists()).toBe(true);
   });
 
-  it("shows only the locked general page to a plain member", () => {
+  it("shows a plain member the locked general page and the workspace's usage", () => {
     const wrapper = mountLayout({
       settingsNav: nav({ workspace: memberWorkspace }),
     });
     const links = hrefs(wrapper);
 
     expect(links).toContain("/users/settings/workspaces/member/general");
+    expect(links).toContain("/users/settings/workspaces/member/usage");
     expect(links).not.toContain("/users/settings/workspaces/member/members");
     expect(links).not.toContain("/users/settings/workspaces/member/projects");
     expect(wrapper.findAll("[data-settings-locked]")).toHaveLength(1);

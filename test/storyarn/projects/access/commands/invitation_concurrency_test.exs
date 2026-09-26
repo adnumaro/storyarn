@@ -7,14 +7,16 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
   import Storyarn.WorkspacesFixtures
 
   alias Ecto.Adapters.SQL.Sandbox
-  alias Storyarn.Commercial.Billing
+  alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Projects
   alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Invitations.Tokens.Issuer, as: WorkspaceInvitationIssuer
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceInvitation
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   test "project and workspace invitations serialize the final member seat" do
     Sandbox.unboxed_run(Repo, fn ->
@@ -146,7 +148,7 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
                  _ -> false
                end) == 1
 
-        assert Billing.count_unique_workspace_users(workspace.id) == 2
+        assert member_count(workspace, project) == 2
 
         accepted_count =
           Enum.count(
@@ -164,6 +166,103 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
         Repo.delete!(first_invitee)
         Repo.delete!(second_invitee)
         Repo.delete!(owner)
+      end
+    end)
+  end
+
+  test "invitations in two workspaces of one account serialize its last editor seat" do
+    Sandbox.unboxed_run(Repo, fn ->
+      owner = user_fixture()
+      first_workspace = workspace_fixture(owner)
+      set_plan!(owner, "beta")
+
+      {:ok, second_workspace} =
+        Workspaces.create_workspace_with_owner(owner, %{
+          name: "Second saga",
+          slug: "second-saga-#{System.unique_integer([:positive])}"
+        })
+
+      # Free leaves one seat besides the owner's.
+      set_plan!(owner, "free")
+
+      try do
+        parent = self()
+        holder = hold_subscription_lock(parent, owner.id)
+
+        assert_receive {:subscription_lock_held, holder_pid}, 1_000
+
+        invitation_tasks =
+          for {workspace, email} <- [
+                {first_workspace, "first-saga@example.com"},
+                {second_workspace, "second-saga@example.com"}
+              ] do
+            concurrent_invitation(parent, fn ->
+              Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
+            end)
+          end
+
+        contenders =
+          Enum.map(invitation_tasks, fn _task ->
+            assert_receive {:invitation_ready, task_pid, backend_pid}, 1_000
+            {task_pid, backend_pid}
+          end)
+
+        Enum.each(contenders, fn {task_pid, _backend_pid} -> send(task_pid, :start_invitation) end)
+        assert_connections_waiting_on_lock(Enum.map(contenders, &elem(&1, 1)))
+        send(holder_pid, :release_subscription_lock)
+        assert {:ok, :ok} = Task.await(holder, 5_000)
+
+        results = Enum.map(invitation_tasks, &Task.await(&1, 5_000))
+
+        assert Enum.count(results, &match?({:ok, _invitation}, &1)) == 1
+
+        assert Enum.count(results, fn
+                 {:error, :limit_reached, %{resource: :editors_per_account, used: 2, limit: 2}} -> true
+                 _ -> false
+               end) == 1
+      after
+        Repo.delete_all(Oban.Job)
+        Repo.delete_all(from(owned_workspace in Workspace, where: owned_workspace.owner_id == ^owner.id))
+        Repo.delete!(owner)
+      end
+    end)
+  end
+
+  defp set_plan!(user, plan) do
+    Subscription
+    |> Repo.get_by!(user_id: user.id)
+    |> Subscription.update_changeset(%{plan: plan})
+    |> Repo.update!()
+  end
+
+  defp member_count(workspace, project) do
+    workspace_members =
+      from(membership in WorkspaceMembership,
+        where: membership.workspace_id == ^workspace.id,
+        select: membership.user_id
+      )
+
+    project_members =
+      from(membership in ProjectMembership, where: membership.project_id == ^project.id, select: membership.user_id)
+
+    Repo.one(from(member in subquery(union(workspace_members, ^project_members)), select: count(member.user_id)))
+  end
+
+  defp hold_subscription_lock(parent, user_id) do
+    Task.async(fn ->
+      Sandbox.unboxed_run(Repo, fn ->
+        hold_subscription_lock_transaction(parent, user_id)
+      end)
+    end)
+  end
+
+  defp hold_subscription_lock_transaction(parent, user_id) do
+    Repo.transaction(fn ->
+      Repo.one!(from(subscription in Subscription, where: subscription.user_id == ^user_id, lock: "FOR UPDATE"))
+      send(parent, {:subscription_lock_held, self()})
+
+      receive do
+        :release_subscription_lock -> :ok
       end
     end)
   end
@@ -213,7 +312,7 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
   defp assert_connections_waiting_on_lock(backend_pids, attempts \\ 100)
 
   defp assert_connections_waiting_on_lock(_backend_pids, 0) do
-    flunk("invitation transactions did not block on the workspace lock")
+    flunk("invitation transactions did not block on the expected lock")
   end
 
   defp assert_connections_waiting_on_lock(backend_pids, attempts) do

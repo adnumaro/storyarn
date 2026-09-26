@@ -34,7 +34,10 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Accept do
            current_invitation.workspace_id
            |> Memberships.get_membership(current_user.id)
            |> Acceptance.ensure_not_member(),
-         :ok <- normalize_limit_result(Commercial.can_accept_member?(locked_workspace, current_user.email)),
+         :ok <-
+           normalize_limit_result(
+             Commercial.check_editor_seat_acceptance(locked_workspace, current_user.email, current_invitation.role)
+           ),
          {:ok, _invitation} <- mark_invitation_accepted(current_invitation),
          {:ok, membership} <-
            Memberships.create_membership(

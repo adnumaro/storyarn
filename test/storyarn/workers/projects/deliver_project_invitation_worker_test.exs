@@ -181,7 +181,7 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
                scope,
                project.id,
                "another-project-member@example.com",
-               "viewer"
+               "editor"
              )
   end
 

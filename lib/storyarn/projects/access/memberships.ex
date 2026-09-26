@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.Memberships do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial
   alias Storyarn.Projects.Access.Rules.OwnershipInvariant
   alias Storyarn.Projects.Comments
   alias Storyarn.Projects.MembershipOperations
@@ -105,21 +106,38 @@ defmodule Storyarn.Projects.Memberships do
   def create_membership(project_id, user_id, role),
     do: MembershipOperations.create_membership(@config, project_id, user_id, role)
 
-  def update_member_role(scope, project_id, membership_id, role)
+  def update_member_role(%{user: %{id: actor_id}} = scope, project_id, membership_id, role)
       when valid_id(project_id) and valid_id(membership_id) do
-    Repo.transact(fn ->
-      with {:ok, _project, _actor_membership} <-
+    fn ->
+      with {:ok, project, _actor_membership} <-
              authorize_locked(scope, project_id, :manage_members, :update),
-           %ProjectMembership{} = membership <- lock_membership(project_id, membership_id) do
+           %ProjectMembership{} = membership <- lock_membership(project_id, membership_id),
+           :ok <- check_editor_seat(project, membership, role, actor_id) do
         MembershipOperations.update_member_role(@config, membership, role)
       else
         nil -> {:error, :not_found}
         {:error, reason} -> {:error, reason}
       end
-    end)
+    end
+    |> Repo.transact()
+    |> restore_limit_error()
   end
 
   def update_member_role(_scope, _project_id, _membership_id, _role), do: {:error, :not_found}
+
+  # Turning a viewer into an editor can take a new seat of the workspace
+  # owner's account, which only that owner may add.
+  defp check_editor_seat(project, membership, role, actor_id) do
+    %{user: %{email: email}} = Repo.preload(membership, :user)
+
+    case Commercial.check_editor_seat(project, email, role, actor_id) do
+      {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
+      result -> result
+    end
+  end
+
+  defp restore_limit_error({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+  defp restore_limit_error(result), do: result
 
   def remove_member(scope, project_id, membership_id) when valid_id(project_id) and valid_id(membership_id) do
     Repo.transact(fn ->

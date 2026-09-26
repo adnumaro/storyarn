@@ -1,13 +1,14 @@
 defmodule Storyarn.Commercial.Billing.Subscription do
   @moduledoc """
-  Schema linking a workspace to a billing plan.
+  Schema linking an account to a billing plan. Every workspace the account
+  owns takes its limits from this plan.
   """
 
   use Ecto.Schema
 
   import Ecto.Changeset
 
-  alias Storyarn.Commercial.Billing.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.Commercial.Billing.Persistence.UserRecord, as: User
   alias Storyarn.Commercial.Billing.Plan
 
   # Stripe's subscription statuses. The database enforces the same set.
@@ -23,7 +24,7 @@ defmodule Storyarn.Commercial.Billing.Subscription do
     field :current_period_end, :utc_datetime
     field :canceled_at, :utc_datetime
 
-    belongs_to :workspace, Workspace
+    belongs_to :user, User
 
     timestamps(type: :utc_datetime)
   end
@@ -33,12 +34,12 @@ defmodule Storyarn.Commercial.Billing.Subscription do
 
   def create_changeset(subscription, attrs) do
     subscription
-    |> cast(attrs, [:workspace_id, :plan, :status])
-    |> validate_required([:workspace_id, :plan, :status])
+    |> cast(attrs, [:user_id, :plan, :status])
+    |> validate_required([:user_id, :plan, :status])
     |> validate_inclusion(:plan, Map.keys(Plan.all()))
     |> validate_inclusion(:status, @statuses)
     |> check_constraint(:status, name: :subscriptions_status_must_be_known)
-    |> unique_constraint(:workspace_id)
+    |> unique_constraint(:user_id)
   end
 
   def update_changeset(subscription, attrs) do

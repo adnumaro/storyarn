@@ -55,7 +55,7 @@ defmodule StoryarnWeb.Live.Shared.PlanLimitFlashTest do
     )
   end
 
-  test "a workspace owner who hits a limit gets a link to Plan & usage", %{conn: conn, user: user} do
+  test "a workspace owner who hits a limit gets a link to Plan & billing", %{conn: conn, user: user} do
     workspace = workspace_fixture(user)
     fill_workspace_with_projects!(user, workspace)
 
@@ -64,28 +64,32 @@ defmodule StoryarnWeb.Live.Shared.PlanLimitFlashTest do
 
     assert flash(view)["limit"] == %{
              "message" => "Project limit reached for your plan",
-             "planPath" => "/users/settings/workspaces/#{workspace.slug}/plan"
+             "planPath" => "/users/settings/plan"
            }
 
     assert flash(view)["error"] == nil
   end
 
-  test "a member who cannot manage the plan sees the notice without the link", %{
-    conn: conn,
-    user: user
-  } do
+  test "admins and members see the notice without the link: the plan is the owner's", %{conn: conn} do
     owner = user_fixture()
     workspace = workspace_fixture(owner)
-    workspace_membership_fixture(workspace, user, "member")
     fill_workspace_with_projects!(owner, workspace)
 
-    {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-    create_project(view)
+    for role <- ["admin", "member"] do
+      editor = user_fixture()
+      workspace_membership_fixture(workspace, editor, role)
 
-    assert flash(view)["limit"] == %{
-             "message" => "Project limit reached for your plan",
-             "planPath" => nil
-           }
+      {:ok, view, _html} =
+        conn |> recycle() |> log_in_user(editor) |> live(~p"/workspaces/#{workspace.slug}")
+
+      create_project(view)
+
+      assert flash(view)["limit"] == %{
+               "message" => "Project limit reached for your plan",
+               "planPath" => nil
+             },
+             role
+    end
   end
 
   test "a limit hit in the sidebar reaches the page's toaster", %{conn: conn, user: user} do
@@ -101,7 +105,7 @@ defmodule StoryarnWeb.Live.Shared.PlanLimitFlashTest do
 
     assert flash(view)["limit"] == %{
              "message" => "Item limit reached for your plan",
-             "planPath" => "/users/settings/workspaces/#{project.workspace.slug}/plan"
+             "planPath" => "/users/settings/plan"
            }
   end
 

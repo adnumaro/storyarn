@@ -6,6 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.PlanLimitFlash
 
   @max_pg_bigint 9_223_372_036_854_775_807
 
@@ -208,6 +209,23 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
     else
       {:error, :target_not_member} ->
         ownership_transfer_error(socket, dgettext("projects", "That person is no longer a direct project member."))
+
+      {:error, :seat_requires_account_owner} ->
+        ownership_transfer_error(
+          socket,
+          dgettext(
+            "projects",
+            "A viewer who becomes the owner takes an editor seat, and only the workspace owner can add one."
+          )
+        )
+
+      {:error, :limit_reached, %{resource: :editors_per_account}} ->
+        {:noreply,
+         PlanLimitFlash.put(
+           socket,
+           socket.assigns.project.workspace_id,
+           dgettext("projects", "Editor limit reached for your plan.")
+         )}
 
       {:error, :ownership_invariant_violation} ->
         ownership_transfer_error(

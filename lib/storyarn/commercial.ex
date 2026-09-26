@@ -15,15 +15,15 @@ defmodule Storyarn.Commercial do
   alias Storyarn.Commercial.Entitlements
   alias Storyarn.Commercial.ProjectStorageReservations
 
-  @typedoc "Transport-neutral result of provisioning a workspace subscription."
+  @typedoc "Transport-neutral result of provisioning an account subscription."
   @type subscription_receipt :: %{
           required(:id) => pos_integer(),
-          required(:workspace_id) => pos_integer(),
+          required(:user_id) => pos_integer(),
           required(:plan) => String.t(),
           required(:status) => String.t()
         }
 
-  @typedoc "Transport-neutral failure returned when provisioning a workspace subscription."
+  @typedoc "Transport-neutral failure returned when provisioning an account subscription."
   @type subscription_creation_error :: %{
           required(:code) =>
             :subscription_already_exists
@@ -56,8 +56,31 @@ defmodule Storyarn.Commercial do
   defdelegate can_publish_reserved_project?(workspace), to: Billing
   defdelegate can_create_project_template?(source_project), to: Billing
   defdelegate can_create_project_template_version?(template), to: Billing
-  defdelegate can_invite_member?(workspace_or_project, email), to: Billing
-  defdelegate can_accept_member?(workspace_or_project, email), to: Billing
+
+  @doc """
+  Checks that giving `role` to `email` in a workspace or project fits the
+  seats of the account that owns it, for an invitation, a role change or a
+  project transfer.
+
+  Viewers are free, and someone who already holds a seat in any of the
+  account's workspaces can take another editing role without a new one. Only
+  the account owner (`actor` is their user id) or an operator (`:operator`)
+  can raise the count. Call it inside the transaction that writes the
+  membership or invitation; it locks the account's seats until that
+  transaction ends.
+  """
+  @spec check_editor_seat(map(), String.t(), String.t(), pos_integer() | :operator) ::
+          :ok | {:error, :limit_reached, map()} | {:error, :seat_requires_account_owner}
+  defdelegate check_editor_seat(workspace_or_project, email, role, actor), to: Billing
+
+  @doc """
+  Checks that accepting an invitation with `role` fits the account's seats,
+  counting memberships only: the invitation already holds its seat.
+  """
+  @spec check_editor_seat_acceptance(map(), String.t(), String.t()) ::
+          :ok | {:error, :limit_reached, map()}
+  defdelegate check_editor_seat_acceptance(workspace_or_project, email, role), to: Billing
+
   defdelegate can_upload_asset?(workspace, file_size), to: Billing
   defdelegate can_upload_asset_for_project?(project, file_size), to: Billing
   defdelegate project_usage(project_id, workspace_id), to: Billing
@@ -65,10 +88,10 @@ defmodule Storyarn.Commercial do
   defdelegate plans_for_workspace_ids(workspace_ids), to: Billing
   defdelegate plan_retention_hours(plan_key), to: Billing
 
-  @doc "Creates the default workspace subscription without exposing Commercial persistence structs."
-  @spec create_subscription(map()) ::
+  @doc "Creates an account's default subscription without exposing Commercial persistence structs."
+  @spec create_account_subscription(map()) ::
           {:ok, subscription_receipt()} | {:error, subscription_creation_error()}
-  defdelegate create_subscription(workspace), to: Billing
+  defdelegate create_account_subscription(user), to: Billing
 
   @doc "Subscribes the caller to Commercial-owned snapshot export-lease invalidations for one Project."
   @spec subscribe_project_snapshot_export_leases(pos_integer()) :: :ok | {:error, term()}
@@ -99,9 +122,16 @@ defmodule Storyarn.Commercial do
   @spec workspace_storage_usage(pos_integer()) :: map()
   defdelegate workspace_storage_usage(workspace_id), to: Billing
 
-  @doc "Returns the plan and the workspace-wide usage buckets (projects, members, storage) for one workspace."
+  @doc "Returns the owner's plan and the workspace-wide usage buckets (projects, storage) for one workspace."
   @spec workspace_usage(map()) :: map()
   defdelegate workspace_usage(workspace), to: Billing, as: :usage
+
+  @doc """
+  Returns an account's plan, the editor seats it uses and the workspaces it
+  owns. These are totals across the whole account: show them to its owner only.
+  """
+  @spec account_usage(pos_integer()) :: map()
+  defdelegate account_usage(user_id), to: Billing
 
   @doc "Returns stored snapshots plus active build reservations for one Project."
   @spec project_snapshot_slot_usage(pos_integer()) :: non_neg_integer()

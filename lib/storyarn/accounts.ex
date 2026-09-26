@@ -28,7 +28,7 @@ defmodule Storyarn.Accounts do
   @type attrs :: map()
   @type registration_error ::
           {:error, changeset()}
-          | {:error, :workspace_limit_reached | :workspace_provisioning_failed}
+          | {:error, :workspace_limit_reached | :account_provisioning_failed}
 
   # Authentication and registration own their abuse-prevention policy; the
   # presentation adapter enters through this bounded-context facade.

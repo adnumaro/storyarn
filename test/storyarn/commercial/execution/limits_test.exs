@@ -10,7 +10,6 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
   alias Storyarn.Commercial.Billing
   alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Projects.Assets.Asset
-  alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
 
   setup do
@@ -37,6 +36,33 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
 
       assert :ok = Billing.can_create_workspace?(user)
     end
+
+    test "the cap comes from the person's own plan", %{user: user} do
+      subscribe_account!(user, "beta")
+
+      assert :ok = Billing.can_create_workspace?(user)
+
+      for index <- 2..3 do
+        assert {:ok, _workspace} =
+                 Storyarn.Workspaces.create_workspace_with_owner(user, %{
+                   name: "Saga #{index}",
+                   slug: "saga-#{index}-#{System.unique_integer([:positive])}"
+                 })
+      end
+
+      assert {:error, :limit_reached, %{resource: :workspaces_per_user, used: 3, limit: 3}} =
+               Billing.can_create_workspace?(user)
+    end
+
+    test "other people's workspaces the user belongs to do not count", %{user: user} do
+      for _ <- 1..2 do
+        workspace_membership_fixture(workspace_fixture(user_fixture()), user, "member")
+      end
+
+      subscribe_account!(user, "beta")
+
+      assert :ok = Billing.can_create_workspace?(user)
+    end
   end
 
   describe "can_create_project?/1" do
@@ -59,101 +85,6 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
 
       assert {:error, :limit_reached, %{resource: :projects_per_workspace}} =
                Billing.can_create_project?(workspace)
-    end
-  end
-
-  describe "can_invite_member?/1" do
-    test "allows under limit for workspace", %{workspace: workspace} do
-      # Workspace has 1 member (owner), limit is 2
-      assert :ok = Billing.can_invite_member?(workspace)
-    end
-
-    test "blocks at limit for workspace", %{user: _user, workspace: workspace} do
-      # Add a second member to reach the limit of 2
-      other_user = user_fixture()
-      workspace_membership_fixture(workspace, other_user)
-
-      assert {:error, :limit_reached, %{resource: :members_per_workspace}} =
-               Billing.can_invite_member?(workspace)
-    end
-
-    test "counts project-only members toward workspace limit", %{
-      user: user,
-      workspace: workspace
-    } do
-      # Create a project and add a member to it (not to the workspace)
-      project = project_fixture(user, workspace: workspace)
-      other_user = user_fixture()
-      membership_fixture(project, other_user)
-
-      # Now workspace has 2 unique users (owner + project member), at limit
-      assert {:error, :limit_reached, %{resource: :members_per_workspace}} =
-               Billing.can_invite_member?(workspace)
-    end
-
-    test "allows under limit for project", %{user: user, workspace: workspace} do
-      project = project_fixture(user, workspace: workspace)
-      # Workspace has 1 member (owner), limit is 2
-      assert :ok = Billing.can_invite_member?(project)
-    end
-
-    test "counts a pending project invitation toward the member limit", %{
-      user: user,
-      workspace: workspace
-    } do
-      project = project_fixture(user, workspace: workspace)
-
-      assert {:ok, _invitation} =
-               Storyarn.Projects.create_invitation(
-                 user_scope_fixture(user),
-                 project.id,
-                 "pending@example.com",
-                 "editor"
-               )
-
-      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
-               Billing.can_invite_member?(project)
-    end
-
-    test "blocks at limit for project (checks workspace limits)", %{
-      user: user,
-      workspace: workspace
-    } do
-      project = project_fixture(user, workspace: workspace)
-      # Add a second member to reach the workspace limit of 2
-      other_user = user_fixture()
-      workspace_membership_fixture(workspace, other_user)
-
-      assert {:error, :limit_reached, %{resource: :members_per_workspace}} =
-               Billing.can_invite_member?(project)
-    end
-
-    test "ignores legacy invitations and memberships from soft-deleted projects", %{
-      user: user,
-      workspace: workspace
-    } do
-      project = project_fixture(user, workspace: workspace)
-
-      {_token, invitation} =
-        ProjectInvitation.build_invitation(
-          project,
-          user,
-          "legacy-deleted-project@example.com",
-          "editor"
-        )
-
-      Repo.insert!(invitation)
-
-      assert {:error, :limit_reached, %{used: 2, limit: 2}} =
-               Billing.can_invite_member?(workspace)
-
-      project
-      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
-      |> Repo.update!()
-
-      assert :ok = Billing.can_invite_member?(workspace)
-      assert Billing.count_unique_workspace_users(workspace.id) == 1
-      assert Billing.usage(workspace).members.used == 1
     end
   end
 
@@ -270,9 +201,9 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
     end
 
     test "blocks when upload would exceed limit", %{workspace: workspace} do
-      # 250MB limit, try to upload 300MB
+      # 500MB limit, try to upload 600MB
       assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace}} =
-               Billing.can_upload_asset?(workspace, 300 * 1024 * 1024)
+               Billing.can_upload_asset?(workspace, 600 * 1024 * 1024)
     end
   end
 
@@ -283,12 +214,12 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
     } do
       project = project_fixture(user, workspace: workspace)
 
-      # Insert an asset that uses 200MB of storage
+      # Insert an asset that uses 450MB of storage
       %Asset{}
       |> Ecto.Changeset.change(%{
         filename: "big_file.zip",
         content_type: "application/zip",
-        size: 200 * 1024 * 1024,
+        size: 450 * 1024 * 1024,
         key: "projects/#{project.id}/assets/big_file.zip",
         url: "https://example.com/big_file.zip",
         project_id: project.id,
@@ -296,13 +227,13 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
       })
       |> Repo.insert!()
 
-      # 200MB existing + 60MB new = 260MB > 250MB limit
+      # 450MB existing + 60MB new = 510MB > 500MB limit
       assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace, used: used}} =
                Billing.can_upload_asset?(workspace, 60 * 1024 * 1024)
 
-      assert used == 200 * 1024 * 1024
+      assert used == 450 * 1024 * 1024
 
-      # 200MB existing + 40MB new = 240MB < 250MB limit
+      # 450MB existing + 40MB new = 490MB < 500MB limit
       assert :ok = Billing.can_upload_asset?(workspace, 40 * 1024 * 1024)
     end
   end
@@ -446,28 +377,6 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
     end
   end
 
-  describe "unique user counting" do
-    test "user with both workspace and project membership counts as one", %{
-      user: user,
-      workspace: workspace
-    } do
-      # user already has workspace membership (owner, from setup)
-      project = project_fixture(user, workspace: workspace)
-
-      # Add user as project member too (they already have workspace membership)
-      # The owner already has a ProjectMembership from create_project, so count should be 1
-      assert Billing.count_unique_workspace_users(workspace.id) == 1
-
-      # Add another user with BOTH workspace and project membership
-      other_user = user_fixture()
-      workspace_membership_fixture(workspace, other_user)
-      membership_fixture(project, other_user)
-
-      # Should be 2 unique users, not 3 or 4
-      assert Billing.count_unique_workspace_users(workspace.id) == 2
-    end
-  end
-
   describe "usage/1" do
     test "returns correct counts", %{user: user, workspace: workspace} do
       _project = project_fixture(user, workspace: workspace)
@@ -477,28 +386,8 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
       assert usage.plan == "free"
       assert usage.projects.used == 1
       assert usage.projects.limit == 3
-      assert usage.members.used == 1
-      assert usage.members.limit == 2
       assert usage.storage_bytes.used == 0
-      assert usage.storage_bytes.limit == 250 * 1024 * 1024
-    end
-
-    test "reports pending invitations as occupied member seats", %{
-      user: user,
-      workspace: workspace
-    } do
-      project = project_fixture(user, workspace: workspace)
-
-      assert {:ok, _invitation} =
-               Storyarn.Projects.create_invitation(
-                 user_scope_fixture(user),
-                 project.id,
-                 "pending-usage@example.com",
-                 "editor"
-               )
-
-      assert Billing.usage(workspace).members == %{used: 2, limit: 2}
-      assert Billing.project_limits_usage(project).workspace.members == %{used: 2, limit: 2}
+      assert usage.storage_bytes.limit == 500 * 1024 * 1024
     end
   end
 
@@ -602,9 +491,17 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
     end
   end
 
+  defp subscribe_account!(user, plan) do
+    Subscription
+    |> Repo.get_by!(user_id: user.id)
+    |> Subscription.update_changeset(%{plan: plan, status: "active"})
+    |> Repo.update!()
+  end
+
+  # The plan belongs to the workspace's owner.
   defp subscribe!(workspace, plan, status) do
     Subscription
-    |> Repo.get_by!(workspace_id: workspace.id)
+    |> Repo.get_by!(user_id: workspace.owner_id)
     |> Subscription.update_changeset(%{plan: plan, status: status})
     |> Repo.update!()
   end
