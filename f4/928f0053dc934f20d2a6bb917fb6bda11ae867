@@ -1,0 +1,123 @@
+assets/app/components/notifications/NotificationBell.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 24,292
+assets/app/live/ideation/DecisionApplication.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 29,108
+assets/app/live/project/settings/ProjectSettingsTemplates.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 73,168
+assets/app/locales/es/flows.json
+  s_a86b2b42f8ba47::t_c99fb93e869017 642-643
+assets/app/live/workspace/settings/WorkspaceSettingsPlan.vue
+  s_a86b2b42f8ba47::t_5e064cef7978bf 14-15
+assets/app/shared/utils/storage-accounting.ts
+  s_a86b2b42f8ba47::t_98e47909949a52 1,3
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_a86b2b42f8ba47::t_5e064cef7978bf 10,318
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 9,158,456
+assets/app/components/comments/CommentMessageItem.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 6,37-38
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 125,530
+assets/app/live/ideation/DecisionTasks.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 12,55
+assets/app/shared/composables/useAssetDecisionUpload.ts
+  s_a86b2b42f8ba47::t_5e064cef7978bf 2-3,53-76,117,137,168,170,174,303,334
+assets/app/modules/scenes/editor/components/panels/settings/BackgroundSection.vue
+  s_a86b2b42f8ba47::t_c99fb93e869017 95,99
+  s_a86b2b42f8ba47::t_a1141561d315c5 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TDateCell.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 5-6,19,21-22
+  s_a86b2b42f8ba47::t_226737b80839fa 45
+assets/app/components/comments/CommentConversation.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 10,85
+assets/app/live/ideation/DecisionHistory.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 6,61
+assets/app/live/ideation/ExplorationContext.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 9,53
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 18,33,283
+assets/app/locales/es/common.json
+  s_a86b2b42f8ba47::t_5e064cef7978bf 242
+assets/app/live/project/dashboard/ProjectDashboard.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 84,411
+assets/app/live/account/settings/ProviderIntegrationDetail.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 31,258,261
+  s_a86b2b42f8ba47::t_226737b80839fa 518,526
+assets/app/modules/flows/editor/composables/useSequenceImageImport.ts
+  s_a86b2b42f8ba47::t_19140d9ee6dfe5 43-45
+  s_a86b2b42f8ba47::t_c99fb93e869017 42,48-53
+  s_a86b2b42f8ba47::t_a1141561d315c5 46
+assets/app/shared/composables/useMemberInvitations.ts
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 4,49
+assets/app/components/comments/CommentPinPreview.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 7,16
+assets/app/locales/en/flows.json
+  s_a86b2b42f8ba47::t_c99fb93e869017 642-643
+assets/app/test/shared/utils/format-bytes.test.ts
+  s_a86b2b42f8ba47::t_a1141561d315c5 1-36
+assets/app/test/composables/useAssetDecisionUpload.test.ts
+  s_a86b2b42f8ba47::t_9058a3f74dd7d6 5
+  s_a86b2b42f8ba47::t_37b4036f81323e 109-144
+assets/app/live/localization/texts/LocalizationTextEdit.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 18,20,112
+assets/app/live/ideation/ReferencesPanel.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 36,111
+assets/app/shared/utils/date-utils.ts
+  s_a86b2b42f8ba47::t_6f4b0c98b7b793 1-35,37-39,41-52
+assets/app/live/template/list/TemplateCard.vue
+  s_a86b2b42f8ba47::t_19bde94b0711f9 7,27
+assets/app/live/template/show/TemplateRecords.vue
+  s_a86b2b42f8ba47::t_19bde94b0711f9 12,14,32
+assets/app/test/utils/date-utils.test.ts
+  s_a86b2b42f8ba47::t_1aa98c6da97897 1-8,11-18,21-22,24-25,28-32,34,36-37,39-44,47-48,51-54
+assets/app/live/comments/HubRow.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 14,32-33
+assets/app/live/project/settings/ProjectSettingsTrash.vue
+  s_a86b2b42f8ba47::t_5e064cef7978bf 11,151
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 10,146,155
+assets/app/live/workspace/settings/WorkspaceSettingsProjects.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 29,163-164
+  s_a86b2b42f8ba47::t_5e064cef7978bf 28
+  s_a86b2b42f8ba47::t_226737b80839fa 172
+assets/app/locales/en/common.json
+  s_a86b2b42f8ba47::t_5e064cef7978bf 242
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_a86b2b42f8ba47::t_5e064cef7978bf 32
+assets/app/live/scene/show/SceneSurface.vue
+  s_a86b2b42f8ba47::t_c99fb93e869017 219,223
+assets/app/live/template/show/TemplateCurrentVersion.vue
+  s_a86b2b42f8ba47::t_19bde94b0711f9 5
+  s_a86b2b42f8ba47::t_19140d9ee6dfe5 13
+assets/app/test/shared/utils/storage-accounting.test.ts
+  s_a86b2b42f8ba47::t_a1141561d315c5 2
+assets/app/live/sheet/dashboard/SheetDashboard.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 22,65,257
+assets/app/live/ideation/DecisionCard.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 38,148
+assets/app/shared/utils/format-bytes.ts
+  s_a86b2b42f8ba47::t_98e47909949a52 1-82
+assets/app/modules/localization/components/workbench/editor/EditorMeta.vue
+  s_a86b2b42f8ba47::t_19bde94b0711f9 14,44
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 110,412
+assets/app/live/ideation/DecisionDetail.vue
+  s_a86b2b42f8ba47::t_91e2098df9aa3a 34
+  s_a86b2b42f8ba47::t_19140d9ee6dfe5 123
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_a86b2b42f8ba47::t_5e064cef7978bf 33,35,566
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f4928f0053dc934f20d2a6bb917fb6bda11ae867",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
