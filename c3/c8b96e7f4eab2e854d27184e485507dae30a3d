@@ -1,0 +1,104 @@
+assets/app/locales/es/flows.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 172-173,404-405,408-409,474-486,734-735
+assets/app/components/builders/ConditionBuilder.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 161
+assets/app/components/forms/fields/EntityCombobox.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 27,142
+assets/app/modules/flows/editor/components/expression/builders/condition/ConditionGroup.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 73
+assets/app/modules/sheets/composables/useBlockActions.ts
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 5,42-43
+assets/app/modules/flows/editor/components/entities/nodes/ConditionNode.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 112-115,121-128,136,138-141
+assets/app/test/modules/flows/editor/useSequenceImageImport.test.ts
+  s_a86b2b42f8ba47::t_469252c1263f2c 142-146
+assets/app/test/live/project/settings/ProjectSettingsTrash.test.ts
+  s_a86b2b42f8ba47::t_469252c1263f2c 52
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 184
+assets/app/modules/flows/editor/components/entities/toolbar/sections/ConditionToolbar.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 57
+assets/app/modules/flows/editor/components/expression/builders/condition/ConditionBlock.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 97
+assets/app/locales/en/common.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 54-58,152-173,280-293
+assets/app/locales/en/flows.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 172-173,404-405,408-409,474-486,734-735
+assets/app/components/forms/fields/SelectField.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 24,64
+assets/app/components/versioning/history/VersionHistory.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 171,182,194,322,332,341,353
+assets/app/components/ConfirmDialog.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 17-18,90,98,102
+assets/app/modules/flows/editor/components/versioning/VersionHistory.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 188,199,211,339,349,358,370
+assets/app/components/language/LanguagePicker.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 143-146,148
+assets/app/modules/flows/editor/components/entities/nodes/HubNode.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 48
+  s_a86b2b42f8ba47::t_7474073c4e4131 35
+assets/app/components/SaveIndicator.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 22
+assets/app/live/flow/show/FlowCanvas.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 146
+assets/app/components/builders/condition/ConditionGroup.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 73
+assets/app/locales/es/sheets.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 375-376
+assets/app/modules/flows/editor/components/entities/toolbar/sections/InstructionToolbar.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 35
+assets/app/modules/sheets/components/panels/tabs/AudioTab.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 170-172
+assets/app/locales/en/docs.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 9
+assets/app/locales/es/common.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 54-58,152-173,280-293
+assets/app/test/components/TranslatedDefaults.test.ts
+  s_a86b2b42f8ba47::t_9225387d66cfa3 1,10-15,29-38,44
+  s_a86b2b42f8ba47::t_cc985b4009c442 2-9,16-28,39-43,45-46
+  s_a86b2b42f8ba47::t_619de6dda832e2 47-56
+assets/app/live/layouts/docs/Layout.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 206
+docs/reference/component-registry.md
+  s_a86b2b42f8ba47::t_d64bf79428e762 175-176
+assets/app/components/builders/condition/LogicToggle.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 8,12-13,20-40,45,58,71,74-76
+assets/app/components/collab/CollabToast.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 48-55
+assets/app/modules/flows/editor/components/entities/toolbar/sections/SubflowToolbar.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 72
+assets/app/modules/flows/editor/components/entities/nodes/ExitNode.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 40
+assets/app/locales/en/sheets.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 375-376
+assets/app/components/forms/EditableText.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 6,70,85
+assets/app/components/builders/condition/ConditionBlock.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 97
+assets/app/modules/flows/editor/components/chrome/FlowCursors.vue
+  s_a86b2b42f8ba47::t_041dd8a68825dc 5,45,53
+assets/app/modules/flows/editor/components/entities/nodes/SubflowNode.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 63,159
+assets/app/modules/flows/editor/components/expression/builders/condition/LogicToggle.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 8,12-13,20-40,45,58,71,74-76
+assets/app/locales/es/docs.json
+  s_a86b2b42f8ba47::t_f602528d0721d9 9
+assets/app/modules/flows/editor/components/expression/builders/ConditionBuilder.vue
+  s_a86b2b42f8ba47::t_1d30dc8231cccc 161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c3c8b96e7f4eab2e854d27184e485507dae30a3d",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
