@@ -5,8 +5,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.TemplateLive.Helpers
-
   alias Storyarn.Projects
   alias Storyarn.Workspaces
   alias StoryarnWeb.Live.Shared.PlanLimitFlash
@@ -50,390 +48,21 @@ defmodule StoryarnWeb.TemplateLive.Show do
       current_workspace={@current_workspace}
       workspaces={@workspaces}
     >
-      <main id="template-show" class="min-h-dvh bg-base-100 px-6 py-8 lg:px-10">
-        <div class="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section class="flex flex-col gap-6">
-            <nav class="text-sm">
-              <.link navigate={~p"/templates"} class="link link-hover text-base-content/60">
-                {dgettext("projects", "Templates")}
-              </.link>
-            </nav>
-
-            <header class="flex flex-col gap-4 border-b border-base-300 pb-6">
-              <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div class="min-w-0">
-                  <div class="mb-2 flex items-center gap-2">
-                    <span class={["badge", visibility_badge_class(@template.visibility)]}>
-                      {visibility_label(@template.visibility)}
-                    </span>
-                    <span class="badge badge-outline">{status_label(@template.status)}</span>
-                  </div>
-                  <h1 class="text-3xl font-semibold tracking-normal text-base-content">
-                    {@template.name}
-                  </h1>
-                  <p class="mt-2 max-w-2xl text-sm leading-6 text-base-content/65">
-                    {template_description(@template)}
-                  </p>
-                </div>
-
-                <.form
-                  :if={@can_publish}
-                  for={@publish_form}
-                  id="publish-template-version-form"
-                  class="flex w-full flex-col gap-2 md:w-80"
-                  phx-submit="publish_new_version"
-                >
-                  <textarea
-                    id="template-version-notes"
-                    name={@publish_form[:version_notes].name}
-                    class="textarea textarea-bordered textarea-sm min-h-20"
-                    maxlength="2000"
-                    placeholder={dgettext("projects", "Version notes")}
-                    disabled={@has_active_publication}
-                  >{@publish_form[:version_notes].value}</textarea>
-                  <button
-                    id="publish-template-version-button"
-                    type="submit"
-                    class="btn btn-outline btn-sm"
-                    disabled={@has_active_publication}
-                  >
-                    <%= if @has_active_publication do %>
-                      {dgettext("projects", "Publication running")}
-                    <% else %>
-                      {dgettext("projects", "Publish new version")}
-                    <% end %>
-                  </button>
-                </.form>
-
-                <button
-                  :if={@can_publish}
-                  id="archive-template-button"
-                  type="button"
-                  class="btn btn-ghost btn-sm text-error"
-                  phx-click="archive_template"
-                >
-                  {dgettext("projects", "Archive")}
-                </button>
-              </div>
-            </header>
-
-            <section
-              id="template-version-panel"
-              class="rounded-box border border-base-300 bg-base-100 p-5"
-            >
-              <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 class="text-base font-semibold text-base-content">
-                    {dgettext("projects", "Current version")}
-                  </h2>
-                  <p class="mt-1 text-sm text-base-content/60">
-                    {version_summary(@current_version)}
-                  </p>
-                </div>
-
-                <div class="text-sm text-base-content/60">
-                  {published_at(@current_version)}
-                </div>
-              </div>
-
-              <div class="mt-5 flex flex-wrap gap-2">
-                <%= for {key, value} <- entity_counts(@current_version) do %>
-                  <span class="badge badge-ghost gap-1">
-                    <span>{key}</span>
-                    <span class="font-semibold">{value}</span>
-                  </span>
-                <% end %>
-              </div>
-
-              <p :if={version_notes(@current_version) != ""} class="mt-4 text-sm text-base-content/70">
-                {version_notes(@current_version)}
-              </p>
-
-              <div
-                :if={preview_groups(@current_version) != []}
-                id="template-current-preview"
-                class="mt-5 grid gap-3 md:grid-cols-3"
-              >
-                <div
-                  :for={group <- preview_groups(@current_version)}
-                  class="rounded-box border border-base-300 bg-base-200/40 p-3"
-                >
-                  <p class="text-xs font-semibold uppercase tracking-normal text-base-content/50">
-                    {group.label}
-                  </p>
-                  <ul class="mt-2 space-y-1 text-sm text-base-content/75">
-                    <li :for={item <- group.items} class="truncate">{item}</li>
-                  </ul>
-                </div>
-              </div>
-            </section>
-
-            <section
-              :if={@can_publish and @publications != []}
-              id="template-publications-panel"
-              class="rounded-box border border-base-300 bg-base-100 p-5"
-            >
-              <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-base-content">
-                  {dgettext("projects", "Publication history")}
-                </h2>
-                <span class="badge badge-neutral">{length(@publications)}</span>
-              </div>
-
-              <div class="mt-4 flex flex-col divide-y divide-base-300">
-                <div
-                  :for={publication <- @publications}
-                  id={"template-publication-#{publication.id}"}
-                  class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                >
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-2">
-                      <span class={["badge badge-sm", publication_badge_class(publication.status)]}>
-                        {publication_status_label(publication.status)}
-                      </span>
-                      <span class="truncate text-sm font-medium text-base-content">
-                        {publication.name}
-                      </span>
-                    </div>
-                    <p class="mt-1 text-xs text-base-content/60">
-                      {publication_summary(publication)}
-                    </p>
-                  </div>
-                  <div class="shrink-0 text-xs text-base-content/50">
-                    {format_datetime(publication.inserted_at)}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section
-              id="template-versions-panel"
-              class="rounded-box border border-base-300 bg-base-100 p-5"
-            >
-              <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-base-content">
-                  {dgettext("projects", "Versions")}
-                </h2>
-                <span id="template-version-count" class="badge badge-neutral">
-                  {length(@versions)}
-                </span>
-              </div>
-
-              <div class="mt-4 overflow-x-auto">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>{dgettext("projects", "Version")}</th>
-                      <th>{dgettext("projects", "Published")}</th>
-                      <th :if={@can_publish}>{dgettext("projects", "By")}</th>
-                    </tr>
-                  </thead>
-                  <tbody id="template-versions">
-                    <tr :for={version <- @versions} id={"template-version-#{version.id}"}>
-                      <td>
-                        <div class="flex items-center gap-2">
-                          <span class="font-medium">{version_summary(version)}</span>
-                          <span
-                            :if={current_version?(version, @current_version)}
-                            class="badge badge-primary badge-sm"
-                          >
-                            {dgettext("projects", "Current")}
-                          </span>
-                        </div>
-                        <p
-                          :if={version_notes(version) != ""}
-                          class="mt-1 max-w-lg text-xs text-base-content/60"
-                        >
-                          {version_notes(version)}
-                        </p>
-                      </td>
-                      <td>{format_datetime(version.published_at)}</td>
-                      <td :if={@can_publish}>{published_by_email(version)}</td>
-                    </tr>
-                    <tr :if={@versions == []} id="template-versions-empty">
-                      <td colspan={if(@can_publish, do: "3", else: "2")} class="text-base-content/60">
-                        {dgettext("projects", "No versions published yet.")}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section
-              :if={@can_publish}
-              id="template-install-history"
-              class="rounded-box border border-base-300 bg-base-100 p-5"
-            >
-              <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-base font-semibold text-base-content">
-                  {dgettext("projects", "Install history")}
-                </h2>
-                <span class="badge badge-neutral">{length(@installs)}</span>
-              </div>
-
-              <div class="overflow-x-auto">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>{dgettext("projects", "Version")}</th>
-                      <th>{dgettext("projects", "Installed")}</th>
-                    </tr>
-                  </thead>
-                  <tbody id="template-installs">
-                    <tr :for={install <- @installs} id={"template-install-#{install.id}"}>
-                      <td>{install.project_template_version.version_number}</td>
-                      <td>{format_datetime(install.installed_at)}</td>
-                    </tr>
-                    <tr :if={@installs == []} id="template-installs-empty">
-                      <td colspan="2" class="text-base-content/60">
-                        {dgettext("projects", "No installs yet.")}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </section>
-
-          <aside class="lg:sticky lg:top-8 lg:self-start">
-            <section
-              id="template-install-panel"
-              class="rounded-box border border-base-300 bg-base-100 p-5 shadow-sm"
-            >
-              <h2 class="text-base font-semibold text-base-content">
-                {dgettext("projects", "Create project")}
-              </h2>
-
-              <div
-                :if={@active_installations != []}
-                id="template-active-installations"
-                class="mt-4 space-y-3"
-                aria-live="polite"
-              >
-                <article
-                  :for={installation <- @active_installations}
-                  id={"template-active-installation-#{installation.id}"}
-                  class="rounded-box border border-primary/30 bg-primary/5 p-4"
-                >
-                  <div class="flex items-start gap-3">
-                    <span class="loading loading-spinner loading-sm mt-0.5 text-primary"></span>
-                    <div class="min-w-0">
-                      <p class="truncate text-sm font-semibold text-base-content">
-                        {installation.project_name}
-                      </p>
-                      <p class="mt-1 text-xs text-base-content/65">
-                        {installation_stage_label(installation.stage)}
-                      </p>
-                      <p class="mt-2 text-xs text-base-content/50">
-                        {dgettext("projects", "Installation reference: %{reference}", reference: installation.id)}
-                      </p>
-                    </div>
-                  </div>
-                </article>
-              </div>
-
-              <.form
-                for={@install_form}
-                id="template-install-form"
-                class="mt-4 flex flex-col gap-4"
-                phx-submit="install"
-              >
-                <label class="form-control gap-2">
-                  <span class="label-text">{dgettext("workspaces", "Workspace")}</span>
-                  <select
-                    id="template-install-workspace"
-                    name={@install_form[:workspace_id].name}
-                    class="select select-bordered w-full"
-                    disabled={@installable_workspaces == [] or @has_active_installation}
-                  >
-                    <option
-                      :for={workspace <- @installable_workspaces}
-                      value={workspace.id}
-                      selected={to_string(workspace.id) == @install_form[:workspace_id].value}
-                    >
-                      {workspace.name}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="form-control gap-2">
-                  <span class="label-text">{dgettext("projects", "Template version")}</span>
-                  <select
-                    id="template-install-version"
-                    name={@install_form[:version_id].name}
-                    class="select select-bordered w-full"
-                    disabled={@versions == [] or @has_active_installation}
-                  >
-                    <option
-                      :for={version <- @versions}
-                      value={version.id}
-                      selected={to_string(version.id) == @install_form[:version_id].value}
-                    >
-                      {version_option_label(version, @current_version)}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="form-control gap-2">
-                  <span class="label-text">{dgettext("projects", "Project name")}</span>
-                  <input
-                    id="template-install-name"
-                    name={@install_form[:name].name}
-                    value={@install_form[:name].value}
-                    type="text"
-                    class="input input-bordered w-full"
-                    maxlength="100"
-                    required
-                    disabled={@has_active_installation}
-                  />
-                </label>
-
-                <button
-                  id="template-install-submit"
-                  type="submit"
-                  class="btn btn-primary w-full"
-                  disabled={
-                    @installable_workspaces == [] or is_nil(@current_version) or
-                      @has_active_installation
-                  }
-                  phx-disable-with={dgettext("projects", "Starting installation…")}
-                >
-                  <%= if @has_active_installation do %>
-                    <span class="loading loading-spinner loading-sm"></span>
-                    {dgettext("projects", "Installation in progress")}
-                  <% else %>
-                    {dgettext("projects", "Create from template")}
-                  <% end %>
-                </button>
-              </.form>
-            </section>
-          </aside>
-        </div>
-      </main>
-
-      <div
-        :if={@installation_failure}
-        id="template-installation-failure-toast"
-        class="toast toast-end bottom-20 z-[2000] w-full max-w-sm"
-        aria-live="polite"
-      >
-        <div role="alert" class="alert alert-error items-start border border-error/40 shadow-lg">
-          <p class="min-w-0 flex-1 text-sm">
-            {installation_failure_message(@installation_failure)}
-          </p>
-          <button
-            id="dismiss-template-installation-failure"
-            type="button"
-            class="btn btn-ghost btn-xs btn-square shrink-0"
-            phx-click="dismiss_template_installation_failure"
-            phx-value-installation_id={@installation_failure.id}
-            aria-label={dgettext("projects", "Dismiss installation failure")}
-          >
-            <.icon name="x" class="size-4" />
-          </button>
-        </div>
-      </div>
+      <.vue
+        v-component="live/template/show/TemplateShow"
+        v-socket={@socket}
+        v-inject="workspace-layout"
+        id="template-show-page"
+        template={serialize_template(@template, @can_publish)}
+        current-version={serialize_current_version(@current_version)}
+        versions={Enum.map(@versions, &serialize_version(&1, @current_version, @can_publish))}
+        publications={if(@can_publish, do: Enum.map(@publications, &serialize_publication/1), else: [])}
+        has-active-publication={@has_active_publication}
+        installs={if(@can_publish, do: Enum.map(@installs, &serialize_install/1), else: [])}
+        install={serialize_install_state(assigns)}
+        installation-failure={serialize_installation_failure(@installation_failure)}
+        templates-href={~p"/templates"}
+      />
     </StoryarnWeb.Components.WorkspaceLayout.workspace>
     """
   end
@@ -512,7 +141,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
              socket
              |> put_flash(:info, dgettext("projects", "Template publication queued."))
              |> assign_template(template)
-             |> assign(:publish_form, publish_form())
              |> assign(:install_form, install_form(template, socket.assigns.installable_workspaces))}
 
           {:error, :publication_already_active} ->
@@ -620,7 +248,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
     |> assign(:current_version, template.current_version)
     |> assign(:versions, versions)
     |> assign(:can_publish, Projects.can_manage_project_template?(socket.assigns.current_scope, template))
-    |> assign(:publish_form, publish_form())
     |> assign(:publications, publications)
     |> assign(:has_active_publication, Enum.any?(publications, &active_publication?/1))
     |> assign(
@@ -686,59 +313,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
     end
   end
 
-  defp installation_failure_message(installation) do
-    dgettext(
-      "projects",
-      "Template installation failed: %{reason} Reference: %{reference}",
-      reason: safe_installation_failure_reason(installation),
-      reference: installation.id
-    )
-  end
-
-  defp safe_installation_failure_reason(%{error_message: "A template asset could not be copied."}),
-    do: dgettext("projects", "A template asset could not be copied.")
-
-  defp safe_installation_failure_reason(%{error_message: "The installation could not be completed."}),
-    do: dgettext("projects", "The installation could not be completed.")
-
-  defp safe_installation_failure_reason(%{error_message: "This template is no longer available."}),
-    do: dgettext("projects", "This template is no longer available.")
-
-  defp safe_installation_failure_reason(%{error_message: "The template failed its integrity check."}),
-    do: dgettext("projects", "The template failed its integrity check.")
-
-  defp safe_installation_failure_reason(%{
-         error_message: "This template version is incompatible and must be republished."
-       }), do: dgettext("projects", "This template version is incompatible and must be republished.")
-
-  defp safe_installation_failure_reason(%{
-         error_message: "This template version contains an invalid subflow exit and must be republished."
-       }), do: dgettext("projects", "This template version contains an invalid subflow exit and must be republished.")
-
-  defp safe_installation_failure_reason(%{error_message: "The workspace project limit has been reached."}),
-    do: dgettext("projects", "The workspace project limit has been reached.")
-
-  defp safe_installation_failure_reason(%{error_message: "The template asset manifest is unavailable."}),
-    do: dgettext("projects", "The template asset manifest is unavailable.")
-
-  defp safe_installation_failure_reason(%{error_message: "The template integrity information is unavailable."}),
-    do: dgettext("projects", "The template integrity information is unavailable.")
-
-  defp safe_installation_failure_reason(%{error_message: "The template or workspace is no longer available."}),
-    do: dgettext("projects", "The template or workspace is no longer available.")
-
-  defp safe_installation_failure_reason(%{error_message: "You no longer have permission to install this template."}),
-    do: dgettext("projects", "You no longer have permission to install this template.")
-
-  defp safe_installation_failure_reason(_installation),
-    do: dgettext("projects", "The installation could not be completed.")
-
-  defp installation_stage_label("queued"), do: dgettext("projects", "Waiting to start…")
-  defp installation_stage_label("verifying"), do: dgettext("projects", "Verifying template integrity…")
-  defp installation_stage_label("materializing"), do: dgettext("projects", "Copying project content and assets…")
-  defp installation_stage_label("retrying"), do: dgettext("projects", "Retrying after a temporary issue…")
-  defp installation_stage_label(_stage), do: dgettext("projects", "Creating project…")
-
   defp installable_workspaces(scope) do
     scope
     |> Workspaces.list_workspaces()
@@ -762,10 +336,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
   defp current_version_id(%{current_version: %{id: version_id}}), do: to_string(version_id)
   defp current_version_id(_template), do: ""
-
-  defp publish_form do
-    to_form(%{"version_notes" => ""}, as: :publication)
-  end
 
   defp active_publication?(%{status: status}), do: status in ~w(queued running retrying)
 
@@ -801,73 +371,102 @@ defmodule StoryarnWeb.TemplateLive.Show do
   defp fetch_install_version(%{assigns: %{current_version: %{} = version}}, _value), do: {:ok, version}
   defp fetch_install_version(_socket, _value), do: {:error, :invalid_template_version}
 
-  defp publication_summary(%{status: "published", project_template_version: %{version_number: version_number}}) do
-    dgettext("projects", "Published version %{version}", version: version_number)
+  defp serialize_template(template, can_publish) do
+    %{
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      visibility: template.visibility,
+      status: template.status,
+      canPublish: can_publish
+    }
   end
 
-  defp publication_summary(%{status: "failed", error_message: message}) when is_binary(message) and message != "" do
-    message
+  defp serialize_current_version(nil), do: nil
+
+  defp serialize_current_version(version) do
+    version
+    |> serialize_version(version, false)
+    |> Map.merge(%{entityCounts: entity_counts(version), preview: preview(version)})
   end
 
-  defp publication_summary(%{mode: "new"}), do: dgettext("projects", "New template publication")
-  defp publication_summary(%{mode: "update"}), do: dgettext("projects", "Template version publication")
-  defp publication_summary(_publication), do: ""
+  # Who published a version is shown only to readers who manage the template.
+  defp serialize_version(version, current_version, can_publish) do
+    %{
+      id: version.id,
+      versionNumber: version.version_number,
+      notes: version.version_notes,
+      publishedAt: version.published_at,
+      publishedByEmail: if(can_publish, do: published_by_email(version)),
+      isCurrent: current_version?(version, current_version)
+    }
+  end
 
-  defp version_summary(version), do: version_label(version)
+  defp serialize_publication(publication) do
+    %{
+      id: publication.id,
+      name: publication.name,
+      status: publication.status,
+      mode: publication.mode,
+      versionNumber: publication_version_number(publication),
+      errorMessage: if(publication.status == "failed", do: publication.error_message),
+      insertedAt: publication.inserted_at
+    }
+  end
 
-  defp version_option_label(version, current_version) do
-    label = version_summary(version)
+  defp publication_version_number(%{project_template_version: %{version_number: number}}), do: number
+  defp publication_version_number(_publication), do: nil
 
-    if current_version?(version, current_version) do
-      "#{label} - #{dgettext("projects", "Current")}"
-    else
-      label
-    end
+  defp serialize_install(install) do
+    %{
+      id: install.id,
+      versionNumber: install.project_template_version.version_number,
+      installedAt: install.installed_at
+    }
+  end
+
+  defp serialize_active_installation(installation) do
+    %{id: installation.id, projectName: installation.project_name, stage: installation.stage}
+  end
+
+  # Only the error code crosses: the page names it, never the stored message.
+  defp serialize_installation_failure(nil), do: nil
+  defp serialize_installation_failure(installation), do: %{id: installation.id, errorCode: installation.error_code}
+
+  defp serialize_install_state(assigns) do
+    form = assigns.install_form
+
+    %{
+      workspaces: Enum.map(assigns.installable_workspaces, &%{id: to_string(&1.id), name: &1.name}),
+      defaults: %{
+        workspaceId: form[:workspace_id].value || "",
+        versionId: form[:version_id].value || "",
+        name: form[:name].value || ""
+      },
+      activeInstallations: Enum.map(assigns.active_installations, &serialize_active_installation/1)
+    }
   end
 
   defp current_version?(%{id: version_id}, %{id: version_id}), do: true
   defp current_version?(_version, _current_version), do: false
 
   defp published_by_email(%{published_by: %{email: email}}) when is_binary(email), do: email
-  defp published_by_email(_version), do: ""
-
-  defp published_at(%{published_at: published_at}) do
-    dgettext("projects", "Published %{date}", date: format_datetime(published_at))
-  end
-
-  defp published_at(_version), do: ""
+  defp published_by_email(_version), do: nil
 
   defp entity_counts(%{entity_counts: counts}) when is_map(counts) do
     counts
     |> Enum.sort_by(fn {key, _value} -> key end)
     |> Enum.take(12)
+    |> Enum.map(fn {key, value} -> [key, value] end)
   end
 
   defp entity_counts(_version), do: []
 
-  defp version_notes(%{version_notes: notes}) when is_binary(notes), do: notes
-  defp version_notes(_version), do: ""
-
-  defp preview_groups(%{preview: %{} = preview}) do
-    Enum.reject(
-      [
-        preview_group(dgettext("projects", "Sheets"), Map.get(preview, "sheets", [])),
-        preview_group(dgettext("projects", "Flows"), Map.get(preview, "flows", [])),
-        preview_group(dgettext("projects", "Scenes"), Map.get(preview, "scenes", []))
-      ],
-      &(&1.items == [])
-    )
+  defp preview(%{preview: %{} = preview}) do
+    Map.new(~w(sheets flows scenes)a, fn type ->
+      {type, preview |> Map.get(Atom.to_string(type), []) |> Enum.map(&Map.get(&1, "name")) |> Enum.reject(&is_nil/1)}
+    end)
   end
 
-  defp preview_groups(_version), do: []
-
-  defp preview_group(label, entries) do
-    %{
-      label: label,
-      items:
-        entries
-        |> Enum.map(&Map.get(&1, "name"))
-        |> Enum.reject(&is_nil/1)
-    }
-  end
+  defp preview(_version), do: %{sheets: [], flows: [], scenes: []}
 end

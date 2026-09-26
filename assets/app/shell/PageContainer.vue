@@ -13,7 +13,10 @@ const {
 } = defineProps<{
   /** `contained` centres the content at 1200 px at most; `full` uses the whole width. */
   width?: "contained" | "full";
-  /** `stack` places sections one under another; `aside` adds a 360 px side column on desktop. */
+  /**
+   * `stack` places sections one under another; `aside` adds a 360 px side column
+   * on desktop, filled from the `aside` slot and kept in view while the page scrolls.
+   */
   layout?: "stack" | "aside";
   /** The last section takes the height left over, for content that scrolls on its own. */
   fill?: boolean;
@@ -37,7 +40,13 @@ const {
         fill && 'h-full min-h-0 [&>:last-child]:min-h-0 [&>:last-child]:flex-1',
       ]"
     >
-      <slot />
+      <template v-if="layout === 'aside'">
+        <div data-page-main class="flex min-w-0 flex-col gap-6"><slot /></div>
+        <aside data-page-aside class="flex min-w-0 flex-col gap-6 lg:sticky lg:top-0">
+          <slot name="aside" />
+        </aside>
+      </template>
+      <slot v-else />
     </div>
   </div>
 </template>

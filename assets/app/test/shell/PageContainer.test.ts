@@ -38,10 +38,18 @@ describe("PageContainer", () => {
     expect(sections(mount(PageContainer)).classes()).toEqual(
       expect.arrayContaining(["flex", "flex-col", "gap-6"]),
     );
-    const aside = mount(PageContainer, { props: { layout: "aside" } });
+    const aside = mount(PageContainer, {
+      props: { layout: "aside" },
+      slots: { default: "<section>Main</section>", aside: "<section>Side</section>" },
+    });
     expect(sections(aside).classes()).toEqual(
       expect.arrayContaining(["grid", "gap-6", "lg:grid-cols-[minmax(0,1fr)_360px]"]),
     );
+    expect(aside.get("[data-page-main]").text()).toBe("Main");
+    expect(aside.get("[data-page-main]").classes()).toEqual(
+      expect.arrayContaining(["flex", "flex-col", "gap-6"]),
+    );
+    expect(aside.get("[data-page-aside]").text()).toBe("Side");
     const fill = mount(PageContainer, { props: { fill: true } });
     expect(sections(fill).classes()).toEqual(
       expect.arrayContaining(["h-full", "[&>:last-child]:flex-1"]),

@@ -282,347 +282,49 @@ msgstr "set_if_unset emite un set incondicional en Dialogic (no hay sintaxis de 
 msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr "set_if_unset emite un set incondicional en Yarn (no hay tipo null)"
 
-#: lib/storyarn_web/live/template_live/show.ex:457
+#: lib/storyarn_web/live/template_live/show.ex:86
 #: lib/storyarn_web/live/workspace_live/show.ex:156
 #, elixir-autogen, elixir-format
 msgid "Template installation started."
 msgstr "La instalación de la template ha comenzado."
 
-#: lib/storyarn_web/live/template_live/show.ex:591
+#: lib/storyarn_web/live/template_live/show.ex:219
 #: lib/storyarn_web/live/workspace_live/show.ex:199
 #, elixir-autogen, elixir-format
 msgid "Your project is ready."
 msgstr "Tu proyecto está listo."
 
-#: lib/storyarn_web/live/template_live/show.ex:400
-#, elixir-autogen, elixir-format
-msgid "Starting installation…"
-msgstr "Iniciando instalación…"
-
-#: lib/storyarn_web/live/template_live/show.ex:404
-#, elixir-autogen, elixir-format
-msgid "Installation in progress"
-msgstr "Instalación en curso"
-
-#: lib/storyarn_web/live/template_live/show.ex:329
-#, elixir-autogen, elixir-format
-msgid "Installation reference: %{reference}"
-msgstr "Referencia de instalación: %{reference}"
-
-#: lib/storyarn_web/live/template_live/show.ex:736
-#, elixir-autogen, elixir-format
-msgid "Waiting to start…"
-msgstr "Esperando para comenzar…"
-
-#: lib/storyarn_web/live/template_live/show.ex:737
-#, elixir-autogen, elixir-format
-msgid "Verifying template integrity…"
-msgstr "Verificando la integridad de la template…"
-
-#: lib/storyarn_web/live/template_live/show.ex:738
-#, elixir-autogen, elixir-format
-msgid "Copying project content and assets…"
-msgstr "Copiando el contenido y los assets del proyecto…"
-
-#: lib/storyarn_web/live/template_live/show.ex:739
-#, elixir-autogen, elixir-format
-msgid "Retrying after a temporary issue…"
-msgstr "Reintentando tras un problema temporal…"
-
-#: lib/storyarn_web/live/template_live/show.ex:740
-#, elixir-autogen, elixir-format
-msgid "Creating project…"
-msgstr "Creando proyecto…"
-
 #: lib/storyarn_web/live/project_settings_live/templates.ex:213
-#: lib/storyarn_web/live/template_live/show.ex:519
+#: lib/storyarn_web/live/template_live/show.ex:147
 #, elixir-autogen, elixir-format
 msgid "A template publication is already running."
 msgstr "Ya hay una publicación de template en curso."
-
-#: lib/storyarn_web/live/template_live/helpers.ex:19
-#, elixir-autogen, elixir-format
-msgid "Active"
-msgstr "Activa"
-
-#: lib/storyarn_web/live/template_live/index.ex:294
-#: lib/storyarn_web/live/template_live/show.ex:115
-#, elixir-autogen, elixir-format
-msgid "Archive"
-msgstr "Archivar"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:18
-#, elixir-autogen, elixir-format
-msgid "Archived"
-msgstr "Archivada"
-
-#: lib/storyarn_web/live/template_live/index.ex:142
-#, elixir-autogen, elixir-format
-msgid "Archived templates"
-msgstr "Templates archivadas"
-
-#: lib/storyarn_web/live/template_live/show.ex:228
-#, elixir-autogen, elixir-format
-msgid "By"
-msgstr "Por"
-
-#: lib/storyarn_web/live/template_live/index.ex:323
-#, elixir-autogen, elixir-format
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: lib/storyarn_web/live/template_live/index.ex:81
-#, elixir-autogen, elixir-format
-msgid "Clear"
-msgstr "Limpiar"
 
 #: lib/storyarn_web/live/project_live/invitation.ex:140
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr "Crea una contraseña para %{email} para aceptar tu invitación."
 
-#: lib/storyarn_web/live/template_live/show.ex:406
-#, elixir-autogen, elixir-format
-msgid "Create from template"
-msgstr "Crear desde template"
-
-#: lib/storyarn_web/live/template_live/show.ex:305
-#, elixir-autogen, elixir-format
-msgid "Create project"
-msgstr "Crear proyecto"
-
-#: lib/storyarn_web/live/template_live/show.ex:240
-#: lib/storyarn_web/live/template_live/show.ex:822
-#, elixir-autogen, elixir-format
-msgid "Current"
-msgstr "Actual"
-
-#: lib/storyarn_web/live/template_live/show.ex:127
-#, elixir-autogen, elixir-format
-msgid "Current version"
-msgstr "Versión actual"
-
-#: lib/storyarn_web/live/template_live/index.ex:314
-#, elixir-autogen, elixir-format
-msgid "Delete"
-msgstr "Eliminar"
-
-#: lib/storyarn_web/live/template_live/index.ex:333
-#, elixir-autogen, elixir-format
-msgid "Delete permanently"
-msgstr "Eliminar permanentemente"
-
-#: lib/storyarn_web/live/template_live/index.ex:282
-#, elixir-autogen, elixir-format
-msgid "Delete this template permanently? This cannot be undone."
-msgstr "¿Eliminar esta template permanentemente? Esta acción no se puede deshacer."
-
-#: lib/storyarn_web/live/template_live/helpers.ex:25
-#, elixir-autogen, elixir-format
-msgid "Failed"
-msgstr "Fallida"
-
-#: lib/storyarn_web/live/template_live/show.ex:855
-#, elixir-autogen, elixir-format
-msgid "Flows"
-msgstr "Flujos"
-
-#: lib/storyarn_web/live/template_live/show.ex:270
-#, elixir-autogen, elixir-format
-msgid "Install history"
-msgstr "Historial de instalaciones"
-
-#: lib/storyarn_web/live/template_live/show.ex:280
-#, elixir-autogen, elixir-format
-msgid "Installed"
-msgstr "Instalada"
-
-#: lib/storyarn_web/live/template_live/show.ex:812
-#, elixir-autogen, elixir-format
-msgid "New template publication"
-msgstr "Publicación de nueva template"
-
-#: lib/storyarn_web/live/template_live/index.ex:370
-#, elixir-autogen, elixir-format
-msgid "Next"
-msgstr "Siguiente"
-
-#: lib/storyarn_web/live/template_live/index.ex:161
-#, elixir-autogen, elixir-format
-msgid "No archived templates."
-msgstr "No hay templates archivadas."
-
-#: lib/storyarn_web/live/template_live/helpers.ex:10
-#, elixir-autogen, elixir-format
-msgid "No description"
-msgstr "Sin descripción"
-
-#: lib/storyarn_web/live/template_live/show.ex:290
-#, elixir-autogen, elixir-format
-msgid "No installs yet."
-msgstr "Aún no hay instalaciones."
-
-#: lib/storyarn_web/live/template_live/index.ex:108
-#, elixir-autogen, elixir-format
-msgid "No private templates yet."
-msgstr "Aún no tienes templates privadas."
-
-#: lib/storyarn_web/live/template_live/index.ex:132
-#, elixir-autogen, elixir-format
-msgid "No public demos available."
-msgstr "No hay demos públicas disponibles."
-
-#: lib/storyarn_web/live/template_live/helpers.ex:38
-#, elixir-autogen, elixir-format
-msgid "No version"
-msgstr "Sin versión"
-
-#: lib/storyarn_web/live/template_live/show.ex:255
-#, elixir-autogen, elixir-format
-msgid "No versions published yet."
-msgstr "Aún no se ha publicado ninguna versión."
-
-#: lib/storyarn_web/live/template_live/index.ex:340
-#, elixir-autogen, elixir-format
-msgid "Open"
-msgstr "Abrir"
-
-#: lib/storyarn_web/live/template_live/index.ex:363
-#, elixir-autogen, elixir-format
-msgid "Page %{page} of %{total}"
-msgstr "Página %{page} de %{total}"
-
-#: lib/storyarn_web/live/template_live/index.ex:360
-#, elixir-autogen, elixir-format
-msgid "Previous"
-msgstr "Anterior"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:13
-#, elixir-autogen, elixir-format
-msgid "Private"
-msgstr "Privada"
-
-#: lib/storyarn_web/live/template_live/index.ex:91
-#, elixir-autogen, elixir-format
-msgid "Private templates"
-msgstr "Templates privadas"
-
-#: lib/storyarn_web/live/template_live/show.ex:379
-#, elixir-autogen, elixir-format
-msgid "Project name"
-msgstr "Nombre del proyecto"
-
-#: lib/storyarn_web/live/template_live/index.ex:44
-#, elixir-autogen, elixir-format
-msgid "Project templates"
-msgstr "Templates de proyecto"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:12
-#, elixir-autogen, elixir-format
-msgid "Public"
-msgstr "Pública"
-
-#: lib/storyarn_web/live/template_live/show.ex:178
-#, elixir-autogen, elixir-format
-msgid "Publication history"
-msgstr "Historial de publicaciones"
-
-#: lib/storyarn_web/live/template_live/show.ex:101
-#, elixir-autogen, elixir-format
-msgid "Publication running"
-msgstr "Publicación en curso"
-
-#: lib/storyarn_web/live/template_live/show.ex:103
-#, elixir-autogen, elixir-format
-msgid "Publish new version"
-msgstr "Publicar nueva versión"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:24
-#: lib/storyarn_web/live/template_live/show.ex:227
-#, elixir-autogen, elixir-format
-msgid "Published"
-msgstr "Publicada"
-
-#: lib/storyarn_web/live/template_live/show.ex:835
-#, elixir-autogen, elixir-format
-msgid "Published %{date}"
-msgstr "Publicada el %{date}"
-
-#: lib/storyarn_web/live/template_live/show.ex:805
-#, elixir-autogen, elixir-format
-msgid "Published version %{version}"
-msgstr "Versión %{version} publicada"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:22
-#, elixir-autogen, elixir-format
-msgid "Publishing"
-msgstr "Publicando"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:21
-#, elixir-autogen, elixir-format
-msgid "Queued"
-msgstr "En cola"
-
-#: lib/storyarn_web/live/template_live/index.ex:304
-#, elixir-autogen, elixir-format
-msgid "Restore"
-msgstr "Restaurar"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:23
-#, elixir-autogen, elixir-format
-msgid "Retrying"
-msgstr "Reintentando"
-
-#: lib/storyarn_web/live/template_live/show.ex:856
-#, elixir-autogen, elixir-format
-msgid "Scenes"
-msgstr "Escenas"
-
-#: lib/storyarn_web/live/template_live/index.ex:72
-#, elixir-autogen, elixir-format
-msgid "Search"
-msgstr "Buscar"
-
-#: lib/storyarn_web/live/template_live/index.ex:67
-#, elixir-autogen, elixir-format
-msgid "Search by name or description"
-msgstr "Busca por nombre o descripción"
-
-#: lib/storyarn_web/live/template_live/index.ex:60
-#, elixir-autogen, elixir-format
-msgid "Search templates"
-msgstr "Buscar templates"
-
-#: lib/storyarn_web/live/template_live/show.ex:854
-#, elixir-autogen, elixir-format
-msgid "Sheets"
-msgstr "Fichas"
-
-#: lib/storyarn_web/live/template_live/index.ex:118
-#, elixir-autogen, elixir-format
-msgid "Storyarn demos"
-msgstr "Demos Storyarn"
-
-#: lib/storyarn_web/live/template_live/index.ex:191
-#: lib/storyarn_web/live/template_live/show.ex:551
+#: lib/storyarn_web/live/template_live/index.ex:69
+#: lib/storyarn_web/live/template_live/show.ex:179
 #, elixir-autogen, elixir-format
 msgid "Template archived."
 msgstr "Template archivada."
 
-#: lib/storyarn_web/live/template_live/index.ex:194
-#: lib/storyarn_web/live/template_live/show.ex:555
+#: lib/storyarn_web/live/template_live/index.ex:72
+#: lib/storyarn_web/live/template_live/show.ex:183
 #, elixir-autogen, elixir-format
 msgid "Template could not be archived."
 msgstr "No se pudo archivar la template."
 
-#: lib/storyarn_web/live/template_live/index.ex:226
-#: lib/storyarn_web/live/template_live/index.ex:236
+#: lib/storyarn_web/live/template_live/index.ex:104
+#: lib/storyarn_web/live/template_live/index.ex:114
 #, elixir-autogen, elixir-format
 msgid "Template could not be deleted."
 msgstr "No se pudo eliminar la template."
 
-#: lib/storyarn_web/live/template_live/show.ex:466
-#: lib/storyarn_web/live/template_live/show.ex:469
+#: lib/storyarn_web/live/template_live/show.ex:95
+#: lib/storyarn_web/live/template_live/show.ex:98
 #: lib/storyarn_web/live/workspace_live/show.ex:170
 #, elixir-autogen, elixir-format
 msgid "Template could not be installed."
@@ -633,94 +335,56 @@ msgstr "No se pudo instalar la template."
 msgid "Template could not be queued."
 msgstr "No se pudo poner en cola la template."
 
-#: lib/storyarn_web/live/template_live/index.ex:210
+#: lib/storyarn_web/live/template_live/index.ex:88
 #, elixir-autogen, elixir-format
 msgid "Template could not be restored."
 msgstr "No se pudo restaurar la template."
 
 #: lib/storyarn_web/live/project_settings_live/templates.ex:217
-#: lib/storyarn_web/live/template_live/show.ex:534
+#: lib/storyarn_web/live/template_live/show.ex:162
 #, elixir-autogen, elixir-format
 msgid "Template limit reached for your plan."
 msgstr "Has alcanzado el límite de templates de tu plan."
 
-#: lib/storyarn_web/live/template_live/show.ex:38
-#: lib/storyarn_web/live/template_live/show.ex:571
+#: lib/storyarn_web/live/template_live/show.ex:36
+#: lib/storyarn_web/live/template_live/show.ex:199
 #, elixir-autogen, elixir-format
 msgid "Template not found."
 msgstr "Template no encontrada."
 
-#: lib/storyarn_web/live/template_live/index.ex:223
+#: lib/storyarn_web/live/template_live/index.ex:101
 #, elixir-autogen, elixir-format
 msgid "Template permanently deleted."
 msgstr "Template eliminada permanentemente."
 
-#: lib/storyarn_web/live/template_live/show.ex:538
-#: lib/storyarn_web/live/template_live/show.ex:542
+#: lib/storyarn_web/live/template_live/show.ex:166
+#: lib/storyarn_web/live/template_live/show.ex:170
 #, elixir-autogen, elixir-format
 msgid "Template publication could not be queued."
 msgstr "No se pudo poner en cola la publicación de la template."
 
 #: lib/storyarn_web/live/project_settings_live/templates.ex:173
-#: lib/storyarn_web/live/template_live/show.ex:513
+#: lib/storyarn_web/live/template_live/show.ex:142
 #, elixir-autogen, elixir-format
 msgid "Template publication queued."
 msgstr "Publicación de la template en cola."
 
-#: lib/storyarn_web/live/template_live/index.ex:207
+#: lib/storyarn_web/live/template_live/index.ex:85
 #, elixir-autogen, elixir-format
 msgid "Template restored."
 msgstr "Template restaurada."
 
-#: lib/storyarn_web/live/template_live/show.ex:361
-#, elixir-autogen, elixir-format
-msgid "Template version"
-msgstr "Versión de la template"
-
 #: lib/storyarn_web/live/project_settings_live/templates.ex:221
-#: lib/storyarn_web/live/template_live/show.ex:526
+#: lib/storyarn_web/live/template_live/show.ex:154
 #, elixir-autogen, elixir-format
 msgid "Template version limit reached for your plan."
 msgstr "Has alcanzado el límite de versiones de template de tu plan."
 
-#: lib/storyarn_web/live/template_live/show.ex:813
-#, elixir-autogen, elixir-format
-msgid "Template version publication"
-msgstr "Publicación de nueva versión"
-
 #: lib/storyarn_web/live/project_settings_live/templates.ex:58
-#: lib/storyarn_web/live/template_live/index.ex:20
-#: lib/storyarn_web/live/template_live/index.ex:47
-#: lib/storyarn_web/live/template_live/show.ex:58
+#: lib/storyarn_web/live/template_live/index.ex:18
 #, elixir-autogen, elixir-format
 msgid "Templates"
 msgstr "Templates"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:26
-#, elixir-autogen, elixir-format
-msgid "Unknown"
-msgstr "Desconocido"
-
-#: lib/storyarn_web/live/template_live/show.ex:226
-#: lib/storyarn_web/live/template_live/show.ex:279
-#, elixir-autogen, elixir-format
-msgid "Version"
-msgstr "Versión"
-
-#: lib/storyarn_web/live/template_live/helpers.ex:35
-#, elixir-autogen, elixir-format
-msgid "Version %{version}"
-msgstr "Versión %{version}"
-
-#: lib/storyarn_web/live/template_live/show.ex:91
-#, elixir-autogen, elixir-format
-msgid "Version notes"
-msgstr "Notas de versión"
-
-#: lib/storyarn_web/live/template_live/show.ex:215
-#, elixir-autogen, elixir-format
-msgid "Versions"
-msgstr "Versiones"
 
 #: lib/storyarn_web/live/project_settings_live/templates.ex:88
 #, elixir-autogen, elixir-format
@@ -791,72 +455,6 @@ msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr "Esta invitación no se puede aceptar mientras el espacio de trabajo esté en su límite de miembros. Pide a un propietario o administrador que libere una plaza y vuelve a intentarlo con esta invitación."
-
-#: lib/storyarn_web/live/template_live/show.ex:690
-#, elixir-autogen, elixir-format
-msgid "Template installation failed: %{reason} Reference: %{reference}"
-msgstr "La instalación de la template ha fallado: %{reason} Referencia: %{reference}"
-
-#: lib/storyarn_web/live/template_live/show.ex:699
-#, elixir-autogen, elixir-format
-msgid "A template asset could not be copied."
-msgstr "No se pudo copiar un asset de la template."
-
-#: lib/storyarn_web/live/template_live/show.ex:702
-#: lib/storyarn_web/live/template_live/show.ex:734
-#, elixir-autogen, elixir-format
-msgid "The installation could not be completed."
-msgstr "No se pudo completar la instalación."
-
-#: lib/storyarn_web/live/template_live/show.ex:705
-#, elixir-autogen, elixir-format
-msgid "This template is no longer available."
-msgstr "Esta template ya no está disponible."
-
-#: lib/storyarn_web/live/template_live/show.ex:708
-#, elixir-autogen, elixir-format
-msgid "The template failed its integrity check."
-msgstr "La template no superó la comprobación de integridad."
-
-#: lib/storyarn_web/live/template_live/show.ex:712
-#, elixir-autogen, elixir-format
-msgid "This template version is incompatible and must be republished."
-msgstr "Esta versión de la template es incompatible y debe volver a publicarse."
-
-#: lib/storyarn_web/live/template_live/show.ex:716
-#, elixir-autogen, elixir-format
-msgid "This template version contains an invalid subflow exit and must be republished."
-msgstr "Esta versión de la template contiene una salida de subflujo no válida y debe volver a publicarse."
-
-#: lib/storyarn_web/live/template_live/show.ex:719
-#, elixir-autogen, elixir-format
-msgid "The workspace project limit has been reached."
-msgstr "Se ha alcanzado el límite de proyectos del espacio de trabajo."
-
-#: lib/storyarn_web/live/template_live/show.ex:722
-#, elixir-autogen, elixir-format
-msgid "The template asset manifest is unavailable."
-msgstr "El manifiesto de assets de la template no está disponible."
-
-#: lib/storyarn_web/live/template_live/show.ex:725
-#, elixir-autogen, elixir-format
-msgid "The template integrity information is unavailable."
-msgstr "La información de integridad de la template no está disponible."
-
-#: lib/storyarn_web/live/template_live/show.ex:728
-#, elixir-autogen, elixir-format
-msgid "The template or workspace is no longer available."
-msgstr "La template o el espacio de trabajo ya no están disponibles."
-
-#: lib/storyarn_web/live/template_live/show.ex:731
-#, elixir-autogen, elixir-format
-msgid "You no longer have permission to install this template."
-msgstr "Ya no tienes permiso para instalar esta template."
-
-#: lib/storyarn_web/live/template_live/show.ex:431
-#, elixir-autogen, elixir-format
-msgid "Dismiss installation failure"
-msgstr "Descartar el error de instalación"
 
 #: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1496
 #: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:2054

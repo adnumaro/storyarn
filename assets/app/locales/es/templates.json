@@ -1,0 +1,111 @@
+{
+  "templates": {
+    "visibility": {
+      "public": "Pública",
+      "private": "Privada"
+    },
+    "status": {
+      "active": "Activa",
+      "archived": "Archivada"
+    },
+    "version": "Versión {version}",
+    "no_version": "Sin versión",
+    "no_description": "Sin descripción",
+    "card": {
+      "archive": "Archivar",
+      "restore": "Restaurar",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "delete_permanently": "Eliminar permanentemente",
+      "open": "Abrir",
+      "delete_confirmation": "¿Eliminar esta template permanentemente? Esta acción no se puede deshacer."
+    },
+    "show": {
+      "back": "Templates",
+      "archive": "Archivar",
+      "version_notes": "Notas de versión",
+      "publish": "Publicar nueva versión",
+      "publication_running": "Publicación en curso",
+      "current_version": "Versión actual",
+      "published_on": "Publicada el {date}",
+      "counts": {
+        "sheets": "Fichas",
+        "flows": "Flujos",
+        "scenes": "Escenas",
+        "languages": "Idiomas",
+        "localized_texts": "Textos localizados",
+        "glossary_entries": "Entradas del glosario"
+      },
+      "preview": {
+        "sheets": "Fichas",
+        "flows": "Flujos",
+        "scenes": "Escenas"
+      },
+      "publications": {
+        "title": "Historial de publicaciones",
+        "status": {
+          "queued": "En cola",
+          "running": "Publicando",
+          "retrying": "Reintentando",
+          "published": "Publicada",
+          "failed": "Fallida",
+          "unknown": "Desconocido"
+        },
+        "published_version": "Versión {version} publicada",
+        "new": "Publicación de nueva template",
+        "update": "Publicación de nueva versión"
+      },
+      "versions": {
+        "title": "Versiones",
+        "version": "Versión",
+        "published": "Publicada",
+        "by": "Por",
+        "current": "Actual",
+        "empty": "Aún no se ha publicado ninguna versión."
+      },
+      "installs": {
+        "title": "Historial de instalaciones",
+        "version": "Versión",
+        "installed": "Instalada",
+        "empty": "Aún no hay instalaciones."
+      },
+      "install": {
+        "title": "Crear proyecto",
+        "reference": "Referencia de instalación: {reference}",
+        "workspace": "Espacio de trabajo",
+        "version": "Versión de la template",
+        "current_option": "{version} - Actual",
+        "name": "Nombre del proyecto",
+        "submit": "Crear desde template",
+        "starting": "Iniciando instalación…",
+        "in_progress": "Instalación en curso"
+      },
+      "failure": {
+        "message": "La instalación de la template ha fallado: {reason} Referencia: {reference}",
+        "dismiss": "Descartar el error de instalación"
+      }
+    },
+    "list": {
+      "eyebrow": "Templates de proyecto",
+      "title": "Templates",
+      "workspaces": "Espacios de trabajo",
+      "search_label": "Buscar templates",
+      "search_placeholder": "Busca por nombre o descripción",
+      "search": "Buscar",
+      "clear": "Limpiar",
+      "sections": {
+        "private": "Templates privadas",
+        "public": "Demos Storyarn",
+        "archived": "Templates archivadas"
+      },
+      "empty": {
+        "private": "Aún no tienes templates privadas.",
+        "public": "No hay demos públicas disponibles.",
+        "archived": "No hay templates archivadas."
+      },
+      "page": "Página {page} de {total}",
+      "previous": "Anterior",
+      "next": "Siguiente"
+    }
+  }
+}
