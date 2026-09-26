@@ -366,16 +366,12 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
 
   defp capture_publication_source(project_id) do
     fn ->
-      if !Application.get_env(:storyarn, :sql_sandbox, false) do
-        Repo.query!("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-      end
-
       prepared_snapshot = Audit.prepare_snapshot(project_id)
       asset_manifest = Artifact.build_asset_manifest(project_id)
 
       {prepared_snapshot, asset_manifest}
     end
-    |> Repo.transaction(timeout: :infinity)
+    |> Repo.repeatable_read(timeout: :infinity)
     |> case do
       {:ok, {prepared_snapshot, asset_manifest}} ->
         {:ok, prepared_snapshot, asset_manifest}
