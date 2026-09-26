@@ -123,6 +123,25 @@ describe("Comments review overlay", () => {
     }
   });
 
+  it("closes on a click outside it, and not on a click inside", async () => {
+    const { button, overlay } = mountReview();
+    await button.trigger("click");
+    await overlay.setProps({ open: true });
+    await flushPromises();
+    vi.mocked(live.pushEvent).mockClear();
+    const press = (target: Element) =>
+      target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+    press(document.getElementById("review-action")!);
+    await flushPromises();
+    expect(live.pushEvent).not.toHaveBeenCalledWith("hub_close", {});
+    // Reka listens for the outside press on the document after a tick.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    press(document.body);
+    await flushPromises();
+    expect(live.pushEvent).toHaveBeenCalledWith("hub_close", {});
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+  });
+
   it("allows retrying a disconnected open and does not reopen after a late response", async () => {
     const { overlay } = mountReview();
     openComments();

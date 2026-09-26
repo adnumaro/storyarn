@@ -104,7 +104,6 @@ onUnmounted(() => {
         class="fixed inset-0 z-50 flex min-h-0 flex-col overflow-hidden border-border bg-background shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-150 md:inset-6 md:rounded-xl md:border xl:inset-x-[max(1.5rem,calc((100vw-90rem)/2))]"
         @open-auto-focus="focusSearch"
         @close-auto-focus="restoreFocus"
-        @pointer-down-outside.prevent
         @keydown="handleKeydown"
       >
         <DialogTitle class="sr-only">{{ $t("comments_hub.title") }}</DialogTitle>
