@@ -1,0 +1,271 @@
+assets/app/test/live/workspace/settings/WorkspaceSettingsUsage.test.ts
+  s_c335c90a020cdb::t_4a69bd8e953c0a 3-101
+  s_c335c90a020cdb::t_fda17e56884c50 1-2,102
+config/architecture_boundaries.exs
+  s_c335c90a020cdb::t_0e736214f497b8 1772,5344,5347
+  s_c335c90a020cdb::t_66d270841f4896 4234-4235
+  s_c335c90a020cdb::t_c7cc57618f3cc2 1759,4222-4233
+  s_c335c90a020cdb::t_f9ce5840efeab5 4923,4925-4934,5312-5317,5379
+  s_c335c90a020cdb::t_ec8bce9b011866 4924,5225,5374-5378
+  s_c335c90a020cdb::t_3c1c5527863356 4922,5311,5323
+test/storyarn/projects/assets/integration/assets_test.exs
+  s_c335c90a020cdb::t_dd5b67039dac99 202,204,226,2000
+lib/storyarn/commercial/projections/project_invitation_record.ex
+  s_c335c90a020cdb::t_cfee801c03bb00 10
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_c335c90a020cdb::t_d17bafd88cf10d 415
+  s_c335c90a020cdb::t_bf49dc0cb53bde 120-121,124-128,131-134,416-418,459-465,468-469,472-480,482-483,496-497,526,534-535,743-744,770-771,1007,1196,1206,1214-1215
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_c335c90a020cdb::t_e753f1e7d029ef 133-134,147,158-159,163-192,431,436,456,564
+test/storyarn/workers/projects/deliver_project_invitation_worker_test.exs
+  s_c335c90a020cdb::t_398e1eb61d47eb 184
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_c335c90a020cdb::t_615dc33ae04743 686,692,694-695,699-702
+  s_c335c90a020cdb::t_54551784797b30 47
+  s_c335c90a020cdb::t_6225e941f04dd6 11,48,279,629,710-717,807
+  s_c335c90a020cdb::t_d17bafd88cf10d 687,696
+  s_c335c90a020cdb::t_2aafc885c213ff 45
+  s_c335c90a020cdb::t_f01fe50382f7e4 688-690,693,706-707
+  s_c335c90a020cdb::t_6a90e14e69aa96 708-709
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_c335c90a020cdb::t_bba9d6fbe5fc00 62
+  s_c335c90a020cdb::t_fe77ac121eef48 116
+test/storyarn/commercial/execution/limits_test.exs
+  s_c335c90a020cdb::t_512fbf8b8129e6 501,504
+  s_c335c90a020cdb::t_0c8496a445cf81 204,206,217,222,230,234,236,390
+  s_c335c90a020cdb::t_08d93bc1774a08 39-65,494-498
+  s_c335c90a020cdb::t_8635cb61dbb127 499-500
+test/storyarn/architecture/commercial_facade_contract_test.exs
+  s_c335c90a020cdb::t_7b3531df2b8176 64,151
+  s_c335c90a020cdb::t_b508aac297eac4 21
+  s_c335c90a020cdb::t_c70c1b8767667d 7,17-18
+  s_c335c90a020cdb::t_118b0fb09fbe6c 62
+  s_c335c90a020cdb::t_ab3934bcdafac2 63,150,169
+priv/gettext/en/LC_MESSAGES/settings.po
+  s_c335c90a020cdb::t_94d8246870ef42 70-74
+lib/storyarn/commercial/billing.ex
+  s_c335c90a020cdb::t_0b91f601661ff6 9,37-38
+  s_c335c90a020cdb::t_c79b5f5ae2ce6b 170,173-174,179,195,221,223-225
+  s_c335c90a020cdb::t_3d254bb1a35785 40
+  s_c335c90a020cdb::t_1463ae783b930c 219
+  s_c335c90a020cdb::t_57658d0a7c74a6 39
+lib/storyarn/workspaces/invitations/commands/create.ex
+  s_c335c90a020cdb::t_76aa12f41b3971 34,46,67,79
+lib/storyarn_web/router.ex
+  s_c335c90a020cdb::t_c89638211d29e6 209,364
+assets/app/test/live/layouts/SettingsLayout.test.ts
+  s_c335c90a020cdb::t_b08dce0175f2e5 107,119,136,143
+lib/storyarn/commercial/execution/editor_seats.ex
+  s_c335c90a020cdb::t_0ce3689d8b8309 1-121,123-200
+  s_c335c90a020cdb::t_7077d89e19253a 122
+lib/storyarn/commercial/commands/subscriptions.ex
+  s_c335c90a020cdb::t_9d34d949475195 7,9
+lib/storyarn/workspaces/memberships/commands/change_member_role.ex
+  s_c335c90a020cdb::t_e8fd1d2986fd53 4,24-28,31-32,41,46-57
+  s_c335c90a020cdb::t_6f40c6db015e44 58
+lib/storyarn_web/live/shared/usage_access.ex
+  s_c335c90a020cdb::t_0643fb24cef4d4 1-35
+assets/app/live/layouts/settings/Layout.vue
+  s_c335c90a020cdb::t_90b126dc4e9906 12,204-210,263-271,301,303
+test/storyarn/projects_test.exs
+  s_c335c90a020cdb::t_95d3289c36aa22 403-406
+  s_c335c90a020cdb::t_2d4336037c2197 425,430,437
+lib/storyarn/commercial/execution/limits.ex
+  s_c335c90a020cdb::t_2aafc885c213ff 9,215-217
+  s_c335c90a020cdb::t_3d254bb1a35785 224-236
+  s_c335c90a020cdb::t_3f0e0bd426c723 33-35
+  s_c335c90a020cdb::t_4df8039fc87bb5 237-238
+lib/storyarn/commercial.ex
+  s_c335c90a020cdb::t_e639101cc62566 18
+  s_c335c90a020cdb::t_0b91f601661ff6 59-83
+  s_c335c90a020cdb::t_386be86cb969ce 125,129-134
+  s_c335c90a020cdb::t_c79b5f5ae2ce6b 21,26,91-92,94
+  s_c335c90a020cdb::t_7cbf5da1665a1f 135
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_94d8246870ef42 14,19,29,34-37,42,53,59,69,205,220,225,294,304,315,320,339-340,342-350,352-360,362-363
+  s_c335c90a020cdb::t_7506540d2c65f4 341,351,361
+lib/storyarn/commercial/reference_data/plan.ex
+  s_c335c90a020cdb::t_2215682b1832bb 90
+  s_c335c90a020cdb::t_553bc188625f4b 21,25,38,53,68,72
+  s_c335c90a020cdb::t_7077d89e19253a 6-7,18,33-34,39,54,69
+lib/storyarn_web/live/project_live/invitation.ex
+  s_c335c90a020cdb::t_fe77ac121eef48 110
+  s_c335c90a020cdb::t_bba9d6fbe5fc00 62
+assets/app/live/account/settings/AccountSettingsPlanBilling.vue
+  s_c335c90a020cdb::t_a17c86941c5699 1-68,74-141
+  s_c335c90a020cdb::t_b08dce0175f2e5 69-73
+lib/storyarn/accounts.ex
+  s_c335c90a020cdb::t_bba9d6fbe5fc00 31
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_c335c90a020cdb::t_118b0fb09fbe6c 350
+lib/storyarn/projects/access/commands/invitation_operations.ex
+  s_c335c90a020cdb::t_429a99cd03b9f2 221,228,236-239,257-260,392-395
+assets/app/live/project/settings/ProjectSettingsUsageLimits.vue
+  s_c335c90a020cdb::t_9e810b4359574d 20-22,48-52,54-57,155-156,166-167
+lib/storyarn/workspaces/invitations/commands/accept.ex
+  s_c335c90a020cdb::t_76aa12f41b3971 37-40
+lib/storyarn/accounts/registration/commands/register.ex
+  s_c335c90a020cdb::t_bba9d6fbe5fc00 7,12,65,75-90
+  s_c335c90a020cdb::t_20ad9090d83d82 91
+assets/app/locales/en/settings.json
+  s_c335c90a020cdb::t_8869f4a2f2348b 12,23,77-107,306-307,315,326-329
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_7506540d2c65f4 341,343,348,351,353,358,361,363
+  s_c335c90a020cdb::t_94d8246870ef42 14,19,29,34-37,42,53,59,69,205,220,225,294,304,315,320,339-340,342,344-347,349-350,352,354-357,359-360,362
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_c335c90a020cdb::t_fe77ac121eef48 272-277,374-376,400-410
+  s_c335c90a020cdb::t_1ca4f01428af43 411
+lib/storyarn_web/live/user_live/registration.ex
+  s_c335c90a020cdb::t_bba9d6fbe5fc00 120
+test/storyarn/projects/lifecycle/project_soft_delete_test.exs
+  s_c335c90a020cdb::t_1463ae783b930c 148
+  s_c335c90a020cdb::t_0c8496a445cf81 401
+test/storyarn/commercial/execution/editor_seats_test.exs
+  s_c335c90a020cdb::t_1463ae783b930c 83-87,97,170,181-186
+  s_c335c90a020cdb::t_0aef639b5b952e 1-82,88-96,104-169,171-180,187-242
+  s_c335c90a020cdb::t_57658d0a7c74a6 98-103
+lib/storyarn/projects/access/commands/transfer_ownership.ex
+  s_c335c90a020cdb::t_919b8dc395deb1 6,32,34-36,38,47,50-51,82,88-98
+  s_c335c90a020cdb::t_23299216a670c7 24,27-29
+  s_c335c90a020cdb::t_1463ae783b930c 43
+  s_c335c90a020cdb::t_8457287ba50ad1 99
+docs/reference/component-registry.md
+  s_c335c90a020cdb::t_9b8c5c08690364 197-198
+test/storyarn_web/live/account_provisioning_failure_test.exs
+  s_c335c90a020cdb::t_25d32db0ae1236 1,10,12,20,24-25,96-97,106
+lib/storyarn/commercial/entities/subscription.ex
+  s_c335c90a020cdb::t_9d34d949475195 3-4,11,27,37-38,42
+test/storyarn/workspaces/invitations/invitations_test.exs
+  s_c335c90a020cdb::t_398da5c7f5153c 101,110,119,136,141
+test/storyarn_web/live/settings_live/workspace_usage_test.exs
+  s_c335c90a020cdb::t_3fca0d2978717e 1,12,15,20-21,24-25,27,32,34-37,39,41-43,46,49,51,53,56,60,64-68,71-91
+  s_c335c90a020cdb::t_fda17e56884c50 2-11,13-14,16-19,22-23,26,28-31,33,38,40,44-45,47-48,50,52,54-55,57-59,61-63,69-70,92-93
+assets/app/locales/es/project-settings.json
+  s_c335c90a020cdb::t_8869f4a2f2348b 232,346,475-477
+test/storyarn_web/live/settings_live/plan_billing_test.exs
+  s_c335c90a020cdb::t_c6cf131aea0cca 1-65
+lib/storyarn/commercial/README.md
+  s_c335c90a020cdb::t_9b8c5c08690364 19,58-63,73-87,94-96
+lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex
+  s_c335c90a020cdb::t_f4a3e905f7cc40 31
+test/storyarn_web/live/project_live/invitation_test.exs
+  s_c335c90a020cdb::t_1681be9aa58e22 140,145
+assets/app/live/workspace/settings/WorkspaceSettingsUsage.vue
+  s_c335c90a020cdb::t_fe4cc5fc857693 1-156
+priv/gettext/settings.pot
+  s_c335c90a020cdb::t_94d8246870ef42 70-74
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_c335c90a020cdb::t_fe77ac121eef48 264,269-277
+  s_c335c90a020cdb::t_1463ae783b930c 278-281
+lib/storyarn_web/live/shared/plan_limit_flash.ex
+  s_c335c90a020cdb::t_75fc6186824e35 6-7,20,56-57
+lib/storyarn/commercial/queries/subscriptions.ex
+  s_c335c90a020cdb::t_7b82451ccd87f6 7,12-13,17-27,34-38,44,47,50-65
+lib/storyarn_web/live/settings_live/workspace_usage.ex
+  s_c335c90a020cdb::t_c89638211d29e6 1-118
+lib/storyarn/commercial/subscription_crud.ex
+  s_c335c90a020cdb::t_acf095d08ef721 10,12-13,17,19-20,31-38,51
+test/storyarn_web/live/project_live/settings_test.exs
+  s_c335c90a020cdb::t_964701763510a4 844,860,1824-1826
+  s_c335c90a020cdb::t_d17bafd88cf10d 1062,1067
+  s_c335c90a020cdb::t_2397b9a0e8cd7f 839-843,845-846,848-851,855-859,861-862,888-891,895-897
+  s_c335c90a020cdb::t_2141b1dc7b15dc 1118
+  s_c335c90a020cdb::t_615dc33ae04743 847,852-854,863,892-894
+  s_c335c90a020cdb::t_e641152a79ed5e 1119
+  s_c335c90a020cdb::t_512fbf8b8129e6 1838,1841,1843
+  s_c335c90a020cdb::t_f8503259965658 1840
+  s_c335c90a020cdb::t_eec9401ba9fe3c 490,503,506,508-514,1735,1754,1764-1766,1768-1786,1827-1836
+  s_c335c90a020cdb::t_bc92246492cd8c 1071
+  s_c335c90a020cdb::t_490fe8da87db9e 1837
+  s_c335c90a020cdb::t_ea8f7261a74d6f 874-887
+  s_c335c90a020cdb::t_7b17d8ef20fb87 864-873
+test/storyarn_web/live/shared/plan_limit_flash_test.exs
+  s_c335c90a020cdb::t_2aafc885c213ff 73,79-80,82-84
+  s_c335c90a020cdb::t_ef82e7f5ffaae0 58,67,78,85-92,108
+test/storyarn/commercial/subscription_crud_test.exs
+  s_c335c90a020cdb::t_4d431da4689595 14,23,25,30,33,35-36,39,44,49-50,57-58,61-65,70-87,92-116,118,121-122,129,133,137,145-146,148,153-154,162,165,173-174,183-184,187-188,191,221-222,228-229,236-237,243-246,278,281-288,290,294,299-300
+priv/gettext/es/LC_MESSAGES/settings.po
+  s_c335c90a020cdb::t_7506540d2c65f4 74
+  s_c335c90a020cdb::t_94d8246870ef42 70-73
+lib/storyarn_web/live/project_settings_live/usage_limits.ex
+  s_c335c90a020cdb::t_df8d8a042fb1e2 6,10,43-45
+  s_c335c90a020cdb::t_d4cee8541df06d 32-33,89,124-125,140-145
+  s_c335c90a020cdb::t_dcbae61b29b8a5 146-147
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_c335c90a020cdb::t_fe77ac121eef48 213-215,220-229
+  s_c335c90a020cdb::t_1463ae783b930c 216-219
+  s_c335c90a020cdb::t_97ee80eef5ffa0 9
+lib/storyarn/projects/access/memberships.ex
+  s_c335c90a020cdb::t_939f15ccb5a8b7 6,109,111-112,114-115,121-123,128-140
+  s_c335c90a020cdb::t_ad8143a145390f 141
+priv/gettext/workspaces.pot
+  s_c335c90a020cdb::t_94d8246870ef42 14,19,29,34-37,42,53,59,69,205,220,225,294,304,315,320,339-363
+lib/storyarn/workspaces.ex
+  s_c335c90a020cdb::t_939f15ccb5a8b7 229
+test/storyarn/projects/access/commands/invitation_concurrency_test.exs
+  s_c335c90a020cdb::t_2ddd3231dd4800 254,256-268
+  s_c335c90a020cdb::t_3c4100262b0605 315
+  s_c335c90a020cdb::t_1463ae783b930c 13,195-198,240-243
+  s_c335c90a020cdb::t_d2449acf0f5be4 10,19,151,173-194,199-239,244-253,255
+  s_c335c90a020cdb::t_1ad13e2f3a112f 269
+lib/storyarn/workspaces/memberships/rules/permissions.ex
+  s_c335c90a020cdb::t_3d254bb1a35785 19,23-25
+assets/app/locales/en/project-settings.json
+  s_c335c90a020cdb::t_8869f4a2f2348b 232,346,475-477
+assets/app/test/live/account/settings/AccountSettingsPlanBilling.test.ts
+  s_c335c90a020cdb::t_30fafc14fa218f 1-61
+assets/app/test/live/project/settings/ProjectSettingsUsageLimits.test.ts
+  s_c335c90a020cdb::t_f10ff24d146dcb 21-22,46,51-52,56-70,126
+lib/storyarn_web/live/settings_live/plan_billing.ex
+  s_c335c90a020cdb::t_fa0bf03bcc9d7d 1-60
+assets/app/locales/es/settings.json
+  s_c335c90a020cdb::t_8869f4a2f2348b 12,23,77-107,306-307,315,326-329
+test/storyarn_web/live/workspace_live/invitation_test.exs
+  s_c335c90a020cdb::t_1681be9aa58e22 216,221
+test/storyarn/projects/access/commands/transfer_ownership_concurrency_test.exs
+  s_c335c90a020cdb::t_42e8abe01b3297 29-30
+lib/storyarn/projects.ex
+  s_c335c90a020cdb::t_939f15ccb5a8b7 783,785
+  s_c335c90a020cdb::t_53c2c38e2c071d 815-817
+test/storyarn/projects/interchange/imports/execution/materializer_test.exs
+  s_c335c90a020cdb::t_dd5b67039dac99 419,421-422,439
+priv/repo/migrations/20260926100000_move_subscriptions_to_accounts.exs
+  s_c335c90a020cdb::t_1fa303ffdb427a 1-6,12-14,17-18,20-36,41-69,72-73,75-93
+  s_c335c90a020cdb::t_07704b2c0c2a5a 7-11,37-40,70-71,74
+  s_c335c90a020cdb::t_6893e11b124177 15-16,19
+test/storyarn/commercial/reference_data/plan_test.exs
+  s_c335c90a020cdb::t_6b667debf9e924 19,26,31-90,112-116
+priv/gettext/en/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_5e249ad5985cff 132
+priv/gettext/default.pot
+  s_c335c90a020cdb::t_5e249ad5985cff 132
+priv/gettext/es/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_5e249ad5985cff 132
+test/storyarn/repo/migrations/move_subscriptions_to_accounts_migration_test.exs
+  s_c335c90a020cdb::t_c4875f00335e41 1-40,44-127,132-134,139-165
+  s_c335c90a020cdb::t_d321f0dd47f853 41-43,128-131,135-138
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_bf67a8d8e1a081 19,44-45,50,57-59,163-167,171-172,414,429,434,717,722,727,732,784,789,794,799,804,815,821-822,827-828,833,848,853,858,863,899,924-927,929-931,933,935-938,940-941,943
+  s_c335c90a020cdb::t_a4860571cf753a 928,932,934,939,942,944
+priv/gettext/projects.pot
+  s_c335c90a020cdb::t_bf67a8d8e1a081 19,44-45,50,57-59,163-167,171-172,414,429,434,717,722,727,732,784,789,794,799,804,815,821-822,827-828,833,848,853,858,863,899,924-944
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_a4860571cf753a 932,942
+  s_c335c90a020cdb::t_bf67a8d8e1a081 19,44-45,50,57-59,163-167,171-172,414,429,434,717,722,727,732,784,789,794,799,804,815,821-822,827-828,833,848,853,858,863,899,924-931,933-941,943-944
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b100d56f20a80c107bb1fb02fff8385a6364c5c4",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
