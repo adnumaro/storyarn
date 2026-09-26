@@ -85,10 +85,10 @@ defmodule StoryarnWeb.IdeationLive.Handlers.DecisionHandlers do
     %{current_scope: scope, project: project, session_id: id} = socket.assigns
 
     with {:ok, session} <- Ideation.get_session(scope, project.id, id),
-         {:ok, _, membership} <- Projects.authorize(scope, project.id, :view),
          {:ok, members} <- Projects.list_editor_candidates(scope, project.id),
          {:ok, decisions} <- Ideation.list_decisions(scope, project.id, id) do
-      can_propose = session.status == :open and Projects.can?(membership.role, :edit_content)
+      can_propose =
+        session.status == :open and match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content))
 
       socket
       |> put(%{

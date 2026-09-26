@@ -23,6 +23,10 @@ defmodule Storyarn.Commercial.Billing.Subscription do
     field :current_period_start, :utc_datetime
     field :current_period_end, :utc_datetime
     field :canceled_at, :utc_datetime
+    # The size limits the account exceeds. While any is listed, every
+    # workspace the account owns is read-only.
+    field :read_only_reasons, {:array, :string}, default: []
+    field :read_only_since, :utc_datetime
 
     belongs_to :user, User
 
@@ -40,6 +44,13 @@ defmodule Storyarn.Commercial.Billing.Subscription do
     |> validate_inclusion(:status, @statuses)
     |> check_constraint(:status, name: :subscriptions_status_must_be_known)
     |> unique_constraint(:user_id)
+  end
+
+  @doc false
+  def read_only_changeset(subscription, reasons, now) when is_list(reasons) do
+    since = if reasons == [], do: nil, else: subscription.read_only_since || now
+
+    change(subscription, read_only_reasons: reasons, read_only_since: since)
   end
 
   def update_changeset(subscription, attrs) do

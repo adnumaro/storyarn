@@ -7,18 +7,19 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.CreateWorkspace do
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Lifecycle.Events.WorkspaceCreated
   alias Storyarn.Workspaces.Lifecycle.Projections.UserRecord
+  alias Storyarn.Workspaces.Memberships
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
 
   @spec create(%{user: %{id: integer()}}, map()) ::
           {:ok, Workspace.t()}
-          | {:error, Ecto.Changeset.t()}
+          | {:error, Ecto.Changeset.t() | :read_only}
           | {:error, :limit_reached, map()}
   def create(%{user: user}, attrs), do: create_with_owner(user, attrs)
 
   @spec create_with_owner(%{id: integer()}, map()) ::
           {:ok, Workspace.t()}
-          | {:error, Ecto.Changeset.t()}
+          | {:error, Ecto.Changeset.t() | :read_only}
           | {:error, :limit_reached, map()}
   def create_with_owner(%{id: _} = user, attrs) do
     result =
@@ -26,7 +27,8 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.CreateWorkspace do
         locked_user =
           Repo.one!(from(candidate in UserRecord, where: candidate.id == ^user.id, lock: "FOR UPDATE"))
 
-        with :ok <- normalize_workspace_capacity(Commercial.can_create_workspace?(locked_user)),
+        with :ok <- Memberships.ensure_account_writable(locked_user.id),
+             :ok <- normalize_workspace_capacity(Commercial.can_create_workspace?(locked_user)),
              {:ok, workspace} <- insert_workspace(user, attrs),
              {:ok, _membership} <- create_owner_membership(workspace, user) do
           {:ok, workspace}

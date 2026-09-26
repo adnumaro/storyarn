@@ -118,6 +118,7 @@ const {
   storageUsage,
   snapshotLimit,
   restoreOperationActive = false,
+  readOnly = false,
   workspaceUsagePath = null,
   planPath = null,
 } = defineProps<{
@@ -129,6 +130,8 @@ const {
   storageUsage: WorkspaceStorageUsage | null;
   snapshotLimit: SnapshotLimit;
   restoreOperationActive?: boolean;
+  /** The workspace is read-only: backups can be downloaded and deleted, not created. */
+  readOnly?: boolean;
   /** Workspace › Usage, for the workspace's owner, admins and members. */
   workspaceUsagePath?: string | null;
   /** Plan & billing, for the workspace owner, whose plan sets the limits. */
@@ -257,7 +260,7 @@ function newIdempotencyKey() {
 }
 
 function createSnapshot() {
-  if (isSubmitting.value || snapshotLimitReached.value) return;
+  if (readOnly || isSubmitting.value || snapshotLimitReached.value) return;
 
   requestError.value = null;
   isSubmitting.value = true;
@@ -700,6 +703,8 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
     <SettingsSection
       :title="$t('project_settings.snapshots.create.section')"
       :hint="$t('project_settings.snapshots.create.section_hint')"
+      :locked="readOnly"
+      :locked-label="$t('project_settings.general.read_only_label')"
     >
       <form @submit.prevent="createSnapshot">
         <SettingsRow

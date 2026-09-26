@@ -23,6 +23,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias StoryarnWeb.Live.Shared.CollaborationHelpers
   alias StoryarnWeb.Live.Shared.IdeationReferenceData
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
   @idea_writes ~w(create_idea bring_idea_forward save_idea delete_idea restore_idea move_idea connect_ideas update_idea_connections prepare_reveal reveal_ideas)
@@ -641,7 +642,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
     # A result calculated before access was revoked must not repopulate props.
     case Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view) do
       {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
+        can_edit =
+          Projects.can?(membership.role, :edit_content) and not ReadOnlyNotice.read_only?(project.workspace_id)
+
         owner? = project.owner_id == socket.assigns.current_scope.user.id
 
         data = %{

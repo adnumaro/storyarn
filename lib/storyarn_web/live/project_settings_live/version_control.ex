@@ -9,6 +9,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.SaveStatusTimer
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   # ===========================================================================
   # Render
@@ -162,6 +163,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
       fn
         socket, :ownership_invariant_violation ->
           ownership_invariant_error(socket)
+
+        socket, :read_only ->
+          {:noreply, ReadOnlyNotice.put_flash(socket)}
 
         socket, _reason ->
           {:noreply,

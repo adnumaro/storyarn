@@ -13,6 +13,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   alias Storyarn.Projects
   alias StoryarnWeb.Live.Shared.PlanLimitFlash
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @max_pg_bigint 9_223_372_036_854_775_807
 
@@ -281,6 +282,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
        )
      )}
   end
+
+  defp handle_project_invitation_result({:error, :read_only}, socket), do: {:noreply, ReadOnlyNotice.put_flash(socket)}
 
   defp handle_project_invitation_result({:error, :unauthorized}, socket) do
     {:noreply,

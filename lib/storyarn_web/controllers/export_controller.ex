@@ -37,6 +37,9 @@ defmodule StoryarnWeb.ExportController do
       {:error, :unauthorized} ->
         conn |> put_status(:forbidden) |> text(gettext("You do not have permission to export this project"))
 
+      {:error, :read_only} ->
+        conn |> put_status(:forbidden) |> text(gettext("This workspace is read-only."))
+
       {:error, :not_found} ->
         conn |> put_status(:not_found) |> text(gettext("Not found"))
 

@@ -43,7 +43,19 @@ defmodule Storyarn.Projects do
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
   @type role :: String.t()
-  @type action :: :manage_project | :manage_members | :edit_content | :use_ai | :run_bulk_ai | :view
+  @type action ::
+          :manage_project
+          | :delete_project
+          | :manage_members
+          | :remove_members
+          | :read_snapshots
+          | :delete_snapshot
+          | :edit_content
+          | :delete_content
+          | :comment
+          | :use_ai
+          | :run_bulk_ai
+          | :view
 
   @doc false
   @spec import_error_deduplicator_child_spec() :: Supervisor.child_spec()
@@ -842,16 +854,27 @@ defmodule Storyarn.Projects do
 
   ## Actions
 
-  - `:manage_project` - update settings, delete project (owner only)
-  - `:manage_members` - invite/remove members, change roles (owner only)
-  - `:edit_content` - edit flows, entities (owner, editor)
+  - `:manage_project` - update settings, create and restore backups (owner only)
+  - `:delete_project` - delete the project (owner only)
+  - `:manage_members` - invite members, change roles (owner only)
+  - `:remove_members` - remove members, revoke pending invitations (owner only)
+  - `:read_snapshots` - list and download backups (owner only)
+  - `:delete_snapshot` - delete a backup (owner only)
+  - `:edit_content` - create and edit flows, sheets, scenes and assets (owner, editor)
+  - `:delete_content` - delete flows, sheets, scenes and assets (owner, editor)
+  - `:comment` - write and resolve comments (owner, editor)
   - `:use_ai` - run explicitly initiated single-item AI actions (owner, editor)
   - `:run_bulk_ai` - run bulk AI actions (canonical owner only)
   - `:view` - view project content (all roles)
+
+  While the workspace owner's account is over its plan's limits the workspace
+  is read-only: only `:view`, `:comment`, the delete and removal actions and
+  `:read_snapshots` are authorized, and every other action returns
+  `{:error, :read_only}`.
   """
   @spec authorize(scope(), integer(), action()) ::
           {:ok, project(), membership()}
-          | {:error, :not_found | :unauthorized | :ownership_invariant_violation}
+          | {:error, :not_found | :unauthorized | :read_only | :ownership_invariant_violation}
   defdelegate authorize(scope, project_id, action), to: Access
 
   @doc """
@@ -864,7 +887,12 @@ defmodule Storyarn.Projects do
   """
   @spec authorize_locked(scope(), integer(), action()) ::
           {:ok, project(), membership()}
-          | {:error, :not_found | :unauthorized | :ownership_invariant_violation | :authorization_transaction_required}
+          | {:error,
+             :not_found
+             | :unauthorized
+             | :read_only
+             | :ownership_invariant_violation
+             | :authorization_transaction_required}
   defdelegate authorize_locked(scope, project_id, action), to: Access
 
   @doc "Revalidates current access with an explicit shared or exclusive Project lock before consumer locks."

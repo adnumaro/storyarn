@@ -1269,7 +1269,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
     with %{id: actor_id} = actor <- restore.requested_by,
          true <- actor_id == restore.requested_by_id,
          {:ok, %Project{workspace_id: workspace_id, deleted_at: nil}, _membership} <-
-           Memberships.authorize(%{user: actor}, restore.project_id, :manage_project),
+           Memberships.authorize_admitted(%{user: actor}, restore.project_id, :manage_project),
          true <- workspace_id == restore.workspace_id do
       :ok
     else

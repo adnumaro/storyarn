@@ -30,6 +30,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
         active-filter={@trash_type}
         search-query={@trash_search}
         can-manage={@can_manage}
+        can-restore={@can_edit}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -101,14 +102,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     end)
   end
 
+  # Emptying the trash stays allowed while the workspace is read-only;
+  # restoring does not.
   def handle_event("delete_item", %{"type" => type, "id" => id} = params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :delete_content, fn socket ->
       do_delete_permanently(socket, type, id, params["generation"])
     end)
   end
 
   def handle_event("empty_trash", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :delete_content, fn socket ->
       do_empty_trash(socket)
     end)
   end

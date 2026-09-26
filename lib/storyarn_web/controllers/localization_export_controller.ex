@@ -2,6 +2,7 @@ defmodule StoryarnWeb.LocalizationExportController do
   use StoryarnWeb, :controller
 
   alias Storyarn.Localization
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   def export(conn, %{
         "workspace_slug" => workspace_slug,
@@ -11,42 +12,48 @@ defmodule StoryarnWeb.LocalizationExportController do
       }) do
     scope = conn.assigns.current_scope
 
-    case Localization.get_project_by_slugs(scope, workspace_slug, project_slug) do
-      {:ok, project, _membership} ->
-        opts = [locale_code: locale]
-        opts = maybe_add_filter(opts, :status, conn.params["status"])
-        opts = maybe_add_filter(opts, :source_type, conn.params["source_type"])
-        opts = maybe_add_filter(opts, :search, conn.params["search"])
+    # Exporting stops while the workspace is read-only, for every member.
+    with {:ok, project, _membership} <- Localization.get_project_by_slugs(scope, workspace_slug, project_slug),
+         false <- ReadOnlyNotice.read_only?(project.workspace_id) do
+      opts = [locale_code: locale]
+      opts = maybe_add_filter(opts, :status, conn.params["status"])
+      opts = maybe_add_filter(opts, :source_type, conn.params["source_type"])
+      opts = maybe_add_filter(opts, :search, conn.params["search"])
 
-        case format do
-          "xlsx" ->
-            {:ok, binary} = Localization.export_xlsx(project.id, opts)
-            filename = sanitize_filename("#{project.slug}_translations_#{locale}") <> ".xlsx"
+      case format do
+        "xlsx" ->
+          {:ok, binary} = Localization.export_xlsx(project.id, opts)
+          filename = sanitize_filename("#{project.slug}_translations_#{locale}") <> ".xlsx"
 
-            conn
-            |> put_resp_content_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
-            |> send_resp(200, binary)
+          conn
+          |> put_resp_content_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+          |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+          |> send_resp(200, binary)
 
-          "csv" ->
-            {:ok, csv} = Localization.export_csv(project.id, opts)
-            filename = sanitize_filename("#{project.slug}_translations_#{locale}") <> ".csv"
+        "csv" ->
+          {:ok, csv} = Localization.export_csv(project.id, opts)
+          filename = sanitize_filename("#{project.slug}_translations_#{locale}") <> ".csv"
 
-            conn
-            |> put_resp_content_type("text/csv")
-            |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
-            |> send_resp(200, csv)
+          conn
+          |> put_resp_content_type("text/csv")
+          |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+          |> send_resp(200, csv)
 
-          _ ->
-            conn
-            |> put_status(:bad_request)
-            |> json(%{error: "Unsupported format. Use 'xlsx' or 'csv'."})
-        end
-
+        _ ->
+          conn
+          |> put_status(:bad_request)
+          |> json(%{error: "Unsupported format. Use 'xlsx' or 'csv'."})
+      end
+    else
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
         |> json(%{error: "Project not found"})
+
+      true ->
+        conn
+        |> put_status(:forbidden)
+        |> json(%{error: "read_only"})
     end
   end
 

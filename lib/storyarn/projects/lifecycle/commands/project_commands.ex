@@ -121,6 +121,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
       Repo.transact(fn ->
         with %Workspace{} = workspace <- lock_workspace_for_project_creation(workspace_id),
              {:ok, _membership} <- authorize_project_creation_locked(workspace, user),
+             :ok <- Memberships.ensure_workspace_writable(workspace.id),
              :ok <- normalize_capacity_result(Commercial.can_create_project?(workspace)),
              {:ok, project} <- insert_project(user, attrs),
              {:ok, _membership} <- create_owner_membership(project, user) do
@@ -224,7 +225,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
   defp delete_authorized_project_locked(scope, project_id, workspace_id, fun) do
     with %Project{} = locked_project <- lock_active_project(project_id, workspace_id),
          {:ok, %Project{id: ^project_id}, _membership} <-
-           Memberships.authorize_locked(scope, project_id, :manage_project, :update) do
+           Memberships.authorize_locked(scope, project_id, :delete_project, :update) do
       fun.(locked_project)
     else
       nil -> {:error, :not_found}

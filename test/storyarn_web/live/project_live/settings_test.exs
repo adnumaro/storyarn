@@ -1060,6 +1060,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert vue.props |> Map.keys() |> Enum.sort() == [
                "plan-path",
+               "read-only",
                "restore-operation-active",
                "snapshot-limit",
                "snapshots",
@@ -1067,6 +1068,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "workspace-usage-path"
              ]
 
+      assert vue.props["read-only"] == false
       assert vue.props["restore-operation-active"] == false
       assert vue.props["snapshot-limit"] == %{"used" => 1, "limit" => 2}
 

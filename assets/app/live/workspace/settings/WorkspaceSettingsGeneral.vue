@@ -23,6 +23,7 @@ const {
   languageOptions = [],
   isOwner,
   canEditWorkspace,
+  readOnly = false,
   saveStatus = "idle",
 } = defineProps<{
   workspaceName?: string;
@@ -32,6 +33,8 @@ const {
   languageOptions?: LanguagePickerOption[];
   isOwner: boolean;
   canEditWorkspace: boolean;
+  /** The owner's account is over its plan's limits: settings stay locked, the workspace can still be deleted. */
+  readOnly?: boolean;
   saveStatus?: "idle" | "saving" | "saved";
 }>();
 
@@ -165,7 +168,11 @@ watch(
       <SettingsSection
         :title="t('settings.workspace.general.details')"
         :locked="!canEditWorkspace"
-        :locked-label="t('settings.workspace.general.owner_only')"
+        :locked-label="
+          readOnly && isOwner
+            ? t('settings.workspace.general.read_only')
+            : t('settings.workspace.general.owner_only')
+        "
       >
         <SettingsRow
           :label="t('settings.workspace.general.fields.name')"

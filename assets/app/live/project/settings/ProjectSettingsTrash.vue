@@ -39,6 +39,7 @@ const {
   activeFilter = "all",
   searchQuery = "",
   canManage = false,
+  canRestore = false,
 } = defineProps<{
   trashedItems?: TrashedItem[];
   pagination?: TrashPagination;
@@ -46,6 +47,8 @@ const {
   activeFilter?: TrashFilter;
   searchQuery?: string;
   canManage?: boolean;
+  /** False while the workspace is read-only: items can still be deleted, not restored. */
+  canRestore?: boolean;
 }>();
 
 const live = useLive();
@@ -376,6 +379,7 @@ watch(
 
         <div v-if="canManage" class="flex items-center justify-end gap-1">
           <Button
+            v-if="canRestore"
             variant="ghost"
             size="sm"
             :data-testid="`restore-${item.type}-${item.id}`"

@@ -29,7 +29,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
     normalized_email = Email.normalize(email)
 
     scope
-    |> Memberships.transact_manage_members(workspace_id, fn %{workspace: workspace} ->
+    |> Memberships.transact_manage_members(workspace_id, :manage_members, fn %{workspace: workspace} ->
       with :ok <- check_invitation_rate_limit(workspace.id, actor.id) do
         persist_locked_invitation(workspace, actor, normalized_email, role, actor.id, [])
       end

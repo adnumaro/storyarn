@@ -5,12 +5,25 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Storyarn.Platform.Kernel.IntegerParser
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
-  def with_edit(socket, error_message, fun) do
-    if socket.assigns.can_edit do
-      fun.(socket)
-    else
-      {:noreply, put_flash(socket, :error, error_message)}
+  # What the page that mounted the sidebar lets the actor do, for the tree's
+  # controls. Editing and deleting differ while the workspace is read-only.
+  def assign_permissions(socket, session) do
+    socket
+    |> assign(:can_edit, session["can_edit"] || false)
+    |> assign(:can_delete, session["can_delete"] || false)
+  end
+
+  # The sidebar outlives the page, so every tree mutation re-reads the actor's
+  # membership and the workspace's read-only state instead of trusting the
+  # permissions it mounted with.
+  def with_permission(socket, action, error_message, fun) do
+    case Authorize.authorize(socket, action) do
+      :ok -> fun.(socket)
+      {:error, :read_only} -> {:noreply, ReadOnlyNotice.forward(socket)}
+      {:error, :unauthorized} -> {:noreply, put_flash(socket, :error, error_message)}
     end
   end
 

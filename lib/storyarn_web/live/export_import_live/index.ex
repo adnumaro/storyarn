@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @all_sections ~w(sheets flows scenes localization)a
   @archive_export_formats ~w(ink yarn godot unreal articy)a
@@ -224,7 +225,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       |> assign(:project, project)
       |> assign(:workspace, project.workspace)
       |> assign(:membership, membership)
-      |> assign(:can_edit, Projects.can?(membership.role, :edit_content))
+      |> assign(:can_edit, can_export?(project, membership))
       |> assign(:current_path, "")
       # Export state
       |> assign(:formats, formats)
@@ -523,7 +524,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
-          |> assign(:can_edit, Projects.can?(membership.role, :edit_content))
+          |> assign(:can_edit, can_export?(project, membership))
           |> assign(:can_import, can_import?)
 
         socket =
@@ -679,6 +680,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     )
   end
 
+  defp put_import_authorization_flash(socket, :read_only), do: ReadOnlyNotice.put_flash(socket)
+
   defp put_import_authorization_flash(socket, _reason) do
     put_flash(
       socket,
@@ -688,7 +691,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp import_authorization_reason(:ownership_invariant_violation), do: "ownership_invariant_violation"
+  defp import_authorization_reason(:read_only), do: "read_only"
   defp import_authorization_reason(_reason), do: "unauthorized"
+
+  # Exporting stays with editors, and stops while the workspace is read-only.
+  defp can_export?(project, membership) do
+    Projects.can?(membership.role, :edit_content) and not ReadOnlyNotice.read_only?(project.workspace_id)
+  end
 
   defp execute_import_event(socket, attempt_id, fingerprint, import_mode, replace_acknowledged?) do
     with_import_reply_authorization(socket, fn socket ->

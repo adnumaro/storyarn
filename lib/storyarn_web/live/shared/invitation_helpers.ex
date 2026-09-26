@@ -3,6 +3,8 @@ defmodule StoryarnWeb.Live.Shared.InvitationHelpers do
   Shared response handling for public invitation acceptance flows.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
@@ -17,6 +19,18 @@ defmodule StoryarnWeb.Live.Shared.InvitationHelpers do
     {:ok,
      socket
      |> LiveView.put_flash(:error, limit_message)
+     |> LiveView.redirect(to: redirect_path)}
+  end
+
+  def handle_acceptance_error(socket, {:error, :read_only}, _limit_message, redirect_path) do
+    {:ok,
+     socket
+     |> LiveView.put_flash(
+       :error,
+       gettext(
+         "This workspace is read-only, so its invitations cannot be accepted right now. Ask its owner, then try this invitation again."
+       )
+     )
      |> LiveView.redirect(to: redirect_path)}
   end
 

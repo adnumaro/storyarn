@@ -12,13 +12,13 @@ const asset = {
   insertedAt: "2026-08-10T10:00:00Z",
 };
 
-function mountDashboard(canEdit = true, props: Record<string, unknown> = {}) {
+function mountDashboard(canDelete = true, props: Record<string, unknown> = {}) {
   const live = createMockLive();
   const wrapper = mount(AssetsDashboard, {
     props: {
       assets: [asset],
       selectedAsset: asset,
-      canEdit,
+      canDelete,
       workspaceSlug: "writers-room",
       projectSlug: "veilbreak",
       ...props,

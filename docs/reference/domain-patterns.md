@@ -345,8 +345,18 @@ end
 
 **Match the existing pattern in the file** — some files use `with_authorization`, others use a private `with_auth` wrapper.
 
-Actions: `:edit_content`, `:use_ai`, `:manage_project`, `:manage_members`,
-`:manage_workspace`, `:manage_workspace_members`.
+Actions: `:edit_content`, `:delete_content`, `:comment`, `:use_ai`,
+`:manage_project`, `:delete_project`, `:delete_snapshot`, `:manage_members`,
+`:manage_workspace`, `:delete_workspace`, `:manage_workspace_members`.
+
+While the workspace owner's account is over its plan's limits the workspace
+is read-only: only reading, commenting and the delete actions are authorized.
+`with_authorization/3` tells the actor why through
+`StoryarnWeb.Live.Shared.ReadOnlyNotice` (the owner gets the reasons and the
+Plan & billing link, everyone else whom to ask). A delete must name its delete
+action, not `:edit_content`, or it is refused while read-only. `ProjectScope`
+assigns `:read_only`, and `:can_edit` is false while it lasts, so every tool
+renders as it does for a viewer; `:can_delete` stays with the role.
 
 Roles: project = `owner | editor | viewer`; workspace = `owner | admin | member | viewer`.
 

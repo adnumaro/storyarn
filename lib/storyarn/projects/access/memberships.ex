@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.Memberships do
 
   alias Storyarn.Commercial
   alias Storyarn.Projects.Access.Rules.OwnershipInvariant
+  alias Storyarn.Projects.Access.Rules.ReadOnlyActions
   alias Storyarn.Projects.Comments
   alias Storyarn.Projects.MembershipOperations
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
@@ -30,7 +31,15 @@ defmodule Storyarn.Projects.Memberships do
     "viewer" => "viewer"
   }
 
-  @canonical_owner_actions [:manage_project, :manage_members, :run_bulk_ai]
+  @canonical_owner_actions [
+    :manage_project,
+    :manage_members,
+    :run_bulk_ai,
+    :delete_project,
+    :remove_members,
+    :read_snapshots,
+    :delete_snapshot
+  ]
 
   def list_project_members(project_id), do: MembershipOperations.list_members(@config, project_id)
 
@@ -142,7 +151,7 @@ defmodule Storyarn.Projects.Memberships do
   def remove_member(scope, project_id, membership_id) when valid_id(project_id) and valid_id(membership_id) do
     Repo.transact(fn ->
       with {:ok, _project, _actor_membership} <-
-             authorize_locked(scope, project_id, :manage_members, :update),
+             authorize_locked(scope, project_id, :remove_members, :update),
            %ProjectMembership{} = membership <- lock_membership(project_id, membership_id) do
         MembershipOperations.remove_member(membership)
       else
@@ -154,11 +163,50 @@ defmodule Storyarn.Projects.Memberships do
 
   def remove_member(_scope, _project_id, _membership_id), do: {:error, :not_found}
 
-  def authorize(%{user: %{id: user_id}}, project_id, action) when valid_id(project_id) and valid_id(user_id) do
+  def authorize(scope, project_id, action), do: authorize_project(scope, project_id, action, :read_only_refused)
+
+  @doc """
+  Reauthorizes work a background job admitted before the workspace turned
+  read-only: the same checks as `authorize/3` without the read-only refusal,
+  so work that is already running finishes.
+  """
+  def authorize_admitted(scope, project_id, action),
+    do: authorize_project(scope, project_id, action, :read_only_allowed)
+
+  @doc false
+  @spec authorize_locked(map(), pos_integer(), atom()) ::
+          {:ok, Project.t(), ProjectMembership.t()}
+          | {:error,
+             :not_found
+             | :unauthorized
+             | :read_only
+             | :ownership_invariant_violation
+             | :authorization_transaction_required}
+  def authorize_locked(scope, project_id, action), do: authorize_locked(scope, project_id, action, :share)
+
+  @doc false
+  @spec authorize_locked(map(), pos_integer(), atom(), :share | :update) ::
+          {:ok, Project.t(), ProjectMembership.t()}
+          | {:error,
+             :not_found
+             | :unauthorized
+             | :read_only
+             | :ownership_invariant_violation
+             | :authorization_transaction_required}
+  def authorize_locked(scope, project_id, action, lock_mode),
+    do: authorize_project_locked(scope, project_id, action, lock_mode, :read_only_refused)
+
+  @doc "Same as `authorize_admitted/3`, under the locks of `authorize_locked/4`."
+  def authorize_admitted_locked(scope, project_id, action, lock_mode),
+    do: authorize_project_locked(scope, project_id, action, lock_mode, :read_only_allowed)
+
+  defp authorize_project(%{user: %{id: user_id}}, project_id, action, read_only)
+       when valid_id(project_id) and valid_id(user_id) do
     with %Project{} = project <-
            Repo.one(from(project in Project, where: project.id == ^project_id and is_nil(project.deleted_at))),
          {:ok, %ProjectMembership{} = membership} <-
-           authorize_membership(project, user_id, action) do
+           authorize_membership(project, user_id, action),
+         :ok <- ensure_action_writable(project, action, read_only) do
       {:ok, project, membership}
     else
       nil -> {:error, :not_found}
@@ -166,24 +214,15 @@ defmodule Storyarn.Projects.Memberships do
     end
   end
 
-  def authorize(_scope, _project_id, _action), do: {:error, :unauthorized}
+  defp authorize_project(_scope, _project_id, _action, _read_only), do: {:error, :unauthorized}
 
-  @doc false
-  @spec authorize_locked(map(), pos_integer(), atom()) ::
-          {:ok, Project.t(), ProjectMembership.t()}
-          | {:error, :not_found | :unauthorized | :ownership_invariant_violation | :authorization_transaction_required}
-  def authorize_locked(scope, project_id, action), do: authorize_locked(scope, project_id, action, :share)
-
-  @doc false
-  @spec authorize_locked(map(), pos_integer(), atom(), :share | :update) ::
-          {:ok, Project.t(), ProjectMembership.t()}
-          | {:error, :not_found | :unauthorized | :ownership_invariant_violation | :authorization_transaction_required}
-  def authorize_locked(%{user: %{id: user_id}}, project_id, action, lock_mode)
-      when valid_id(project_id) and valid_id(user_id) and lock_mode in [:share, :update] do
+  defp authorize_project_locked(%{user: %{id: user_id}}, project_id, action, lock_mode, read_only)
+       when valid_id(project_id) and valid_id(user_id) and lock_mode in [:share, :update] do
     if Repo.in_transaction?() do
       with %Project{} = project <- lock_project(project_id, lock_mode),
            {:ok, %ProjectMembership{} = membership} <-
-             authorize_membership_locked(project, user_id, action, lock_mode) do
+             authorize_membership_locked(project, user_id, action, lock_mode),
+           :ok <- ensure_action_writable(project, action, read_only) do
         {:ok, project, membership}
       else
         nil -> {:error, :not_found}
@@ -194,7 +233,29 @@ defmodule Storyarn.Projects.Memberships do
     end
   end
 
-  def authorize_locked(_scope, _project_id, _action, _lock_mode), do: {:error, :unauthorized}
+  defp authorize_project_locked(_scope, _project_id, _action, _lock_mode, _read_only), do: {:error, :unauthorized}
+
+  @doc """
+  Refuses to change a project whose workspace is read-only: its owner's
+  account is over its plan's limits.
+  """
+  @spec ensure_writable(Project.t()) :: :ok | {:error, :read_only}
+  def ensure_writable(%Project{workspace_id: workspace_id}), do: ensure_workspace_writable(workspace_id)
+
+  @doc "Same as `ensure_writable/1`, for a workspace."
+  @spec ensure_workspace_writable(pos_integer()) :: :ok | {:error, :read_only}
+  def ensure_workspace_writable(workspace_id) do
+    case Commercial.workspace_read_only_reasons(workspace_id) do
+      [] -> :ok
+      _reasons -> {:error, :read_only}
+    end
+  end
+
+  defp ensure_action_writable(_project, _action, :read_only_allowed), do: :ok
+
+  defp ensure_action_writable(project, action, :read_only_refused) do
+    if ReadOnlyActions.allowed?(action), do: :ok, else: ensure_writable(project)
+  end
 
   def check_editor_candidate_locked(scope, project_id, candidate_user_id) when valid_id(candidate_user_id) do
     with {:ok, project, _actor_membership} <- authorize_locked(scope, project_id, :edit_content) do

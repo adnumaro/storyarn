@@ -85,8 +85,16 @@ defmodule Storyarn.Commercial do
   defdelegate can_upload_asset_for_project?(project, file_size), to: Billing
   defdelegate project_usage(project_id, workspace_id), to: Billing
   defdelegate project_limits_usage(project), to: Billing
-  defdelegate plans_for_workspace_ids(workspace_ids), to: Billing
-  defdelegate plan_retention_hours(plan_key), to: Billing
+
+  @doc """
+  Returns how many hours each deleted item stays in the trash, for a list of
+  `{workspace_id, deleted_at}` deletions, in the same order.
+
+  An item keeps the retention its workspace owner's plan granted when it was
+  deleted: a downgrade never shortens it, an upgrade lengthens it.
+  """
+  @spec trash_retention_hours([{pos_integer(), DateTime.t()}]) :: [pos_integer()]
+  defdelegate trash_retention_hours(deletions), to: Billing
 
   @doc "Creates an account's default subscription without exposing Commercial persistence structs."
   @spec create_account_subscription(map()) ::
@@ -132,6 +140,18 @@ defmodule Storyarn.Commercial do
   """
   @spec account_usage(pos_integer()) :: map()
   defdelegate account_usage(user_id), to: Billing
+
+  @doc """
+  Returns why a workspace is read-only: the size limits its owner's account
+  exceeds, as strings, or an empty list when it is writable. A locked account
+  is re-evaluated first, so it unlocks as soon as it is back within limits.
+  """
+  @spec workspace_read_only_reasons(pos_integer()) :: [String.t()]
+  defdelegate workspace_read_only_reasons(workspace_id), to: Billing
+
+  @doc "Returns why an account is read-only, or an empty list. Same rules as `workspace_read_only_reasons/1`."
+  @spec account_read_only_reasons(pos_integer()) :: [String.t()]
+  defdelegate account_read_only_reasons(user_id), to: Billing
 
   @doc "Returns stored snapshots plus active build reservations for one Project."
   @spec project_snapshot_slot_usage(pos_integer()) :: non_neg_integer()

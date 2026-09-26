@@ -25,6 +25,9 @@ defmodule StoryarnWeb.UploadController do
       {:error, :unauthorized} ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 
+      {:error, :read_only} ->
+        conn |> put_status(:forbidden) |> json(%{error: "read_only"})
+
       {:error, :limit_reached, _} ->
         conn |> put_status(:payment_required) |> json(%{error: "storage_limit_reached"})
 
@@ -47,6 +50,9 @@ defmodule StoryarnWeb.UploadController do
 
       {:error, :unauthorized} ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
+
+      {:error, :read_only} ->
+        conn |> put_status(:forbidden) |> json(%{error: "read_only"})
 
       {:error, :limit_reached, _} ->
         conn |> put_status(:payment_required) |> json(%{error: "storage_limit_reached"})
@@ -77,6 +83,9 @@ defmodule StoryarnWeb.UploadController do
 
       {:error, :unauthorized} ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
+
+      {:error, :read_only} ->
+        conn |> put_status(:forbidden) |> json(%{error: "read_only"})
 
       {:error, :limit_reached, _} ->
         conn |> put_status(:payment_required) |> json(%{error: "storage_limit_reached"})

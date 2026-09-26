@@ -20,7 +20,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.RemoveMember do
              | :ownership_invariant_violation
              | :unauthorized}
   def remove(scope, workspace_id, membership_id) when valid_id(workspace_id) and valid_id(membership_id) do
-    OwnerAuthority.transact_as_owner(scope, workspace_id, fn state ->
+    OwnerAuthority.transact_as_owner(scope, workspace_id, :remove_members, fn state ->
       with %WorkspaceMembership{} = locked_membership <- find_membership(state.memberships, membership_id),
            :ok <- OwnerProtection.allow_removal(locked_membership) do
         Repo.delete(locked_membership)

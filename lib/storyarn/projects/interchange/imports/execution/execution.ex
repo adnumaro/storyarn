@@ -159,7 +159,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   end
 
   defp authorize_worker(%{user: %{id: user_id}} = attempt) when is_integer(user_id) do
-    Memberships.authorize(%{user: attempt.user}, attempt.project_id, @import_action)
+    Memberships.authorize_admitted(%{user: attempt.user}, attempt.project_id, @import_action)
   end
 
   # A deleted requester is not an ordinary authorization denial: the import
@@ -370,7 +370,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   # project and avoids acquiring notification FK parent locks after the attempt
   # row is held.
   defp authorize_worker_locked(attempt, user_id) do
-    case Memberships.authorize_locked(
+    case Memberships.authorize_admitted_locked(
            %{user: %{id: user_id}},
            attempt.project_id,
            @import_action,

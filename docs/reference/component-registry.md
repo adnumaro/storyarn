@@ -134,7 +134,8 @@ the call site, not by editing the primitive.
 
 `assets/app/shell/` holds app chrome, not reusable widgets: `Sidebar.vue`,
 `SidebarFrame.vue`, `MainSidebar.vue`, `WorkspaceSidebar.vue`, `DashboardContent.vue`,
-`PageContainer.vue`, `ProjectNavbarContext.vue`, `ProjectNavbarAccount.vue`.
+`PageContainer.vue`, `ProjectNavbarContext.vue`, `ProjectNavbarAccount.vue`,
+`ReadOnlyBanner.vue` (the project and workspace layouts' read-only notice).
 
 **Utility screens.** Every non-canvas app screen (project, Sheets, Flows, Scenes and
 Brainstorming dashboards, a sheet, assets, localization, the workspace dashboard,
@@ -196,6 +197,7 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 | `SudoReauth`        | `alias StoryarnWeb.Live.Shared.SudoReauth`        | In-place re-authentication for settings pages: `assign_reauth/2`, `reauth_props/3`, `confirm/2`, `with_sudo/2` (locks the page instead of navigating) |
 | `PlanLimitFlash`    | `alias StoryarnWeb.Live.Shared.PlanLimitFlash`    | Plan-limit toasts: `put/3` sets the `:limit` flash, which links to Plan & billing for the workspace owner only; sticky sidebars call `forward/2`      |
 | `UsageAccess`       | `alias StoryarnWeb.Live.Shared.UsageAccess`       | Who sees usage figures: workspace totals for its owner, admins and members; the Plan & billing link for the workspace owner                           |
+| `ReadOnlyNotice`    | `alias StoryarnWeb.Live.Shared.ReadOnlyNotice`    | A read-only workspace: `read_only?/1`, the shells' banners, `put_flash/1` after a refused action (reasons and plan link for the owner only)           |
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
 `InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`)

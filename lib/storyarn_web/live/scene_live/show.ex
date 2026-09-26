@@ -91,6 +91,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           "project_slug" => @project.slug,
           "scene_id" => @scene && to_string(@scene.id),
           "can_edit" => @can_edit,
+          "can_delete" => @can_delete,
           "active_tool" => "scenes",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes",
           "current_scope" => @current_scope,

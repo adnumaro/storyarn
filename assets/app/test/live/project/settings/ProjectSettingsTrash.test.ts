@@ -17,7 +17,7 @@ const trashedAsset = {
   purge_at: "2026-08-11T10:00:00Z",
 };
 
-function mountTrash(canManage = true) {
+function mountTrash(canManage = true, canRestore = canManage) {
   const live = createMockLive();
   const wrapper = mount(ProjectSettingsTrash, {
     props: {
@@ -25,6 +25,7 @@ function mountTrash(canManage = true) {
       pagination: { page: 1, pageSize: 25, totalCount: 1, totalPages: 1 },
       typeCounts: { sheet: 0, flow: 0, scene: 0, asset: 1 },
       canManage,
+      canRestore,
     },
     global: {
       provide: { _live_vue: live },
@@ -79,6 +80,14 @@ describe("ProjectSettingsTrash assets", () => {
       { type: "asset", id: 42, generation: 3 },
       undefined,
     );
+  });
+
+  it("deletes but never restores while the workspace is read-only", () => {
+    const { wrapper } = mountTrash(true, false);
+
+    expect(wrapper.find('[data-testid="restore-asset-42"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="delete-asset-42"]').exists()).toBe(true);
+    expect(wrapper.findAll("button").some((button) => button.text() === "Empty trash")).toBe(true);
   });
 
   it("distinguishes snapshot-restore trash from user deletion", () => {

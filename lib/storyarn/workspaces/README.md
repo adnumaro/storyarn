@@ -85,6 +85,18 @@ Workspace serialization lock, so a caller that authorized earlier is checked
 again against current facts. Missing or ambiguous owner facts fail closed with
 `:ownership_invariant_violation`.
 
+## Read-only workspaces
+
+While the owner's account is over its plan's limits (see the Commercial
+README), `Memberships.Queries.ReadOnly` refuses changes with
+`{:error, :read_only}`. `authorize/3` applies the allow-list in
+`Memberships.Rules.ReadOnlyActions`; the owner and manage-members authorities
+take the action they run and apply the same list. Reading the workspace,
+deleting it, removing members and revoking pending invitations stay allowed.
+Updating settings or the banner, changing roles, inviting, accepting an
+invitation and creating projects are refused; creating a workspace is refused
+while the account itself is over its limits.
+
 These guarantees currently live at the application/transaction boundary. A
 database-level constraint tying `owner_id` to the unique owner membership is a
 separate reviewed persistence decision and is deliberately not bundled with

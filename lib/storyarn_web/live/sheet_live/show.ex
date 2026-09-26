@@ -69,6 +69,7 @@ defmodule StoryarnWeb.SheetLive.Show do
           "project_slug" => @project.slug,
           "sheet_id" => @sheet && to_string(@sheet.id),
           "can_edit" => @can_edit,
+          "can_delete" => @can_delete,
           "active_tool" => "sheets",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
           "current_scope" => @current_scope,

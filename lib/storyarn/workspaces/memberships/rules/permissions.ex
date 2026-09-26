@@ -13,6 +13,7 @@ defmodule Storyarn.Workspaces.Memberships.Rules.Permissions do
   def allowed?("admin", :access_workspace_general_settings), do: true
   def allowed?("admin", :access_workspace_settings), do: true
   def allowed?("admin", :manage_members), do: true
+  def allowed?("admin", :remove_members), do: true
   def allowed?("admin", :create_project), do: true
   def allowed?("admin", :use_ai), do: true
   def allowed?("admin", :view), do: true

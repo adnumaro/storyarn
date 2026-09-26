@@ -10,6 +10,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
   use StoryarnWeb, :html
 
   alias StoryarnWeb.Live.Shared.OnboardingHelpers
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   attr :flash, :map, required: true
   attr :current_scope, :map, default: nil
@@ -45,6 +46,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
             @onboarding_autostart
           )
         }
+        read-only={ReadOnlyNotice.workspace_banner(@current_scope, @current_workspace)}
       />
 
       {render_slot(@inner_block)}

@@ -121,6 +121,26 @@ not a convenience fallback for individual callers. Changing to per-Project
 opt-in access is a separate authorization redesign and must not be achieved by
 bypassing effective membership in one code path.
 
+## Read-only workspaces
+
+While the workspace owner's account is over its plan's limits (see the
+Commercial README), `Storyarn.Projects.Memberships` refuses every action
+except those in `Access.Rules.ReadOnlyActions` with `{:error, :read_only}`,
+after the membership check, so viewers see no change. What stays allowed is
+reading, commenting and everything that brings the account back within its
+limits: `:delete_content`, `:delete_project`, `:remove_members` (members and
+pending invitations), `:read_snapshots` and `:delete_snapshot`. Deletes that
+used to share `:edit_content` or `:manage_project` now name these actions.
+
+Commands with their own authorization check it themselves through
+`Memberships.ensure_writable/1`: project creation, ownership transfer and
+invitation acceptance. Background jobs that re-authorize work admitted before
+the lock (imports, snapshot restores, template installation) use
+`authorize_admitted/3` and `authorize_admitted_locked/4`, which keep every
+membership check and skip only the read-only refusal, so running work
+finishes. Trash retention keeps the plan an item was deleted under; see
+`Commercial.trash_retention_hours/1`.
+
 ## Ownership invariant and transfer
 
 A Project has one canonical owner represented by `projects.owner_id` and

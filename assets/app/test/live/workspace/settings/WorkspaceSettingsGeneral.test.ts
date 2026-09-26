@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LanguagePicker from "../../../../components/language/LanguagePicker.vue";
+import SettingsSection from "../../../../components/settings/SettingsSection.vue";
 import { Dialog } from "../../../../components/ui/dialog";
 import WorkspaceSettingsGeneral from "../../../../live/workspace/settings/WorkspaceSettingsGeneral.vue";
 import { createMockLive } from "../../../setup";
@@ -40,6 +41,18 @@ function mountGeneral(props: Record<string, unknown> = {}, live = createMockLive
     },
   });
 }
+
+describe("WorkspaceSettingsGeneral in a read-only workspace", () => {
+  it("tells the owner why the settings are locked", () => {
+    const wrapper = mountGeneral({ canEditWorkspace: false, readOnly: true });
+    const details = wrapper.findAllComponents(SettingsSection)[0];
+
+    expect(details.props("locked")).toBe(true);
+    expect(details.props("lockedLabel")).toBe(
+      "Read-only while your account is over its plan's limits",
+    );
+  });
+});
 
 describe("WorkspaceSettingsGeneral details", () => {
   it("saves the language selected through the shared picker", async () => {

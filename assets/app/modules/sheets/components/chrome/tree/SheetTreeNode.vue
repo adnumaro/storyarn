@@ -16,6 +16,7 @@ const {
   siblings,
   selectedSheetId = null,
   canEdit = false,
+  canDelete = false,
   depth = 0,
   searchActive = false,
   sheetHref,
@@ -25,6 +26,7 @@ const {
   siblings: SheetTreeNodeData[];
   selectedSheetId?: string | number | null;
   canEdit?: boolean;
+  canDelete?: boolean;
   depth?: number;
   searchActive?: boolean;
   sheetHref: (node: SheetTreeNodeData) => string;
@@ -194,10 +196,11 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
 
           <!-- Hover actions -->
           <div
-            v-if="canEdit"
+            v-if="canEdit || canDelete"
             class="shrink-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <button
+              v-if="canEdit"
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
               :title="$t('sheets.tree.add_child')"
@@ -206,6 +209,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
               <FilePlus class="size-3" />
             </button>
             <button
+              v-if="canDelete"
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
               :title="$t('sheets.tree.move_to_trash')"
@@ -217,12 +221,17 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
         </div>
       </ContextMenuTrigger>
 
-      <ContextMenuContent v-if="canEdit" class="">
-        <ContextMenuItem class="gap-2 text-xs" @select="emit('createChild', node.id)">
+      <ContextMenuContent v-if="canEdit || canDelete" class="">
+        <ContextMenuItem
+          v-if="canEdit"
+          class="gap-2 text-xs"
+          @select="emit('createChild', node.id)"
+        >
           <FilePlus class="size-3.5" />
           {{ $t("sheets.tree.add_child") }}
         </ContextMenuItem>
         <ContextMenuItem
+          v-if="canDelete"
           class="gap-2 text-xs text-destructive"
           @select="emit('requestDelete', node)"
         >
@@ -254,6 +263,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
         :siblings="node.children!"
         :selected-sheet-id="selectedSheetId"
         :can-edit="canEdit"
+        :can-delete="canDelete"
         :depth="depth + 1"
         :search-active="searchActive"
         :sheet-href="sheetHref"

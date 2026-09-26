@@ -72,6 +72,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           "project_slug" => @project.slug,
           "flow_id" => @flow && to_string(@flow.id),
           "can_edit" => @can_edit,
+          "can_delete" => @can_delete,
           "membership" => @membership,
           "active_tool" => "flows",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",

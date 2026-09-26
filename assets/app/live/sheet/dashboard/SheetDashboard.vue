@@ -47,7 +47,7 @@ const {
   issuePagination,
   issueFilters = { severity: "all", code: "all", resource: "all" },
   issueFilterOptions = emptyDashboardIssueFilterOptions(),
-  canEdit = false,
+  canDelete = false,
 } = defineProps<{
   stats?: DashboardStats | null;
   tableData?: DashboardRow[];
@@ -58,7 +58,7 @@ const {
   issuePagination?: DashboardIssuePagination;
   issueFilters?: DashboardIssueFilterValues;
   issueFilterOptions?: DashboardIssueFilterOptions;
-  canEdit?: boolean;
+  canDelete?: boolean;
 }>();
 
 const live = useLive();
@@ -235,7 +235,7 @@ const columns = computed<DashboardTableColumn[]>(() => [
         :total-label="$t('sheets.dashboard.total_sheets', pagination.total)"
         :previous-label="$t('common.dashboard.previous_page')"
         :next-label="$t('common.dashboard.next_page')"
-        :has-actions="canEdit"
+        :has-actions="canDelete"
         @sort="sortBy"
         @page="goToPage"
       >

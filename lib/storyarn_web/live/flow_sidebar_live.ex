@@ -14,8 +14,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
   alias Storyarn.Flows
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Kernel.IntegerParser
-  alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.PlanLimitFlash
+  alias StoryarnWeb.Live.TreeSidebarActions
 
   @impl true
   def mount(_params, session, socket) do
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
       |> assign(:workspace_slug, session["workspace_slug"])
       |> assign(:project_slug, session["project_slug"])
       |> assign(:flow_id, session["flow_id"])
-      |> assign(:can_edit, session["can_edit"] || false)
+      |> TreeSidebarActions.assign_permissions(session)
       |> assign(:active_tool, session["active_tool"] || "flows")
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:dashboard_mode, dashboard_mode)
@@ -68,6 +68,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
             flowsTree: @flows_tree,
             selectedFlowId: @flow_id,
             canEdit: @can_edit,
+            canDelete: @can_delete,
             workspaceSlug: @workspace_slug,
             projectSlug: @project_slug
           }
@@ -80,7 +81,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   # ── Tree mutations ────────────────────────────────────────────────────────
   @impl true
   def handle_event("create_flow", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    with_edit(socket, fn socket ->
       case Flows.create_flow(
              socket.assigns.current_scope,
              socket.assigns.project_id,
@@ -99,7 +100,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   end
 
   def handle_event("create_child_flow", %{"parent_id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    with_edit(socket, fn socket ->
       attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
 
       case Flows.create_flow(socket.assigns.current_scope, socket.assigns.project_id, attrs) do
@@ -116,7 +117,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   end
 
   def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    with_edit(socket, fn socket ->
       with %{} = flow <- Flows.get_flow(socket.assigns.project_id, flow_id),
            {:ok, _} <- Flows.set_main_flow(flow) do
         {:noreply, refresh_tree_and_broadcast(socket)}
@@ -128,17 +129,17 @@ defmodule StoryarnWeb.FlowSidebarLive do
   end
 
   def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    with_delete(socket, fn socket ->
       {:noreply, assign(socket, :pending_delete_id, id)}
     end)
   end
 
   def handle_event("confirm_delete_flow", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, &confirm_delete_flow/1)
+    with_delete(socket, &confirm_delete_flow/1)
   end
 
   def handle_event("move_to_parent", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    with_edit(socket, fn socket ->
       move_flow_to_parent(socket, params)
     end)
   end
@@ -186,6 +187,24 @@ defmodule StoryarnWeb.FlowSidebarLive do
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   # ── Helpers ───────────────────────────────────────────────────────────────
+  defp with_edit(socket, fun) do
+    TreeSidebarActions.with_permission(
+      socket,
+      :edit_content,
+      gettext("You don't have permission to perform this action."),
+      fun
+    )
+  end
+
+  defp with_delete(socket, fun) do
+    TreeSidebarActions.with_permission(
+      socket,
+      :delete_content,
+      gettext("You don't have permission to perform this action."),
+      fun
+    )
+  end
+
   defp confirm_delete_flow(socket) do
     case socket.assigns.pending_delete_id do
       nil ->

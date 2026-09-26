@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnership do
 
   alias Storyarn.Commercial
   alias Storyarn.Projects.Access.Commands.OwnerAuthority
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
@@ -48,6 +49,7 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnership do
     with %ProjectMembership{} = target_membership <-
            Enum.find(state.memberships, &(&1.user_id == target_user_id)),
          {:ok, target} <- lock_transfer_users(state.owner_membership.user_id, target_user_id),
+         :ok <- Memberships.ensure_writable(state.project),
          :ok <- check_editor_seat(state.project, target, actor_id),
          {:ok, _former_owner} <- change_role(state.owner_membership, "editor"),
          :ok <- run_after_owner_demotion(opts),

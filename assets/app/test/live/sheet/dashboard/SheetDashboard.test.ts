@@ -93,7 +93,7 @@ function mountDashboard(overrides: Partial<SheetDashboardProps> = {}) {
       issueFilterOptions,
       overviewStatus: "ready",
       issuesStatus: "ready",
-      canEdit: false,
+      canDelete: false,
       ...overrides,
     },
     global: {
@@ -121,7 +121,7 @@ describe("SheetDashboard health", () => {
   });
 
   it("requires explicit confirmation before deleting a sheet", async () => {
-    const { live, wrapper } = mountDashboard({ canEdit: true });
+    const { live, wrapper } = mountDashboard({ canDelete: true });
     const trigger = wrapper.get('[data-slot="dropdown-menu-trigger"]');
 
     expect(trigger.attributes("aria-label")).toBe("Sheet actions");
@@ -158,7 +158,7 @@ describe("SheetDashboard health", () => {
   });
 
   it("clears the pending sheet when the delete dialog closes without a cancel event", async () => {
-    const { live, wrapper } = mountDashboard({ canEdit: true });
+    const { live, wrapper } = mountDashboard({ canDelete: true });
 
     await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
     wrapper.getComponent(DropdownMenuItem).vm.$emit("select");

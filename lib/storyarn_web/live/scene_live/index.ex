@@ -57,6 +57,7 @@ defmodule StoryarnWeb.SceneLive.Index do
           "project_slug" => @project.slug,
           "scene_id" => nil,
           "can_edit" => @can_edit,
+          "can_delete" => @can_delete,
           "active_tool" => "scenes",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes",
           "current_scope" => @current_scope,
@@ -94,7 +95,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         }
         issue-filters={@issue_filters}
         issue-filter-options={@issue_filter_options}
-        can-edit={@can_edit}
+        can-delete={@can_delete}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -354,7 +355,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   end
 
   def handle_event("confirm_delete_scene", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, &confirm_delete_scene/1)
+    Authorize.with_authorization(socket, :delete_content, &confirm_delete_scene/1)
   end
 
   def handle_event(event, _params, socket) do

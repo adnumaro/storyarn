@@ -4235,6 +4235,36 @@ policy = %{
         "The account's Plan & billing page reads its plan, seats and workspaces through the public Commercial facade"
     },
     %{
+      source: "lib/storyarn_web/live/shared/read_only_notice.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "The read-only notice reads whether the workspace owner's account is over its plan's limits"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/read_only_notice.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "The read-only notice names the workspace owner to the members who must ask them"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/read_only_notice.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The project shell's read-only banner shows only to roles Projects lets edit"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/read_only_notice.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The workspace shell's read-only banner shows only to roles Workspaces lets edit"
+    },
+    %{
+      source: "lib/storyarn/ai/governance/adapters/commercial/workspace_read_only.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "AI admits no new work in a workspace whose owner's account is over its plan's limits"
+    },
+    %{
       source: "lib/storyarn/flows/editor/queries/reference_targets.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
@@ -4925,7 +4955,8 @@ policy = %{
       source: "lib/storyarn/projects/access/memberships.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project role changes enforce Commercial-owned editor seat policy"
+      reason:
+        "Project role changes enforce Commercial-owned editor seat policy; authorization refuses changes while the owner's account is over its plan's limits"
     },
     %{
       source: "lib/storyarn/projects/access/commands/transfer_ownership.ex",
@@ -5315,6 +5346,12 @@ policy = %{
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
       reason: "Workspace role changes enforce Commercial-owned editor seat policy"
+    },
+    %{
+      source: "lib/storyarn/workspaces/memberships/queries/read_only.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Workspace authorization refuses changes while the owner's account is over its plan's limits"
     },
     %{
       source: "lib/storyarn/workspaces/invitations/commands/accept.ex",

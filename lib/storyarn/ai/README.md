@@ -87,6 +87,15 @@ There is intentionally no generic `persistence/` folder. `Repo` is technical
 infrastructure shared by the application, while persistence behavior remains
 named after the business operation performing it.
 
+## Read-only workspaces
+
+Governance admits no new AI work, in any phase, in a workspace whose owner's
+account is over its plan's limits: `Authorization.authorize/4` returns
+`{:error, :read_only}` through `Governance.Adapters.Commercial.WorkspaceReadOnly`,
+the only AI edge to `Storyarn.Commercial`. Re-authorizing an operation
+admitted earlier passes `admitted: true` and skips that refusal, so running
+work finishes like every other background job.
+
 ## Stable module identities
 
 Several established modules keep their existing names even though their files

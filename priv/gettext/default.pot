@@ -26,9 +26,9 @@ msgstr ""
 msgid "We can't find the internet"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:50
-#: lib/storyarn_web/controllers/export_controller.ex:56
-#: lib/storyarn_web/controllers/export_controller.ex:106
+#: lib/storyarn_web/controllers/export_controller.ex:53
+#: lib/storyarn_web/controllers/export_controller.ex:59
+#: lib/storyarn_web/controllers/export_controller.ex:109
 #, elixir-autogen, elixir-format
 msgid "Export failed"
 msgstr ""
@@ -38,7 +38,7 @@ msgstr ""
 msgid "Invalid format"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:41
+#: lib/storyarn_web/controllers/export_controller.ex:44
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr ""
@@ -50,9 +50,9 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:190
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:246
-#: lib/storyarn_web/live/flow_live/show.ex:2000
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:99
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:116
+#: lib/storyarn_web/live/flow_live/show.ex:2001
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:100
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:117
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr ""
@@ -93,14 +93,15 @@ msgstr ""
 msgid "Version not found"
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:161
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:162
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:166
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:44
-#: lib/storyarn_web/controllers/export_controller.ex:74
-#: lib/storyarn_web/controllers/export_controller.ex:103
+#: lib/storyarn_web/controllers/export_controller.ex:47
+#: lib/storyarn_web/controllers/export_controller.ex:77
+#: lib/storyarn_web/controllers/export_controller.ex:106
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
 msgstr ""
@@ -127,16 +128,18 @@ msgstr ""
 msgid "No changes detected"
 msgstr ""
 
-#: lib/storyarn_web/helpers/authorize.ex:134
-#: lib/storyarn_web/live/project_settings_live/general.ex:370
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:763
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:171
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:254
+#: lib/storyarn_web/helpers/authorize.ex:148
+#: lib/storyarn_web/live/flow_sidebar_live.ex:194
+#: lib/storyarn_web/live/flow_sidebar_live.ex:203
+#: lib/storyarn_web/live/project_settings_live/general.ex:376
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:779
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:175
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:259
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:139
+#: lib/storyarn_web/live/ideation_live/board.ex:140
 #, elixir-autogen, elixir-format
 msgid "Brainstorming"
 msgstr ""
@@ -147,7 +150,7 @@ msgstr ""
 msgid "Untitled session"
 msgstr ""
 
-#: lib/storyarn_web/live/ideation_live/board.ex:349
+#: lib/storyarn_web/live/ideation_live/board.ex:350
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr ""
@@ -220,4 +223,31 @@ msgstr ""
 #: lib/storyarn_web/live/hooks/palette.ex:598
 #, elixir-autogen, elixir-format
 msgid "Withdrawn"
+msgstr ""
+
+#: lib/storyarn_web/live/shared/read_only_notice.ex:94
+#, elixir-autogen, elixir-format
+msgid "This workspace is read-only because your account is over its plan's limits. Upgrade your plan, or delete what you no longer need."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/invitation_helpers.ex:30
+#, elixir-autogen, elixir-format
+msgid "This workspace is read-only, so its invitations cannot be accepted right now. Ask its owner, then try this invitation again."
+msgstr ""
+
+#: lib/storyarn_web/controllers/export_controller.ex:41
+#: lib/storyarn_web/live/shared/read_only_notice.ex:56
+#: lib/storyarn_web/live/shared/read_only_notice.ex:84
+#, elixir-autogen, elixir-format
+msgid "This workspace is read-only."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/read_only_notice.ex:98
+#, elixir-autogen, elixir-format
+msgid "This workspace is read-only. Contact its owner, %{owner}, to edit it again."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/read_only_notice.ex:68
+#, elixir-autogen, elixir-format
+msgid "Your account is over its plan's limits, so you cannot create workspaces. Upgrade your plan, or delete what you no longer need."
 msgstr ""

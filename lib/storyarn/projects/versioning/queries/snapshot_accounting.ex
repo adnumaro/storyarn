@@ -19,7 +19,7 @@ defmodule Storyarn.Projects.SnapshotAccounting do
   def read(%{user: _} = scope, project_id) when is_integer(project_id) and project_id > 0 do
     Repo.repeatable_read(
       fn ->
-        case Memberships.authorize(scope, project_id, :manage_project) do
+        case Memberships.authorize(scope, project_id, :read_snapshots) do
           {:ok, project, _membership} ->
             snapshots = Versioning.list_project_snapshots(project.id)
 

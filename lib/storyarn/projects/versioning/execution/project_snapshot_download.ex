@@ -63,7 +63,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownload do
   def with_authorized_download(scope, project_id, snapshot_id, callback)
       when is_integer(project_id) and project_id > 0 and is_integer(snapshot_id) and snapshot_id > 0 and
              is_function(callback, 1) do
-    case Memberships.authorize(scope, project_id, :manage_project) do
+    case Memberships.authorize(scope, project_id, :read_snapshots) do
       {:ok, project, _membership} ->
         project
         |> prepare_authorized_download(scope, snapshot_id)
@@ -80,7 +80,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownload do
     result =
       Commercial.transact_with_workspace_lock(initially_authorized_project.workspace_id, fn _workspace ->
         with {:ok, project, _membership} <-
-               Memberships.authorize_locked(scope, initially_authorized_project.id, :manage_project),
+               Memberships.authorize_locked(scope, initially_authorized_project.id, :read_snapshots),
              true <- project.workspace_id == initially_authorized_project.workspace_id,
              %ProjectSnapshot{} = snapshot <- ProjectSnapshotCrud.get_snapshot_by_id(project.id, snapshot_id),
              :ok <- validate_eligibility(snapshot),

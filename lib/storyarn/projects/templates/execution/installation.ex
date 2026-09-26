@@ -357,7 +357,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
              install.project_template_version.project_template
            ),
          {:ok, _workspace, _membership} <-
-           WorkspaceAccess.authorize(scope, install.workspace_id, :create_project) do
+           WorkspaceAccess.authorize_admitted(scope, install.workspace_id, :create_project) do
       normalize_worker_authorization(Commercial.can_create_project?(install.workspace))
     end
   end

@@ -4,6 +4,7 @@ defmodule Storyarn.AI.Governance.Execution.Authorization do
   import Ecto.Query
 
   alias Storyarn.AI.ExecutionIntent
+  alias Storyarn.AI.Governance.Adapters.Commercial.WorkspaceReadOnly
   alias Storyarn.AI.Governance.Adapters.FeatureFlags
   alias Storyarn.AI.Governance.Commands.Policies, as: PolicyCommands
   alias Storyarn.AI.Governance.Projections.ProjectMembershipRecord, as: ProjectMembership
@@ -109,6 +110,7 @@ defmodule Storyarn.AI.Governance.Execution.Authorization do
     lock_policy? = Keyword.get(opts, :lock_policy, false)
     lock_access? = Keyword.get(opts, :lock_access, lock_policy?)
     subject_authorization = Keyword.get(opts, :subject_authorization, intent)
+    admitted? = Keyword.get(opts, :admitted, false)
     owner_requirement = owner_authorization_requirement(intent, task, phase)
 
     with :ok <- feature_enabled(intent),
@@ -117,6 +119,7 @@ defmodule Storyarn.AI.Governance.Execution.Authorization do
          :ok <- validate_canonical_owner(intent, access, owner_requirement),
          :ok <- base_permission(access, task, intent),
          :ok <- domain_permission(access, task, phase),
+         :ok <- admit_while_writable(intent, admitted?),
          :ok <- Task.authorize_subject(task, intent.scope, subject_authorization, phase),
          policy = effective_policy(intent.workspace_id, lock_policy?),
          effective_lanes = PolicyLanes.effective(policy, access.workspace_role),
@@ -243,7 +246,8 @@ defmodule Storyarn.AI.Governance.Execution.Authorization do
 
   def reauthorize(%Operation{} = operation, %Task{} = task, phase, opts) do
     with {:ok, intent} <- operation_intent(operation),
-         {:ok, decision} <- authorize(intent, task, phase, Keyword.put(opts, :subject_authorization, operation)),
+         {:ok, decision} <-
+           authorize(intent, task, phase, Keyword.merge(opts, subject_authorization: operation, admitted: true)),
          true <- decision.policy_version == operation.policy_decision["policy_version"],
          true <- Task.subject_current?(task, operation) do
       {:ok, decision}
@@ -913,6 +917,13 @@ defmodule Storyarn.AI.Governance.Execution.Authorization do
 
   defp validate_owner_membership(_owner_memberships, _owner_id, _actor_id, _requirement),
     do: {:error, :ownership_invariant_violation}
+
+  # A read-only workspace admits no new AI work. An operation admitted before
+  # the workspace turned read-only finishes, like every other running job.
+  defp admit_while_writable(_intent, true), do: :ok
+
+  defp admit_while_writable(%ExecutionIntent{workspace_id: workspace_id}, false),
+    do: WorkspaceReadOnly.ensure_writable(workspace_id)
 
   defp base_permission(access, task, intent) do
     role = role_for_scope(access, task.data_scope)

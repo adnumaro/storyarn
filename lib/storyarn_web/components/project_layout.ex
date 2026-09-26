@@ -10,6 +10,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
   use StoryarnWeb, :html
 
   alias StoryarnWeb.Live.Shared.OnboardingHelpers
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   attr :id, :string, default: "project-layout"
   attr :flash, :map, default: %{}
@@ -73,6 +74,7 @@ defmodule StoryarnWeb.Components.ProjectLayout do
         urls={@urls}
         canvas-mode={@canvas_mode}
         onboarding={OnboardingHelpers.client_config(@onboarding, @active_tool, @onboarding_autostart)}
+        read-only={ReadOnlyNotice.project_banner(@current_scope, @workspace, @membership.role)}
       />
 
       {render_slot(@inner_block)}

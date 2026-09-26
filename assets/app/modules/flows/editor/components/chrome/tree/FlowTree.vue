@@ -21,12 +21,14 @@ const {
   flowsTree = [],
   selectedFlowId = null,
   canEdit = false,
+  canDelete = false,
   workspaceSlug,
   projectSlug,
 } = defineProps<{
   flowsTree: FlowTreeItem[];
   selectedFlowId: string | number | null;
   canEdit: boolean;
+  canDelete?: boolean;
   workspaceSlug: string;
   projectSlug: string;
 }>();
@@ -269,6 +271,7 @@ function handleDrop(e: unknown): void {
           :siblings="filteredTree"
           :selected-flow-id="selectedFlowId"
           :can-edit="canEdit"
+          :can-delete="canDelete"
           :depth="0"
           :search-active="!!searchQuery"
           :flow-href="flowHref"

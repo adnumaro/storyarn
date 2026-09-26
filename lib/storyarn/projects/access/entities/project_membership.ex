@@ -60,22 +60,30 @@ defmodule Storyarn.Projects.ProjectMembership do
   Checks if a role can perform a given action.
 
   Actions:
-  - :manage_project - update project settings, delete project
-  - :manage_members - invite/remove members, change roles
-  - :edit_content - edit flows, entities
+  - :manage_project - update project settings, create and restore backups
+  - :delete_project - delete the project
+  - :manage_members - invite members, change roles
+  - :remove_members - remove members, revoke pending invitations
+  - :read_snapshots - list and download backups
+  - :delete_snapshot - delete a backup
+  - :edit_content - create and edit flows, sheets, scenes and assets
+  - :delete_content - delete flows, sheets, scenes and assets
+  - :comment - write and resolve comments
   - :use_ai - execute an explicitly initiated single-item AI task
   - :run_bulk_ai - execute an AI task registered as bulk (owner only)
   - :view - view project content
 
   Permissions:
   - owner: all actions
-  - editor: edit_content, use_ai, view
+  - editor: edit_content, delete_content, comment, use_ai, view
   - viewer: view only
   """
   def can?(role, action)
 
   def can?("owner", _action), do: true
   def can?("editor", :edit_content), do: true
+  def can?("editor", :comment), do: true
+  def can?("editor", :delete_content), do: true
   def can?("editor", :use_ai), do: true
   def can?("editor", :view), do: true
   def can?("viewer", :view), do: true

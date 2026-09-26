@@ -18,7 +18,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Revoke do
 
   def execute(scope, workspace_id, invitation_id, opts)
       when valid_id(workspace_id) and valid_id(invitation_id) and is_list(opts) do
-    Memberships.transact_manage_members(scope, workspace_id, fn _state ->
+    Memberships.transact_manage_members(scope, workspace_id, :remove_members, fn _state ->
       case lock_pending_invitation(workspace_id, invitation_id) do
         %WorkspaceInvitation{} = invitation -> delete_invitation(invitation, opts)
         nil -> {:error, :not_found}

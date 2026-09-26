@@ -9,6 +9,7 @@ defmodule Storyarn.Workspaces.Memberships do
   alias Storyarn.Workspaces.Memberships.Commands.RemoveMember
   alias Storyarn.Workspaces.Memberships.Queries.Authorize
   alias Storyarn.Workspaces.Memberships.Queries.Members
+  alias Storyarn.Workspaces.Memberships.Queries.ReadOnly
   alias Storyarn.Workspaces.Memberships.Queries.WorkspaceAccess
   alias Storyarn.Workspaces.Memberships.Rules.Permissions
 
@@ -43,12 +44,18 @@ defmodule Storyarn.Workspaces.Memberships do
   def unsubscribe_membership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
 
   @doc false
-  defdelegate transact_as_owner(scope, workspace_id, operation), to: OwnerAuthority
+  defdelegate transact_as_owner(scope, workspace_id, action, operation), to: OwnerAuthority
 
   @doc false
-  defdelegate transact_manage_members(scope, workspace_id, operation),
+  defdelegate transact_manage_members(scope, workspace_id, action, operation),
     to: ManageMembersAuthority,
     as: :transact
+
+  @doc false
+  defdelegate ensure_writable(workspace_id), to: ReadOnly
+
+  @doc false
+  defdelegate ensure_account_writable(user_id), to: ReadOnly
 
   defdelegate authorize(scope, workspace_id, action), to: Authorize, as: :call
   defdelegate can?(role, action), to: Permissions, as: :allowed?

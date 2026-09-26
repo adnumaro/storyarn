@@ -25,7 +25,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ChangeMemberRole do
   def change(%{user: %{id: actor_id}} = scope, workspace_id, membership_id, role)
       when valid_id(workspace_id) and valid_id(membership_id) do
     scope
-    |> OwnerAuthority.transact_as_owner(workspace_id, fn state ->
+    |> OwnerAuthority.transact_as_owner(workspace_id, :manage_members, fn state ->
       with %WorkspaceMembership{} = locked_membership <- find_membership(state.memberships, membership_id),
            :ok <- OwnerProtection.allow_role_change(locked_membership),
            :ok <- OwnerProtection.allow_role_assignment(role),

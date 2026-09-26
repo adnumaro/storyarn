@@ -6,6 +6,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @impl true
   def mount(_params, _session, socket) do
@@ -61,6 +62,9 @@ defmodule StoryarnWeb.WorkspaceLive.New do
            dgettext("workspaces", "You have reached the workspace limit for your plan.")
          )
          |> push_navigate(to: ~p"/workspaces")}
+
+      {:error, :read_only} ->
+        {:noreply, socket |> ReadOnlyNotice.put_account_flash() |> push_navigate(to: ~p"/workspaces")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
