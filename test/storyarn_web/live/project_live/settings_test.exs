@@ -871,6 +871,30 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       })
     end
 
+    test "a member who leaves the workspace with the page open gets no storage figures", %{
+      conn: conn,
+      user: user
+    } do
+      workspace = workspace_fixture(user_fixture())
+      membership = workspace_membership_fixture(workspace, user, "member")
+      project = user |> project_fixture(%{workspace: workspace}) |> Repo.preload(:workspace)
+      fill_workspace_storage!(project, user)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      assert get_snapshots_vue(view).props["storage-usage"]
+
+      Repo.delete!(membership)
+      render_click(view, "create_snapshot", %{"idempotency_key" => Ecto.UUID.generate()})
+
+      assert_push_event(view, "snapshot_request_failed", %{
+        reason: "storage_limit_reached",
+        requiredBytes: nil,
+        availableBytes: nil,
+        used: nil,
+        limit: nil
+      })
+    end
+
     test "ownership drift fails every snapshot mutation with its existing client contract", %{
       conn: conn,
       user: owner

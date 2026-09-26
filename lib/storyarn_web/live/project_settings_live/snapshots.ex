@@ -685,10 +685,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   # A storage refusal's figures are workspace totals: only the people allowed
   # to see them get them, and everyone else reads that there is not enough
-  # space. A snapshot-slot refusal counts the project's own backups.
+  # space. The permission is checked again here, not taken from mount, since
+  # the actor may have left the workspace while the page stayed open. A
+  # snapshot-slot refusal counts the project's own backups.
   defp push_snapshot_request_error(socket, reason, details) do
     figures =
-      if reason == "storage_limit_reached" and not socket.assigns.workspace_totals_visible,
+      if reason == "storage_limit_reached" and not workspace_totals_visible_now?(socket),
         do: %{},
         else: details
 
@@ -699,6 +701,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       used: figures[:used],
       limit: figures[:limit]
     })
+  end
+
+  defp workspace_totals_visible_now?(socket) do
+    UsageAccess.workspace_totals_visible?(socket.assigns.current_scope, socket.assigns.project.workspace_id)
   end
 
   defp assign_workspace_totals_visibility(socket, project) do

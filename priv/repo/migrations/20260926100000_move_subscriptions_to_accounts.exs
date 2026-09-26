@@ -4,15 +4,19 @@ defmodule Storyarn.Repo.Migrations.MoveSubscriptionsToAccounts do
   @moduledoc """
   Moves subscriptions from workspaces to the accounts that own them.
 
-  Each account keeps one subscription. When an owner had several, the one on a
-  plan other than the default wins, then the oldest. Accounts without any
-  subscription get the default one. Workspaces take their limits from their
-  owner's subscription from now on.
+  Each account keeps one subscription. When an owner had several, the one whose
+  status still grants its plan wins (active, trialing or past due), then one on
+  a plan other than the default, then the most recently updated. Accounts
+  without any subscription get the default one. Workspaces take their limits
+  from their owner's subscription from now on.
   """
 
   def up do
+    # Accounts without a subscription get one keyed by user alone, so
+    # workspace_id must accept them until it is removed below.
     alter table(:subscriptions) do
       add :user_id, references(:users, on_delete: :delete_all)
+      modify :workspace_id, :bigint, null: true
     end
 
     execute("""
@@ -30,7 +34,10 @@ defmodule Storyarn.Repo.Migrations.MoveSubscriptionsToAccounts do
         SELECT id,
                row_number() OVER (
                  PARTITION BY user_id
-                 ORDER BY (plan <> 'free') DESC, id
+                 ORDER BY status IN ('active', 'trialing', 'past_due') DESC,
+                          plan <> 'free' DESC,
+                          updated_at DESC,
+                          id DESC
                ) AS position
         FROM subscriptions
       ) AS ranked
@@ -60,8 +67,11 @@ defmodule Storyarn.Repo.Migrations.MoveSubscriptionsToAccounts do
   def down do
     drop unique_index(:subscriptions, [:user_id])
 
+    # The workspace rows are rebuilt next to the account rows, which are then
+    # removed, so user_id must accept them in between.
     alter table(:subscriptions) do
       add :workspace_id, references(:workspaces, on_delete: :delete_all)
+      modify :user_id, :bigint, null: true
     end
 
     execute("""
