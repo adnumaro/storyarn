@@ -1,0 +1,41 @@
+test/storyarn_web/live/project_live/settings_test.exs
+  s_c335c90a020cdb::t_ea8f7261a74d6f 874-887
+  s_c335c90a020cdb::t_7b17d8ef20fb87 864-873
+priv/gettext/en/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_5e249ad5985cff 132
+priv/gettext/default.pot
+  s_c335c90a020cdb::t_5e249ad5985cff 132
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_5e249ad5985cff 1301
+priv/gettext/es/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_5e249ad5985cff 132
+priv/gettext/projects.pot
+  s_c335c90a020cdb::t_5e249ad5985cff 1301
+priv/repo/migrations/20260926100000_move_subscriptions_to_accounts.exs
+  s_c335c90a020cdb::t_07704b2c0c2a5a 7-11,37-40,70-71,74
+  s_c335c90a020cdb::t_6893e11b124177 15-16,19
+test/storyarn/repo/migrations/move_subscriptions_to_accounts_migration_test.exs
+  s_c335c90a020cdb::t_c4875f00335e41 1-40,44-127,132-134,139-165
+  s_c335c90a020cdb::t_d321f0dd47f853 41-43,128-131,135-138
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_5e249ad5985cff 1301
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_c335c90a020cdb::t_f01fe50382f7e4 688-690,693,706-707
+  s_c335c90a020cdb::t_6a90e14e69aa96 708-709
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b6682a6f49076ed3ab9fe86a5737f8efb342f2c8",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
