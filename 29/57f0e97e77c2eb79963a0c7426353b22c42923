@@ -1,0 +1,21 @@
+assets/app/test/components/TranslatedDefaults.test.ts
+  s_a86b2b42f8ba47::t_7986c3145cd429 23,25
+assets/app/test/modules/flows/expression/LogicToggle.test.ts
+  s_a86b2b42f8ba47::t_7986c3145cd429 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2957f0e97e77c2eb79963a0c7426353b22c42923",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
