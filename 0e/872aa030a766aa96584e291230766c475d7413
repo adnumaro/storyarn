@@ -1,0 +1,468 @@
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 48,106,191,201,347,379,384,389,394
+  s_c335c90a020cdb::t_9b67961e046261 36-37,43,53,70,97,174-175,352-353
+  s_c335c90a020cdb::t_f2c0d909dd5547 42,69,96,104-105,111,412-414
+lib/storyarn_web/live/workspace_live/show.ex
+  s_c335c90a020cdb::t_dd5abd1722ec3c 12,128-130,172-173
+  s_c335c90a020cdb::t_892648df2ca899 174
+lib/storyarn/commercial/subscription_crud.ex
+  s_c335c90a020cdb::t_33abf461f7a17a 4,26
+  s_c335c90a020cdb::t_6552fde37dfea1 27-28,31-40
+  s_c335c90a020cdb::t_4d14eb3569855e 9
+test/storyarn_web/live/scene_live/index_test.exs
+  s_c335c90a020cdb::t_74f6ae629baaf2 48,65
+lib/storyarn_web/live/localization_toolbar_live.ex
+  s_c335c90a020cdb::t_19eaf520849e42 25
+  s_c335c90a020cdb::t_726e6bc3d81cfd 92,94
+  s_c335c90a020cdb::t_de688dfed2e44c 93
+test/storyarn/workspaces/read_only_test.exs
+  s_c335c90a020cdb::t_c6c6a965b4de2a 1-49,52-70,75-83
+  s_c335c90a020cdb::t_00637f84aba93b 50-51,71-74
+lib/storyarn/projects/access/commands/invitation_operations.ex
+  s_c335c90a020cdb::t_5dd4b26c5e2419 151
+  s_c335c90a020cdb::t_a1dc21eec3a9b1 392
+priv/gettext/flows.pot
+  s_c335c90a020cdb::t_9b67961e046261 36-37,43,53,70,97,174-175,352-353
+  s_c335c90a020cdb::t_594b6e00ae6d15 48,106,191,201,347,379,384,389,394
+  s_c335c90a020cdb::t_f2c0d909dd5547 42,69,96,104-105,111,412-414
+test/storyarn/projects/lifecycle/project_soft_delete_test.exs
+  s_c335c90a020cdb::t_13890b9198d499 7,13,182-199
+  s_c335c90a020cdb::t_1056c5f18761a2 425-430
+  s_c335c90a020cdb::t_502ce41e7de6f0 200-201,431
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_c335c90a020cdb::t_64cba02dfb7928 121,133-134,263,706-707
+lib/storyarn/commercial/execution/editor_seats.ex
+  s_c335c90a020cdb::t_3b909cded141fb 18-21
+lib/storyarn/commercial/entities/subscription.ex
+  s_c335c90a020cdb::t_eda2a9aaa4a79f 26-29,49-53
+  s_c335c90a020cdb::t_dcd393a4cdc59b 54-55
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_c335c90a020cdb::t_40aa292d33693e 9,214-219,236-240
+  s_c335c90a020cdb::t_cc7186843c777a 241
+lib/storyarn_web/helpers/authorize.ex
+  s_c335c90a020cdb::t_ab4b990d7e8817 25-30,34-35,37-41,49,95-97,154-155,174,178,190-196,205,208-211,215,218
+  s_c335c90a020cdb::t_305f25ed3b7e03 219
+lib/storyarn_web/live/sheet_live/show.ex
+  s_c335c90a020cdb::t_cc62d66c7f9c13 72
+assets/app/shell/ReadOnlyBanner.vue
+  s_c335c90a020cdb::t_0115e4aab1a896 1-60
+assets/app/locales/es/layout.json
+  s_c335c90a020cdb::t_3ec4ee4ddfde37 38-51
+lib/storyarn/workspaces/memberships/queries/authorize.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 8,14-15,19,23-24,56-57
+lib/storyarn_web/live/ideation_live/handlers/decision_handlers.ex
+  s_c335c90a020cdb::t_f42c576ccd296d 90-91
+lib/storyarn_web/live/workspace_live/new.ex
+  s_c335c90a020cdb::t_1926b48a9aeecd 9
+  s_c335c90a020cdb::t_dd5abd1722ec3c 66-68
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_c335c90a020cdb::t_04491c9912b830 431,433-435,439,441-443
+  s_c335c90a020cdb::t_fba34f6cfe7557 432,440
+  s_c335c90a020cdb::t_70b180bda30faa 96,107-108,384
+lib/storyarn/commercial.ex
+  s_c335c90a020cdb::t_e5ab30ea12d2b0 88
+  s_c335c90a020cdb::t_0b2233ff39fa50 89-97
+  s_c335c90a020cdb::t_33abf461f7a17a 144-155
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 14,19,24,29,34-37,42,47,52-53,58-59,64,69,79,84,89,94,99-101,107-109,125,127-128,133,138,143,148,194-195,200,205,210,215,220,225,230,235,284,294,299,304,309-310,315,320,340,345
+test/storyarn_web/live/asset_live/index_test.exs
+  s_c335c90a020cdb::t_74f6ae629baaf2 50
+test/storyarn_web/live/project_live/settings_test.exs
+  s_c335c90a020cdb::t_74f6ae629baaf2 1063,1071
+assets/app/locales/es/settings.json
+  s_c335c90a020cdb::t_eb91ac93088148 143-144
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTreePanel.vue
+  s_c335c90a020cdb::t_876abb05b698fc 14,21,34
+assets/app/test/live/assets/dashboard/AssetsDashboard.test.ts
+  s_c335c90a020cdb::t_0a7053ae4b9208 15,21
+test/storyarn/commercial/execution/account_limits_test.exs
+  s_c335c90a020cdb::t_33daf1c6511563 165-173,187-189
+  s_c335c90a020cdb::t_77128ba7428986 1-125,132-164,174-186,190-208
+  s_c335c90a020cdb::t_4efe49b66b9439 126-131
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_c335c90a020cdb::t_5dd4b26c5e2419 296
+lib/storyarn/workspaces/memberships/queries/read_only.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 1-33
+assets/app/locales/en/project-settings.json
+  s_c335c90a020cdb::t_75492f783e8289 84
+priv/gettext/workspaces.pot
+  s_c335c90a020cdb::t_594b6e00ae6d15 14,19,24,29,34-37,42,47,52-53,58-59,64,69,79,84,89,94,99-101,107-109,125,127-128,133,138,143,148,194-195,200,205,210,215,220,225,230,235,284,294,299,304,309-310,315,320,340,345
+test/storyarn/projects/access/read_only_test.exs
+  s_c335c90a020cdb::t_9bd4a83d70aa19 102,143-144
+  s_c335c90a020cdb::t_4a8a87b77cada8 1-101,103-142,145-148
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 35,105-106,137-138,173,234,251-252,273,289,368,378-379,385,456-457,658-659,664,669,674,684,743,748,753,764,769,774,805-806,827-828,833,849,859
+lib/storyarn/workspaces/README.md
+  s_c335c90a020cdb::t_9efa3d063bcd2f 88-99
+lib/storyarn_web/components/workspace_layout.ex
+  s_c335c90a020cdb::t_0115e4aab1a896 13,49
+priv/gettext/scenes.pot
+  s_c335c90a020cdb::t_594b6e00ae6d15 35,105-106,137-138,173,234,251-252,273,289,368,378-379,385,456-457,658-659,664,669,674,684,743,748,753,764,769,774,805-806,827-828,833,849,859
+lib/storyarn_web/live/flow_live/index.ex
+  s_c335c90a020cdb::t_fba34f6cfe7557 96
+  s_c335c90a020cdb::t_cc62d66c7f9c13 57
+  s_c335c90a020cdb::t_a2c44efd243c2f 414
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_c335c90a020cdb::t_8f2b18e7ee4358 17
+  s_c335c90a020cdb::t_45c3fac8de04e0 46,225,227,359,362,368-369
+  s_c335c90a020cdb::t_311adfe7a92163 370
+assets/app/modules/flows/editor/components/chrome/tree/FlowTree.vue
+  s_c335c90a020cdb::t_876abb05b698fc 24,31,274
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_c335c90a020cdb::t_6cc90d87477f13 10,231-232
+  s_c335c90a020cdb::t_2799e0563322c4 233
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 57
+lib/storyarn_web/controllers/export_controller.ex
+  s_c335c90a020cdb::t_dbe28c31131877 40-42
+priv/repo/migrations/20260926140000_add_account_read_only_state.exs
+  s_c335c90a020cdb::t_be1af56bd670c3 1-51
+lib/storyarn_web/controllers/upload_controller.ex
+  s_c335c90a020cdb::t_dbe28c31131877 28-30,54-56,87-88
+  s_c335c90a020cdb::t_096ccd8248f1b6 89
+assets/app/test/shell/ReadOnlyBanner.test.ts
+  s_c335c90a020cdb::t_ad3d7a7e85aaed 1-38
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_c335c90a020cdb::t_33ca3ddbc8d703 44
+  s_c335c90a020cdb::t_fc8390fe7af252 77,131,167-169
+  s_c335c90a020cdb::t_16937626a6df24 161-166,170-175
+lib/storyarn/commercial/billing.ex
+  s_c335c90a020cdb::t_33abf461f7a17a 9,44-46
+  s_c335c90a020cdb::t_77795f45c70952 29
+  s_c335c90a020cdb::t_0b2233ff39fa50 18
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTree.vue
+  s_c335c90a020cdb::t_876abb05b698fc 29,36,278
+priv/gettext/versioning.pot
+  s_c335c90a020cdb::t_594b6e00ae6d15 34-35,96
+assets/app/locales/en/settings.json
+  s_c335c90a020cdb::t_eb91ac93088148 143-144
+lib/storyarn_web/live/shared/read_only_notice.ex
+  s_c335c90a020cdb::t_ab4b990d7e8817 1-59,90-125,133-134
+  s_c335c90a020cdb::t_1926b48a9aeecd 60-74
+  s_c335c90a020cdb::t_de688dfed2e44c 75-89
+  s_c335c90a020cdb::t_16937626a6df24 126-132
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_c335c90a020cdb::t_6cc90d87477f13 9,283,381-382
+  s_c335c90a020cdb::t_16937626a6df24 281-282
+  s_c335c90a020cdb::t_2511f5fd3d61b4 383
+lib/storyarn/workspaces.ex
+  s_c335c90a020cdb::t_f38859ce2adf5f 35,38,40,269-275,280-283,287
+lib/storyarn_web/live/sheet_live/index.ex
+  s_c335c90a020cdb::t_cc62d66c7f9c13 59
+  s_c335c90a020cdb::t_a2c44efd243c2f 97,358
+lib/storyarn/projects/versioning/execution/project_snapshot_download.ex
+  s_c335c90a020cdb::t_5dd4b26c5e2419 66,83
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTreeNode.vue
+  s_c335c90a020cdb::t_876abb05b698fc 24,34,193,197,207,220,230,262
+  s_c335c90a020cdb::t_04491c9912b830 221-225
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 34-35,96
+assets/app/test/live/project/settings/ProjectSettingsGeneral.test.ts
+  s_c335c90a020cdb::t_48c6b258480f5e 168-197
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_c335c90a020cdb::t_a1ed668f869e09 137,147,502
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 37-38,48-49,54,96,112,128,218-219,312,348
+lib/storyarn/projects/access/rules/read_only_actions.ex
+  s_c335c90a020cdb::t_05a8e9e6fa7d1c 1-9,12-15,18-28
+  s_c335c90a020cdb::t_3d0b54b5ea13fb 10-11,16-17
+assets/app/test/live/scene/dashboard/SceneDashboard.test.ts
+  s_c335c90a020cdb::t_5bb77cf9271d70 99,190,220
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_c335c90a020cdb::t_1c2f69bd36ba4c 211,706
+assets/app/modules/sheets/components/chrome/tree/SheetTreeNode.vue
+  s_c335c90a020cdb::t_876abb05b698fc 19,29,199,203,212,224,234,266
+  s_c335c90a020cdb::t_04491c9912b830 225-229
+lib/storyarn_web/controllers/localization_export_controller.ex
+  s_c335c90a020cdb::t_d07c8a7236024b 5,15,19-21,23-47,52-56
+  s_c335c90a020cdb::t_dbe28c31131877 16-18
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 14,19,24,29,34,39,44-45,50,55-58,60,65,70,75,82,89,96,101,111,116,121-122,127,129,134-135,140-141,146-147,152,157-167,170,173-174,184,189,194,199,209,214,219,224,229-230,286,292,328,394,399,404,409,414,419,424,429,434,439,444,677,682,687,692,697,702,707,712,717,722,727,732,737,742,777,784,789,794,799,804,809-810,815,820-822,827-828,833,838,843,848,853,858,863,868,873,878,883,888-889,894,899,904-905,910,925,930-931,936
+lib/storyarn_web/live/shared/invitation_helpers.ex
+  s_c335c90a020cdb::t_dd5abd1722ec3c 25-36
+  s_c335c90a020cdb::t_1926b48a9aeecd 6-7
+lib/storyarn/projects/README.md
+  s_c335c90a020cdb::t_9efa3d063bcd2f 124-143
+assets/app/live/project/settings/ProjectSettingsTrash.vue
+  s_c335c90a020cdb::t_f5652e7046ce85 42,50-51,382
+lib/storyarn_web/live/hooks/project_scope.ex
+  s_c335c90a020cdb::t_45c3fac8de04e0 8
+  s_c335c90a020cdb::t_6f358cf0fb1317 9-14,29,34-35,50,52
+lib/storyarn_web/live/project_live/form.ex
+  s_c335c90a020cdb::t_dd5abd1722ec3c 81-83
+  s_c335c90a020cdb::t_1926b48a9aeecd 7
+lib/storyarn_web/live/localization_live/glossary.ex
+  s_c335c90a020cdb::t_726e6bc3d81cfd 212
+lib/storyarn_web/live/localization_live/report.ex
+  s_c335c90a020cdb::t_726e6bc3d81cfd 134
+lib/storyarn/projects/versioning/queries/snapshot_accounting.ex
+  s_c335c90a020cdb::t_5dd4b26c5e2419 22
+priv/gettext/localization.pot
+  s_c335c90a020cdb::t_594b6e00ae6d15 96,120,154
+lib/storyarn/workspaces/memberships/rules/read_only_actions.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 1-23
+lib/storyarn/commercial/entities/plan_period.ex
+  s_c335c90a020cdb::t_eda2a9aaa4a79f 1-18
+lib/storyarn/projects.ex
+  s_c335c90a020cdb::t_7c52d7195bf7f8 46-58,857-865,869-873,877,890-895
+lib/storyarn/projects/templates/execution/installation.ex
+  s_c335c90a020cdb::t_1c2f69bd36ba4c 360
+lib/storyarn_web/live/ideation_live/handlers/comment_handlers.ex
+  s_c335c90a020cdb::t_9c6f6db30295b2 65,171,315
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 96,120,154
+test/storyarn_web/live/read_only_workspace_test.exs
+  s_c335c90a020cdb::t_c0c5eabc40053d 93,135,150-151,170,179
+  s_c335c90a020cdb::t_f0b54e9e03bde3 161-164
+  s_c335c90a020cdb::t_304f2e8ba1ee7f 1-77,82-92,94-134,136-149,152-160,165-169,171-178,180-183
+  s_c335c90a020cdb::t_74a50c54db1d84 78-81
+lib/storyarn/workspaces/memberships/commands/change_member_role.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 28
+assets/app/test/live/workspace/settings/WorkspaceSettingsGeneral.test.ts
+  s_c335c90a020cdb::t_abbb3aabb473e4 45-55
+  s_c335c90a020cdb::t_8fa0bc1448a738 4
+  s_c335c90a020cdb::t_79984cf67cf9cb 56
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_c335c90a020cdb::t_64cba02dfb7928 11,37-38,44,46,81-84,86,413,735,762-770,783
+  s_c335c90a020cdb::t_16937626a6df24 85
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 35,105-106,137-138,173,234,251-252,273,289,368,378-379,385,456-457,658-659,664,669,674,684,743,748,753,764,769,774,805-806,827-828,833,849,859
+lib/storyarn_web/live/export_import_live/index.ex
+  s_c335c90a020cdb::t_40aa292d33693e 8,228,527,683-684,694,697-700
+  s_c335c90a020cdb::t_e6df56b3bdef71 701
+lib/storyarn_web/live/ideation_live/helpers/board_data.ex
+  s_c335c90a020cdb::t_c301075b767cd6 7
+  s_c335c90a020cdb::t_f89184c4ca355c 24
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_c335c90a020cdb::t_a1ed668f869e09 83,94,264
+test/support/fixtures/commercial_fixtures.ex
+  s_c335c90a020cdb::t_a7514594d6e0b0 1-41
+lib/storyarn/ai/README.md
+  s_c335c90a020cdb::t_f4f8164b45bcef 90-98
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 57
+lib/storyarn/workspaces/memberships/memberships.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 12,47,50,54-58
+  s_c335c90a020cdb::t_864e18a7c2007d 59
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_c335c90a020cdb::t_eb91ac93088148 12,70,72,191,195,252
+  s_c335c90a020cdb::t_4061c1081e278e 253
+assets/app/modules/sheets/components/chrome/tree/SheetTree.vue
+  s_c335c90a020cdb::t_876abb05b698fc 24,31,292
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_c335c90a020cdb::t_d12a4e59c9114a 348-350
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_c335c90a020cdb::t_f88ba318dba0f7 16,286
+  s_c335c90a020cdb::t_fa38d44301e5de 287
+priv/gettext/assets.pot
+  s_c335c90a020cdb::t_594b6e00ae6d15 57
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_c335c90a020cdb::t_9c6f6db30295b2 80,160
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_c335c90a020cdb::t_9b67961e046261 36-37,43,53,70,97,174-175,352-353
+  s_c335c90a020cdb::t_594b6e00ae6d15 48,106,191,201,347,379,384,389,394
+  s_c335c90a020cdb::t_f2c0d909dd5547 42,69,96,104-105,111,412-414
+docs/reference/component-registry.md
+  s_c335c90a020cdb::t_f4f8164b45bcef 137-138
+  s_c335c90a020cdb::t_501b9865d7d049 200
+lib/storyarn/projects/access/memberships.ex
+  s_c335c90a020cdb::t_1c2f69bd36ba4c 166-174,196-204,208-209,217,219-220,225,236,253-254,256
+  s_c335c90a020cdb::t_05a8e9e6fa7d1c 8,34-42,179-195,224,237-242,248-252,255,257-258
+  s_c335c90a020cdb::t_3d0b54b5ea13fb 243-247
+  s_c335c90a020cdb::t_5dd4b26c5e2419 154
+  s_c335c90a020cdb::t_0301754410f47c 175-178
+lib/storyarn/projects/templates/execution/portable_import.ex
+  s_c335c90a020cdb::t_1c2f69bd36ba4c 733
+lib/storyarn/commercial/commands/subscriptions.ex
+  s_c335c90a020cdb::t_4d11a915b365d3 4-5,7,10-11,13-26
+config/architecture_boundaries.exs
+  s_c335c90a020cdb::t_cfd6c1cb63f4a9 4237-4266,4958-4959,5350-5355
+lib/storyarn/commercial/execution/account_limits.ex
+  s_c335c90a020cdb::t_a3a73176aafea6 1-13,23-30,32-71,91-97,99-140,142-183,187-208
+  s_c335c90a020cdb::t_6552fde37dfea1 20-22,31,72-88
+  s_c335c90a020cdb::t_f2c0d909dd5547 98,184-186
+  s_c335c90a020cdb::t_3b909cded141fb 14-19,89-90,141
+docs/reference/domain-patterns.md
+  s_c335c90a020cdb::t_f4f8164b45bcef 348-359
+lib/storyarn/projects/lifecycle/commands/project_commands.ex
+  s_c335c90a020cdb::t_5dd4b26c5e2419 228
+  s_c335c90a020cdb::t_3d0b54b5ea13fb 124
+lib/storyarn/workspaces/banner/commands/change.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 20
+lib/storyarn/projects/access/commands/transfer_ownership.ex
+  s_c335c90a020cdb::t_479c5745ef9cd2 8
+  s_c335c90a020cdb::t_3d0b54b5ea13fb 52
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_c335c90a020cdb::t_40aa292d33693e 12,167-168
+  s_c335c90a020cdb::t_3d6a11654c4b25 169
+assets/app/live/layouts/project/Layout.vue
+  s_c335c90a020cdb::t_0115e4aab1a896 19,45,53-54,196
+  s_c335c90a020cdb::t_36f3f416aae60e 197
+lib/storyarn_web/components/project_layout.ex
+  s_c335c90a020cdb::t_0115e4aab1a896 13,77
+test/storyarn/architecture/commercial_facade_contract_test.exs
+  s_c335c90a020cdb::t_97ed5164f04f30 7,46,52
+  s_c335c90a020cdb::t_d12a4e59c9114a 63,65
+  s_c335c90a020cdb::t_e5ab30ea12d2b0 151-152,170
+assets/app/test/modules/sheets/components/chrome/tree/SheetTree.test.ts
+  s_c335c90a020cdb::t_a35eb8b3a01e56 1-13,15-16,18-27,29-31,34-35,37-43,45-46
+  s_c335c90a020cdb::t_12799c3eba2c50 14,17,28,32-33,36,44
+test/storyarn/commercial/queries/trash_retention_test.exs
+  s_c335c90a020cdb::t_884e8942515674 1-48,50-52
+  s_c335c90a020cdb::t_6b8a17cccf05b7 49
+lib/storyarn/commercial/README.md
+  s_c335c90a020cdb::t_3b909cded141fb 36-37,86-110,119
+lib/storyarn/projects/access/entities/project_membership.ex
+  s_c335c90a020cdb::t_05a8e9e6fa7d1c 85-86
+  s_c335c90a020cdb::t_7c52d7195bf7f8 63-71,78
+lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex
+  s_c335c90a020cdb::t_5dd4b26c5e2419 126,797
+lib/storyarn/workspaces/memberships/commands/manage_members_authority.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 7,24-29,33,41,43,49-50
+lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex
+  s_c335c90a020cdb::t_9c6f6db30295b2 85,128
+priv/gettext/projects.pot
+  s_c335c90a020cdb::t_594b6e00ae6d15 14,19,24,29,34,39,44-45,50,55-58,60,65,70,75,82,89,96,101,111,116,121-122,127,129,134-135,140-141,146-147,152,157-167,170,173-174,184,189,194,199,209,214,219,224,229-230,286,292,328,394,399,404,409,414,419,424,429,434,439,444,677,682,687,692,697,702,707,712,717,722,727,732,737,742,777,784,789,794,799,804,809-810,815,820-822,827-828,833,838,843,848,853,858,863,868,873,878,883,888-889,894,899,904-905,910,925,930-931,936
+lib/storyarn/workspaces/invitations/commands/revoke.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 21
+lib/storyarn/workspaces/memberships/commands/owner_authority.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 7,23-26,29-30,36
+test/storyarn/ai/governance/read_only_admission_test.exs
+  s_c335c90a020cdb::t_bbb2e5f8890b14 1-77
+lib/storyarn/commercial/queries/trash_retention.ex
+  s_c335c90a020cdb::t_16937626a6df24 30,41-44,63
+  s_c335c90a020cdb::t_77795f45c70952 1-29,31-40,45-62,64-68
+assets/app/modules/flows/editor/components/chrome/tree/FlowTreeNode.vue
+  s_c335c90a020cdb::t_04491c9912b830 218-222
+  s_c335c90a020cdb::t_876abb05b698fc 19,29,184,188,197,209,211,227,259
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 37-38,48-49,54,96,112,128,218-219,312,348
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_c335c90a020cdb::t_fc8390fe7af252 76,130,162-166
+  s_c335c90a020cdb::t_33ca3ddbc8d703 44
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 14,19,24,29,34-37,42,47,52-53,58-59,64,69,79,84,89,94,99-101,107-109,125,127-128,133,138,143,148,194-195,200,205,210,215,220,225,230,235,284,294,299,304,309-310,315,320,340,345
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_c335c90a020cdb::t_5bb77cf9271d70 105,138,148,165-178,182,392,437
+lib/storyarn_web/live/comment_live/overlay.ex
+  s_c335c90a020cdb::t_9c6f6db30295b2 142,404
+lib/storyarn_web/live/hooks/workspace_scope.ex
+  s_c335c90a020cdb::t_eb91ac93088148 8-9,27,59
+lib/storyarn/projects/access/queries/workspace_access.ex
+  s_c335c90a020cdb::t_3d0b54b5ea13fb 12-13,56,62,66-67,71
+  s_c335c90a020cdb::t_1c2f69bd36ba4c 44-53,57,68-70
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 30
+  s_c335c90a020cdb::t_212628f0d0b63f 72-73
+assets/app/live/layouts/workspace/Layout.vue
+  s_c335c90a020cdb::t_0115e4aab1a896 8,18,24-25,122
+  s_c335c90a020cdb::t_cae9667b4f3838 123
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 14,19,24,29,34,39,44-45,50,55-58,60,65,70,75,82,89,96,101,111,116,121-122,127,129,134-135,140-141,146-147,152,157-167,170,173-174,184,189,194,199,209,214,219,224,229-230,286,292,328,394,399,404,409,414,419,424,429,434,439,444,677,682,687,692,697,702,707,712,717,722,727,732,737,742,777,784,789,794,799,804,809-810,815,820-822,827-828,833,838,843,848,853,858,863,868,873,878,883,888-889,894,899,904-905,910,925,930-931,936
+priv/gettext/sheets.pot
+  s_c335c90a020cdb::t_594b6e00ae6d15 37-38,48-49,54,96,112,128,218-219,312,348
+assets/app/test/live/sheet/dashboard/SheetDashboard.test.ts
+  s_c335c90a020cdb::t_5bb77cf9271d70 96,124,161
+lib/storyarn/workspaces/memberships/rules/permissions.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 16
+docs/reference/context-map.md
+  s_c335c90a020cdb::t_f4f8164b45bcef 72
+lib/storyarn/workspaces/memberships/commands/remove_member.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 23
+lib/storyarn/workspaces/invitations/commands/create.ex
+  s_c335c90a020cdb::t_4bed7ccaf3e33e 32
+lib/storyarn_web/live/ideation_live/board.ex
+  s_c335c90a020cdb::t_c301075b767cd6 26
+  s_c335c90a020cdb::t_f89184c4ca355c 645-647
+priv/gettext/es/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_9b67961e046261 132-133,228,240,245
+  s_c335c90a020cdb::t_594b6e00ae6d15 29-31,41,53-55,96-97,102-104,131,134-137,142,153,227,229-230,232-235,237-239,241-242,244,246-247,249-252
+  s_c335c90a020cdb::t_e0a73305123aa6 231,236,243,248,253
+lib/storyarn/ai/governance/execution/authorization.ex
+  s_c335c90a020cdb::t_8e46a5157d8f58 7,113,122,249-250,921-923,925-926
+  s_c335c90a020cdb::t_16937626a6df24 924
+  s_c335c90a020cdb::t_8d9ff23ef6fbf9 927
+lib/storyarn_web/live/scene_live/show.ex
+  s_c335c90a020cdb::t_cc62d66c7f9c13 94
+lib/storyarn/projects/interchange/imports/execution/execution.ex
+  s_c335c90a020cdb::t_1c2f69bd36ba4c 162,373
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 34-35,96
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_c335c90a020cdb::t_594b6e00ae6d15 18
+  s_c335c90a020cdb::t_33ca3ddbc8d703 38
+  s_c335c90a020cdb::t_2c50a346ddf9f5 191-196,200-205
+  s_c335c90a020cdb::t_de688dfed2e44c 84,103,120,132,138,142,190,197-199,206-207
+  s_c335c90a020cdb::t_cc62d66c7f9c13 71
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_c335c90a020cdb::t_eb91ac93088148 26,36-37,171-175
+assets/app/test/live/project/settings/ProjectSettingsTrash.test.ts
+  s_c335c90a020cdb::t_da1a5158926cc3 20,28,85-90
+  s_c335c90a020cdb::t_8b10eda25cf453 91-92
+lib/storyarn/ai/governance/adapters/commercial/workspace_read_only.ex
+  s_c335c90a020cdb::t_8e46a5157d8f58 1-18
+lib/storyarn_web/live/asset_live/index.ex
+  s_c335c90a020cdb::t_a2c44efd243c2f 73
+  s_c335c90a020cdb::t_a301ac48958645 210
+assets/app/live/sheet/dashboard/SheetDashboard.vue
+  s_c335c90a020cdb::t_a1ed668f869e09 50,61,238
+lib/storyarn_web/live/flow_live/show.ex
+  s_c335c90a020cdb::t_cc62d66c7f9c13 75
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 96,120,154
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_c335c90a020cdb::t_abbb3aabb473e4 5,147-171
+  s_c335c90a020cdb::t_e18302de2d0fb0 172
+assets/app/locales/en/layout.json
+  s_c335c90a020cdb::t_3ec4ee4ddfde37 38-51
+lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex
+  s_c335c90a020cdb::t_1c2f69bd36ba4c 1272
+priv/gettext/default.pot
+  s_c335c90a020cdb::t_9b67961e046261 132-133,228,240,245
+  s_c335c90a020cdb::t_594b6e00ae6d15 29-31,41,53-55,96-97,102-104,131,134-137,142,153,227,229-239,241-244,246-253
+assets/app/locales/es/project-settings.json
+  s_c335c90a020cdb::t_75492f783e8289 84
+lib/storyarn_web/live/localization_live/index.ex
+  s_c335c90a020cdb::t_726e6bc3d81cfd 615
+  s_c335c90a020cdb::t_19eaf520849e42 19
+priv/gettext/en/LC_MESSAGES/default.po
+  s_c335c90a020cdb::t_594b6e00ae6d15 29-31,41,53-55,96-97,102-104,131,134-137,142,153,227,229-239,241-244,246-253
+  s_c335c90a020cdb::t_9b67961e046261 132-133,228,240,245
+lib/storyarn_web/live/tree_sidebar_actions.ex
+  s_c335c90a020cdb::t_fc8390fe7af252 8-9,19-24,26
+  s_c335c90a020cdb::t_33ca3ddbc8d703 11-18
+  s_c335c90a020cdb::t_de688dfed2e44c 25
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_c335c90a020cdb::t_9c6f6db30295b2 76,121
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_c335c90a020cdb::t_f5652e7046ce85 33,105-106,108,114
+lib/storyarn_web/live/scene_live/index.ex
+  s_c335c90a020cdb::t_cc62d66c7f9c13 60
+  s_c335c90a020cdb::t_a2c44efd243c2f 98,358
+assets/app/live/project/settings/ProjectSettingsGeneral.vue
+  s_c335c90a020cdb::t_8f2b18e7ee4358 62,73-74,130,166,173,205,212,219,224,234,249-256,260,264-270,290,303,315,335,357,375,384,410,443,483,504
+  s_c335c90a020cdb::t_3293f0f1e54468 81-84
+lib/storyarn/projects/trash/execution/project_trash.ex
+  s_c335c90a020cdb::t_0b2233ff39fa50 455-457,459,462-464,469-470
+lib/storyarn/workspaces/invitations/commands/accept.ex
+  s_c335c90a020cdb::t_39bb9171470f68 37
+lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex
+  s_c335c90a020cdb::t_ba2ded179375b7 10,16,22,30-31
+lib/storyarn/workspaces/lifecycle/commands/update_workspace.ex
+  s_c335c90a020cdb::t_d3e8f34c97632a 7,13,18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0e872aa030a766aa96584e291230766c475d7413",
+  "prompts": {},
+  "sessions": {
+    "s_c335c90a020cdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb5d217-177d-4166-b8f5-ace9062b9985",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
