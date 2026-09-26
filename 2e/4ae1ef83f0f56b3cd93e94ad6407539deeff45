@@ -1,0 +1,25 @@
+lib/storyarn/projects/templates/execution/audit.ex
+  s_a86b2b42f8ba47::t_f0c9656f41d184 1147
+lib/storyarn/projects/templates/execution/publication_runner.ex
+  s_a86b2b42f8ba47::t_1d368778903561 374
+lib/storyarn/repo.ex
+  s_a86b2b42f8ba47::t_b6d529c1095f92 6-7,14-19,23-46
+test/storyarn/repo_test.exs
+  s_a86b2b42f8ba47::t_a51b0003f2023d 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2e4ae1ef83f0f56b3cd93e94ad6407539deeff45",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
