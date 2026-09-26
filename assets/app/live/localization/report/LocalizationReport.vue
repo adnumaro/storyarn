@@ -15,6 +15,7 @@ import type {
   VoProgress,
 } from "@modules/localization/domain/types";
 import { useLive } from "@shared/composables/useLive.ts";
+import PageContainer from "@shell/PageContainer.vue";
 
 interface Capabilities {
   canEdit: boolean;
@@ -85,7 +86,7 @@ function addLanguage(localeCode: string): void {
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-[1040px] flex-col gap-7 py-2">
+  <PageContainer>
     <header class="min-w-0">
       <h1 class="text-2xl leading-tight font-semibold tracking-[-0.01em]">
         {{ $t("localization.overview.title") }}
@@ -160,5 +161,5 @@ function addLanguage(localeCode: string): void {
         </div>
       </section>
     </template>
-  </div>
+  </PageContainer>
 </template>

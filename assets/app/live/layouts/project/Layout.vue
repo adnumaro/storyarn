@@ -199,11 +199,8 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <template v-else>
-          <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:px-6 lg:py-6">
-            <slot />
-          </div>
-        </template>
+        <!-- Utility screens bring their own PageContainer as main's direct child. -->
+        <slot v-else />
 
         <slot name="panels" />
       </main>

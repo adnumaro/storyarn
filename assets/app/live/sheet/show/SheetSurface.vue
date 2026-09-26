@@ -7,6 +7,7 @@ import SheetContentHeader from "@modules/sheets/components/chrome/header/SheetCo
 import BlockList from "@modules/sheets/components/entities/blocks/BlockList.vue";
 import SheetShowPanels from "@modules/sheets/components/panels/SheetShowPanels.vue";
 import SheetTabs from "@modules/sheets/components/panels/tabs/SheetTabs.vue";
+import PageContainer from "@shell/PageContainer.vue";
 import {
   type SheetDeepLinkTarget,
   useSheetHighlight,
@@ -115,74 +116,77 @@ useSheetHighlight(
 </script>
 
 <template>
-  <div
-    v-if="sheet"
-    ref="surfaceRoot"
-    data-sheet-comment-surface="true"
-    :data-sheet-comment-owner="sheet.id"
-    :role="commentPlacementActive ? 'region' : undefined"
-    :aria-label="commentPlacementActive ? $t('sheets.comments.surface_label') : undefined"
-    class="relative mx-auto max-w-4xl rounded-2xl border border-border bg-surface p-6 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    :class="{
-      'cursor-crosshair': commentPlacementActive,
-    }"
-    :tabindex="commentPlacementActive ? 0 : -1"
-    :aria-describedby="
-      commentPlacementActive ? 'sheet-comment-surface-keyboard-instructions' : undefined
-    "
-  >
-    <SheetContentHeader
-      :sheet="sheet"
-      :can-edit="canEdit"
-      :source-shortcut="sourceShortcut"
-      :sheet-health="surface.tabs.compact ? surface.health : null"
-    />
-
-    <div class="pb-6">
-      <div id="sheet-tabs" class="contents">
-        <SheetTabs
-          :current-tab="surface.tabs.currentTab"
-          :can-edit="surface.tabs.canEdit"
-          :compact="surface.tabs.compact"
-        />
-      </div>
-
-      <div v-if="surface.content" id="block-list" class="contents">
-        <BlockList
-          :blocks="surface.content.blocks"
-          :inherited-groups="surface.content.inheritedGroups"
-          :workspace-slug="surface.content.workspaceSlug"
-          :project-slug="surface.content.projectSlug"
-          :can-edit="surface.content.canEdit"
-          :formula-editing="surface.content.formulaEditing"
-          :block-locks="surface.content.blockLocks"
-          :current-user-id="surface.content.currentUserId"
-          :comments-active="commentsActive"
-        />
-      </div>
-
-      <SheetCanvasComments
-        v-if="surface.content?.comments"
-        :container="getSurfaceRoot"
-        :state="surface.content.comments"
-        :comment-pins="surface.content.commentPins ?? []"
-        :focus-thread-id="surface.content.commentFocusThreadId ?? null"
-        :draft-storage-key="commentDraftStorageKey"
-        :current-user-id="surface.content.currentUserId"
-        @interaction-change="localCommentInteractionActive = $event"
+  <!-- The sheet reads as an A3 page (297 x 420 mm) centred on the screen. -->
+  <PageContainer>
+    <div
+      v-if="sheet"
+      ref="surfaceRoot"
+      data-sheet-comment-surface="true"
+      :data-sheet-comment-owner="sheet.id"
+      :role="commentPlacementActive ? 'region' : undefined"
+      :aria-label="commentPlacementActive ? $t('sheets.comments.surface_label') : undefined"
+      class="relative mx-auto min-h-[420mm] w-full max-w-[297mm] rounded-2xl border border-border bg-surface p-6 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      :class="{
+        'cursor-crosshair': commentPlacementActive,
+      }"
+      :tabindex="commentPlacementActive ? 0 : -1"
+      :aria-describedby="
+        commentPlacementActive ? 'sheet-comment-surface-keyboard-instructions' : undefined
+      "
+    >
+      <SheetContentHeader
+        :sheet="sheet"
+        :can-edit="canEdit"
+        :source-shortcut="sourceShortcut"
+        :sheet-health="surface.tabs.compact ? surface.health : null"
       />
 
-      <div id="collab-toast" class="contents">
-        <CollabToast />
+      <div class="pb-6">
+        <div id="sheet-tabs" class="contents">
+          <SheetTabs
+            :current-tab="surface.tabs.currentTab"
+            :can-edit="surface.tabs.canEdit"
+            :compact="surface.tabs.compact"
+          />
+        </div>
+
+        <div v-if="surface.content" id="block-list" class="contents">
+          <BlockList
+            :blocks="surface.content.blocks"
+            :inherited-groups="surface.content.inheritedGroups"
+            :workspace-slug="surface.content.workspaceSlug"
+            :project-slug="surface.content.projectSlug"
+            :can-edit="surface.content.canEdit"
+            :formula-editing="surface.content.formulaEditing"
+            :block-locks="surface.content.blockLocks"
+            :current-user-id="surface.content.currentUserId"
+            :comments-active="commentsActive"
+          />
+        </div>
+
+        <SheetCanvasComments
+          v-if="surface.content?.comments"
+          :container="getSurfaceRoot"
+          :state="surface.content.comments"
+          :comment-pins="surface.content.commentPins ?? []"
+          :focus-thread-id="surface.content.commentFocusThreadId ?? null"
+          :draft-storage-key="commentDraftStorageKey"
+          :current-user-id="surface.content.currentUserId"
+          @interaction-change="localCommentInteractionActive = $event"
+        />
+
+        <div id="collab-toast" class="contents">
+          <CollabToast />
+        </div>
+
+        <SheetShowPanels v-if="panels" :panels="panels" />
       </div>
-
-      <SheetShowPanels v-if="panels" :panels="panels" />
     </div>
-  </div>
 
-  <div v-else class="flex justify-center py-20">
-    <div
-      class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"
-    />
-  </div>
+    <div v-else class="flex justify-center py-20">
+      <div
+        class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"
+      />
+    </div>
+  </PageContainer>
 </template>

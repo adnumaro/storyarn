@@ -23,6 +23,7 @@ import { formatRelativeTime } from "@shared/utils/date-utils.ts";
 import { interpolatableDetails } from "@components/health/health-details";
 import { useI18n } from "vue-i18n";
 import DashboardContent from "@shell/DashboardContent.vue";
+import PageContainer from "@shell/PageContainer.vue";
 import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
 import DashboardIssuesSection from "@components/dashboard/DashboardIssuesSection.vue";
 import {
@@ -198,112 +199,114 @@ const columns = computed<DashboardTableColumn[]>(() => [
 </script>
 
 <template>
-  <DashboardContent
-    :title="$t('sheets.dashboard.title')"
-    :subtitle="$t('sheets.dashboard.subtitle')"
-    :loading="overviewStatus === 'loading'"
-    :loading-label="$t('common.dashboard.loading_overview')"
-    :failure="overviewFailure"
-    :is-empty="overviewHasContent && pagination.total === 0"
-    :empty-icon="FileText"
-    :empty-message="$t('sheets.dashboard.empty')"
-    @retry="retryOverview"
-  >
-    <!-- Stats row -->
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-      <div
-        v-for="stat in statCards"
-        :key="stat.label"
-        class="rounded-lg border border-border bg-surface p-4 space-y-2"
-      >
-        <div class="flex items-center gap-2 text-xs text-muted-foreground">
-          <component :is="stat.icon" :class="['size-4', stat.color]" />
-          {{ stat.label }}
-        </div>
-        <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
-      </div>
-    </div>
-
-    <!-- Table section -->
-    <DashboardDataTable
-      :title="$t('sheets.dashboard.all_sheets')"
-      :rows="tableData"
-      :columns="columns"
-      :pagination="pagination"
-      :total-label="$t('sheets.dashboard.total_sheets', pagination.total)"
-      :previous-label="$t('common.dashboard.previous_page')"
-      :next-label="$t('common.dashboard.next_page')"
-      :has-actions="canEdit"
-      @sort="sortBy"
-      @page="goToPage"
+  <PageContainer>
+    <DashboardContent
+      :title="$t('sheets.dashboard.title')"
+      :subtitle="$t('sheets.dashboard.subtitle')"
+      :loading="overviewStatus === 'loading'"
+      :loading-label="$t('common.dashboard.loading_overview')"
+      :failure="overviewFailure"
+      :is-empty="overviewHasContent && pagination.total === 0"
+      :empty-icon="FileText"
+      :empty-message="$t('sheets.dashboard.empty')"
+      @retry="retryOverview"
     >
-      <template #row="{ row }">
-        <TableCell>
-          <a
-            :href="row.href"
-            data-phx-link="redirect"
-            data-phx-link-state="push"
-            class="font-medium hover:underline"
-          >
-            {{ row.name }}
-          </a>
-        </TableCell>
-        <TableCell class="text-right tabular-nums">{{ row.block_count }}</TableCell>
-        <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
-        <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
-        <TableCell class="text-right text-muted-foreground text-xs">
-          {{ formatRelativeTime(row.updated_at) }}
-        </TableCell>
-      </template>
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        <div
+          v-for="stat in statCards"
+          :key="stat.label"
+          class="rounded-lg border border-border bg-surface p-4 space-y-2"
+        >
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <component :is="stat.icon" :class="['size-4', stat.color]" />
+            {{ stat.label }}
+          </div>
+          <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
+        </div>
+      </div>
 
-      <template #actions="{ row }">
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              class="size-7"
-              :aria-label="$t('sheets.dashboard.sheet_actions')"
-              :title="$t('sheets.dashboard.sheet_actions')"
-            >
-              <MoreHorizontal class="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              data-testid="sheet-dashboard-delete-row"
-              class="text-destructive gap-2 text-xs"
-              @select="requestDelete(row)"
-            >
-              <Trash2 class="size-3.5" />
-              {{ $t("sheets.dashboard.delete") }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </template>
-    </DashboardDataTable>
-
-    <template #supplementary>
-      <DashboardIssuesSection
-        :title="$t('sheets.dashboard.issues')"
-        test-id-prefix="sheet"
-        :status="issuesStatus"
-        :issues="issues"
-        :pagination="resolvedIssuePagination"
-        :filters="issueFilters"
-        :filter-options="issueFilterOptions"
-        :all-resources-label="$t('sheets.dashboard.all_sheets')"
-        :code-label="issueCodeLabel"
-        @retry="retryIssues"
-        @filter="changeIssueFilter"
-        @page="goToIssuePage"
+      <!-- Table section -->
+      <DashboardDataTable
+        :title="$t('sheets.dashboard.all_sheets')"
+        :rows="tableData"
+        :columns="columns"
+        :pagination="pagination"
+        :total-label="$t('sheets.dashboard.total_sheets', pagination.total)"
+        :previous-label="$t('common.dashboard.previous_page')"
+        :next-label="$t('common.dashboard.next_page')"
+        :has-actions="canEdit"
+        @sort="sortBy"
+        @page="goToPage"
       >
-        <template #description="{ issue }">
-          {{ healthFindingLabel(issue) }}
+        <template #row="{ row }">
+          <TableCell>
+            <a
+              :href="row.href"
+              data-phx-link="redirect"
+              data-phx-link-state="push"
+              class="font-medium hover:underline"
+            >
+              {{ row.name }}
+            </a>
+          </TableCell>
+          <TableCell class="text-right tabular-nums">{{ row.block_count }}</TableCell>
+          <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
+          <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
+          <TableCell class="text-right text-muted-foreground text-xs">
+            {{ formatRelativeTime(row.updated_at) }}
+          </TableCell>
         </template>
-      </DashboardIssuesSection>
-    </template>
-  </DashboardContent>
+
+        <template #actions="{ row }">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7"
+                :aria-label="$t('sheets.dashboard.sheet_actions')"
+                :title="$t('sheets.dashboard.sheet_actions')"
+              >
+                <MoreHorizontal class="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                data-testid="sheet-dashboard-delete-row"
+                class="text-destructive gap-2 text-xs"
+                @select="requestDelete(row)"
+              >
+                <Trash2 class="size-3.5" />
+                {{ $t("sheets.dashboard.delete") }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </template>
+      </DashboardDataTable>
+
+      <template #supplementary>
+        <DashboardIssuesSection
+          :title="$t('sheets.dashboard.issues')"
+          test-id-prefix="sheet"
+          :status="issuesStatus"
+          :issues="issues"
+          :pagination="resolvedIssuePagination"
+          :filters="issueFilters"
+          :filter-options="issueFilterOptions"
+          :all-resources-label="$t('sheets.dashboard.all_sheets')"
+          :code-label="issueCodeLabel"
+          @retry="retryIssues"
+          @filter="changeIssueFilter"
+          @page="goToIssuePage"
+        >
+          <template #description="{ issue }">
+            {{ healthFindingLabel(issue) }}
+          </template>
+        </DashboardIssuesSection>
+      </template>
+    </DashboardContent>
+  </PageContainer>
 
   <ConfirmDialog
     v-model:open="deleteDialogOpen"

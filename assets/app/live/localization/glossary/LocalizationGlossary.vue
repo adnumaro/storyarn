@@ -17,6 +17,7 @@ import { Input } from "@components/ui/input";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive.ts";
 import DashboardContent from "@shell/DashboardContent.vue";
+import PageContainer from "@shell/PageContainer.vue";
 
 interface GlossaryEntry {
   id: number;
@@ -143,8 +144,8 @@ function resetForm(): void {
 </script>
 
 <template>
-  <DashboardContent>
-    <div class="mx-auto w-full max-w-6xl space-y-6 py-6">
+  <PageContainer>
+    <DashboardContent>
       <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex items-start gap-3">
           <Button v-if="backUrl" variant="ghost" size="icon-sm" as-child>
@@ -328,6 +329,6 @@ function resetForm(): void {
         <BookOpenText class="mx-auto size-10 text-base-content/20" />
         <p class="mt-3 font-medium">{{ $t("localization.glossary.no_target") }}</p>
       </div>
-    </div>
-  </DashboardContent>
+    </DashboardContent>
+  </PageContainer>
 </template>

@@ -26,6 +26,7 @@ import { TableCell } from "@components/ui/table";
 import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import DashboardContent from "@shell/DashboardContent.vue";
+import PageContainer from "@shell/PageContainer.vue";
 import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
 import DashboardIssuesSection from "@components/dashboard/DashboardIssuesSection.vue";
 import {
@@ -280,179 +281,187 @@ const columns = computed<DashboardTableColumn[]>(() => [
 </script>
 
 <template>
-  <DashboardContent
-    :title="$t('flows.dashboard.title')"
-    :subtitle="$t('flows.dashboard.subtitle')"
-    :loading="overviewStatus === 'loading'"
-    :loading-label="$t('common.dashboard.loading_overview')"
-    :failure="overviewFailure"
-    :is-empty="overviewHasContent && pagination.total === 0"
-    :empty-message="$t('flows.dashboard.empty')"
-    :empty-icon="GitBranch"
-    @retry="retryOverview"
-  >
-    <!-- Stats row -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div
-        v-for="stat in statCards"
-        :key="stat.label"
-        class="rounded-lg border border-border bg-surface p-4 space-y-2"
-      >
-        <div class="flex items-center gap-2 text-xs text-muted-foreground">
-          <component :is="stat.icon" :class="['size-4', stat.color]" />
-          {{ stat.label }}
+  <PageContainer>
+    <DashboardContent
+      :title="$t('flows.dashboard.title')"
+      :subtitle="$t('flows.dashboard.subtitle')"
+      :loading="overviewStatus === 'loading'"
+      :loading-label="$t('common.dashboard.loading_overview')"
+      :failure="overviewFailure"
+      :is-empty="overviewHasContent && pagination.total === 0"
+      :empty-message="$t('flows.dashboard.empty')"
+      :empty-icon="GitBranch"
+      @retry="retryOverview"
+    >
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div
+          v-for="stat in statCards"
+          :key="stat.label"
+          class="rounded-lg border border-border bg-surface p-4 space-y-2"
+        >
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <component :is="stat.icon" :class="['size-4', stat.color]" />
+            {{ stat.label }}
+          </div>
+          <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
         </div>
-        <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
       </div>
-    </div>
 
-    <!-- Content breakdown -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div
-        data-testid="flow-node-distribution"
-        class="rounded-lg border border-border bg-surface p-4 space-y-3"
-      >
-        <h2 class="text-sm font-medium">{{ $t("flows.dashboard.node_distribution") }}</h2>
-        <div v-if="nodeDist.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
-          {{ $t("flows.dashboard.no_nodes") }}
-        </div>
-        <div v-else class="space-y-1.5">
+      <!-- Content breakdown -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div
+          data-testid="flow-node-distribution"
+          class="rounded-lg border border-border bg-surface p-4 space-y-3"
+        >
+          <h2 class="text-sm font-medium">{{ $t("flows.dashboard.node_distribution") }}</h2>
           <div
-            v-for="item in nodeDist"
-            :key="item.type"
-            class="flex items-center justify-between text-sm"
+            v-if="nodeDist.length === 0"
+            class="text-sm text-muted-foreground/50 py-2 text-center"
           >
-            <span class="text-muted-foreground">{{ nodeTypeLabel(item.type) }}</span>
-            <div class="flex items-center gap-2">
-              <span class="tabular-nums font-medium">{{ item.count }}</span>
-              <span class="text-xs text-muted-foreground/60 tabular-nums w-10 text-right">
-                {{ item.percentage }}%
-              </span>
+            {{ $t("flows.dashboard.no_nodes") }}
+          </div>
+          <div v-else class="space-y-1.5">
+            <div
+              v-for="item in nodeDist"
+              :key="item.type"
+              class="flex items-center justify-between text-sm"
+            >
+              <span class="text-muted-foreground">{{ nodeTypeLabel(item.type) }}</span>
+              <div class="flex items-center gap-2">
+                <span class="tabular-nums font-medium">{{ item.count }}</span>
+                <span class="text-xs text-muted-foreground/60 tabular-nums w-10 text-right">
+                  {{ item.percentage }}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          data-testid="flow-top-speakers"
+          class="rounded-lg border border-border bg-surface p-4 space-y-3"
+        >
+          <h2 class="text-sm font-medium">{{ $t("flows.dashboard.top_speakers") }}</h2>
+          <div
+            v-if="speakers.length === 0"
+            class="text-sm text-muted-foreground/50 py-2 text-center"
+          >
+            {{ $t("flows.dashboard.no_speakers") }}
+          </div>
+          <div v-else class="space-y-1.5">
+            <div
+              v-for="speaker in speakers"
+              :key="speaker.sheet_id ?? speakerLabel(speaker)"
+              class="flex items-center justify-between text-sm"
+            >
+              <a
+                v-if="speaker.href"
+                :href="speaker.href"
+                data-phx-link="redirect"
+                data-phx-link-state="push"
+                class="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+              >
+                {{ speakerLabel(speaker) }}
+              </a>
+              <span v-else class="text-muted-foreground">{{ speakerLabel(speaker) }}</span>
+              <span class="tabular-nums font-medium">{{ speaker.count }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div
-        data-testid="flow-top-speakers"
-        class="rounded-lg border border-border bg-surface p-4 space-y-3"
+      <!-- Table section -->
+      <DashboardDataTable
+        :title="$t('flows.dashboard.all_flows')"
+        :rows="tableData"
+        :columns="columns"
+        :pagination="pagination"
+        :total-label="$t('flows.dashboard.total_flows', pagination.total)"
+        :previous-label="$t('common.dashboard.previous_page')"
+        :next-label="$t('common.dashboard.next_page')"
+        :has-actions="canEdit"
+        @sort="handleSort"
+        @page="goToPage"
       >
-        <h2 class="text-sm font-medium">{{ $t("flows.dashboard.top_speakers") }}</h2>
-        <div v-if="speakers.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
-          {{ $t("flows.dashboard.no_speakers") }}
-        </div>
-        <div v-else class="space-y-1.5">
-          <div
-            v-for="speaker in speakers"
-            :key="speaker.sheet_id ?? speakerLabel(speaker)"
-            class="flex items-center justify-between text-sm"
-          >
+        <template #row="{ row }">
+          <TableCell>
             <a
-              v-if="speaker.href"
-              :href="speaker.href"
-              data-phx-link="redirect"
+              :href="row.href"
+              data-phx-link="patch"
               data-phx-link-state="push"
-              class="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+              class="inline-flex items-center gap-2 font-medium hover:underline"
             >
-              {{ speakerLabel(speaker) }}
+              {{ row.name }}
+              <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
+                {{ $t("flows.dashboard.main") }}
+              </Badge>
             </a>
-            <span v-else class="text-muted-foreground">{{ speakerLabel(speaker) }}</span>
-            <span class="tabular-nums font-medium">{{ speaker.count }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Table section -->
-    <DashboardDataTable
-      :title="$t('flows.dashboard.all_flows')"
-      :rows="tableData"
-      :columns="columns"
-      :pagination="pagination"
-      :total-label="$t('flows.dashboard.total_flows', pagination.total)"
-      :previous-label="$t('common.dashboard.previous_page')"
-      :next-label="$t('common.dashboard.next_page')"
-      :has-actions="canEdit"
-      @sort="handleSort"
-      @page="goToPage"
-    >
-      <template #row="{ row }">
-        <TableCell>
-          <a
-            :href="row.href"
-            data-phx-link="patch"
-            data-phx-link-state="push"
-            class="inline-flex items-center gap-2 font-medium hover:underline"
-          >
-            {{ row.name }}
-            <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
-              {{ $t("flows.dashboard.main") }}
-            </Badge>
-          </a>
-        </TableCell>
-        <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
-        <TableCell class="text-right tabular-nums hidden sm:table-cell">
-          {{ row.dialogue_count }}
-        </TableCell>
-        <TableCell class="text-right tabular-nums hidden sm:table-cell">
-          {{ row.condition_count }}
-        </TableCell>
-        <TableCell class="text-right tabular-nums hidden md:table-cell">
-          {{ row.word_count }}
-        </TableCell>
-        <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
-          {{ formatRelativeTime(row.updated_at) }}
-        </TableCell>
-      </template>
-
-      <template #actions="{ row }">
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              class="size-7"
-              :aria-label="$t('flows.dashboard.flow_actions')"
-              :title="$t('flows.dashboard.flow_actions')"
-            >
-              <MoreHorizontal class="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem v-if="!row.is_main" class="gap-2 text-xs" @select="setMain(row.id)">
-              <Star class="size-3.5" />
-              {{ $t("flows.dashboard.set_main") }}
-            </DropdownMenuItem>
-            <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row)">
-              <Trash2 class="size-3.5" />
-              {{ $t("flows.dashboard.delete") }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </template>
-    </DashboardDataTable>
-
-    <template #supplementary>
-      <DashboardIssuesSection
-        :title="$t('flows.dashboard.issues')"
-        test-id-prefix="flow"
-        :status="issuesStatus"
-        :issues="issues"
-        :pagination="resolvedIssuePagination"
-        :filters="issueFilters"
-        :filter-options="issueFilterOptions"
-        :all-resources-label="$t('flows.dashboard.all_flows')"
-        :code-label="issueCodeLabel"
-        @retry="retryIssues"
-        @filter="changeIssueFilter"
-        @page="goToIssuePage"
-      >
-        <template #description="{ issue }">
-          {{ healthFindingLabel(issue) }}
+          </TableCell>
+          <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
+          <TableCell class="text-right tabular-nums hidden sm:table-cell">
+            {{ row.dialogue_count }}
+          </TableCell>
+          <TableCell class="text-right tabular-nums hidden sm:table-cell">
+            {{ row.condition_count }}
+          </TableCell>
+          <TableCell class="text-right tabular-nums hidden md:table-cell">
+            {{ row.word_count }}
+          </TableCell>
+          <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
+            {{ formatRelativeTime(row.updated_at) }}
+          </TableCell>
         </template>
-      </DashboardIssuesSection>
-    </template>
-  </DashboardContent>
+
+        <template #actions="{ row }">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7"
+                :aria-label="$t('flows.dashboard.flow_actions')"
+                :title="$t('flows.dashboard.flow_actions')"
+              >
+                <MoreHorizontal class="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem v-if="!row.is_main" class="gap-2 text-xs" @select="setMain(row.id)">
+                <Star class="size-3.5" />
+                {{ $t("flows.dashboard.set_main") }}
+              </DropdownMenuItem>
+              <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row)">
+                <Trash2 class="size-3.5" />
+                {{ $t("flows.dashboard.delete") }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </template>
+      </DashboardDataTable>
+
+      <template #supplementary>
+        <DashboardIssuesSection
+          :title="$t('flows.dashboard.issues')"
+          test-id-prefix="flow"
+          :status="issuesStatus"
+          :issues="issues"
+          :pagination="resolvedIssuePagination"
+          :filters="issueFilters"
+          :filter-options="issueFilterOptions"
+          :all-resources-label="$t('flows.dashboard.all_flows')"
+          :code-label="issueCodeLabel"
+          @retry="retryIssues"
+          @filter="changeIssueFilter"
+          @page="goToIssuePage"
+        >
+          <template #description="{ issue }">
+            {{ healthFindingLabel(issue) }}
+          </template>
+        </DashboardIssuesSection>
+      </template>
+    </DashboardContent>
+  </PageContainer>
 
   <ConfirmDialog
     v-model:open="deleteDialogOpen"

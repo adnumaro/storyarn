@@ -147,10 +147,12 @@ just e2e                    # Playwright E2E (mix test.e2e)
 
 ### Convention Linter
 
-`mix convention.check` (`lib/mix/tasks/convention_check.ex`) enforces 8 rules:
+`mix convention.check` (`lib/mix/tasks/convention_check.ex`) enforces 9 rules:
 `raw_without_sanitizer`, `datetime_utc_now`, `facade_bypass`, `string_to_atom`,
-`sql_interpolation`, `put_flash_without_gettext`, `native_dialog`, `inline_slugify`.
-The first, third and sixth run on `lib/storyarn_web/` only.
+`sql_interpolation`, `put_flash_without_gettext`, `native_dialog`, `inline_slugify`,
+`vue_tag_layout`. The first, third, sixth and ninth run on `lib/storyarn_web/` only.
+`vue_tag_layout` rejects layout classes (flex, grid, gap, margins, padding, fixed
+sizes) on an injected `<.vue>` tag: the page's `PageContainer` owns layout.
 
 Suppress inline with `# storyarn:disable`, `# storyarn:disable:<rule>`, or a
 `# storyarn:disable-start` / `# storyarn:disable-end` block. **It only walks Elixir

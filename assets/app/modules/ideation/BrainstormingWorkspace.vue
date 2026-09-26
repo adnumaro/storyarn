@@ -19,6 +19,7 @@ import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import DashboardContent from "@shell/DashboardContent.vue";
+import PageContainer from "@shell/PageContainer.vue";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import DecisionsDashboard from "@app/live/ideation/DecisionsDashboard.vue";
 import { sessionSummary, type DashboardDecision } from "@app/live/ideation/decisionDashboard";
@@ -1204,64 +1205,65 @@ onUnmounted(() => {
         />
       </div>
     </details>
-    <DashboardContent
-      v-if="!board.session"
-      :title="t('ideation.title')"
-      :subtitle="
-        t(board.session_missing ? 'ideation.sessionMissingHelp' : 'ideation.canvas.dashboardHelp')
-      "
-      :is-empty="!board.sessions.length"
-      :empty-message="t('ideation.noSessions')"
-      :empty-icon="StickyNote"
-    >
-      <Tabs v-model="dashboardTab" class="gap-4">
-        <TabsList v-if="board.decision_sessions?.length">
-          <TabsTrigger data-dashboard-tab="sessions" value="sessions">{{
-            t("brainstormingDecisions.dashboard.tabs.sessions")
-          }}</TabsTrigger>
-          <TabsTrigger data-dashboard-tab="decisions" value="decisions">{{
-            t("brainstormingDecisions.dashboard.tabs.decisions")
-          }}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="sessions" class="space-y-2">
-          <LiveLink
-            v-for="session in board.sessions.filter((s) => !s.deleted_at)"
-            :key="session.id"
-            :to="`${baseUrl}/${session.id}`"
-            mode="patch"
-            class="flex items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-accent/40"
-            ><StickyNote class="size-5 text-muted-foreground" />
-            <div>
-              <p class="text-sm font-medium">{{ session.title }}</p>
-              <p v-if="session.objective" class="text-xs text-muted-foreground">
-                {{ session.objective }}
-              </p>
-              <p
-                v-if="decisionSummaries.get(session.id)"
-                :data-session-decisions="session.id"
-                class="mt-1 text-xs text-muted-foreground"
-              >
-                {{ decisionSummaries.get(session.id) }}
-              </p>
-            </div></LiveLink
-          >
-        </TabsContent>
-        <TabsContent value="decisions">
-          <DecisionsDashboard
-            :groups="board.decision_sessions ?? []"
-            :base-url="baseUrl"
-            :pending="declaring"
-            :declared="dashboardDeclared"
-            @declare="declareFromDashboard"
-          />
-        </TabsContent>
-      </Tabs>
-      <template #supplementary
-        ><Button v-if="board.can_edit" :disabled="starting" @click="startSession"
-          ><Plus class="size-4" />{{ t("ideation.newSession") }}</Button
-        ></template
+    <PageContainer v-if="!board.session">
+      <DashboardContent
+        :title="t('ideation.title')"
+        :subtitle="
+          t(board.session_missing ? 'ideation.sessionMissingHelp' : 'ideation.canvas.dashboardHelp')
+        "
+        :is-empty="!board.sessions.length"
+        :empty-message="t('ideation.noSessions')"
+        :empty-icon="StickyNote"
       >
-    </DashboardContent>
+        <Tabs v-model="dashboardTab" class="gap-4">
+          <TabsList v-if="board.decision_sessions?.length">
+            <TabsTrigger data-dashboard-tab="sessions" value="sessions">{{
+              t("brainstormingDecisions.dashboard.tabs.sessions")
+            }}</TabsTrigger>
+            <TabsTrigger data-dashboard-tab="decisions" value="decisions">{{
+              t("brainstormingDecisions.dashboard.tabs.decisions")
+            }}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="sessions" class="space-y-2">
+            <LiveLink
+              v-for="session in board.sessions.filter((s) => !s.deleted_at)"
+              :key="session.id"
+              :to="`${baseUrl}/${session.id}`"
+              mode="patch"
+              class="flex items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-accent/40"
+              ><StickyNote class="size-5 text-muted-foreground" />
+              <div>
+                <p class="text-sm font-medium">{{ session.title }}</p>
+                <p v-if="session.objective" class="text-xs text-muted-foreground">
+                  {{ session.objective }}
+                </p>
+                <p
+                  v-if="decisionSummaries.get(session.id)"
+                  :data-session-decisions="session.id"
+                  class="mt-1 text-xs text-muted-foreground"
+                >
+                  {{ decisionSummaries.get(session.id) }}
+                </p>
+              </div></LiveLink
+            >
+          </TabsContent>
+          <TabsContent value="decisions">
+            <DecisionsDashboard
+              :groups="board.decision_sessions ?? []"
+              :base-url="baseUrl"
+              :pending="declaring"
+              :declared="dashboardDeclared"
+              @declare="declareFromDashboard"
+            />
+          </TabsContent>
+        </Tabs>
+        <template #supplementary
+          ><Button v-if="board.can_edit" :disabled="starting" @click="startSession"
+            ><Plus class="size-4" />{{ t("ideation.newSession") }}</Button
+          ></template
+        >
+      </DashboardContent>
+    </PageContainer>
     <div v-if="board.session" class="relative min-h-0 flex-1">
       <BrainstormingCanvas
         v-show="!list"
@@ -1551,7 +1553,7 @@ onUnmounted(() => {
         @go="goToStartedRound"
         @dismiss="startedRound = null"
       />
-      <div v-if="list" class="h-full overflow-auto p-4 lg:p-6">
+      <PageContainer v-if="list">
         <DashboardContent
           :title="board.session.title"
           :subtitle="board.session.objective ?? undefined"
@@ -1620,7 +1622,7 @@ onUnmounted(() => {
             </div>
           </div></DashboardContent
         >
-      </div>
+      </PageContainer>
       <p
         v-if="!writable"
         class="surface-panel pointer-events-none absolute right-3 top-3 px-3 py-2 text-xs text-muted-foreground"

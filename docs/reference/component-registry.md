@@ -134,7 +134,29 @@ the call site, not by editing the primitive.
 
 `assets/app/shell/` holds app chrome, not reusable widgets: `Sidebar.vue`,
 `SidebarFrame.vue`, `MainSidebar.vue`, `WorkspaceSidebar.vue`, `DashboardContent.vue`,
-`ProjectNavbarContext.vue`, `ProjectNavbarAccount.vue`.
+`PageContainer.vue`, `ProjectNavbarContext.vue`, `ProjectNavbarAccount.vue`.
+
+**Utility screens.** Every non-canvas app screen (project, Sheets, Flows, Scenes and
+Brainstorming dashboards, a sheet, assets, localization, the workspace dashboard,
+new workspace) starts with `PageContainer` in its own Vue page, as the
+direct child of the layout's `main`. The project and workspace layouts only place
+the screen: no padding, scroll or width. `PageContainer` fills the height, scrolls,
+pads 16 px (24 px from `lg`) on every side, and lays out the page's sections:
+
+| Prop     | Values                        | Effect                                                              |
+| -------- | ----------------------------- | ------------------------------------------------------------------- |
+| `width`  | `contained` (default), `full` | `contained` centres the content at 1200 px at most with `mx-auto`   |
+| `layout` | `stack` (default), `aside`    | sections one under another, or a 360 px side column from `lg`       |
+| `fill`   | boolean                       | the last section takes the height left, for content with own scroll |
+
+Sections are 24 px apart. Pages add no page-level `flex`, `grid`, `gap`, margins,
+padding or `max-w-*`; layout inside a section stays with the section.
+`DashboardContent` renders loose sections (title, empty/error states, content) for the
+page's `PageContainer`. A sheet reads as an A3 page (`max-w-[297mm]`,
+`min-h-[420mm]`); a narrow form keeps a centred form column inside the page.
+An injected `<.vue>` tag carries no layout classes (`mix convention.check`,
+`vue_tag_layout`). Canvas screens (inside a flow, scene or brainstorming session),
+Settings, Compare, auth, public pages and docs keep their own layouts.
 
 `assets/app/shared/components/assets/AssetUploadDecisionDialog.vue` is the one
 shared component living outside `components/`.
