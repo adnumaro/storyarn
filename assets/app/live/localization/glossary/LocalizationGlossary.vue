@@ -9,11 +9,16 @@ import {
   RefreshCw,
   Trash2,
 } from "@lucide/vue";
-import { computed, ref } from "vue";
+import { computed, ref, useId } from "vue";
+import { useI18n } from "vue-i18n";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import LanguagePicker from "@components/language/LanguagePicker.vue";
 import type { LanguagePickerOption } from "@components/language/types";
+import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
+import { Checkbox } from "@components/ui/checkbox";
 import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive.ts";
 import DashboardContent from "@shell/DashboardContent.vue";
@@ -54,6 +59,11 @@ const {
 }>();
 
 const live = useLive();
+const { t } = useI18n();
+const sourceTermId = useId();
+const targetTermId = useId();
+const contextId = useId();
+const doNotTranslateId = useId();
 const editingId = ref<number | null>(null);
 const sourceTerm = ref("");
 const targetTerm = ref("");
@@ -63,6 +73,20 @@ const saving = ref(false);
 const syncing = ref(false);
 const feedback = ref<"idle" | "saved" | "synced" | "error">("idle");
 const errorMessage = ref("");
+const pendingDelete = ref<GlossaryEntry | null>(null);
+const deleteDialogOpen = computed({
+  get: () => pendingDelete.value !== null,
+  set: (open: boolean) => {
+    if (!open) pendingDelete.value = null;
+  },
+});
+
+const syncBadgeClass = computed(() => {
+  if (!hasProvider) return "";
+  return synced
+    ? "border-success/30 bg-success/10 text-success"
+    : "border-warning/30 bg-warning/10 text-warning";
+});
 
 const selectedLanguage = computed(
   () => targetLanguages.find((language) => language.value === selectedLocale) ?? null,
@@ -99,7 +123,7 @@ function saveEntry(): void {
         feedback.value = "error";
         errorMessage.value = response?.errors
           ? Object.values(response.errors).join(" · ")
-          : response?.error || "save_failed";
+          : t("localization.glossary.save_failed");
       }
     },
   );
@@ -114,8 +138,13 @@ function editEntry(entry: GlossaryEntry): void {
   feedback.value = "idle";
 }
 
-function deleteEntry(entry: GlossaryEntry): void {
-  if (!window.confirm(`Delete “${entry.sourceTerm}”?`)) return;
+function requestDelete(entry: GlossaryEntry): void {
+  pendingDelete.value = entry;
+}
+
+function confirmDelete(): void {
+  const entry = pendingDelete.value;
+  if (!entry) return;
   live.pushEvent("delete_entry", { id: entry.id });
   if (editingId.value === entry.id) resetForm();
 }
@@ -129,7 +158,7 @@ function syncGlossary(): void {
     if (response?.ok) feedback.value = "synced";
     else {
       feedback.value = "error";
-      errorMessage.value = response?.error || "sync_failed";
+      errorMessage.value = t("localization.glossary.sync_failed");
     }
   });
 }
@@ -158,7 +187,7 @@ function resetForm(): void {
               <BookOpenText class="size-5 text-primary" />
               <h1 class="text-xl font-semibold">{{ $t("localization.glossary.title") }}</h1>
             </div>
-            <p class="mt-1 text-sm text-base-content/55">
+            <p class="mt-1 text-sm text-muted-foreground">
               {{ $t("localization.glossary.subtitle") }}
             </p>
           </div>
@@ -200,22 +229,17 @@ function resetForm(): void {
         v-if="selectedLanguage"
         class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]"
       >
-        <section class="overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
-          <div class="flex items-center justify-between border-b border-base-300 px-4 py-3">
+        <section class="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div class="flex items-center justify-between border-b px-4 py-3">
             <div>
               <h2 class="font-semibold">
                 {{ sourceLanguage.label }} → {{ selectedLanguage.label }}
               </h2>
-              <p class="text-xs text-base-content/50">
+              <p class="text-xs text-muted-foreground">
                 {{ $t("localization.glossary.entry_count", { count: entries.length }) }}
               </p>
             </div>
-            <span
-              :class="[
-                'badge badge-sm',
-                !hasProvider ? 'badge-ghost' : synced ? 'badge-success' : 'badge-warning',
-              ]"
-            >
+            <Badge :variant="hasProvider ? 'outline' : 'secondary'" :class="syncBadgeClass">
               {{
                 !hasProvider
                   ? $t("localization.glossary.local_only")
@@ -223,25 +247,25 @@ function resetForm(): void {
                     ? $t("localization.glossary.up_to_date")
                     : $t("localization.glossary.pending_sync")
               }}
-            </span>
+            </Badge>
           </div>
 
-          <div v-if="entries.length" class="divide-y divide-base-300">
+          <div v-if="entries.length" class="divide-y">
             <article
               v-for="entry in entries"
               :key="entry.id"
-              class="group grid gap-2 px-4 py-3 transition-colors hover:bg-base-200/50 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
+              class="group grid gap-2 px-4 py-3 transition-colors hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
             >
               <div class="min-w-0">
                 <p class="truncate font-medium">{{ entry.sourceTerm }}</p>
-                <p v-if="entry.context" class="truncate text-xs text-base-content/45">
+                <p v-if="entry.context" class="truncate text-xs text-muted-foreground">
                   {{ entry.context }}
                 </p>
               </div>
               <div class="min-w-0 text-sm">
-                <span v-if="entry.doNotTranslate" class="badge badge-outline badge-sm">
+                <Badge v-if="entry.doNotTranslate" variant="outline">
                   {{ $t("localization.glossary.do_not_translate") }}
-                </span>
+                </Badge>
                 <span v-else class="block truncate">{{ entry.targetTerm }}</span>
               </div>
               <div v-if="canEdit" class="flex justify-end gap-1">
@@ -257,23 +281,23 @@ function resetForm(): void {
                   variant="ghost"
                   size="icon-sm"
                   :aria-label="$t('localization.glossary.delete_action')"
-                  @click="deleteEntry(entry)"
+                  @click="requestDelete(entry)"
                 >
-                  <Trash2 class="size-3.5 text-error" />
+                  <Trash2 class="size-3.5 text-destructive" />
                 </Button>
               </div>
             </article>
           </div>
           <div v-else class="px-6 py-14 text-center">
-            <BookOpenText class="mx-auto size-9 text-base-content/20" />
+            <BookOpenText class="mx-auto size-9 text-muted-foreground/40" />
             <p class="mt-3 font-medium">{{ $t("localization.glossary.empty_title") }}</p>
-            <p class="mt-1 text-sm text-base-content/50">
+            <p class="mt-1 text-sm text-muted-foreground">
               {{ $t("localization.glossary.empty_description") }}
             </p>
           </div>
         </section>
 
-        <aside v-if="canEdit" class="rounded-xl border border-base-300 bg-base-100 p-4 shadow-sm">
+        <aside v-if="canEdit" class="rounded-xl border bg-card p-4 shadow-sm">
           <div class="flex items-center justify-between">
             <h2 class="font-semibold">
               {{
@@ -282,40 +306,42 @@ function resetForm(): void {
                   : $t("localization.glossary.add_entry")
               }}
             </h2>
-            <button v-if="editingId" class="btn btn-ghost btn-xs" type="button" @click="resetForm">
+            <Button v-if="editingId" variant="ghost" size="xs" @click="resetForm">
               {{ $t("localization.glossary.cancel_edit") }}
-            </button>
+            </Button>
           </div>
           <div class="mt-4 space-y-3">
-            <label class="form-control gap-1.5">
-              <span class="text-xs font-medium text-base-content/60">{{
-                sourceLanguage.label
-              }}</span>
-              <Input v-model="sourceTerm" :disabled="!!editingId" />
-            </label>
-            <label class="flex cursor-pointer items-center gap-2 text-sm">
-              <input v-model="doNotTranslate" type="checkbox" class="checkbox checkbox-sm" />
-              {{ $t("localization.glossary.do_not_translate") }}
-            </label>
-            <label class="form-control gap-1.5">
-              <span class="text-xs font-medium text-base-content/60">{{
-                selectedLanguage.label
-              }}</span>
-              <Input v-model="targetTerm" :disabled="doNotTranslate" />
-            </label>
-            <label class="form-control gap-1.5">
-              <span class="text-xs font-medium text-base-content/60">{{
-                $t("localization.glossary.context")
-              }}</span>
-              <Textarea v-model="context" class="min-h-20" />
-            </label>
+            <div class="flex flex-col gap-1.5">
+              <Label :for="sourceTermId" class="text-xs text-muted-foreground">
+                {{ sourceLanguage.label }}
+              </Label>
+              <Input :id="sourceTermId" v-model="sourceTerm" :disabled="!!editingId" />
+            </div>
+            <div class="flex items-center gap-2">
+              <Checkbox :id="doNotTranslateId" v-model="doNotTranslate" />
+              <Label :for="doNotTranslateId" class="cursor-pointer font-normal">
+                {{ $t("localization.glossary.do_not_translate") }}
+              </Label>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label :for="targetTermId" class="text-xs text-muted-foreground">
+                {{ selectedLanguage.label }}
+              </Label>
+              <Input :id="targetTermId" v-model="targetTerm" :disabled="doNotTranslate" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label :for="contextId" class="text-xs text-muted-foreground">
+                {{ $t("localization.glossary.context") }}
+              </Label>
+              <Textarea :id="contextId" v-model="context" class="min-h-20" />
+            </div>
             <Button class="w-full" :disabled="!formReady || saving" @click="saveEntry">
               <LoaderCircle v-if="saving" class="size-4 animate-spin" />
               <Plus v-else-if="!editingId" class="size-4" />
               <Check v-else class="size-4" />
               {{ $t("localization.glossary.save_entry") }}
             </Button>
-            <p v-if="feedback === 'error'" class="text-xs text-error" role="alert">
+            <p v-if="feedback === 'error'" class="text-xs text-destructive" role="alert">
               {{ errorMessage }}
             </p>
             <p v-else-if="feedback === 'synced'" class="text-xs text-success" role="status">
@@ -325,10 +351,25 @@ function resetForm(): void {
         </aside>
       </div>
 
-      <div v-else class="rounded-xl border border-dashed border-base-300 py-16 text-center">
-        <BookOpenText class="mx-auto size-10 text-base-content/20" />
+      <div v-else class="rounded-xl border border-dashed py-16 text-center">
+        <BookOpenText class="mx-auto size-10 text-muted-foreground/40" />
         <p class="mt-3 font-medium">{{ $t("localization.glossary.no_target") }}</p>
       </div>
+
+      <ConfirmDialog
+        v-model:open="deleteDialogOpen"
+        :title="
+          $t('localization.glossary.delete_confirm_title', {
+            term: pendingDelete?.sourceTerm ?? '',
+          })
+        "
+        :description="$t('localization.glossary.delete_confirm_description')"
+        :confirm-text="$t('localization.glossary.delete_action')"
+        :cancel-text="$t('localization.glossary.cancel_edit')"
+        variant="destructive"
+        :icon="Trash2"
+        @confirm="confirmDelete"
+      />
     </DashboardContent>
   </PageContainer>
 </template>

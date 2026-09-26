@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 const {
   label = "",
@@ -23,10 +23,19 @@ const emit = defineEmits<{
   update: [value: string];
 }>();
 
+// The label follows the thumb while dragging; the value is committed on release.
+const draft = ref<string | null>(null);
+
 const displayValue = computed(() => {
-  if (format) return format(Number(value));
-  return value;
+  const current = draft.value ?? value;
+  if (format) return format(Number(current));
+  return current;
 });
+
+function commit(event: Event): void {
+  draft.value = null;
+  emit("update", (event.target as HTMLInputElement).value);
+}
 </script>
 
 <template>
@@ -37,13 +46,14 @@ const displayValue = computed(() => {
     </div>
     <input
       type="range"
-      :value="value"
+      :value="draft ?? value"
       :min="min"
       :max="max"
       :step="step"
       :disabled="disabled"
       class="w-full h-1 accent-primary disabled:opacity-40"
-      @input="(e: Event) => emit('update', (e.target as HTMLInputElement).value)"
+      @input="(e: Event) => (draft = (e.target as HTMLInputElement).value)"
+      @change="commit"
     />
   </div>
 </template>

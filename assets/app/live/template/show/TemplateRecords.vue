@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@components/ui/table";
-import { formatTemplateDate } from "../templateFormat";
+import { formatTemplateDate, publicationStatusVariant } from "../templateFormat";
 import type { TemplateInstall, TemplatePublication, TemplateVersion } from "../types";
 
 /**
@@ -30,13 +30,6 @@ const {
 const { t, te, locale } = useI18n();
 const date = (value: string | null) => formatTemplateDate(value, locale.value);
 
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  published: "default",
-  failed: "destructive",
-  retrying: "secondary",
-  queued: "secondary",
-  running: "secondary",
-};
 function statusLabel(status: string) {
   const key = `templates.show.publications.status.${status}`;
   return t(te(key) ? key : "templates.show.publications.status.unknown");
@@ -71,7 +64,7 @@ function publicationSummary(publication: TemplatePublication) {
       >
         <div class="min-w-0">
           <div class="flex items-center gap-2">
-            <Badge :variant="statusVariant[publication.status] ?? 'outline'">{{
+            <Badge :variant="publicationStatusVariant(publication.status)">{{
               statusLabel(publication.status)
             }}</Badge>
             <span class="truncate text-sm font-medium">{{ publication.name }}</span>

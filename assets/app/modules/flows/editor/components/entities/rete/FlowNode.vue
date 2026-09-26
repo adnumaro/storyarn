@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { computed, inject } from "vue";
+import { Lock } from "@lucide/vue";
 import type { FlowNodeType, NodeData } from "../../../lib/node-configs";
 import { NODE_CONFIGS } from "../../../lib/node-configs";
 import { resolveNodeColor } from "../../../lib/render-helpers";
@@ -16,6 +17,7 @@ import JumpNode from "../nodes/JumpNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
 import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
+import type { FlowNodeLock } from "../../../services/editorHandlers";
 
 interface FlowNodeData {
   id: string | number;
@@ -28,6 +30,7 @@ interface FlowNodeData {
 interface FlowContextValue {
   commentCounts?: Record<string, number>;
   commentsEnabled?: boolean;
+  nodeLocks?: Record<string, FlowNodeLock>;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
   lod: string;
@@ -92,14 +95,17 @@ const isSelected = computed(() => ctx.selectedReteIds.has(data?.id));
 // hide it — per-node inline editing doesn't make sense in bulk. Derived from
 // the reactive `selectedReteIds` set so it stays in sync across click + marquee
 // (unlike the legacy `selectedReteNodeId` which only tracks single click-selects).
-const showToolbar = computed(
-  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
-);
-
 const nodeId = computed(() => {
   const reteId = String(data?.id || "");
   return reteId.startsWith("node-") ? reteId.slice(5) : reteId;
 });
+
+// Another collaborator is editing this node; the server refuses edits meanwhile.
+const lock = computed(() => ctx.nodeLocks?.[nodeId.value] ?? null);
+
+const showToolbar = computed(
+  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value && !lock.value,
+);
 </script>
 
 <template>
@@ -112,6 +118,17 @@ const nodeId = computed(() => {
     :class="{ 'ring-2 ring-primary ring-offset-2 ring-offset-background': isSelected }"
     style="overflow: visible"
   >
+    <div
+      v-if="lock"
+      class="pointer-events-none absolute -top-3 right-2 z-10 inline-flex max-w-40 items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
+      :style="{ color: lock.color, borderColor: lock.color }"
+      role="status"
+      :aria-label="$t('flows.node_lock.editing_by', { name: lock.name })"
+      :data-flow-node-lock="nodeId"
+    >
+      <Lock class="size-3 shrink-0" aria-hidden="true" />
+      <span class="truncate">{{ lock.name }}</span>
+    </div>
     <FlowNodeToolbar
       v-if="showToolbar"
       :node-type="nodeType"

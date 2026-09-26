@@ -5,18 +5,18 @@
  */
 
 import { Hash, Lock, Settings, Unlock } from "@lucide/vue";
-import { ref } from "vue";
+import { ref, useId } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs";
 import ToolbarBase from "@components/toolbar/ToolbarBase.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Button } from "@components/ui/button";
-import { generateId } from "../../../../../shared/domain/variables.ts";
+
+const configTriggerId = useId();
 
 const configOpen = ref(false);
 
 const {
-  blockId,
   isConstant = false,
   isVariable = false,
   variableName = "",
@@ -113,7 +113,7 @@ const emit = defineEmits<{
       <Popover v-if="showConfig" @update:open="(v) => (configOpen = v)">
         <PopoverTrigger as-child>
           <Button
-            :id="`block-toolbar-${blockId}-${generateId()}`"
+            :id="configTriggerId"
             size="icon-sm"
             variant="ghost"
             :title="$t('sheets.block_toolbar.configure')"

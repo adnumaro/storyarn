@@ -13,7 +13,7 @@ import {
   Type,
 } from "@lucide/vue";
 import type { FunctionalComponent } from "vue";
-import { computed, ref } from "vue";
+import { computed, ref, useId } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import {
@@ -25,7 +25,8 @@ import {
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs";
-import { generateId } from "../../../../../shared/domain/variables.ts";
+
+const menuTriggerId = useId();
 
 interface BlockSelection {
   type: string;
@@ -70,7 +71,7 @@ function selectBlock(type: string): void {
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <Button
-        :id="`add-block-menu-${generateId()}`"
+        :id="menuTriggerId"
         variant="ghost"
         size="sm"
         class="w-full justify-start gap-2 text-xs text-muted-foreground border border-dashed border-border"

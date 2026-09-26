@@ -1531,7 +1531,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         |> assign(:node_locks, node_locks)
         |> assign(:locked_node_id, node_id)
         |> assign(:lock_heartbeat_ref, ref)
-        |> push_event("locks_updated", %{locks: node_locks})
 
       {:error, :already_locked, lock_info} ->
         put_flash(
@@ -1559,7 +1558,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     |> assign(:node_locks, node_locks)
     |> assign(:locked_node_id, nil)
     |> assign(:lock_heartbeat_ref, nil)
-    |> push_event("locks_updated", %{locks: node_locks})
   end
 
   defp cancel_lock_heartbeat(socket) do

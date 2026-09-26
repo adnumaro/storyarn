@@ -11,6 +11,7 @@ import type { SequenceConfigPanelData, SequenceStageState } from "@modules/flows
 import { useLive } from "@shared/composables/useLive";
 import FlowCanvas from "./FlowCanvas.vue";
 import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
+import type { FlowNodeLock } from "@modules/flows/editor/services/editorHandlers";
 
 interface FlowSurfaceCanvasData {
   key: string;
@@ -25,6 +26,7 @@ interface FlowSurfaceCanvasData {
   commentPins?: FlowCommentThread[];
   comments?: FlowCommentsPanelState | null;
   commentFocusThreadId?: number | null;
+  nodeLocks?: Record<string, FlowNodeLock>;
 }
 
 interface FlowDockSurface {
@@ -286,10 +288,10 @@ onUnmounted(() => {
           :variable-map="surface.canvas.variableMap"
           :loading="surface.canvas.loading"
           :readonly="surface.canvas.readonly"
-          :user-id="surface.canvas.userId"
-          :user-color="surface.canvas.userColor"
+          :viewer="{ id: surface.canvas.userId, color: surface.canvas.userColor }"
           :canvas-id="surface.canvas.canvasId"
           :toolbar-data="surface.canvas.toolbarData"
+          :node-locks="surface.canvas.nodeLocks ?? {}"
           :comments="comments"
           :fit-view-request="fitViewRequest"
         />

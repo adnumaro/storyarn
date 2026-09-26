@@ -8,6 +8,7 @@ import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/t
 const init = vi.fn();
 const setToolbarProps = vi.fn();
 const setCommentCounts = vi.fn();
+const setNodeLocks = vi.fn();
 vi.mock("live_vue", () => ({ useLiveVue: () => liveProjection }));
 vi.mock("@modules/flows/editor/composables/useFlowCanvas", () => ({
   useFlowCanvas: () => ({
@@ -16,6 +17,7 @@ vi.mock("@modules/flows/editor/composables/useFlowCanvas", () => ({
     area: ref(null),
     setToolbarProps,
     setCommentCounts,
+    setNodeLocks,
   }),
 }));
 const { default: FlowCanvas } = await import("@app/live/flow/show/FlowCanvas.vue");
@@ -33,11 +35,11 @@ const props = {
   variableMap: "{}",
   loading: false,
   readonly: true,
-  userId: 4,
-  userColor: "#123456",
+  viewer: { id: 4, color: "#123456" },
   canvasId: "test-canvas",
   toolbarData: "{}",
 };
+const { viewer: _viewer, ...canvasProps } = props;
 const comments: FlowCommentsPanelState = {
   open: false,
   presentation: "canvas",
@@ -149,7 +151,15 @@ describe("FlowCanvas spatial comment boundary", () => {
   it("projects in-place LiveVue changes without reinstalling the Rete bridge", async () => {
     init.mockResolvedValue(undefined);
     const surface: SurfaceData = {
-      canvas: { ...props, key: "flow-7", comments, commentPins: [], commentFocusThreadId: null },
+      canvas: {
+        ...canvasProps,
+        userId: props.viewer.id,
+        userColor: props.viewer.color,
+        key: "flow-7",
+        comments,
+        commentPins: [],
+        commentFocusThreadId: null,
+      },
       dock: {
         canEdit: false,
         compact: false,

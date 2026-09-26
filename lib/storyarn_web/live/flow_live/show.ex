@@ -1833,8 +1833,21 @@ defmodule StoryarnWeb.FlowLive.Show do
       commentPins: assigns.comment_pins,
       commentFocusThreadId: assigns.comment_focus_thread_id,
       comments: assigns.comments,
+      nodeLocks: if(assigns.loading, do: %{}, else: serialize_node_locks(assigns.node_locks)),
       toolbarData: Jason.encode!(toolbar_data(assigns))
     }
+  end
+
+  # Other collaborators' locks, keyed by node id; the canvas hides its own.
+  defp serialize_node_locks(node_locks) do
+    Map.new(node_locks, fn {node_id, lock} ->
+      {to_string(node_id),
+       %{
+         userId: lock.user_id,
+         name: FormHelpers.get_email_name(lock.user_email),
+         color: lock.user_color
+       }}
+    end)
   end
 
   defp flow_surface_variable_map(%{loading: true}), do: nil

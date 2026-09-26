@@ -15,6 +15,7 @@ import { debug } from "../services/debug";
 import {
   editorHandlers,
   type FlowContext,
+  type FlowNodeLock,
   type HookProxy,
   type HubMapEntry,
 } from "../services/editorHandlers";
@@ -375,7 +376,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     if (hookProxy._readonly) {
       return;
     }
-    runtime.keyboardHandler = keyboard(hookProxy, null);
+    runtime.keyboardHandler = keyboard(hookProxy);
     runtime.keyboardHandler.init();
     hookProxy.keyboardHandler = runtime.keyboardHandler;
   }
@@ -867,6 +868,13 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     }
   }
 
+  function setNodeLocks(locks: Record<string, FlowNodeLock>, userId: number): void {
+    if (!hookProxy._flowContext) return;
+    hookProxy._flowContext.nodeLocks = Object.fromEntries(
+      Object.entries(locks).filter(([, lock]) => lock.userId !== userId),
+    );
+  }
+
   function setCommentCounts(counts: Record<string, number>, enabled: boolean): void {
     if (hookProxy._flowContext) {
       hookProxy._flowContext.commentCounts = counts;
@@ -897,6 +905,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     syncNodeSize,
     setToolbarProps,
     setCommentCounts,
+    setNodeLocks,
     focusCommentNode,
     destroy,
   };

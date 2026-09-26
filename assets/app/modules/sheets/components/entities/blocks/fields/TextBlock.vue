@@ -8,6 +8,8 @@ import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import { useId } from "reka-ui";
 
+const placeholderId = useId();
+
 const {
   block,
   canEdit = false,
@@ -79,11 +81,11 @@ function saveLabel(val: string): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+          <label :for="placeholderId" class="text-xs font-medium">{{
             $t("sheets.text_block.placeholder_label")
           }}</label>
           <Input
-            :id="`placeholder-${useId()}`"
+            :id="placeholderId"
             :model-value="block.config?.placeholder || ''"
             :placeholder="$t('sheets.text_block.placeholder_placeholder')"
             size="xs"

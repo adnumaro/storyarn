@@ -50,7 +50,7 @@ msgstr "Formato desconocido"
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:190
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:246
-#: lib/storyarn_web/live/flow_live/show.ex:1987
+#: lib/storyarn_web/live/flow_live/show.ex:2000
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:99
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:116
 #, elixir-autogen, elixir-format

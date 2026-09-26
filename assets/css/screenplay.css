@@ -63,7 +63,7 @@
 .screenplay-page {
   max-width: 816px;
   margin: 0 auto;
-  background-color: var(--color-base-200);
+  background-color: var(--color-muted);
   border-radius: 20px;
   font-family: "Courier Prime", "Courier New", Courier, monospace;
   font-size: 12pt;
@@ -130,12 +130,12 @@
 
 .sp-row-action:hover {
   color: color-mix(in oklch, var(--color-foreground) 60%, transparent);
-  background-color: var(--color-base-200);
+  background-color: var(--color-muted);
 }
 
 .sp-row-action-danger:hover {
-  color: var(--color-error);
-  background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
+  color: var(--color-destructive);
+  background-color: color-mix(in oklch, var(--color-destructive) 10%, transparent);
 }
 
 /* ---------------------------------------------------------------------------

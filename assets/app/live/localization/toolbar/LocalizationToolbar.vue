@@ -12,6 +12,8 @@ import {
 } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { Button } from "@components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { Progress } from "@components/ui/progress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,7 +153,7 @@ function importFailureKey(error?: string): string {
   <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
     <div
       v-if="activeRun"
-      class="hidden min-w-48 items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-2.5 py-1.5 lg:flex"
+      class="hidden min-w-48 items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5 lg:flex"
       role="status"
       aria-live="polite"
     >
@@ -159,19 +161,19 @@ function importFailureKey(error?: string): string {
       <div class="min-w-0 flex-1">
         <div class="flex items-center justify-between gap-3 text-xs font-medium">
           <span>{{ $t(`localization.toolbar.run_${activeRun.status}`) }}</span>
-          <span class="tabular-nums text-base-content/60">{{ progress }}%</span>
+          <span class="tabular-nums text-muted-foreground">{{ progress }}%</span>
         </div>
-        <progress class="progress progress-primary h-1 w-full" :value="progress" max="100" />
+        <Progress :model-value="progress" class="mt-1 h-1" />
       </div>
-      <button
+      <Button
         v-if="active && canEdit"
-        type="button"
-        class="btn btn-ghost btn-xs btn-square"
+        variant="ghost"
+        size="icon-xs"
         :aria-label="$t('localization.toolbar.cancel')"
         @click="cancelRun"
       >
         <X class="size-3.5" />
-      </button>
+      </Button>
     </div>
 
     <DropdownMenu v-if="exportCsvUrl || exportXlsxUrl">
@@ -221,30 +223,96 @@ function importFailureKey(error?: string): string {
       <Upload v-else class="size-4" />
       <span class="hidden xl:inline">{{ $t("localization.toolbar.import_csv") }}</span>
     </Button>
-    <details
+    <div
       v-if="importResult?.ok && importIssueCount > 0"
-      class="dropdown dropdown-end"
+      class="contents"
       data-testid="localization-import-result"
     >
-      <summary class="btn btn-ghost btn-sm gap-1.5 text-warning">
-        <TriangleAlert class="size-4 shrink-0" />
-        <span class="hidden lg:inline">
-          {{
-            $t("localization.toolbar.imported_with_issues", {
-              count: importResult.updated,
-              issues: importIssueCount,
-            })
-          }}
-        </span>
-        <span class="sr-only lg:hidden">
-          {{
-            $t("localization.toolbar.imported_with_issues", {
-              count: importResult.updated,
-              issues: importIssueCount,
-            })
-          }}
-        </span>
-      </summary>
+      <Popover>
+        <PopoverTrigger as-child>
+          <Button variant="ghost" size="sm" class="gap-1.5 text-warning hover:text-warning">
+            <TriangleAlert class="size-4 shrink-0" />
+            <span class="hidden lg:inline">
+              {{
+                $t("localization.toolbar.imported_with_issues", {
+                  count: importResult.updated,
+                  issues: importIssueCount,
+                })
+              }}
+            </span>
+            <span class="sr-only lg:hidden">
+              {{
+                $t("localization.toolbar.imported_with_issues", {
+                  count: importResult.updated,
+                  issues: importIssueCount,
+                })
+              }}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" class="w-80 p-3">
+          <p class="font-semibold">
+            {{ $t("localization.toolbar.import_summary_title") }}
+          </p>
+          <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="rounded-lg bg-success/10 px-2 py-2">
+              <dt class="text-muted-foreground">
+                {{ $t("localization.toolbar.import_summary_updated") }}
+              </dt>
+              <dd class="mt-0.5 font-semibold tabular-nums text-success">
+                {{ importResult.updated || 0 }}
+              </dd>
+            </div>
+            <div class="rounded-lg bg-muted px-2 py-2">
+              <dt class="text-muted-foreground">
+                {{ $t("localization.toolbar.import_summary_skipped") }}
+              </dt>
+              <dd class="mt-0.5 font-semibold tabular-nums">
+                {{ importResult.skipped || 0 }}
+              </dd>
+            </div>
+            <div class="rounded-lg bg-destructive/10 px-2 py-2">
+              <dt class="text-muted-foreground">
+                {{ $t("localization.toolbar.import_summary_errors") }}
+              </dt>
+              <dd class="mt-0.5 font-semibold tabular-nums text-destructive">
+                {{ importErrors.length }}
+              </dd>
+            </div>
+          </dl>
+
+          <p v-if="(importResult.skipped || 0) > 0" class="mt-3 text-xs text-muted-foreground">
+            {{ $t("localization.toolbar.import_skipped_help") }}
+          </p>
+
+          <div v-if="importErrors.length > 0" class="mt-3 border-t pt-2">
+            <p class="mb-1.5 text-xs font-medium text-muted-foreground">
+              {{ $t("localization.toolbar.import_error_details") }}
+            </p>
+            <div class="max-h-52 space-y-1 overflow-y-auto pr-1">
+              <div
+                v-for="rowError in visibleImportErrors"
+                :key="`${rowError.line}-${rowError.error}`"
+                class="flex gap-2 rounded-md bg-destructive/5 px-2 py-1.5 text-xs"
+              >
+                <span class="shrink-0 font-medium tabular-nums text-destructive">
+                  {{ $t("localization.toolbar.import_error_line", { line: rowError.line }) }}
+                </span>
+                <span class="text-muted-foreground">
+                  {{ $t(importRowErrorKey(rowError.error)) }}
+                </span>
+              </div>
+            </div>
+            <p v-if="hiddenImportErrorCount > 0" class="mt-2 text-xs text-muted-foreground">
+              {{
+                $t("localization.toolbar.import_more_errors", {
+                  count: hiddenImportErrorCount,
+                })
+              }}
+            </p>
+          </div>
+        </PopoverContent>
+      </Popover>
       <span class="sr-only" role="status" aria-live="polite">
         {{
           $t("localization.toolbar.imported_with_issues", {
@@ -253,72 +321,7 @@ function importFailureKey(error?: string): string {
           })
         }}
       </span>
-
-      <div
-        class="dropdown-content z-50 mt-2 w-80 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl"
-      >
-        <p class="font-semibold text-base-content">
-          {{ $t("localization.toolbar.import_summary_title") }}
-        </p>
-        <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-          <div class="rounded-lg bg-success/10 px-2 py-2">
-            <dt class="text-base-content/60">
-              {{ $t("localization.toolbar.import_summary_updated") }}
-            </dt>
-            <dd class="mt-0.5 font-semibold tabular-nums text-success">
-              {{ importResult.updated || 0 }}
-            </dd>
-          </div>
-          <div class="rounded-lg bg-base-200 px-2 py-2">
-            <dt class="text-base-content/60">
-              {{ $t("localization.toolbar.import_summary_skipped") }}
-            </dt>
-            <dd class="mt-0.5 font-semibold tabular-nums">
-              {{ importResult.skipped || 0 }}
-            </dd>
-          </div>
-          <div class="rounded-lg bg-error/10 px-2 py-2">
-            <dt class="text-base-content/60">
-              {{ $t("localization.toolbar.import_summary_errors") }}
-            </dt>
-            <dd class="mt-0.5 font-semibold tabular-nums text-error">
-              {{ importErrors.length }}
-            </dd>
-          </div>
-        </dl>
-
-        <p v-if="(importResult.skipped || 0) > 0" class="mt-3 text-xs text-base-content/60">
-          {{ $t("localization.toolbar.import_skipped_help") }}
-        </p>
-
-        <div v-if="importErrors.length > 0" class="mt-3 border-t border-base-300 pt-2">
-          <p class="mb-1.5 text-xs font-medium text-base-content/70">
-            {{ $t("localization.toolbar.import_error_details") }}
-          </p>
-          <div class="max-h-52 space-y-1 overflow-y-auto pr-1">
-            <div
-              v-for="rowError in visibleImportErrors"
-              :key="`${rowError.line}-${rowError.error}`"
-              class="flex gap-2 rounded-md bg-error/5 px-2 py-1.5 text-xs"
-            >
-              <span class="shrink-0 font-medium tabular-nums text-error">
-                {{ $t("localization.toolbar.import_error_line", { line: rowError.line }) }}
-              </span>
-              <span class="text-base-content/70">
-                {{ $t(importRowErrorKey(rowError.error)) }}
-              </span>
-            </div>
-          </div>
-          <p v-if="hiddenImportErrorCount > 0" class="mt-2 text-xs text-base-content/50">
-            {{
-              $t("localization.toolbar.import_more_errors", {
-                count: hiddenImportErrorCount,
-              })
-            }}
-          </p>
-        </div>
-      </div>
-    </details>
+    </div>
 
     <span
       v-else-if="importResult?.ok"
@@ -338,7 +341,7 @@ function importFailureKey(error?: string): string {
 
     <span
       v-else-if="importResult"
-      class="flex items-center gap-1 text-xs text-error"
+      class="flex items-center gap-1 text-xs text-destructive"
       role="status"
       aria-live="polite"
       data-testid="localization-import-result"

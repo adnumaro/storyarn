@@ -55,6 +55,7 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   const flowContext: FlowContext = reactive({
     commentCounts: {},
     commentsEnabled: false,
+    nodeLocks: {},
     sheetsMap: hook.sheetsMap || {},
     hubsMap: hook.hubsMap || {},
     lod: "full",

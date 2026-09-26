@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import {
+  METER_WARNING_RATIO,
   SettingsMeterRow,
   SettingsPage,
   SettingsSection,
@@ -75,7 +76,7 @@ function countMeter(key: string, bucket: CountBucket, hint: string): Meter {
   const percent = bucket.limit > 0 ? Math.min((bucket.used / bucket.limit) * 100, 100) : 100;
   let status: SettingsMeterStatus = "available";
   if (bucket.used >= bucket.limit) status = "reached";
-  else if (percent >= 90) status = "warning";
+  else if (percent >= METER_WARNING_RATIO * 100) status = "warning";
 
   return { ...meter, limit: format.format(bucket.limit), percent, status };
 }
@@ -84,7 +85,7 @@ function storageStatus(state: string, progressPercent: number): SettingsMeterSta
   if (state === "over_limit" || state === "zero") return "reached";
   if (state === "unlimited") return "unlimited";
   if (state === "unknown") return "unknown";
-  if (progressPercent >= 90) return "warning";
+  if (progressPercent >= METER_WARNING_RATIO * 100) return "warning";
   return "available";
 }
 

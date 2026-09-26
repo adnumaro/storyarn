@@ -75,6 +75,9 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
     # Untrack presence (safety — LiveView process death also untracks)
     Collaboration.untrack_presence(self(), scope, user_id)
 
+    # Remove this user's cursor from the other collaborators' canvases
+    Collaboration.broadcast_cursor_leave(scope, user_id)
+
     # Release any held locks
     Collaboration.release_all_locks(scope, user_id)
 

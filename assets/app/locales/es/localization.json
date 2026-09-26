@@ -96,7 +96,11 @@
       "cancel_edit": "Cancelar",
       "context": "Contexto o nota de uso",
       "save_entry": "Guardar término",
-      "no_target": "Añade un idioma destino para crear un glosario."
+      "no_target": "Añade un idioma destino para crear un glosario.",
+      "save_failed": "No se pudo guardar el término. Inténtalo de nuevo.",
+      "sync_failed": "No se pudo sincronizar el glosario con DeepL. Inténtalo de nuevo.",
+      "delete_confirm_title": "¿Eliminar «{term}»?",
+      "delete_confirm_description": "El término se elimina de este glosario. Las traducciones ya hechas no cambian."
     },
     "overview": {
       "title": "Localización",

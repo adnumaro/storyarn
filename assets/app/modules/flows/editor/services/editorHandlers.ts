@@ -116,8 +116,17 @@ export interface HubMapEntry {
 // FlowContext & HookProxy
 // ---------------------------------------------------------------------------
 
+/** Someone else is editing this node; the server refuses edits until they leave it. */
+export interface FlowNodeLock {
+  userId: number;
+  name: string;
+  color: string;
+}
+
 export interface FlowContext {
   commentCounts?: Record<string, number>;
+  /** Nodes locked by other collaborators, keyed by database node id. */
+  nodeLocks: Record<string, FlowNodeLock>;
   commentsEnabled?: boolean;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;

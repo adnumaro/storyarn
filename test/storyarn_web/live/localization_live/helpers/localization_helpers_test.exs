@@ -85,34 +85,6 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersTest do
     end
   end
 
-  # ── status_class/1 ──────────────────────────────────────────────────
-
-  describe "status_class/1" do
-    test "pending returns badge-ghost" do
-      assert LocalizationHelpers.status_class("pending") == "badge-ghost"
-    end
-
-    test "draft returns badge-warning" do
-      assert LocalizationHelpers.status_class("draft") == "badge-warning"
-    end
-
-    test "in_progress returns badge-info" do
-      assert LocalizationHelpers.status_class("in_progress") == "badge-info"
-    end
-
-    test "review returns badge-secondary" do
-      assert LocalizationHelpers.status_class("review") == "badge-secondary"
-    end
-
-    test "final returns badge-success" do
-      assert LocalizationHelpers.status_class("final") == "badge-success"
-    end
-
-    test "unknown returns badge-ghost" do
-      assert LocalizationHelpers.status_class("anything") == "badge-ghost"
-    end
-  end
-
   # ── content_role_label/1 ────────────────────────────────────────────
 
   describe "content_role_label/1" do

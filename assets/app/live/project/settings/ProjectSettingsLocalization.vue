@@ -4,6 +4,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import PasswordInput from "@components/forms/PasswordInput.vue";
 import {
+  METER_WARNING_RATIO,
   SettingsMeterRow,
   SettingsPage,
   SettingsRow,
@@ -136,7 +137,7 @@ const usageStatus = computed<SettingsMeterStatus>(() => {
 
   const ratio = effectiveUsage.value.characterCount / effectiveUsage.value.characterLimit;
   if (ratio >= 1) return "reached";
-  if (ratio >= 0.8) return "warning";
+  if (ratio >= METER_WARNING_RATIO) return "warning";
 
   return "available";
 });

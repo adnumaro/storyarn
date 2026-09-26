@@ -96,7 +96,11 @@
       "cancel_edit": "Cancel",
       "context": "Context or usage note",
       "save_entry": "Save term",
-      "no_target": "Add a target language to create a glossary."
+      "no_target": "Add a target language to create a glossary.",
+      "save_failed": "Could not save the term. Try again.",
+      "sync_failed": "Could not sync the glossary with DeepL. Try again.",
+      "delete_confirm_title": "Delete “{term}”?",
+      "delete_confirm_description": "The term is removed from this glossary. Translations already done are not changed."
     },
     "overview": {
       "title": "Localization",

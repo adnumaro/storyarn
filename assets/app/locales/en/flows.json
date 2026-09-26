@@ -713,6 +713,9 @@
       "no_voice": "No voice recording for this dialogue.",
       "enable": "Enable audio",
       "upload_failed": "Audio upload failed. Try again."
+    },
+    "node_lock": {
+      "editing_by": "{name} is editing this node"
     }
   }
 }

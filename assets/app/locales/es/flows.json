@@ -713,6 +713,9 @@
       "no_voice": "Este diálogo no tiene una grabación de voz.",
       "enable": "Activar audio",
       "upload_failed": "No se pudo subir el audio. Inténtalo de nuevo."
+    },
+    "node_lock": {
+      "editing_by": "{name} está editando este nodo"
     }
   }
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MousePointer2 } from "@lucide/vue";
-import { onMounted, onUnmounted, reactive } from "vue";
+import { computed, onMounted, onUnmounted, reactive } from "vue";
 import { useLive } from "../../../../../shared/composables/useLive";
 
 interface AreaTransform {
@@ -9,6 +9,7 @@ interface AreaTransform {
   k: number;
 }
 
+/** A remote cursor in canvas (world) coordinates. */
 interface CursorEntry {
   x: number;
   y: number;
@@ -74,13 +75,9 @@ live.handleEvent("cursor_update", (rawData) => {
   const data = rawData as unknown as CursorUpdatePayload;
   if (String(data.user_id) === String(currentUserId)) return;
 
-  const t = areaTransform;
-  const screenX = data.x * t.k + t.x;
-  const screenY = data.y * t.k + t.y;
-
   cursors.set(data.user_id, {
-    x: screenX,
-    y: screenY,
+    x: data.x,
+    y: data.y,
     email: data.user_email,
     color: data.user_color || "#888",
     opacity: 1,
@@ -109,6 +106,16 @@ live.handleEvent("cursor_leave", (rawData) => {
   }
 });
 
+// Placed at render time so the cursors follow the local pan and zoom.
+const screenCursors = computed(() =>
+  [...cursors].map(([userId, cursor]) => ({
+    userId,
+    ...cursor,
+    x: cursor.x * areaTransform.k + areaTransform.x,
+    y: cursor.y * areaTransform.k + areaTransform.y,
+  })),
+);
+
 onMounted(() => {
   containerEl?.addEventListener("mousemove", onMouseMove);
 });
@@ -122,8 +129,8 @@ onUnmounted(() => {
 <template>
   <div class="absolute inset-0 pointer-events-none z-100">
     <div
-      v-for="[userId, cursor] in cursors"
-      :key="userId"
+      v-for="cursor in screenCursors"
+      :key="cursor.userId"
       class="absolute top-0 left-0"
       :style="{
         transform: `translate(${cursor.x}px, ${cursor.y}px)`,

@@ -9,7 +9,9 @@ import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
 import { useId } from "reka-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
-import { generateId } from "../../../../../../shared/domain/variables.ts";
+
+const placeholderId = useId();
+const triggerId = useId();
 
 const {
   block,
@@ -84,11 +86,11 @@ function onChange(val: string | string[]): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+          <label :for="placeholderId" class="text-xs font-medium">{{
             $t("sheets.select_block.placeholder_label")
           }}</label>
           <Input
-            :id="`placeholder-${useId()}`"
+            :id="placeholderId"
             :model-value="block.config?.placeholder || ''"
             :placeholder="$t('sheets.select_block.placeholder')"
             size="xs"
@@ -122,7 +124,7 @@ function onChange(val: string | string[]): void {
     <Popover v-if="canEdit">
       <PopoverTrigger as-child>
         <button
-          :id="`select-trigger-${block.id}-${generateId()}`"
+          :id="triggerId"
           class="flex justify-between flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm items-center"
         >
           <span>

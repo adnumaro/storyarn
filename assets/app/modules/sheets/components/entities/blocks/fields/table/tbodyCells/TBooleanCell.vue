@@ -45,7 +45,7 @@ function toggleBoolean(row: TableRow, col: TableColumn): void {
     >
       {{ $t("sheets.boolean_block.no") }}
     </Badge>
-    <span v-else class="text-muted-foreground/40 text-sm">\u2014</span>
+    <span v-else class="text-muted-foreground/40 text-sm">{{ "\u2014" }}</span>
   </div>
 </template>
 
