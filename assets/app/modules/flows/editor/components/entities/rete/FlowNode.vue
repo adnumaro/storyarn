@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { computed, inject } from "vue";
-import { Lock } from "@lucide/vue";
 import type { FlowNodeType, NodeData } from "../../../lib/node-configs";
 import { NODE_CONFIGS } from "../../../lib/node-configs";
 import { resolveNodeColor } from "../../../lib/render-helpers";
@@ -17,6 +16,7 @@ import JumpNode from "../nodes/JumpNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
 import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
+import FlowNodeLockBadge from "../node-shell/FlowNodeLockBadge.vue";
 import type { FlowNodeLock } from "../../../services/editorHandlers";
 
 interface FlowNodeData {
@@ -100,7 +100,7 @@ const nodeId = computed(() => {
   return reteId.startsWith("node-") ? reteId.slice(5) : reteId;
 });
 
-// Another collaborator is editing this node; the server refuses edits meanwhile.
+// Another collaborator is editing this node; its toolbar stays hidden meanwhile.
 const lock = computed(() => ctx.nodeLocks?.[nodeId.value] ?? null);
 
 const showToolbar = computed(
@@ -118,17 +118,7 @@ const showToolbar = computed(
     :class="{ 'ring-2 ring-primary ring-offset-2 ring-offset-background': isSelected }"
     style="overflow: visible"
   >
-    <div
-      v-if="lock"
-      class="pointer-events-none absolute -top-3 right-2 z-10 inline-flex max-w-40 items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
-      :style="{ color: lock.color, borderColor: lock.color }"
-      role="status"
-      :aria-label="$t('flows.node_lock.editing_by', { name: lock.name })"
-      :data-flow-node-lock="nodeId"
-    >
-      <Lock class="size-3 shrink-0" aria-hidden="true" />
-      <span class="truncate">{{ lock.name }}</span>
-    </div>
+    <FlowNodeLockBadge v-if="lock" :lock="lock" :node-id="nodeId" />
     <FlowNodeToolbar
       v-if="showToolbar"
       :node-type="nodeType"

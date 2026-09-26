@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 const {
   label = "",
@@ -23,8 +23,16 @@ const emit = defineEmits<{
   update: [value: string];
 }>();
 
-// The label follows the thumb while dragging; the value is committed on release.
+// The label follows the thumb while dragging; the value is committed on release
+// and shown until the new value arrives, so the thumb does not jump back.
 const draft = ref<string | null>(null);
+
+watch(
+  () => value,
+  () => {
+    draft.value = null;
+  },
+);
 
 const displayValue = computed(() => {
   const current = draft.value ?? value;
@@ -33,8 +41,9 @@ const displayValue = computed(() => {
 });
 
 function commit(event: Event): void {
-  draft.value = null;
-  emit("update", (event.target as HTMLInputElement).value);
+  const released = (event.target as HTMLInputElement).value;
+  draft.value = released;
+  emit("update", released);
 }
 </script>
 

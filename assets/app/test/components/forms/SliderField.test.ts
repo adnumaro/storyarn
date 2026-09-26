@@ -22,4 +22,24 @@ describe("SliderField", () => {
 
     expect(wrapper.emitted("update")).toEqual([["1.8"]]);
   });
+
+  it("keeps the released value until the new value arrives", async () => {
+    const wrapper = mount(SliderField, {
+      props: { label: "Speed", value: 1, min: 0, max: 3, step: 0.1 },
+    });
+    const range = wrapper.get<HTMLInputElement>('input[type="range"]');
+
+    range.element.value = "2.4";
+    await range.trigger("input");
+    await range.trigger("change");
+
+    // The server has not answered yet: neither the thumb nor the label jump back.
+    expect(range.element.value).toBe("2.4");
+    expect(wrapper.text()).toContain("2.4");
+
+    await wrapper.setProps({ value: 2.5 });
+
+    expect(range.element.value).toBe("2.5");
+    expect(wrapper.text()).toContain("2.5");
+  });
 });
