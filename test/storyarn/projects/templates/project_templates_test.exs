@@ -323,6 +323,40 @@ defmodule Storyarn.ProjectTemplatesTest do
                })
     end
 
+    for terminal_status <- ["published", "failed"] do
+      test "keeps a #{terminal_status} publication when an exception follows its commit" do
+        user = AccountsFixtures.user_fixture()
+        scope = AccountsFixtures.user_scope_fixture(user)
+        project = ProjectsFixtures.project_fixture(user, %{name: "Committed Then Raised Source"})
+        terminal_status = unquote(terminal_status)
+
+        assert {:ok, publication} =
+                 ProjectTemplates.request_template_publication(scope, project, %{
+                   name: "Committed Then Raised Starter"
+                 })
+
+        # Stands in for a broadcast that raises after the publication committed.
+        commit_then_raise = fn _payload ->
+          Repo.update_all(
+            from(current in ProjectTemplatePublication, where: current.id == ^publication.id),
+            set: [status: terminal_status, completed_at: DateTime.utc_now(:second)]
+          )
+
+          raise "broadcast failure"
+        end
+
+        assert {:ok, kept} =
+                 ProjectTemplates.perform_template_publication(publication.id,
+                   attempt: 1,
+                   max_attempts: 3,
+                   after_source_capture: commit_then_raise
+                 )
+
+        assert kept.status == terminal_status
+        assert Repo.get!(ProjectTemplatePublication, publication.id).status == terminal_status
+      end
+    end
+
     test "publishes the asset manifest captured with the audited snapshot" do
       user = AccountsFixtures.user_fixture()
       scope = AccountsFixtures.user_scope_fixture(user)

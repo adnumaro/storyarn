@@ -338,17 +338,11 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   rescue
     error ->
       log_unexpected_publication_exception(publication, error, __STACKTRACE__)
-
-      publication
-      |> reload_publication()
-      |> handle_unexpected_publication_error({:exception, error.__struct__}, opts)
+      recover_raised_publication(publication, {:exception, error.__struct__}, opts)
   catch
     kind, _reason ->
       log_unexpected_publication_throw(publication, kind, __STACKTRACE__)
-
-      publication
-      |> reload_publication()
-      |> handle_unexpected_publication_error({kind, :publication_interrupted}, opts)
+      recover_raised_publication(publication, {kind, :publication_interrupted}, opts)
   end
 
   defp run_template_publication_steps(publication, opts) do
@@ -954,9 +948,18 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     end
   end
 
-  # The failed steps may have moved the row on (running), so the status change
-  # is computed against what is stored, not the struct the job started with.
-  defp reload_publication(publication), do: Repo.get!(ProjectTemplatePublication, publication.id)
+  # Decided against the stored row, not the struct the job started with: the
+  # steps moved it to "running", and a broadcast can raise after the commit
+  # that made it published or failed, which must stand.
+  defp recover_raised_publication(publication, reason, opts) do
+    case Repo.get!(ProjectTemplatePublication, publication.id) do
+      %ProjectTemplatePublication{status: status} = stored when status in ["published", "failed"] ->
+        {:ok, preload_publication(stored)}
+
+      stored ->
+        handle_unexpected_publication_error(stored, reason, opts)
+    end
+  end
 
   defp log_unexpected_publication_exception(publication, error, stacktrace) do
     Logger.error(
