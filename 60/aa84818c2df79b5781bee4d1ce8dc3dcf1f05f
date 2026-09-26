@@ -1,0 +1,30 @@
+assets/app/modules/flows/editor/components/entities/rete/FlowNode.vue
+  s_a86b2b42f8ba47::t_a919b828ad598a 19,103,121
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  s_a86b2b42f8ba47::t_a919b828ad598a 32,37,47,89-98,169
+assets/app/test/modules/flows/editor/FlowNodeLock.test.ts
+  s_a86b2b42f8ba47::t_d26ab38624d8ae 5,51-88
+  s_a86b2b42f8ba47::t_d819d2951b0d38 89
+assets/app/modules/flows/editor/components/entities/node-shell/FlowNodeLockBadge.vue
+  s_a86b2b42f8ba47::t_67e2d76ca170c2 1-22
+assets/app/test/components/forms/SliderField.test.ts
+  s_a86b2b42f8ba47::t_d26ab38624d8ae 25-44
+assets/app/components/forms/fields/SliderField.vue
+  s_a86b2b42f8ba47::t_a919b828ad598a 2,26-27,30-36,44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "60aa84818c2df79b5781bee4d1ce8dc3dcf1f05f",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
