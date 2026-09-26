@@ -1,0 +1,207 @@
+assets/css/app.css
+  s_a86b2b42f8ba47::t_28bd1da9063644 95-100
+  s_a86b2b42f8ba47::t_32417b48a7328d 37-42
+  s_a86b2b42f8ba47::t_21243e9a5e2d21 66-71
+assets/app/modules/sheets/components/chrome/header/SheetAvatarSection.vue
+  s_a86b2b42f8ba47::t_5a1e0440688853 3,6-7,29
+assets/app/live/template/show/TemplateRecords.vue
+  s_a86b2b42f8ba47::t_bdb94be4faa352 67
+  s_a86b2b42f8ba47::t_e3bd75e7267952 12
+assets/app/test/modules/flows/editor/keyboard-undo-redo.test.ts
+  s_a86b2b42f8ba47::t_3222c65c6e30d7 9
+  s_a86b2b42f8ba47::t_bcebf4a3470610 1-8,10-32,53-65
+  s_a86b2b42f8ba47::t_cf4467509a489c 33-52
+assets/app/test/modules/flows/editor/flowCanvasPlacementReadiness.test.ts
+  s_a86b2b42f8ba47::t_cb878cc002f51a 55
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 35,96
+assets/app/live/template/templateFormat.ts
+  s_a86b2b42f8ba47::t_bdb94be4faa352 1-2,11-25
+  s_a86b2b42f8ba47::t_d0db4540facc4e 26
+assets/app/modules/flows/editor/services/keyboard.ts
+  s_a86b2b42f8ba47::t_10f3a1a37f858c 29
+  s_a86b2b42f8ba47::t_3222c65c6e30d7 142
+  s_a86b2b42f8ba47::t_0c561639719f28 88,90,94-95
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_a86b2b42f8ba47::t_46bab722838c7b 18,516-517
+assets/app/test/live/localization/LocalizationActions.test.ts
+  s_a86b2b42f8ba47::t_4f60cc8bbd6fa8 92-93,96-99
+lib/storyarn_web/live/blog_live/show.ex
+  s_a86b2b42f8ba47::t_fdd60f35fea1b7 111
+assets/app/test/components/forms/SliderField.test.ts
+  s_a86b2b42f8ba47::t_3f5f782c754cea 10,12,14-15
+  s_a86b2b42f8ba47::t_b34e329f4f5d13 1-9,11,13,16-25
+assets/app/live/project/settings/ProjectSettingsUsageLimits.vue
+  s_a86b2b42f8ba47::t_46bab722838c7b 6,68
+assets/app/live/flow/show/FlowSurface.vue
+  s_a86b2b42f8ba47::t_2b08c54424d2c9 291
+  s_a86b2b42f8ba47::t_7fc5c144f0b034 14,29,294
+assets/app/modules/scenes/editor/components/panels/properties/ZoneProperties.vue
+  s_a86b2b42f8ba47::t_5d7bcf1d161357 410
+assets/app/modules/flows/editor/components/chrome/FlowCursors.vue
+  s_a86b2b42f8ba47::t_0d94eb15d26f53 3,12,79-80,109-118,132-133
+assets/app/test/live/flow/show/FlowCanvasComments.test.ts
+  s_a86b2b42f8ba47::t_2b08c54424d2c9 38
+  s_a86b2b42f8ba47::t_5a57dd3269c304 11,20
+  s_a86b2b42f8ba47::t_f7abc655e81286 42,154-162
+priv/gettext/es/LC_MESSAGES/default.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 53
+assets/app/test/modules/sheets/BlockConfigLabels.test.ts
+  s_a86b2b42f8ba47::t_0de4fa0d873fee 1-56
+assets/app/modules/sheets/components/entities/blocks/fields/ReferenceBlock.vue
+  s_a86b2b42f8ba47::t_5a1e0440688853 4,19-20,183
+  s_a86b2b42f8ba47::t_19cb19f2bc2965 293
+assets/app/live/flow/show/FlowCanvas.vue
+  s_a86b2b42f8ba47::t_0d94eb15d26f53 53-54,78,119-131,159
+  s_a86b2b42f8ba47::t_7fc5c144f0b034 11,35,46,56,100-101
+  s_a86b2b42f8ba47::t_2b08c54424d2c9 19-24,30,41,71-72,81,102,153-154,160,171-172
+  s_a86b2b42f8ba47::t_1e2f5c9e50b842 103-104
+assets/app/live/localization/toolbar/LocalizationToolbar.vue
+  s_a86b2b42f8ba47::t_c303b524999522 15-16,156,164,166,168,170-171,176,226,228,231-315,324,344
+assets/app/locales/en/flows.json
+  s_a86b2b42f8ba47::t_c01222d44386a8 716-718
+lib/storyarn_web/live/scene_live/handlers/collaboration_handlers.ex
+  s_a86b2b42f8ba47::t_15fee614ee3f2f 285
+assets/app/modules/flows/editor/components/entities/rete/FlowNode.vue
+  s_a86b2b42f8ba47::t_c01222d44386a8 4,20,33,102-108,121-131
+assets/app/modules/flows/editor/composables/flowCanvasTypes.ts
+  s_a86b2b42f8ba47::t_cb878cc002f51a 9,119-120
+assets/app/live/project/settings/ProjectSettingsVersionControl.vue
+  s_a86b2b42f8ba47::t_46bab722838c7b 8,149
+test/storyarn_web/live/shared/collaboration_helpers_test.exs
+  s_a86b2b42f8ba47::t_05a7f59ce4a428 1-19
+assets/app/modules/sheets/components/entities/blocks/AddBlockMenu.vue
+  s_a86b2b42f8ba47::t_5a1e0440688853 16,28-29,74
+lib/storyarn_web/live/blog_live/index.ex
+  s_a86b2b42f8ba47::t_fdd60f35fea1b7 127
+assets/app/components/settings/index.ts
+  s_a86b2b42f8ba47::t_46bab722838c7b 5
+assets/app/live/workspace/settings/WorkspaceSettingsPlan.vue
+  s_a86b2b42f8ba47::t_46bab722838c7b 6,79,88
+assets/app/components/forms/fields/SliderField.vue
+  s_a86b2b42f8ba47::t_cef6963ee66503 49
+  s_a86b2b42f8ba47::t_81d961b6d95363 2,26-28,30-32,34-38,55-56
+assets/app/test/modules/flows/editor/FlowSequenceStage.test.ts
+  s_a86b2b42f8ba47::t_3222c65c6e30d7 232
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_a86b2b42f8ba47::t_10f3a1a37f858c 18,379
+  s_a86b2b42f8ba47::t_89ea258d06bbc5 871-877,908
+priv/gettext/flows.pot
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 164,191
+test/storyarn_web/live/flow_live/collaboration_test.exs
+  s_a86b2b42f8ba47::t_a2deac76cdddcc 337-349
+assets/app/modules/sheets/components/panels/FormulaBindingSelect.vue
+  s_a86b2b42f8ba47::t_5a1e0440688853 12,25-26,137
+assets/app/modules/sheets/components/entities/blocks/fields/SelectBlock.vue
+  s_a86b2b42f8ba47::t_f575d72e713dca 14,127
+  s_a86b2b42f8ba47::t_b38ab1dd7e2787 13,89,93
+  s_a86b2b42f8ba47::t_e22de08d7910ab 12
+assets/app/modules/scenes/editor/components/toolbar/sections/ZoneToolbar.vue
+  s_a86b2b42f8ba47::t_81d961b6d95363 114-119,236-237
+assets/app/test/modules/sheets/ReadonlyEmptyValue.test.ts
+  s_a86b2b42f8ba47::t_e8e4d12693dd88 1-36
+assets/app/modules/sheets/components/entities/blocks/BlockToolbar.vue
+  s_a86b2b42f8ba47::t_5a1e0440688853 8,14-15,116
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 14,68,83,164,169,174,179,184,189,194,199,204,209,214-215
+assets/css/screenplay.css
+  s_a86b2b42f8ba47::t_fdd60f35fea1b7 66,133,137-138
+assets/app/modules/sheets/components/entities/blocks/fields/TextBlock.vue
+  s_a86b2b42f8ba47::t_b38ab1dd7e2787 11-12,84,88
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TMultiSelectCell.vue
+  s_a86b2b42f8ba47::t_19cb19f2bc2965 92
+assets/app/modules/sheets/components/entities/blocks/BlockList.vue
+  h_46be6e61f3d9dd 6
+  s_a86b2b42f8ba47::t_0c561639719f28 179-182,187
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 14,68,83,164,169,174,179,184,189,194,199,204,209,214-215
+assets/app/modules/sheets/components/entities/blocks/fields/richText/RichTextBlock.vue
+  s_a86b2b42f8ba47::t_b38ab1dd7e2787 12-13,72,76
+priv/gettext/localization.pot
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 14,68,83,164,169,174,179,184,189,194,199,204,209,214-215
+assets/app/live/localization/glossary/LocalizationGlossary.vue
+  s_a86b2b42f8ba47::t_8598104253b246 190,232-233,238,242,250,253,257,261,266,268,284,286,292,294,300,309,311,314-337,344,354-355,358-360,366-372
+  s_a86b2b42f8ba47::t_83bea0a29e68d8 141-147
+  s_a86b2b42f8ba47::t_d343f76e318cc0 161
+  s_a86b2b42f8ba47::t_9b95801b1dec2b 62-66
+  s_a86b2b42f8ba47::t_ec6ecad219dfe4 76-89
+  s_a86b2b42f8ba47::t_6668f911922528 126
+  s_a86b2b42f8ba47::t_9a2c8092c4f095 12-14,17,19,21
+  s_a86b2b42f8ba47::t_afd3a8af1408f9 361-365
+lib/storyarn_web/live/shared/collaboration_helpers.ex
+  s_a86b2b42f8ba47::t_05a7f59ce4a428 78-80
+assets/app/test/modules/flows/editor/FlowCursors.test.ts
+  s_a86b2b42f8ba47::t_40199e26e7821a 1-29
+lib/storyarn_web/live/flow_live/show.ex
+  s_a86b2b42f8ba47::t_a261e75e835ad0 1836
+  s_a86b2b42f8ba47::t_b6cfa41550bfb0 1841-1850
+  s_a86b2b42f8ba47::t_47d482333f4c83 1851-1852
+assets/app/locales/es/flows.json
+  s_a86b2b42f8ba47::t_c01222d44386a8 716-718
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 164,191
+priv/gettext/versioning.pot
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 35,96
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 164,191
+assets/app/test/modules/flows/editor/sequence-workspace-keyboard.test.ts
+  s_a86b2b42f8ba47::t_3222c65c6e30d7 9,42
+assets/app/modules/sheets/components/entities/blocks/fields/NumberBlock.vue
+  s_a86b2b42f8ba47::t_b38ab1dd7e2787 11-15,95,99,116,120,138,142,160,164
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_a86b2b42f8ba47::t_89ea258d06bbc5 58
+priv/gettext/en/LC_MESSAGES/default.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 53
+assets/app/locales/en/localization.json
+  s_a86b2b42f8ba47::t_f40a24409c1116 99-103
+assets/app/modules/sheets/components/entities/blocks/fields/MultiSelectBlock.vue
+  s_a86b2b42f8ba47::t_f575d72e713dca 16,126
+  s_a86b2b42f8ba47::t_b38ab1dd7e2787 15,88,92
+  s_a86b2b42f8ba47::t_19cb19f2bc2965 170
+  s_a86b2b42f8ba47::t_e7e865d10581a0 14
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 35,96
+assets/app/components/settings/meterStatus.ts
+  s_a86b2b42f8ba47::t_46bab722838c7b 1-5
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_a86b2b42f8ba47::t_89ea258d06bbc5 119-125,128-129
+assets/app/modules/scenes/editor/components/toolbar/sections/PinToolbar.vue
+  s_a86b2b42f8ba47::t_81d961b6d95363 60-64,130-131
+assets/app/locales/es/localization.json
+  s_a86b2b42f8ba47::t_f40a24409c1116 99-103
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TBooleanCell.vue
+  s_a86b2b42f8ba47::t_19cb19f2bc2965 48
+assets/app/live/project/settings/ProjectSettingsTemplates.vue
+  s_a86b2b42f8ba47::t_bdb94be4faa352 243
+  s_a86b2b42f8ba47::t_e3bd75e7267952 33
+assets/app/live/project/settings/ProjectSettingsLocalization.vue
+  s_a86b2b42f8ba47::t_46bab722838c7b 7,140
+assets/app/live/layouts/docs/Layout.vue
+  s_a86b2b42f8ba47::t_fdd60f35fea1b7 226
+priv/gettext/default.pot
+  s_a86b2b42f8ba47::t_08e6c0e2012a1e 53
+assets/app/test/modules/flows/editor/FlowNodeLock.test.ts
+  s_a86b2b42f8ba47::t_f9a78855a9516d 1-2,4-21,26-49
+  s_a86b2b42f8ba47::t_f7abc655e81286 3,22-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3c05c0d5a7f9ba23ba3d364ee190ba57822b44a",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
