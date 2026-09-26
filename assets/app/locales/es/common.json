@@ -51,7 +51,11 @@
       "auto_save": "auto-guardado | auto-guardados",
       "no_summary": "Sin resumen",
       "load_more": "Cargar más",
-      "transport_error": "La solicitud no se completó. Comprueba tu conexión e inténtalo de nuevo."
+      "transport_error": "La solicitud no se completó. Comprueba tu conexión e inténtalo de nuevo.",
+      "compare_with_current": "Comparar con la actual",
+      "restore_version": "Restaurar esta versión",
+      "delete_version": "Eliminar versión",
+      "name_version": "Nombrar esta versión"
     },
     "create_version_dialog": {
       "title": "Crear versión",
@@ -141,12 +145,32 @@
     "condition_builder": {
       "label_placeholder": "etiqueta",
       "remove_block": "Eliminar bloque",
-      "of_the_rules": "de las reglas",
       "add_rule": "Añadir regla",
       "no_conditions": "Sin condiciones",
       "empty_sheets": "No hay sheets con variables. Añade un bloque de variable a un sheet primero.",
       "empty_variables": "Este sheet aún no tiene variables.",
-      "empty_values": "No hay valores disponibles para esta variable."
+      "empty_values": "No hay valores disponibles para esta variable.",
+      "logic": {
+        "match": "Cumplir",
+        "rules": {
+          "all": "todas",
+          "any": "alguna",
+          "suffix_all": "las reglas",
+          "suffix_any": "de las reglas"
+        },
+        "blocks": {
+          "all": "todos",
+          "any": "alguno",
+          "suffix_all": "los bloques",
+          "suffix_any": "de los bloques"
+        },
+        "group": {
+          "all": "todos",
+          "any": "alguno",
+          "suffix_all": "los bloques del grupo",
+          "suffix_any": "de los bloques del grupo"
+        }
+      }
     },
     "assignment_row": {
       "change_operator": "Cambiar operador",
@@ -253,6 +277,20 @@
         "processing": "Subiendo y procesando imagen...",
         "confirm": "Continuar"
       }
+    },
+    "confirm": "Confirmar",
+    "saving": "Guardando...",
+    "saved": "Guardado",
+    "untitled": "Sin título",
+    "select_placeholder": "Selecciona...",
+    "loading": "Cargando...",
+    "language_picker": {
+      "search": "Buscar idiomas...",
+      "empty": "No se encontraron idiomas."
+    },
+    "collab_toast": {
+      "message": "{name} {action}",
+      "made_a_change": "hizo un cambio"
     }
   }
 }

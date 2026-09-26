@@ -32,7 +32,7 @@ const nodeData = computed<HubNodeData>(
 );
 const jumpCount = computed(() => {
   const hubId = nodeData.value.hub_id;
-  return hubId && hubsMap[hubId] ? hubsMap[hubId].jumpCount : 0;
+  return (hubId && hubsMap[hubId]?.jumpCount) || 0;
 });
 </script>
 
@@ -45,7 +45,7 @@ const jumpCount = computed(() => {
       <div class="line-clamp-4 leading-[1.4]">
         <span class="inline-flex items-center gap-1">
           <ArrowUpRight class="size-3" />
-          {{ jumpCount }} jump{{ jumpCount !== 1 ? "s" : "" }}
+          {{ $t("flows.nodes.hub_jumps", jumpCount) }}
         </span>
       </div>
     </div>

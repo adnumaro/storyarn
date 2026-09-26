@@ -54,7 +54,7 @@ function openBuilder() {
     variant="secondary"
     class="text-[10px] px-1.5 py-0 rounded-full"
   >
-    {{ nodeData.condition.rules.length }} rule{{ nodeData.condition.rules.length === 1 ? "" : "s" }}
+    {{ $t("flows.nodes.condition_summary.rules", nodeData.condition.rules.length) }}
   </Badge>
   <ToolbarSeparator />
   <ToolbarTooltip :label="$t('flows.condition_toolbar.edit_condition')">

@@ -158,7 +158,7 @@ function groupSelectedBlocks() {
     <LogicToggle
       v-if="blocks.length >= 2 && !switchMode"
       :logic="internalCondition.logic"
-      of-label="of the blocks"
+      kind="blocks"
       :disabled="disabled"
       class="mb-2"
       @update:logic="updateTopLogic"

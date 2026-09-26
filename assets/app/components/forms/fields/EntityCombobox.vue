@@ -24,7 +24,7 @@ const {
   options = [],
   selectedId = null,
   label = "",
-  placeholder = "Select...",
+  placeholder = "",
   disabled = false,
   variant = "default",
   selectedOption = null,
@@ -139,7 +139,7 @@ function select(id: number | string | null) {
               selectedName ? '' : variant === 'ghost' ? 'opacity-60' : 'text-muted-foreground'
             "
           >
-            {{ selectedName || placeholder }}
+            {{ selectedName || placeholder || $t("common.select_placeholder") }}
           </span>
           <ChevronsUpDown
             class="size-3 shrink-0 ml-1"

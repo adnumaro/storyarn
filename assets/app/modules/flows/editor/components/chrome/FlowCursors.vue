@@ -2,6 +2,7 @@
 import { MousePointer2 } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, reactive } from "vue";
 import { useLive } from "../../../../../shared/composables/useLive";
+import { useI18n } from "vue-i18n";
 
 interface AreaTransform {
   x: number;
@@ -41,6 +42,7 @@ const {
 }>();
 
 const live = useLive();
+const { t } = useI18n();
 const cursors = reactive(new Map<number | string, CursorEntry>());
 let lastSend = 0;
 const THROTTLE_MS = 50;
@@ -48,7 +50,7 @@ const FADE_MS = 3000;
 let fadeTimers = new Map<number | string, ReturnType<typeof setTimeout>>();
 
 function emailName(email: string | undefined): string {
-  return email?.split("@")[0] || "User";
+  return email?.split("@")[0] || t("flows.node_lock.unknown_user");
 }
 
 // Broadcast local cursor

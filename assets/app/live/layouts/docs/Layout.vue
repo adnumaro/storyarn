@@ -203,7 +203,7 @@ function toggleCategory(category: string): void {
 }
 
 function resultsLabel(count: number): string {
-  return t(count === 1 ? "docs.result" : "docs.results", { count });
+  return t("docs.results", count);
 }
 </script>
 

@@ -172,8 +172,8 @@ shared component living outside `components/`.
 | `open`           | `v-model`, `boolean`, **required**                                    |
 | `title`          | `string`, **required**                                                |
 | `description`    | `string?`                                                             |
-| `confirmText`    | `string?` (default `"Confirm"`)                                       |
-| `cancelText`     | `string?` (default `"Cancel"`)                                        |
+| `confirmText`    | `string?` (default: `common.confirm`, translated)                     |
+| `cancelText`     | `string?` (default: `common.cancel`, translated)                      |
 | `variant`        | `"default" \| "destructive" \| "warning"`                             |
 | `icon`           | `Component?` (an `@lucide/vue` icon)                                  |
 | `pending`        | `boolean?`; disables dismissal and marks its action group `aria-busy` |

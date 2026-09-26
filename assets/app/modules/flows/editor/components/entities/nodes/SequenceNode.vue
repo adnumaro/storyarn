@@ -181,7 +181,7 @@ function startResize(event: PointerEvent) {
       v-if="showResizeHandle"
       type="button"
       class="flow-sequence-resize-handle"
-      aria-label="Resize sequence"
+      :aria-label="$t('flows.sequences.resize')"
       @pointerdown="startResize"
       @dblclick.stop
     />

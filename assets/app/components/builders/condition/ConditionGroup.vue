@@ -70,7 +70,7 @@ function updateLogic(newLogic: "all" | "any") {
         <LogicToggle
           v-if="group.blocks.length >= 2"
           :logic="group.logic"
-          of-label="of the blocks in the group"
+          kind="group"
           :disabled="disabled"
           @update:logic="updateLogic"
         />

@@ -94,7 +94,7 @@ function addRule() {
     <LogicToggle
       v-if="block.rules.length >= 2 && !switchMode"
       :logic="block.logic"
-      :of-label="$t('common.condition_builder.of_the_rules')"
+      kind="rules"
       :disabled="disabled"
       class="mb-1"
       @update:logic="(v) => updateField('logic', v)"

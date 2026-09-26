@@ -109,16 +109,23 @@ function countRulesInBlocks(blocks: ConditionBlock[]): number {
 
 // --- Summary ---
 
+function logicLabel(condition: Condition): string {
+  return t(`flows.nodes.condition_summary.${condition.logic === "all" ? "and" : "or"}`);
+}
+
 function formatBlockSummary(
   blocks: ConditionBlock[],
   switchMode: boolean,
   condition: Condition,
 ): string {
-  if (blocks.length === 0) return switchMode ? "No conditions" : "No condition";
-  if (switchMode) return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
-  const ruleCount = countRulesInBlocks(blocks);
-  const logic = condition.logic === "all" ? "AND" : "OR";
-  return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
+  if (blocks.length === 0)
+    return t(`flows.nodes.condition_summary.${switchMode ? "no_conditions" : "no_condition"}`);
+  if (switchMode) return t("flows.nodes.condition_summary.outputs", blocks.length);
+  return t("flows.nodes.condition_summary.rules_in_blocks", {
+    rules: t("flows.nodes.condition_summary.rules", countRulesInBlocks(blocks)),
+    blocks: t("flows.nodes.condition_summary.blocks", blocks.length),
+    logic: logicLabel(condition),
+  });
 }
 
 function formatFlatSummary(
@@ -126,10 +133,12 @@ function formatFlatSummary(
   switchMode: boolean,
   condition: Condition,
 ): string {
-  if (switchMode) return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
-  const logic = condition.logic === "all" ? "AND" : "OR";
+  if (switchMode) return t("flows.nodes.condition_summary.outputs", rules.length);
   if (rules.length === 1) return formatRule(rules[0]);
-  return `${rules.length} rules (${logic})`;
+  return t("flows.nodes.condition_summary.rules_with_logic", {
+    rules: t("flows.nodes.condition_summary.rules", rules.length),
+    logic: logicLabel(condition),
+  });
 }
 
 const summary = computed(() => {

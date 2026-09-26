@@ -21,7 +21,7 @@ const {
   icon = null,
   options,
   value = "",
-  placeholder = "Select...",
+  placeholder = "",
   disabled = false,
   event = null,
   paramKey = "value",
@@ -61,7 +61,7 @@ function onChange(v: string | string[]) {
     </label>
     <Select :model-value="String(value)" :disabled="disabled" @update:model-value="onChange">
       <SelectTrigger class="w-full h-8 text-xs">
-        <SelectValue :placeholder="placeholder" />
+        <SelectValue :placeholder="placeholder || $t('common.select_placeholder')" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem

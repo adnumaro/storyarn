@@ -3,7 +3,7 @@ import { nextTick, ref, watch } from "vue";
 
 const {
   modelValue = "",
-  placeholder = "Untitled",
+  placeholder = "",
   tag = "span",
   inputClass = "",
   displayClass = "",
@@ -67,7 +67,7 @@ function onKeydown(e: KeyboardEvent) {
     ref="inputEl"
     v-model="localValue"
     :class="['bg-transparent outline-none border-b border-primary', inputClass]"
-    :placeholder="placeholder"
+    :placeholder="placeholder || $t('common.untitled')"
     @blur="save"
     @keydown="onKeydown"
   />
@@ -82,6 +82,6 @@ function onKeydown(e: KeyboardEvent) {
     ]"
     @dblclick="startEdit"
   >
-    {{ localValue || placeholder }}
+    {{ localValue || placeholder || $t("common.untitled") }}
   </component>
 </template>

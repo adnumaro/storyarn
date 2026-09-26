@@ -185,7 +185,7 @@ function changeActionColor(action: string) {
             >
               <button
                 class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                title="Compare with current"
+                :title="$t('common.version_history.compare_with_current')"
                 @click="
                   live.pushEvent('compare_version', { version_number: version.versionNumber })
                 "
@@ -196,7 +196,7 @@ function changeActionColor(action: string) {
                 v-if="restoreEnabled && canEdit && version.id !== currentVersionId"
                 :data-testid="`restore-version-${version.versionNumber}`"
                 class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                title="Restore this version"
+                :title="$t('common.version_history.restore_version')"
                 @click="h.previewRestore(version.versionNumber)"
               >
                 <Loader2
@@ -208,7 +208,7 @@ function changeActionColor(action: string) {
               <button
                 v-if="canEdit"
                 class="p-1 rounded hover:bg-muted text-destructive transition-colors"
-                title="Delete version"
+                :title="$t('common.version_history.delete_version')"
                 @click="h.openDeleteModal(version.versionNumber)"
               >
                 <Trash2 class="size-3.5" />
@@ -336,7 +336,7 @@ function changeActionColor(action: string) {
               >
                 <button
                   class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                  title="Compare with current"
+                  :title="$t('common.version_history.compare_with_current')"
                   @click="
                     live.pushEvent('compare_version', { version_number: version.versionNumber })
                   "
@@ -346,7 +346,7 @@ function changeActionColor(action: string) {
                 <button
                   v-if="canEdit && canNameVersion"
                   class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                  title="Name this version"
+                  :title="$t('common.version_history.name_version')"
                   @click="h.openPromoteModal(version)"
                 >
                   <BookmarkPlus class="size-3.5" />
@@ -355,7 +355,7 @@ function changeActionColor(action: string) {
                   v-if="restoreEnabled && canEdit && version.id !== currentVersionId"
                   :data-testid="`restore-version-${version.versionNumber}`"
                   class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                  title="Restore this version"
+                  :title="$t('common.version_history.restore_version')"
                   @click="h.previewRestore(version.versionNumber)"
                 >
                   <Loader2
@@ -367,7 +367,7 @@ function changeActionColor(action: string) {
                 <button
                   v-if="canEdit"
                   class="p-1 rounded hover:bg-muted text-destructive transition-colors"
-                  title="Delete version"
+                  :title="$t('common.version_history.delete_version')"
                   @click="h.openDeleteModal(version.versionNumber)"
                 >
                   <Trash2 class="size-3.5" />

@@ -169,7 +169,8 @@
         "add_track": "Añadir pista",
         "remove_track": "Retirar pista",
         "removed_tracks": "Pistas retiradas"
-      }
+      },
+      "resize": "Redimensionar secuencia"
     },
     "sequence_stage": {
       "title": "Escenario de secuencia",
@@ -400,10 +401,12 @@
     },
     "subflow_toolbar": {
       "select_flow_placeholder": "Seleccionar flujo…",
-      "open_flow": "Abrir flujo"
+      "open_flow": "Abrir flujo",
+      "exits": "{count} salida | {count} salidas"
     },
     "instruction_toolbar": {
-      "edit_instructions": "Editar instrucciones"
+      "edit_instructions": "Editar instrucciones",
+      "assignments": "{count} asignación | {count} asignaciones"
     },
     "dialogue_toolbar": {
       "tech_id_placeholder": "tech_id",
@@ -468,7 +471,19 @@
         "no_flow_ref": "Sin flujo referenciado",
         "flow_deleted": "El flujo referenciado fue eliminado",
         "output": "Salida"
-      }
+      },
+      "condition_summary": {
+        "no_condition": "Sin condición",
+        "no_conditions": "Sin condiciones",
+        "outputs": "{count} salida + predeterminada | {count} salidas + predeterminada",
+        "rules": "{count} regla | {count} reglas",
+        "blocks": "{count} bloque | {count} bloques",
+        "rules_in_blocks": "{rules} en {blocks} ({logic})",
+        "rules_with_logic": "{rules} ({logic})",
+        "and": "Y",
+        "or": "O"
+      },
+      "hub_jumps": "{count} salto | {count} saltos"
     },
     "player": {
       "continue": "Continuar",
@@ -716,7 +731,8 @@
       "upload_failed": "No se pudo subir el audio. Inténtalo de nuevo."
     },
     "node_lock": {
-      "editing_by": "{name} está editando este nodo"
+      "editing_by": "{name} está editando este nodo",
+      "unknown_user": "Usuario"
     }
   }
 }

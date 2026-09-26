@@ -169,7 +169,8 @@
         "add_track": "Add track",
         "remove_track": "Remove track",
         "removed_tracks": "Removed tracks"
-      }
+      },
+      "resize": "Resize sequence"
     },
     "sequence_stage": {
       "title": "Sequence stage",
@@ -400,10 +401,12 @@
     },
     "subflow_toolbar": {
       "select_flow_placeholder": "Select flow…",
-      "open_flow": "Open flow"
+      "open_flow": "Open flow",
+      "exits": "{count} exit | {count} exits"
     },
     "instruction_toolbar": {
-      "edit_instructions": "Edit instructions"
+      "edit_instructions": "Edit instructions",
+      "assignments": "{count} assignment | {count} assignments"
     },
     "dialogue_toolbar": {
       "tech_id_placeholder": "tech_id",
@@ -468,7 +471,19 @@
         "no_flow_ref": "No flow referenced",
         "flow_deleted": "Referenced flow was deleted",
         "output": "Output"
-      }
+      },
+      "condition_summary": {
+        "no_condition": "No condition",
+        "no_conditions": "No conditions",
+        "outputs": "{count} output + default | {count} outputs + default",
+        "rules": "{count} rule | {count} rules",
+        "blocks": "{count} block | {count} blocks",
+        "rules_in_blocks": "{rules} in {blocks} ({logic})",
+        "rules_with_logic": "{rules} ({logic})",
+        "and": "AND",
+        "or": "OR"
+      },
+      "hub_jumps": "{count} jump | {count} jumps"
     },
     "player": {
       "continue": "Continue",
@@ -716,7 +731,8 @@
       "upload_failed": "Audio upload failed. Try again."
     },
     "node_lock": {
-      "editing_by": "{name} is editing this node"
+      "editing_by": "{name} is editing this node",
+      "unknown_user": "User"
     }
   }
 }

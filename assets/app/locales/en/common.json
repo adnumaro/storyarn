@@ -51,7 +51,11 @@
       "auto_save": "auto-save | auto-saves",
       "no_summary": "No summary",
       "load_more": "Load more",
-      "transport_error": "The request did not complete. Check your connection and try again."
+      "transport_error": "The request did not complete. Check your connection and try again.",
+      "compare_with_current": "Compare with current",
+      "restore_version": "Restore this version",
+      "delete_version": "Delete version",
+      "name_version": "Name this version"
     },
     "create_version_dialog": {
       "title": "Create Version",
@@ -141,12 +145,32 @@
     "condition_builder": {
       "label_placeholder": "label",
       "remove_block": "Remove block",
-      "of_the_rules": "of the rules",
       "add_rule": "Add rule",
       "no_conditions": "No conditions set",
       "empty_sheets": "No sheets with variables. Add a variable block to a sheet first.",
       "empty_variables": "This sheet has no variables yet.",
-      "empty_values": "No values available for this variable."
+      "empty_values": "No values available for this variable.",
+      "logic": {
+        "match": "Match",
+        "rules": {
+          "all": "all",
+          "any": "any",
+          "suffix_all": "of the rules",
+          "suffix_any": "of the rules"
+        },
+        "blocks": {
+          "all": "all",
+          "any": "any",
+          "suffix_all": "of the blocks",
+          "suffix_any": "of the blocks"
+        },
+        "group": {
+          "all": "all",
+          "any": "any",
+          "suffix_all": "of the blocks in the group",
+          "suffix_any": "of the blocks in the group"
+        }
+      }
     },
     "assignment_row": {
       "change_operator": "Change operator",
@@ -253,6 +277,20 @@
         "processing": "Uploading and processing image...",
         "confirm": "Continue"
       }
+    },
+    "confirm": "Confirm",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "untitled": "Untitled",
+    "select_placeholder": "Select...",
+    "loading": "Loading...",
+    "language_picker": {
+      "search": "Search languages...",
+      "empty": "No languages found."
+    },
+    "collab_toast": {
+      "message": "{name} {action}",
+      "made_a_change": "made a change"
     }
   }
 }

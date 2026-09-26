@@ -139,7 +139,11 @@ describe("useSequenceImageImport", () => {
       url: "/media/assets/3",
       filename: "ok.png",
     });
-    expect(api.errors.value).toEqual(["failed.png: Connection lost", "layer.png: Layer not saved"]);
+    // Exceptions carry technical text; the list names the file with a translated failure.
+    expect(api.errors.value).toEqual([
+      "flows.sequence_library.upload_failed: failed.png",
+      "flows.sequence_library.upload_failed: layer.png",
+    ]);
     expect(api.importing.value).toBe(false);
 
     uploadFile.mockResolvedValueOnce({ id: 4, url: "/media/assets/4" });

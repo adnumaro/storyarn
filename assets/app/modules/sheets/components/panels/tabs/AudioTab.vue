@@ -167,7 +167,9 @@ function openPopover(nodeId: number | string): void {
             <!-- Text + link to node -->
             <div class="flex items-start justify-between gap-2 mb-2">
               <p v-if="line.text" class="text-sm text-foreground/80 flex-1">{{ line.text }}</p>
-              <p v-else class="text-sm text-muted-foreground/50 italic flex-1">(empty dialogue)</p>
+              <p v-else class="text-sm text-muted-foreground/50 italic flex-1">
+                {{ $t("sheets.audio_tab.empty_dialogue") }}
+              </p>
               <a
                 :href="nodeUrl(line.flowId, line.nodeId)"
                 data-phx-link="redirect"
