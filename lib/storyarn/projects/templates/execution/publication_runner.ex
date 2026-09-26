@@ -24,6 +24,8 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   alias Storyarn.Repo
   alias Storyarn.Workers.PublishProjectTemplateWorker
 
+  require Logger
+
   def request_template_publication(%{user: _} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
@@ -332,6 +334,24 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   end
 
   defp run_template_publication(publication, opts) do
+    run_template_publication_steps(publication, opts)
+  rescue
+    error ->
+      log_unexpected_publication_exception(publication, error, __STACKTRACE__)
+
+      publication
+      |> reload_publication()
+      |> handle_unexpected_publication_error({:exception, error.__struct__}, opts)
+  catch
+    kind, _reason ->
+      log_unexpected_publication_throw(publication, kind, __STACKTRACE__)
+
+      publication
+      |> reload_publication()
+      |> handle_unexpected_publication_error({kind, :publication_interrupted}, opts)
+  end
+
+  defp run_template_publication_steps(publication, opts) do
     with {:ok, publication} <- mark_publication_running(publication),
          {:ok, _scope, source_project, _template} <- authorize_publication_for_worker(publication),
          {:ok, prepared_snapshot, asset_manifest} <-
@@ -932,6 +952,24 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     else
       fail_publication(publication, :unexpected_error, "Template publication failed.", report)
     end
+  end
+
+  # The failed steps may have moved the row on (running), so the status change
+  # is computed against what is stored, not the struct the job started with.
+  defp reload_publication(publication), do: Repo.get!(ProjectTemplatePublication, publication.id)
+
+  defp log_unexpected_publication_exception(publication, error, stacktrace) do
+    Logger.error(
+      "Unexpected project template publication exception publication_id=#{publication.id} " <>
+        "exception=#{inspect(error.__struct__)}\n#{Exception.format_stacktrace(stacktrace)}"
+    )
+  end
+
+  defp log_unexpected_publication_throw(publication, kind, stacktrace) do
+    Logger.error(
+      "Unexpected project template publication catch publication_id=#{publication.id} " <>
+        "kind=#{kind}\n#{Exception.format_stacktrace(stacktrace)}"
+    )
   end
 
   defp tap_publication_broadcast({:ok, publication}) do

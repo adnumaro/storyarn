@@ -268,20 +268,59 @@ defmodule Storyarn.ProjectTemplatesTest do
                  name: "Raising Hook Starter"
                })
 
-      assert_raise RuntimeError, "before-finalize failure", fn ->
-        ProjectTemplates.perform_template_publication(publication.id,
-          before_finalize: fn %{artifact: artifact} ->
-            send(parent, {:publication_artifact_keys, [artifact.snapshot_key, artifact.asset_manifest_key]})
-            raise "before-finalize failure"
-          end
-        )
-      end
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 before_finalize: fn %{artifact: artifact} ->
+                   send(parent, {:publication_artifact_keys, [artifact.snapshot_key, artifact.asset_manifest_key]})
+                   raise "before-finalize failure"
+                 end
+               )
 
+      assert failed.status == "failed"
+      assert failed.error_code == "unexpected_error"
       assert_receive {:publication_artifact_keys, artifact_keys}
 
       for storage_key <- artifact_keys do
         assert {:error, :enoent} = Assets.storage_download(storage_key)
       end
+    end
+
+    test "retries a raised publication and fails it on the last attempt instead of leaving it running" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      project = ProjectsFixtures.project_fixture(user, %{name: "Raising Capture Source"})
+      raise_after_capture = fn _payload -> raise "capture failure" end
+
+      assert {:ok, publication} =
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Raising Capture Starter"
+               })
+
+      for attempt <- [1, 2] do
+        assert {:error, {:exception, RuntimeError}} =
+                 ProjectTemplates.perform_template_publication(publication.id,
+                   attempt: attempt,
+                   max_attempts: 3,
+                   after_source_capture: raise_after_capture
+                 )
+
+        assert Repo.get!(ProjectTemplatePublication, publication.id).status == "retrying"
+      end
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_publication(publication.id,
+                 attempt: 3,
+                 max_attempts: 3,
+                 after_source_capture: raise_after_capture
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code == "unexpected_error"
+
+      assert {:ok, _next} =
+               ProjectTemplates.request_template_publication(scope, project, %{
+                 name: "Raising Capture Starter"
+               })
     end
 
     test "publishes the asset manifest captured with the audited snapshot" do
