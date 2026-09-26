@@ -45,7 +45,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       vue = get_dashboard_vue(view)
       assert vue.component == "live/scene/dashboard/SceneDashboard"
-      assert vue.props["can-edit"] == true
+      assert vue.props["can-delete"] == true
 
       # Scene name appears after async dashboard load
       _ = await_async(view)
@@ -62,7 +62,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       vue = get_dashboard_vue(view)
       assert vue.component == "live/scene/dashboard/SceneDashboard"
-      assert vue.props["can-edit"] == true
+      assert vue.props["can-delete"] == true
 
       _ = await_async(view)
       assert "Shared Scene" in scene_names(view)

@@ -33,8 +33,8 @@ Commercial currently needs these roles:
 | Folder            | Responsibility                                                                                                |
 | ----------------- | ------------------------------------------------------------------------------------------------------------- |
 | `commands/`       | Subscription writes and their transaction boundary.                                                           |
-| `queries/`        | Subscription, entitlement and cleanup-handoff reads.                                                          |
-| `entities/`       | Commercial-owned mutable subscription and storage-reservation state.                                          |
+| `queries/`        | Subscription, entitlement, trash-retention and cleanup-handoff reads.                                         |
+| `entities/`       | Commercial-owned mutable subscription, plan-period and storage-reservation state.                             |
 | `execution/`      | Limit evaluation and storage-accounting workflows whose locks, fencing and transaction order must stay whole. |
 | `rules/`          | Deterministic effective-plan, storage protocol, cleanup-inventory and lease-policy interpretation.            |
 | `projections/`    | Read-only Commercial mappings over shared consumer tables used for usage and capacity decisions.              |
@@ -83,8 +83,31 @@ count. Free and Beta cap it; paid plans buy seats one by one (ENG-231).
 
 Every seat check locks the owner's subscription row inside the caller's
 transaction, so admissions in different workspaces of one account serialize.
-Nothing else locks subscription rows, which keeps this lock out of every
-Workspace and Project lock chain.
+The read-only re-evaluation below locks the same row. Both acquire it last,
+after any Workspace, Project or user lock the caller holds, and take no other
+lock while holding it, which keeps this lock from closing a cycle with those
+chains.
+
+## Read-only accounts
+
+An account is over its plan's limits when it owns more workspaces, has more
+projects in a workspace, more items in a project, more storage in a workspace
+or more editors than its plan includes. Count limits (backups, named
+versions, templates) only block creating more. Since every creation checks
+its limit, an account goes over only when its plan drops.
+
+While it is over, every workspace it owns is read-only. Commercial stores the
+exceeded limits on the subscription (`read_only_reasons`, `read_only_since`)
+when the plan changes, and re-evaluates a locked account on every check, so it
+unlocks as soon as deletions or a larger plan bring it back within limits; an
+unlocked account costs one query to check. `workspace_read_only_reasons/1` and
+`account_read_only_reasons/1` answer; Projects, Workspaces and AI refuse the
+changes themselves and decide what stays allowed.
+
+`account_plan_periods` records the effective plan an account had from each
+`started_at` on. `trash_retention_hours/1` uses it so a trashed item keeps the
+retention of the plan it was deleted under: the longer of that plan's and the
+current plan's.
 
 ## Public and internal facades
 
@@ -93,6 +116,7 @@ Workspace and Project lock chain.
 - entitlement and admission decisions;
 - project/workspace/account usage summaries and plan lookup;
 - editor-seat admission for invitations, role changes and project transfers;
+- the read-only state of an account and its workspaces, and trash retention;
 - account subscription creation through a neutral receipt, used by registration;
 - subscription to the Project-scoped snapshot export-lease invalidation;
 - storage-accounting locks and published lease-policy values;

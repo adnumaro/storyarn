@@ -47,7 +47,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
       vue = get_assets_vue(view)
       assert vue.component == "live/assets/dashboard/AssetsDashboard"
-      assert vue.props["can-edit"] == true
+      assert vue.props["can-delete"] == true
     end
 
     test "passes empty assets list when no assets exist", %{conn: conn, user: user} do

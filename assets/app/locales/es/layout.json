@@ -35,6 +35,20 @@
       "account_settings": "Ajustes de cuenta",
       "all_workspaces": "Todos los espacios",
       "log_out": "Cerrar sesión"
+    },
+    "read_only": {
+      "title": "Este workspace es de solo lectura",
+      "owner_intro": "Tu cuenta supera los límites de su plan:",
+      "reasons": {
+        "workspaces_per_user": "Tiene más workspaces de los que incluye el plan.",
+        "projects_per_workspace": "Un workspace tiene más proyectos de los que incluye el plan.",
+        "items_per_project": "Un proyecto tiene más elementos de los que incluye el plan.",
+        "storage_bytes_per_workspace": "Un workspace usa más almacenamiento del que incluye el plan.",
+        "editors_per_account": "Tiene más editores de los que incluye el plan."
+      },
+      "owner_action": "Mejora tu plan o borra lo que ya no necesites. Podrás editar de nuevo en cuanto la cuenta vuelva a estar dentro de sus límites.",
+      "view_plans": "Ver planes",
+      "member": "Contacta con su propietario, {owner}, para volver a editarlo."
     }
   }
 }

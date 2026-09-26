@@ -452,24 +452,22 @@ defmodule Storyarn.Projects.ProjectTrash do
 
   defp attach_purge_at([]), do: []
 
+  # A project's own retention wins; otherwise the item keeps the retention its
+  # workspace owner's plan granted when it was deleted (see
+  # `Storyarn.Commercial.trash_retention_hours/1`).
   defp attach_purge_at(items) do
-    plan_by_workspace =
+    plan_retention =
       items
       |> Enum.reject(&trash_retention_override?/1)
-      |> Enum.map(& &1.workspace_id)
-      |> Enum.uniq()
-      |> Commercial.plans_for_workspace_ids()
+      |> Enum.map(&{&1.workspace_id, &1.deleted_at})
+      |> then(&Enum.zip(&1, Commercial.trash_retention_hours(&1)))
+      |> Map.new()
 
     Enum.map(items, fn item ->
       retention_hours =
         case Map.get(item.project_settings || %{}, "trash_retention_hours") do
-          hours when is_integer(hours) and hours > 0 ->
-            hours
-
-          _ ->
-            plan_by_workspace
-            |> Map.fetch!(item.workspace_id)
-            |> Commercial.plan_retention_hours()
+          hours when is_integer(hours) and hours > 0 -> hours
+          _ -> Map.fetch!(plan_retention, {item.workspace_id, item.deleted_at})
         end
 
       Map.put(item, :purge_at, DateTime.shift(item.deleted_at, hour: retention_hours))

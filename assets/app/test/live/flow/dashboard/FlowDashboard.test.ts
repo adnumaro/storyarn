@@ -102,7 +102,7 @@ function mountDashboard() {
       issueFilterOptions,
       overviewStatus: "ready",
       issuesStatus: "ready",
-      canEdit: false,
+      rowActions: { setMain: false, delete: false },
     },
     global: {
       provide: {
@@ -135,7 +135,7 @@ describe("FlowDashboard issues", () => {
   it("gives the icon-only row actions trigger an accessible name", async () => {
     const { wrapper } = mountDashboard();
 
-    await wrapper.setProps({ canEdit: true });
+    await wrapper.setProps({ rowActions: { setMain: true, delete: true } });
 
     const trigger = wrapper.get('[data-slot="dropdown-menu-trigger"]');
     expect(trigger.attributes("aria-label")).toBe("Flow actions");
@@ -145,7 +145,7 @@ describe("FlowDashboard issues", () => {
   it("requires explicit confirmation before deleting a flow", async () => {
     const { live, wrapper } = mountDashboard();
 
-    await wrapper.setProps({ canEdit: true });
+    await wrapper.setProps({ rowActions: { setMain: true, delete: true } });
     await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
     wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
     await wrapper.vm.$nextTick();
@@ -162,10 +162,24 @@ describe("FlowDashboard issues", () => {
     expect(live.pushEvent).toHaveBeenNthCalledWith(2, "confirm_delete", {}, undefined);
   });
 
+  it("offers deleting a flow but not making it main while the workspace is read-only", async () => {
+    const { wrapper } = mountDashboard();
+
+    await wrapper.setProps({
+      tableData: [{ ...wrapper.props("tableData")[0], is_main: false }],
+      rowActions: { setMain: false, delete: true },
+    });
+    await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
+
+    const items = wrapper.findAllComponents(DropdownMenuItem);
+    expect(items).toHaveLength(1);
+    expect(items[0].text()).toContain("Delete");
+  });
+
   it("keeps an open delete confirmation mounted when the overview becomes empty", async () => {
     const { wrapper } = mountDashboard();
 
-    await wrapper.setProps({ canEdit: true });
+    await wrapper.setProps({ rowActions: { setMain: true, delete: true } });
     await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
     wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
     await wrapper.vm.$nextTick();
@@ -375,7 +389,7 @@ describe("FlowDashboard content breakdown", () => {
         issues: [],
         overviewStatus: "ready",
         issuesStatus: "ready",
-        canEdit: false,
+        rowActions: { setMain: false, delete: false },
       },
       global: { provide: { _live_vue: createMockLive() } },
     });
@@ -420,7 +434,7 @@ describe("FlowDashboard content breakdown", () => {
         issues: [],
         overviewStatus: "ready",
         issuesStatus: "ready",
-        canEdit: false,
+        rowActions: { setMain: false, delete: false },
       },
       global: { provide: { _live_vue: createMockLive() } },
     });

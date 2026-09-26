@@ -17,7 +17,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Change do
   end
 
   defp persist_banner_url(scope, workspace_id, banner_url, current_key, opts) do
-    Memberships.transact_as_owner(scope, workspace_id, fn %{workspace: workspace} ->
+    Memberships.transact_as_owner(scope, workspace_id, :manage_workspace, fn %{workspace: workspace} ->
       with {:ok, updated_workspace} <- update_banner_url(workspace, banner_url),
            :ok <- Cleanup.schedule_previous(workspace, current_key, opts) do
         {:ok, updated_workspace}

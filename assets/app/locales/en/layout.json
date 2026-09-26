@@ -35,6 +35,20 @@
       "account_settings": "Account settings",
       "all_workspaces": "All workspaces",
       "log_out": "Log out"
+    },
+    "read_only": {
+      "title": "This workspace is read-only",
+      "owner_intro": "Your account is over its plan's limits:",
+      "reasons": {
+        "workspaces_per_user": "It owns more workspaces than the plan includes.",
+        "projects_per_workspace": "A workspace has more projects than the plan includes.",
+        "items_per_project": "A project has more items than the plan includes.",
+        "storage_bytes_per_workspace": "A workspace uses more storage than the plan includes.",
+        "editors_per_account": "It has more editors than the plan includes."
+      },
+      "owner_action": "Upgrade your plan, or delete what you no longer need. Editing comes back as soon as the account is within its limits.",
+      "view_plans": "View plans",
+      "member": "Contact its owner, {owner}, to edit it again."
     }
   }
 }

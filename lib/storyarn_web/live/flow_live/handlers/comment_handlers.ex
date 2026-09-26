@@ -77,7 +77,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   def handle(action, params, socket) when action in @mutations do
     Authorize.with_authorization(
       socket,
-      :edit_content,
+      :comment,
       &mutate(action, params, &1),
       fn current, _reason -> failure(clear(current), :unauthorized) end
     )
@@ -157,7 +157,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     case Projects.list_flow_comment_pins(scope, project.id, flow.id) do
       {:ok, pins} ->
         counts = pins |> Enum.map(&context_node_id/1) |> Enum.reject(&is_nil/1) |> Enum.frequencies()
-        can_comment = match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content))
+        can_comment = match?({:ok, _, _}, Projects.authorize(scope, project.id, :comment))
 
         socket =
           socket

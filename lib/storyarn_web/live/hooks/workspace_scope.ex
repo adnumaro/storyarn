@@ -5,7 +5,8 @@ defmodule StoryarnWeb.Live.Hooks.WorkspaceScope do
 
   Reads either `slug` (workspace settings) or `workspace_slug` (workspace
   dashboard), loads the workspace with authorization, and assigns `:workspace`,
-  `:current_workspace`, and `:membership` to the socket. Halts with a redirect
+  `:current_workspace`, `:membership` and `:read_only` (its owner's account is
+  over its plan's limits) to the socket. Halts with a redirect
   on auth failure.
 
   Used by the authenticated app live_session. It is intentionally conditional:
@@ -23,6 +24,7 @@ defmodule StoryarnWeb.Live.Hooks.WorkspaceScope do
   import Phoenix.LiveView, only: [put_flash: 3, redirect: 2]
 
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   def on_mount(:load_workspace, %{"slug" => slug}, _session, socket) do
     load_workspace(socket, slug, ~p"/users/settings")
@@ -54,6 +56,7 @@ defmodule StoryarnWeb.Live.Hooks.WorkspaceScope do
           |> assign(:workspace, workspace)
           |> assign(:current_workspace, workspace)
           |> assign(:membership, membership)
+          |> assign(:read_only, ReadOnlyNotice.read_only?(workspace.id))
 
         {:cont, socket}
 

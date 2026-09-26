@@ -9,6 +9,8 @@ defmodule Storyarn.Projects.WorkspaceAccess do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Projects.Access.Rules.ReadOnlyActions
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
@@ -25,6 +27,7 @@ defmodule Storyarn.Projects.WorkspaceAccess do
   def can?("admin", :access_workspace_general_settings), do: true
   def can?("admin", :access_workspace_settings), do: true
   def can?("admin", :manage_members), do: true
+  def can?("admin", :remove_members), do: true
   def can?("admin", :create_project), do: true
   def can?("admin", :use_ai), do: true
   def can?("admin", :view), do: true
@@ -38,15 +41,34 @@ defmodule Storyarn.Projects.WorkspaceAccess do
   Authorizes a user action on a workspace — the exact check the Workspaces
   context applies for workspace-level actions.
   """
-  def authorize(%{user: user}, workspace_id, action) do
+  def authorize(scope, workspace_id, action), do: authorize_workspace(scope, workspace_id, action, :read_only_refused)
+
+  @doc """
+  Reauthorizes work a background job admitted before the workspace turned
+  read-only: the same checks as `authorize/3` without the read-only refusal.
+  """
+  def authorize_admitted(scope, workspace_id, action),
+    do: authorize_workspace(scope, workspace_id, action, :read_only_allowed)
+
+  defp authorize_workspace(%{user: user}, workspace_id, action, read_only) do
     with %Workspace{} = workspace <- Repo.get(Workspace, workspace_id),
          %{role: role} = membership <- get_membership(workspace_id, user.id),
-         true <- can?(role, action) do
+         true <- can?(role, action),
+         :ok <- ensure_action_writable(workspace_id, action, read_only) do
       {:ok, workspace, membership}
     else
       nil -> {:error, :not_found}
       false -> {:error, :unauthorized}
+      {:error, :read_only} -> {:error, :read_only}
     end
+  end
+
+  # A read-only workspace still lets its members read it; see
+  # `Storyarn.Projects.Memberships.ensure_writable/1`.
+  defp ensure_action_writable(_workspace_id, _action, :read_only_allowed), do: :ok
+
+  defp ensure_action_writable(workspace_id, action, :read_only_refused) do
+    if ReadOnlyActions.allowed?(action), do: :ok, else: Memberships.ensure_workspace_writable(workspace_id)
   end
 
   @doc """

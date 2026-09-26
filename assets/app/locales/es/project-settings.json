@@ -81,6 +81,7 @@
       "delete": "Eliminar",
       "page_title": "General",
       "owner_only_label": "Solo el propietario del proyecto puede cambiar esto",
+      "read_only_label": "Solo lectura mientras tu cuenta supere los límites de su plan",
       "details": "Detalles",
       "type_hint": "Ajusta las plantillas y los preajustes de exportación.",
       "description_hint": "Se muestra en el panel del workspace y en las plantillas.",

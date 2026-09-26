@@ -11,12 +11,14 @@ const {
   scenesTree = [],
   selectedSceneId = null,
   canEdit = false,
+  canDelete = false,
   workspaceSlug,
   projectSlug,
 } = defineProps<{
   scenesTree: SceneTreeNodeData[];
   selectedSceneId: string | number | null;
   canEdit: boolean;
+  canDelete?: boolean;
   workspaceSlug: string;
   projectSlug: string;
 }>();
@@ -29,6 +31,7 @@ const {
         :scenes-tree="scenesTree"
         :selected-scene-id="selectedSceneId"
         :can-edit="canEdit"
+        :can-delete="canDelete"
         :workspace-slug="workspaceSlug"
         :project-slug="projectSlug"
       />

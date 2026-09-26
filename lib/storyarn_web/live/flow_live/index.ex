@@ -54,6 +54,7 @@ defmodule StoryarnWeb.FlowLive.Index do
           "project_slug" => @project.slug,
           "flow_id" => nil,
           "can_edit" => @can_edit,
+          "can_delete" => @can_delete,
           "membership" => @membership,
           "active_tool" => "flows",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",
@@ -92,7 +93,7 @@ defmodule StoryarnWeb.FlowLive.Index do
         }
         issue-filters={@issue_filters}
         issue-filter-options={@issue_filter_options}
-        can-edit={@can_edit}
+        row-actions={%{setMain: @can_edit, delete: @can_delete}}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -410,7 +411,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       flow_id when is_integer(flow_id) ->
         Authorize.with_authorization(
           socket,
-          :edit_content,
+          :delete_content,
           &delete_authorized_flow(&1, flow_id)
         )
 

@@ -208,7 +208,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
          true <- project.workspace_id == restore.workspace_id,
          %User{} = actor <- Repo.get(User, restore.requested_by_id),
          {:ok, %Project{id: project_id, deleted_at: nil}, _membership} <-
-           Memberships.authorize(%{user: actor}, project.id, :manage_project),
+           Memberships.authorize_admitted(%{user: actor}, project.id, :manage_project),
          true <- project_id == restore.project_id,
          {:ok, archive_plan} <- reader.verify(snapshot),
          :ok <- validate_current_provider_namespace(provider_namespace_fingerprint),
@@ -703,7 +703,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     # invert a parent/restore FK wait against this transaction.
     with %User{} = actor <- context.actor,
          {:ok, %Project{deleted_at: nil} = project, _membership} <-
-           Memberships.authorize_locked(%{user: actor}, context.project.id, :manage_project, :update),
+           Memberships.authorize_admitted_locked(%{user: actor}, context.project.id, :manage_project, :update),
          %ProjectSnapshotRestore{status: "running", phase: "verifying"} = restore <-
            Repo.get(ProjectSnapshotRestore, context.restore.id),
          %ProjectSnapshot{} = snapshot <- Repo.get(ProjectSnapshot, context.snapshot.id),

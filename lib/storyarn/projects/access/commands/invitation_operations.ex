@@ -148,7 +148,7 @@ defmodule Storyarn.Projects.InvitationOperations do
       when valid_id(parent_id) and valid_id(invitation_id) do
     Repo.transact(fn ->
       with {:ok, _parent, _membership} <-
-             config.memberships_module.authorize_locked(scope, parent_id, :manage_members, :update),
+             config.memberships_module.authorize_locked(scope, parent_id, :remove_members, :update),
            invitation when not is_nil(invitation) <-
              lock_pending_invitation(config, parent_id, invitation_id) do
         Repo.delete(invitation)
@@ -389,6 +389,7 @@ defmodule Storyarn.Projects.InvitationOperations do
          {:ok, current_invitation} <- lock_invitation(config, invitation),
          {:ok, current_user} <- lock_user(user),
          :ok <- validate_invitation_acceptance(config, current_invitation, current_user),
+         :ok <- config.memberships_module.ensure_workspace_writable(locked_workspace.id),
          :ok <-
            normalize_limit_result(
              Commercial.check_editor_seat_acceptance(locked_parent, current_user.email, current_invitation.role)

@@ -81,6 +81,7 @@
       "delete": "Delete",
       "page_title": "General",
       "owner_only_label": "Only the project owner can change this",
+      "read_only_label": "Read-only while your account is over its plan's limits",
       "details": "Details",
       "type_hint": "Adjusts templates and export presets.",
       "description_hint": "Shown on the workspace dashboard and in templates.",

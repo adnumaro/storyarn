@@ -4,6 +4,7 @@ defmodule StoryarnWeb.ProjectLive.Form do
   use StoryarnWeb, :live_component
 
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @impl true
   def render(assigns) do
@@ -76,6 +77,9 @@ defmodule StoryarnWeb.ProjectLive.Form do
 
       {:error, :not_found} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Workspace not found."))}
+
+      {:error, :read_only} ->
+        {:noreply, ReadOnlyNotice.put_flash(socket)}
 
       {:error, :unauthorized} ->
         {:noreply,

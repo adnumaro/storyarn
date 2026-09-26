@@ -59,6 +59,7 @@ const {
   themeAccent = "#E8922F",
   hasCustomTheme = false,
   canManageProject,
+  readOnly = false,
   saveStatus = "idle",
 } = defineProps<{
   projectDetails?: ProjectDetails;
@@ -69,11 +70,17 @@ const {
   themeAccent?: string;
   hasCustomTheme?: boolean;
   canManageProject: boolean;
+  /** The workspace is read-only: its settings stay locked, but the owner can still delete the project. */
+  readOnly?: boolean;
   saveStatus?: "idle" | "saving" | "saved";
 }>();
 
 const live = useLive();
 const { t } = useI18n();
+
+// Settings change only while the owner manages the project and its workspace
+// is not read-only; deleting the project needs the first alone.
+const canEditSettings = computed(() => canManageProject && !readOnly);
 
 // ---------------------------------------------------------------------------
 // Details: saved on blur or on select change, like the profile page.
@@ -120,7 +127,7 @@ const detailsDirty = computed(
 );
 
 function saveProject(): void {
-  if (!canManageProject || !detailsComplete.value || !detailsDirty.value) return;
+  if (!canEditSettings.value || !detailsComplete.value || !detailsDirty.value) return;
 
   live.pushEvent("update_project", {
     project: {
@@ -156,14 +163,14 @@ const sourceChangeDialogOpen = ref(false);
 const pendingSourceLanguage = ref<LanguagePickerOption | null>(null);
 
 function requestSourceLanguage(option: LanguagePickerOption): void {
-  if (!canManageProject) return;
+  if (!canEditSettings.value) return;
 
   pendingSourceLanguage.value = option;
   sourceChangeDialogOpen.value = true;
 }
 
 function confirmSourceLanguage(): void {
-  if (!canManageProject) return;
+  if (!canEditSettings.value) return;
 
   if (pendingSourceLanguage.value) {
     live.pushEvent("change_source_language", {
@@ -195,26 +202,26 @@ watch(
 );
 
 function onPrimaryChange(hex: string): void {
-  if (!canManageProject) return;
+  if (!canEditSettings.value) return;
 
   localPrimary.value = hex;
   live.pushEvent("update_theme_primary", { color: hex });
 }
 
 function onAccentChange(hex: string): void {
-  if (!canManageProject) return;
+  if (!canEditSettings.value) return;
 
   localAccent.value = hex;
   live.pushEvent("update_theme_accent", { color: hex });
 }
 
 function saveTheme(): void {
-  if (!canManageProject) return;
+  if (!canEditSettings.value) return;
   live.pushEvent("save_theme", {});
 }
 
 function resetTheme(): void {
-  if (!canManageProject) return;
+  if (!canEditSettings.value) return;
   live.pushEvent("reset_theme", {});
 }
 
@@ -224,7 +231,7 @@ function resetTheme(): void {
 const showRepairConfirm = ref(false);
 
 function confirmRepair(): void {
-  if (!canManageProject) return;
+  if (!canEditSettings.value) return;
 
   showRepairConfirm.value = false;
   live.pushEvent("repair_variable_references", {});
@@ -239,21 +246,28 @@ function confirmDeleteProject(): void {
   live.pushEvent("delete_project", {});
 }
 
+watch(canEditSettings, (canEdit) => {
+  if (canEdit) return;
+
+  sourceChangeDialogOpen.value = false;
+  pendingSourceLanguage.value = null;
+  showRepairConfirm.value = false;
+});
+
 watch(
   () => canManageProject,
   (canManage) => {
-    if (canManage) return;
-
-    sourceChangeDialogOpen.value = false;
-    pendingSourceLanguage.value = null;
-    showRepairConfirm.value = false;
-    showDeleteConfirm.value = false;
+    if (!canManage) showDeleteConfirm.value = false;
   },
 );
 
-const lockedLabel = computed(() =>
-  canManageProject ? null : t("project_settings.general.owner_only_label"),
-);
+const lockedLabel = computed(() => {
+  if (canEditSettings.value) return null;
+
+  return canManageProject
+    ? t("project_settings.general.read_only_label")
+    : t("project_settings.general.owner_only_label");
+});
 </script>
 
 <template>
@@ -273,7 +287,7 @@ const lockedLabel = computed(() =>
 
     <SettingsSection
       :title="t('project_settings.general.details')"
-      :locked="!canManageProject"
+      :locked="!canEditSettings"
       :locked-label="lockedLabel"
     >
       <SettingsRow
@@ -286,7 +300,7 @@ const lockedLabel = computed(() =>
           v-model="projectNameLocal"
           required
           maxlength="120"
-          :disabled="!canManageProject"
+          :disabled="!canEditSettings"
           @blur="saveProject"
         />
       </SettingsRow>
@@ -298,7 +312,7 @@ const lockedLabel = computed(() =>
         <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Select
             :model-value="projectTypeLocal"
-            :disabled="!canManageProject"
+            :disabled="!canEditSettings"
             @update:model-value="updateProjectType"
           >
             <SelectTrigger id="project-type" class="w-full sm:w-[168px]">
@@ -318,7 +332,7 @@ const lockedLabel = computed(() =>
           <Select
             v-if="requiresSubtype"
             :model-value="projectSubtypeLocal"
-            :disabled="!canManageProject"
+            :disabled="!canEditSettings"
             @update:model-value="updateProjectSubtype"
           >
             <SelectTrigger id="project-subtype" class="w-full sm:w-[168px]">
@@ -340,7 +354,7 @@ const lockedLabel = computed(() =>
             class="w-full sm:w-[168px]"
             maxlength="120"
             required
-            :disabled="!canManageProject"
+            :disabled="!canEditSettings"
             :placeholder="t('project_settings.general.project_type_other_placeholder')"
             :aria-label="t('project_settings.general.project_type_other')"
             @blur="saveProject"
@@ -358,7 +372,7 @@ const lockedLabel = computed(() =>
           id="project-description"
           v-model="projectDescLocal"
           :rows="3"
-          :disabled="!canManageProject"
+          :disabled="!canEditSettings"
           @blur="saveProject"
         />
       </SettingsRow>
@@ -367,7 +381,7 @@ const lockedLabel = computed(() =>
     <SettingsSection
       v-if="sourceLanguage"
       :title="t('project_settings.general.language')"
-      :locked="!canManageProject"
+      :locked="!canEditSettings"
       :locked-label="lockedLabel"
     >
       <SettingsRow
@@ -393,7 +407,7 @@ const lockedLabel = computed(() =>
     <SettingsSection
       :title="t('project_settings.general.theme_colors')"
       :hint="t('project_settings.general.theme_colors_hint')"
-      :locked="!canManageProject"
+      :locked="!canEditSettings"
       :locked-label="lockedLabel"
     >
       <SettingsRow
@@ -426,7 +440,7 @@ const lockedLabel = computed(() =>
 
     <SettingsSection
       :title="t('project_settings.general.maintenance')"
-      :locked="!canManageProject"
+      :locked="!canEditSettings"
       :locked-label="lockedLabel"
     >
       <SettingsRow
@@ -466,7 +480,7 @@ const lockedLabel = computed(() =>
     </SettingsSection>
 
     <Dialog
-      v-if="canManageProject"
+      v-if="canEditSettings"
       v-model:open="showRepairConfirm"
       data-testid="project-repair-confirm-dialog"
     >
@@ -487,7 +501,7 @@ const lockedLabel = computed(() =>
     </Dialog>
 
     <ConfirmDialog
-      v-if="canManageProject"
+      v-if="canEditSettings"
       v-model:open="sourceChangeDialogOpen"
       :title="t('localization.sidebar.source_change_confirm_title')"
       :description="

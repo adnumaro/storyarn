@@ -4,11 +4,13 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.CommercialFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Commercial.Billing.PlanPeriod
   alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Localization
   alias Storyarn.Projects
@@ -175,6 +177,26 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       assert item.purge_at == DateTime.shift(item.deleted_at, day: 30)
       assert subscription_queries(queries) == []
+    end
+
+    test "keeps the retention of the plan an item was deleted under after a downgrade" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+      now = DateTime.utc_now(:second)
+
+      change_plan!(user, "studio")
+      backdate_plan_period!(user, "free", DateTime.shift(now, hour: -3))
+      backdate_plan_period!(user, "studio", DateTime.shift(now, hour: -2))
+
+      assert {:ok, _deleted} = Sheets.delete_sheet(sheet)
+      deleted_at = DateTime.shift(now, hour: -1)
+      Repo.update_all(from(row in Sheet, where: row.id == ^sheet.id), set: [deleted_at: deleted_at])
+
+      change_plan!(user, "free")
+
+      assert [item] = Projects.list_deleted_items_for_retention()
+      assert item.purge_at == DateTime.shift(deleted_at, day: 90)
     end
 
     test "uses a stable cursor to page through deleted items" do
@@ -399,5 +421,12 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
   defp subscription_queries(queries) do
     Enum.filter(queries, &String.contains?(&1, ~s("subscriptions")))
+  end
+
+  # Plan periods start on the second; move one back so the next change starts its own.
+  defp backdate_plan_period!(user, plan, started_at) do
+    Repo.update_all(from(period in PlanPeriod, where: period.user_id == ^user.id and period.plan == ^plan),
+      set: [started_at: started_at]
+    )
   end
 end

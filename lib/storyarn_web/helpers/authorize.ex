@@ -22,13 +22,23 @@ defmodule StoryarnWeb.Helpers.Authorize do
   ## Available Actions
 
   ### Project Actions
-  - `:edit_content` - Edit entities, templates, variables, flows
-  - `:manage_project` - Update project settings, delete project
+  - `:edit_content` - Create and edit entities, templates, variables, flows
+  - `:delete_content` - Delete sheets, flows, scenes and assets
+  - `:comment` - Write and resolve comments
+  - `:manage_project` - Update project settings
+  - `:delete_project` - Delete the project
+  - `:delete_snapshot` - Delete a backup
   - `:manage_members` - Invite/remove members, change roles
 
   ### Workspace Actions
-  - `:manage_workspace` - Update workspace settings, delete workspace
+  - `:manage_workspace` - Update workspace settings
+  - `:delete_workspace` - Delete the workspace
   - `:manage_workspace_members` - Invite/remove members in workspace
+
+  While a workspace is read-only (its owner's account is over its plan's
+  limits) only reading, commenting and the delete actions are authorized.
+  `with_authorization/3` then tells the actor why, through
+  `StoryarnWeb.Live.Shared.ReadOnlyNotice`.
   """
 
   use Gettext, backend: Storyarn.Gettext
@@ -36,6 +46,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Projects
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @type callback_result :: {:noreply, Socket.t()} | {:reply, map(), Socket.t()}
 
@@ -80,6 +91,9 @@ defmodule StoryarnWeb.Helpers.Authorize do
     case authorize(socket, action) do
       :ok ->
         success_fn.(socket)
+
+      {:error, :read_only} ->
+        {:noreply, ReadOnlyNotice.put_flash(socket)}
 
       {:error, :unauthorized} ->
         {:noreply, Phoenix.LiveView.put_flash(socket, :error, unauthorized_message())}
@@ -137,7 +151,8 @@ defmodule StoryarnWeb.Helpers.Authorize do
   @doc """
   Checks if the current socket has permission to perform an action.
 
-  Returns `:ok` if authorized, `{:error, :unauthorized}` otherwise.
+  Returns `:ok` if authorized, `{:error, :read_only}` when the workspace is
+  read-only and refuses the action, and `{:error, :unauthorized}` otherwise.
 
   Mounted production sockets are reauthorized through the owning context using
   `current_scope` plus the assigned resource identity. The cached-membership
@@ -156,10 +171,11 @@ defmodule StoryarnWeb.Helpers.Authorize do
         end
       end
   """
-  @spec authorize(Socket.t(), atom()) :: :ok | {:error, :unauthorized}
+  @spec authorize(Socket.t(), atom()) :: :ok | {:error, :unauthorized | :read_only}
   def authorize(socket, action) do
     case authorization_result(socket, action) do
       :ok -> :ok
+      {:error, :read_only} -> {:error, :read_only}
       {:error, _reason} -> {:error, :unauthorized}
     end
   end
@@ -171,6 +187,13 @@ defmodule StoryarnWeb.Helpers.Authorize do
   # minimal socket without a resource.
   defp authorization_result(%{assigns: assigns}, :edit_content), do: authorize_project(assigns, :edit_content)
 
+  # Deleting stays allowed while the workspace is read-only, so its owner can
+  # bring the account back within the plan's limits.
+  defp authorization_result(%{assigns: assigns}, :delete_content), do: authorize_project(assigns, :delete_content)
+
+  # Commenting stays allowed while the workspace is read-only.
+  defp authorization_result(%{assigns: assigns}, :comment), do: authorize_project(assigns, :comment)
+
   # Personal discussion state may be managed by viewers; the comment service
   # additionally authorizes the exact source and always binds the acting user.
   defp authorization_result(%{assigns: assigns}, :manage_comment_state), do: authorize_project(assigns, :view)
@@ -179,14 +202,20 @@ defmodule StoryarnWeb.Helpers.Authorize do
   # never spend a workspace's AI allowance.
   defp authorization_result(%{assigns: assigns}, :use_ai), do: authorize_project(assigns, :use_ai)
 
-  # Project management (settings, deletion)
+  # Project management (settings, backups)
   defp authorization_result(%{assigns: assigns}, :manage_project), do: authorize_project(assigns, :manage_project)
+
+  defp authorization_result(%{assigns: assigns}, :delete_project), do: authorize_project(assigns, :delete_project)
+
+  defp authorization_result(%{assigns: assigns}, :delete_snapshot), do: authorize_project(assigns, :delete_snapshot)
 
   # Project member management (invitations, removals)
   defp authorization_result(%{assigns: assigns}, :manage_members), do: authorize_project(assigns, :manage_members)
 
-  # Workspace management (settings, deletion)
+  # Workspace management (settings)
   defp authorization_result(%{assigns: assigns}, :manage_workspace), do: authorize_workspace(assigns, :manage_workspace)
+
+  defp authorization_result(%{assigns: assigns}, :delete_workspace), do: authorize_workspace(assigns, :delete_workspace)
 
   # Workspace member management
   defp authorization_result(%{assigns: assigns}, :manage_workspace_members),

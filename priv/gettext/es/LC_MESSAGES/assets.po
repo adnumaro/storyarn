@@ -54,7 +54,7 @@ msgstr "Archivo demasiado grande (máximo 20MB)."
 
 #: lib/storyarn_web/live/asset_live/index.ex:326
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:61
-#: lib/storyarn_web/live/scene_live/show.ex:2108
+#: lib/storyarn_web/live/scene_live/show.ex:2109
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr "Límite de almacenamiento alcanzado. Mejora tu plan."

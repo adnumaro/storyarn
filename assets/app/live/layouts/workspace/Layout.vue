@@ -5,6 +5,7 @@ import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import NotificationBell from "@components/notifications/NotificationBell.vue";
 import CommentsHubButton from "@components/comments/CommentsHubButton.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";
+import ReadOnlyBanner, { type ReadOnlyNotice } from "@shell/ReadOnlyBanner.vue";
 import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
 import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
@@ -14,11 +15,14 @@ const {
   workspaces = [],
   currentWorkspaceSlug = null,
   onboarding = null,
+  readOnly = null,
 } = defineProps<{
   currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
   currentWorkspaceSlug?: string | null;
   onboarding?: { guide: string; autoShow: boolean } | null;
+  /** Set while the current workspace is read-only, for those who could edit it. */
+  readOnly?: ReadOnlyNotice | null;
 }>();
 
 const { sidebarOpen, toggleSidebar, desktopSidebarOpen } = useResponsiveSidebar();
@@ -114,6 +118,8 @@ onUnmounted(() => {
           <NotificationBell />
         </div>
       </div>
+
+      <ReadOnlyBanner v-if="readOnly" :notice="readOnly" />
 
       <!-- Each screen brings its own PageContainer as main's direct child. -->
       <slot />

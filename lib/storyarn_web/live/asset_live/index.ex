@@ -70,7 +70,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         assets={serialize_assets(@assets)}
         selected-asset={serialize_asset(@selected_asset)}
         asset-usages={serialize_usages(@asset_usages)}
-        can-edit={@can_edit}
+        can-delete={@can_delete}
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
         page={@asset_page}
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   def handle_event("confirm_trash_asset", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :delete_content, fn socket ->
       move_selected_asset_to_trash(socket)
     end)
   end

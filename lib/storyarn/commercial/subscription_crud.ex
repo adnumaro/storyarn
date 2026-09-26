@@ -1,10 +1,12 @@
 defmodule Storyarn.Commercial.Billing.SubscriptionCrud do
   @moduledoc false
 
+  alias Storyarn.Commercial.Billing.AccountLimits
   alias Storyarn.Commercial.Billing.Plan
   alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Commercial.Commands.Subscriptions, as: SubscriptionCommands
   alias Storyarn.Commercial.Queries.Subscriptions, as: SubscriptionQueries
+  alias Storyarn.Repo
 
   @doc """
   Gets the subscription of an account.
@@ -21,10 +23,21 @@ defmodule Storyarn.Commercial.Billing.SubscriptionCrud do
   end
 
   @doc """
-  Updates the plan for a subscription (for future upgrades).
+  Updates the plan for a subscription, then re-evaluates the account: a lower
+  plan can leave it over its limits, and so read-only. The plan, its period
+  and the read-only state change together.
   """
   def update_plan(%Subscription{} = subscription, new_plan) do
-    SubscriptionCommands.update_plan(subscription, new_plan)
+    Repo.transact(fn ->
+      # The account holder first, as in every chain that reaches the
+      # subscription row: see `AccountLimits`.
+      AccountLimits.lock_account_holder(subscription.user_id)
+
+      with {:ok, %Subscription{user_id: user_id}} <- SubscriptionCommands.update_plan(subscription, new_plan),
+           {:ok, _reasons} <- AccountLimits.refresh(user_id) do
+        {:ok, Repo.get!(Subscription, subscription.id)}
+      end
+    end)
   end
 
   @doc """

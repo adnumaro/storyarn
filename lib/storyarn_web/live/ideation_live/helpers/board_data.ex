@@ -4,6 +4,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
   alias Storyarn.Projects
   alias StoryarnWeb.IdeationLive.Helpers.RoundData
   alias StoryarnWeb.Live.Shared.IdeationDecisionData
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @page_size 50
   @empty_counts %{active: 0, parked: 0, discarded: 0}
@@ -20,7 +21,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
            ),
          {:ok, content} <- session_content(scope, project_id, session_id, filters),
          {:ok, members} <- Projects.list_comment_members(scope, project_id) do
-      can_edit = Projects.can?(membership.role, :edit_content)
+      can_edit = Projects.can?(membership.role, :edit_content) and not ReadOnlyNotice.read_only?(project.workspace_id)
       owner? = project.owner_id == scope.user.id
 
       {:ok,

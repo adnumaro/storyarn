@@ -62,7 +62,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
   end
 
   defp dispatch(action, params, socket) when action in ~w(create reply set_status move place) do
-    Authorize.with_authorization(socket, :edit_content, &mutate(action, params, &1), fn current, _ ->
+    Authorize.with_authorization(socket, :comment, &mutate(action, params, &1), fn current, _ ->
       failure(init(current), :not_found)
     end)
   end
@@ -168,7 +168,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
         discussions
         |> Enum.group_by(& &1.source.id, & &1.message_count)
         |> Map.new(fn {id, counts} -> {id, Enum.sum(counts)} end),
-      canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content))
+      canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :comment))
     })
   end
 
@@ -312,7 +312,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.CommentHandlers do
     case source do
       {:ok, _source} ->
         put(socket, %{
-          canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content)),
+          canComment: match?({:ok, _, _}, Projects.authorize(scope, project.id, :comment)),
           members: members(scope, project.id),
           selectedSourceId: state.decisionId || state.groupId || state.ideaId || id,
           selectedSourceLabel: nil

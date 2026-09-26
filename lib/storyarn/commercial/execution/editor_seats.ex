@@ -15,9 +15,10 @@ defmodule Storyarn.Commercial.Billing.EditorSeats do
   Every check locks the owner's subscription row, so two admissions for the
   same account, even in different workspaces, cannot both take the last seat.
   Callers must run the check inside the transaction that writes the
-  membership or invitation. Nothing else locks subscription rows, so this lock
-  cannot close a cycle with the Workspace or Project locks callers already
-  hold.
+  membership or invitation. Only these checks and the read-only re-evaluation
+  (`AccountLimits`) lock subscription rows, both last and without taking
+  another lock while holding it, so this lock cannot close a cycle with the
+  Workspace or Project locks callers already hold.
   """
 
   import Ecto.Query, warn: false

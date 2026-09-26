@@ -134,7 +134,7 @@ const {
     localizedVoiceovers: [],
     galleryImages: [],
   },
-  canEdit = false,
+  canDelete = false,
   workspaceSlug,
   projectSlug,
   page = 1,
@@ -144,7 +144,7 @@ const {
   assets?: Asset[];
   selectedAsset?: Asset | null;
   assetUsages?: AssetUsages;
-  canEdit?: boolean;
+  canDelete?: boolean;
   workspaceSlug: string;
   projectSlug: string;
   page?: number;
@@ -499,7 +499,7 @@ function usageContext(context: string, trashed = false, archived = false) {
         </div>
 
         <!-- Delete button -->
-        <div v-if="canEdit" class="border-t border-border pt-4">
+        <div v-if="canDelete" class="border-t border-border pt-4">
           <p v-if="activeUsageCount > 0" class="mb-2 text-xs text-muted-foreground">
             {{ $t("common.assets.trash_blocked_active_usage", { count: activeUsageCount }) }}
           </p>

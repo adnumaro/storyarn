@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
 
   alias Storyarn.Projects
   alias StoryarnWeb.Live.Shared.PlanLimitFlash
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @max_pg_bigint 9_223_372_036_854_775_807
 
@@ -226,6 +227,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
            socket.assigns.project.workspace_id,
            dgettext("projects", "Editor limit reached for your plan.")
          )}
+
+      {:error, :read_only} ->
+        {:noreply, ReadOnlyNotice.put_flash(socket)}
 
       {:error, :ownership_invariant_violation} ->
         ownership_transfer_error(

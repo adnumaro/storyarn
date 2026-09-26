@@ -8,6 +8,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   alias Storyarn.Commercial
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
   alias StoryarnWeb.Live.Shared.UsageAccess
 
   @active_restore_statuses ~w(queued running retrying)
@@ -33,14 +34,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         v-inject="settings-layout"
         id="project-settings-snapshots"
         snapshots={
-          serialize_snapshots(
-            @project,
+          @project
+          |> serialize_snapshots(
             @snapshots,
             @snapshot_reservations,
             @snapshot_restores,
             @snapshot_build_statuses
           )
+          |> lock_read_only_snapshots(@read_only)
         }
+        read-only={@read_only}
         restore-operation-active={project_restore_active?(@snapshot_restores)}
         storage-usage={if @workspace_totals_visible, do: serialize_storage_usage(@storage_usage, @storage_limit)}
         snapshot-limit={serialize_snapshot_limit(@snapshot_slots_used, @snapshot_slots_limit)}
@@ -74,6 +77,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       )
     end)
   end
+
+  # A read-only workspace keeps its backups to download and delete; it cannot
+  # start, cancel or restore one.
+  defp lock_read_only_snapshots(snapshots, false), do: snapshots
+
+  defp lock_read_only_snapshots(snapshots, true), do: Enum.map(snapshots, &%{&1 | canCancel: false, canRestore: false})
 
   defp serialize_snapshot(project, snapshot, reservations, restore, active_restore?, build_statuses) do
     reservation = Map.get(reservations, snapshot.id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
@@ -401,7 +410,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   def handle_event("delete_snapshot", params, socket) do
     Authorize.with_authorization(
       socket,
-      :manage_project,
+      :delete_snapshot,
       fn socket ->
         with false <- project_restore_active_now?(socket.assigns.project.id),
              {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
@@ -723,9 +732,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   end
 
   defp snapshot_authorization_failure(socket, action, snapshot_id, reason) do
-    message = snapshot_authorization_message(reason)
-
-    socket = put_flash(socket, :error, message)
+    {socket, message} = put_snapshot_authorization_flash(socket, reason)
 
     case action do
       :create ->
@@ -752,6 +759,15 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     end
   end
 
+  defp put_snapshot_authorization_flash(socket, :read_only) do
+    {ReadOnlyNotice.put_flash(socket), ReadOnlyNotice.message(socket.assigns.current_scope, socket.assigns.workspace)}
+  end
+
+  defp put_snapshot_authorization_flash(socket, reason) do
+    message = snapshot_authorization_message(reason)
+    {put_flash(socket, :error, message), message}
+  end
+
   defp snapshot_authorization_message(:ownership_invariant_violation) do
     dgettext(
       "projects",
@@ -764,6 +780,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   end
 
   defp snapshot_authorization_reason(:ownership_invariant_violation), do: "ownership_invariant_violation"
+  defp snapshot_authorization_reason(:read_only), do: "read_only"
   defp snapshot_authorization_reason(_reason), do: "unauthorized"
 
   defp restore_request_error_reason(reason)

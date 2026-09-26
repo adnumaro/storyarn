@@ -209,7 +209,7 @@ defmodule StoryarnWeb.LocalizationLive.Glossary do
   defp with_edit_permission(socket, fun) do
     case Authorize.authorize(socket, :edit_content) do
       :ok -> fun.()
-      {:error, :unauthorized} -> {:reply, %{ok: false, error: "unauthorized"}, socket}
+      {:error, _reason} -> {:reply, %{ok: false, error: "unauthorized"}, socket}
     end
   end
 

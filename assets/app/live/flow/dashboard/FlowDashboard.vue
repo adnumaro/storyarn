@@ -93,7 +93,7 @@ const {
   issuePagination,
   issueFilters = { severity: "all", code: "all", resource: "all" },
   issueFilterOptions = emptyDashboardIssueFilterOptions(),
-  canEdit = false,
+  rowActions = { setMain: false, delete: false },
 } = defineProps<{
   stats: FlowStats | null;
   tableData: FlowTableRow[];
@@ -104,7 +104,8 @@ const {
   issuePagination?: DashboardIssuePagination;
   issueFilters?: DashboardIssueFilterValues;
   issueFilterOptions?: DashboardIssueFilterOptions;
-  canEdit: boolean;
+  /** Deleting outlives editing: a read-only workspace still deletes flows. */
+  rowActions?: { setMain: boolean; delete: boolean };
 }>();
 
 const { t } = useI18n();
@@ -380,7 +381,7 @@ const columns = computed<DashboardTableColumn[]>(() => [
         :total-label="$t('flows.dashboard.total_flows', pagination.total)"
         :previous-label="$t('common.dashboard.previous_page')"
         :next-label="$t('common.dashboard.next_page')"
-        :has-actions="canEdit"
+        :has-actions="rowActions.setMain || rowActions.delete"
         @sort="handleSort"
         @page="goToPage"
       >
@@ -427,11 +428,19 @@ const columns = computed<DashboardTableColumn[]>(() => [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem v-if="!row.is_main" class="gap-2 text-xs" @select="setMain(row.id)">
+              <DropdownMenuItem
+                v-if="rowActions.setMain && !row.is_main"
+                class="gap-2 text-xs"
+                @select="setMain(row.id)"
+              >
                 <Star class="size-3.5" />
                 {{ $t("flows.dashboard.set_main") }}
               </DropdownMenuItem>
-              <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row)">
+              <DropdownMenuItem
+                v-if="rowActions.delete"
+                class="text-destructive gap-2 text-xs"
+                @select="requestDelete(row)"
+              >
                 <Trash2 class="size-3.5" />
                 {{ $t("flows.dashboard.delete") }}
               </DropdownMenuItem>

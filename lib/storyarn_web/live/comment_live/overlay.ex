@@ -139,7 +139,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
   def handle_event(event, params, socket) when event in ~w(comments_reply comments_set_status) do
     Authorize.with_authorization(
       socket,
-      :edit_content,
+      :comment,
       &mutate(event, params, &1),
       fn current, _reason -> failure(refresh_access(current), :not_found) end
     )
@@ -401,7 +401,7 @@ defmodule StoryarnWeb.CommentLive.Overlay do
           members: members,
           canComment:
             detail.thread.source.status == "available" and
-              Projects.can?(membership.role, :edit_content)
+              Projects.can?(membership.role, :comment)
       }
 
       socket

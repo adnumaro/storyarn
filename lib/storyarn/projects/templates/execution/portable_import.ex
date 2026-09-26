@@ -730,7 +730,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
   end
 
   defp validate_source_project_scope(%{source_user_id: source_user_id, verify_workspace_id: workspace_id}) do
-    case WorkspaceAccess.authorize(%{user: Repo.get!(User, source_user_id)}, workspace_id, :create_project) do
+    case WorkspaceAccess.authorize_admitted(%{user: Repo.get!(User, source_user_id)}, workspace_id, :create_project) do
       {:ok, _workspace, _membership} -> :ok
       {:error, reason} -> {:error, {:source_project_unauthorized, reason}}
     end

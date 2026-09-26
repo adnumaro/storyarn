@@ -34,8 +34,8 @@ msgstr "Atajo cambiado"
 msgid "Could not create block."
 msgstr "No se pudo crear el bloque."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:102
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:119
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:103
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:120
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr "No se pudo crear la ficha."
@@ -45,13 +45,13 @@ msgstr "No se pudo crear la ficha."
 msgid "Could not delete block."
 msgstr "No se pudo eliminar el bloque."
 
-#: lib/storyarn_web/live/sheet_live/index.ex:379
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:171
+#: lib/storyarn_web/live/sheet_live/index.ex:380
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:176
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
 msgstr "No se pudo eliminar la ficha."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:180
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:185
 #, elixir-autogen, elixir-format
 msgid "Could not move sheet."
 msgstr "No se pudo mover la ficha."
@@ -93,7 +93,7 @@ msgstr "No se pudo subir el archivo de audio."
 msgid "Invalid file data."
 msgstr "Datos de archivo inválidos."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:109
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:110
 #, elixir-autogen, elixir-format
 msgid "New Sheet"
 msgstr "Nueva Ficha"
@@ -109,7 +109,7 @@ msgstr "Destino de referencia no encontrado."
 msgid "Renamed sheet"
 msgstr "Ficha renombrada"
 
-#: lib/storyarn_web/live/sheet_live/show.ex:497
+#: lib/storyarn_web/live/sheet_live/show.ex:498
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
@@ -125,7 +125,7 @@ msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
 #: lib/storyarn_web/live/hooks/palette.ex:647
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:93
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:94
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"
@@ -215,8 +215,8 @@ msgstr "Este campo es obligatorio."
 msgid "Could not duplicate block."
 msgstr "No se pudo duplicar el bloque."
 
-#: lib/storyarn_web/live/sheet_live/index.ex:378
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:170
+#: lib/storyarn_web/live/sheet_live/index.ex:379
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:175
 #, elixir-autogen, elixir-format
 msgid "Sheet moved to trash."
 msgstr "Ficha movida a la papelera."
@@ -309,7 +309,7 @@ msgstr "Recurso no encontrado."
 msgid "Invalid layout."
 msgstr "Diseño no válido."
 
-#: lib/storyarn_web/live/sheet_live/show.ex:1045
+#: lib/storyarn_web/live/sheet_live/show.ex:1046
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr "Desconocido"
@@ -345,7 +345,7 @@ msgid "Hidden inherited block"
 msgstr "Bloque heredado oculto"
 
 #: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:160
-#: lib/storyarn_web/live/sheet_live/index.ex:490
+#: lib/storyarn_web/live/sheet_live/index.ex:491
 #, elixir-autogen, elixir-format
 msgid "Sheet"
 msgstr "Ficha"

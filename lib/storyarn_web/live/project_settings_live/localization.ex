@@ -6,6 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   # ===========================================================================
   # Render
@@ -210,6 +211,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
     {:reply, %{ok: false, errors: %{authorization: message}}, put_flash(socket, :error, message)}
   end
 
+  defp provider_settings_authorization_error(socket, :read_only) do
+    message = ReadOnlyNotice.message(socket.assigns.current_scope, socket.assigns.workspace)
+
+    {:reply, %{ok: false, errors: %{authorization: message}}, ReadOnlyNotice.put_flash(socket)}
+  end
+
   defp provider_settings_authorization_error(socket, _reason) do
     message = dgettext("projects", "You don't have permission to manage provider settings for this project.")
 
@@ -224,6 +231,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
       )
 
     {:reply, %{ok: false, error: message}, put_flash(socket, :error, message)}
+  end
+
+  defp provider_connection_authorization_error(socket, :read_only) do
+    message = ReadOnlyNotice.message(socket.assigns.current_scope, socket.assigns.workspace)
+
+    {:reply, %{ok: false, error: message}, ReadOnlyNotice.put_flash(socket)}
   end
 
   defp provider_connection_authorization_error(socket, _reason) do

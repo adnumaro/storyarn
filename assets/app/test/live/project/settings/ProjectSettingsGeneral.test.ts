@@ -165,6 +165,36 @@ describe("ProjectSettingsGeneral danger zone", () => {
   });
 });
 
+describe("ProjectSettingsGeneral in a read-only workspace", () => {
+  it("locks the settings but still lets the owner delete the project", async () => {
+    const live = createMockLive();
+    const wrapper = mountGeneral(
+      { readOnly: true, sourceLanguage: english, sourceLanguageOptions: [english] },
+      live,
+    );
+
+    const sections = wrapper.findAllComponents(SettingsSection);
+    const danger = sections.find((section) => section.props("tone") === "danger");
+    for (const section of sections.filter((candidate) => candidate !== danger)) {
+      expect(section.props("locked")).toBe(true);
+      expect(section.props("lockedLabel")).toBe(
+        "Read-only while your account is over its plan's limits",
+      );
+    }
+    expect(danger?.props("locked")).toBe(false);
+    expect(wrapper.find('[data-testid="project-owner-controls-unavailable"]').exists()).toBe(false);
+
+    await wrapper.get("#project-name").setValue("Renamed Project");
+    await wrapper.get("#project-name").trigger("blur");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+
+    await wrapper.get('[data-testid="open-project-delete-dialog"]').trigger("click");
+    await wrapper.get("input[placeholder='Source Project']").setValue("Source Project");
+    await wrapper.get("#confirm-delete-project").trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith("delete_project", {}, undefined);
+  });
+});
+
 describe("ProjectSettingsGeneral ownership changes", () => {
   it("locks every section and explains why for non-owners", () => {
     const wrapper = mountGeneral({

@@ -22,6 +22,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
 
   alias Storyarn.Localization
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @max_import_bytes 5 * 1024 * 1024
 
@@ -87,6 +88,9 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
     case Authorize.authorize(socket, :edit_content) do
       :ok ->
         do_translate_batch(socket)
+
+      {:error, :read_only} ->
+        {:noreply, ReadOnlyNotice.forward(socket)}
 
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, dgettext("localization", "You don't have permission to edit."))}

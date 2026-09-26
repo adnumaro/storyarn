@@ -73,7 +73,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   def handle(action, params, socket) when action in @mutations do
     Authorize.with_authorization(
       socket,
-      :edit_content,
+      :comment,
       &mutate(action, params, &1),
       fn current, _reason -> failure(clear(current), :unauthorized) end
     )
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
 
     case Projects.list_scene_comment_pins(scope, project.id, scene.id) do
       {:ok, pins} ->
-        can_comment = match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content))
+        can_comment = match?({:ok, _, _}, Projects.authorize(scope, project.id, :comment))
 
         socket =
           socket

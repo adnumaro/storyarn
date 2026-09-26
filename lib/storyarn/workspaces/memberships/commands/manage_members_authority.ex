@@ -4,6 +4,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ManageMembersAuthority do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
+  alias Storyarn.Workspaces.Memberships.Queries.ReadOnly
   alias Storyarn.Workspaces.Memberships.Rules.OwnershipInvariant
   alias Storyarn.Workspaces.Memberships.Rules.Permissions
   alias Storyarn.Workspaces.Workspace
@@ -20,13 +21,16 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ManageMembersAuthority do
   defguardp valid_id(id)
             when is_integer(id) and id > 0 and id <= @max_pg_bigint
 
-  @spec transact(map(), pos_integer(), (locked_state() -> term())) :: term()
-  def transact(%{user: %{id: actor_id}}, workspace_id, fun)
-      when valid_id(actor_id) and valid_id(workspace_id) and is_function(fun, 1) do
+  # `action` is `:manage_members` or `:remove_members`: what `fun` does, so a
+  # read-only workspace can refuse it.
+  @spec transact(map(), pos_integer(), atom(), (locked_state() -> term())) :: term()
+  def transact(%{user: %{id: actor_id}}, workspace_id, action, fun)
+      when valid_id(actor_id) and valid_id(workspace_id) and action in [:manage_members, :remove_members] and
+             is_function(fun, 1) do
     Repo.transact(fn ->
       case lock_workspace(workspace_id) do
         %Workspace{} = workspace ->
-          authorize_locked(workspace, actor_id, fun)
+          authorize_locked(workspace, actor_id, action, fun)
 
         nil ->
           {:error, :not_found}
@@ -34,15 +38,16 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ManageMembersAuthority do
     end)
   end
 
-  def transact(_scope, _workspace_id, _fun), do: {:error, :unauthorized}
+  def transact(_scope, _workspace_id, _action, _fun), do: {:error, :unauthorized}
 
-  defp authorize_locked(workspace, actor_id, fun) do
+  defp authorize_locked(workspace, actor_id, action, fun) do
     memberships = lock_memberships(workspace.id)
 
     with {:ok, _owner_membership} <- OwnershipInvariant.owner(workspace, memberships),
          %WorkspaceMembership{} = actor_membership <-
            Enum.find(memberships, &(&1.user_id == actor_id)),
-         true <- Permissions.allowed?(actor_membership.role, :manage_members) do
+         true <- Permissions.allowed?(actor_membership.role, action),
+         :ok <- ReadOnly.ensure_allowed(workspace.id, action) do
       fun.(%{
         workspace: workspace,
         memberships: memberships,

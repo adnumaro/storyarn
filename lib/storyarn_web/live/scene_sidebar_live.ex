@@ -41,7 +41,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
       |> assign(:workspace_slug, session["workspace_slug"])
       |> assign(:project_slug, session["project_slug"])
       |> assign(:scene_id, session["scene_id"])
-      |> assign(:can_edit, session["can_edit"] || false)
+      |> TreeSidebarActions.assign_permissions(session)
       |> assign(:active_tool, session["active_tool"] || "scenes")
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:dashboard_mode, dashboard_mode)
@@ -74,6 +74,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
             scenesTree: @scenes_tree,
             selectedSceneId: @scene_id,
             canEdit: @can_edit,
+            canDelete: @can_delete,
             workspaceSlug: @workspace_slug,
             projectSlug: @project_slug
           }
@@ -127,7 +128,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
   end
 
   def handle_event("confirm_delete_scene", _params, socket) do
-    with_edit(socket, &confirm_delete_scene/1)
+    with_delete(socket, &confirm_delete_scene/1)
   end
 
   def handle_event("move_to_parent", params, socket) do
@@ -157,7 +158,21 @@ defmodule StoryarnWeb.SceneSidebarLive do
 
   # ── Helpers ───────────────────────────────────────────────────────────────
   defp with_edit(socket, fun) do
-    TreeSidebarActions.with_edit(socket, dgettext("scenes", "You don't have permission to edit."), fun)
+    TreeSidebarActions.with_permission(
+      socket,
+      :edit_content,
+      dgettext("scenes", "You don't have permission to edit."),
+      fun
+    )
+  end
+
+  defp with_delete(socket, fun) do
+    TreeSidebarActions.with_permission(
+      socket,
+      :delete_content,
+      dgettext("scenes", "You don't have permission to edit."),
+      fun
+    )
   end
 
   defp confirm_delete_scene(socket) do

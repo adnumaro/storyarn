@@ -14,6 +14,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.SaveStatusTimer
   alias StoryarnWeb.LanguagePickerOption
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   # ===========================================================================
   # Render
@@ -42,6 +43,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         theme-accent={@theme_accent}
         has-custom-theme={@has_custom_theme}
         can-manage-project={can_manage_project?(@current_scope, @project, @membership)}
+        read-only={@read_only}
         save-status={Atom.to_string(@save_status)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
@@ -220,8 +222,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     end)
   end
 
+  # Deleting the project stays allowed while the workspace is read-only.
   def handle_event("delete_project", _params, socket) do
-    with_project_owner_authorization(socket, fn socket ->
+    with_project_owner_authorization(socket, :delete_project, fn socket ->
       workspace = socket.assigns.workspace
 
       case Projects.delete_project(socket.assigns.current_scope, socket.assigns.project.id) do
@@ -353,14 +356,17 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     project.owner_id == scope.user.id and Projects.can?(membership.role, :manage_project)
   end
 
-  defp with_project_owner_authorization(socket, success_fn) do
+  defp with_project_owner_authorization(socket, action \\ :manage_project, success_fn) do
     Authorize.with_authorization(
       socket,
-      :manage_project,
+      action,
       success_fn,
       fn
         socket, :ownership_invariant_violation ->
           project_ownership_invariant_error(socket)
+
+        socket, :read_only ->
+          {:noreply, ReadOnlyNotice.put_flash(socket)}
 
         socket, _reason ->
           {:noreply,

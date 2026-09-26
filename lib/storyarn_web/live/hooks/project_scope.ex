@@ -5,7 +5,13 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
 
   Reads `workspace_slug` and `project_slug` from params, loads the project
   (with authorization), and assigns `:project`, `:workspace`, `:membership`,
-  and `:can_edit` to the socket. Halts with a redirect on auth failure.
+  `:read_only`, `:can_edit` and `:can_delete` to the socket. Halts with a redirect on auth
+  failure.
+
+  While the workspace is read-only (its owner's account is over its plan's
+  limits) `:can_edit` is false for everyone, so every tool renders as it does
+  for a viewer. `:can_delete` stays with the role: deleting is how the owner
+  gets back within the limits.
 
   Used by the authenticated app live_session. It is intentionally conditional:
   routes with project slugs get project context; all other authenticated routes
@@ -20,11 +26,13 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
 
   alias Storyarn.Projects
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   def on_mount(:load_project, %{"workspace_slug" => ws_slug, "project_slug" => p_slug}, _session, socket) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, ws_slug, p_slug) do
       {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
+        read_only = ReadOnlyNotice.read_only?(project.workspace_id)
+        can_edit = Projects.can?(membership.role, :edit_content) and not read_only
         user = socket.assigns.current_scope.user
 
         current_user = %{
@@ -39,7 +47,9 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
+          |> assign(:read_only, read_only)
           |> assign(:can_edit, can_edit)
+          |> assign(:can_delete, Projects.can?(membership.role, :delete_content))
           |> assign(:current_user, current_user)
           |> assign(:urls, ProjectChromeHelpers.build_urls(project.workspace, project))
 

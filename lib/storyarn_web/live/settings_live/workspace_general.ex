@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.SaveStatusTimer
   alias StoryarnWeb.LanguagePickerOption
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
   alias StoryarnWeb.PrivateMedia
 
   @impl true
@@ -66,8 +67,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         is-owner={@workspace.owner_id == @current_scope.user.id}
         can-edit-workspace={
           @workspace.owner_id == @current_scope.user.id and
-            Workspaces.can?(@membership.role, :manage_workspace)
+            Workspaces.can?(@membership.role, :manage_workspace) and not @read_only
         }
+        read-only={@read_only}
         save-status={Atom.to_string(@save_status)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
@@ -186,10 +188,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     )
   end
 
+  # Deleting the workspace stays allowed while it is read-only.
   def handle_event("delete", _params, socket) do
     Authorize.with_authorization(
       socket,
-      :manage_workspace,
+      :delete_workspace,
       fn socket ->
         case Workspaces.delete_workspace(
                socket.assigns.current_scope,
@@ -245,6 +248,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   defp workspace_owner_authorization_failure(socket, :ownership_invariant_violation) do
     workspace_update_ownership_invariant_error(socket)
   end
+
+  defp workspace_owner_authorization_failure(socket, :read_only), do: {:noreply, ReadOnlyNotice.put_flash(socket)}
 
   defp workspace_owner_authorization_failure(socket, _reason) do
     {:noreply,

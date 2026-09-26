@@ -96,7 +96,7 @@ function mountDashboard(overrides: Partial<SceneDashboardProps> = {}) {
       },
       issueFilters: { severity: "all", code: "all", resource: "all" },
       issueFilterOptions,
-      canEdit: false,
+      canDelete: false,
       ...overrides,
     },
     global: {
@@ -187,7 +187,7 @@ describe("SceneDashboard health", () => {
       connection_count: 0,
       updated_at: "2026-07-26T12:00:00Z",
     };
-    const { live, wrapper } = mountDashboard({ canEdit: true, tableData: [row] });
+    const { live, wrapper } = mountDashboard({ canDelete: true, tableData: [row] });
 
     await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
     wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
@@ -217,7 +217,7 @@ describe("SceneDashboard health", () => {
       connection_count: 0,
       updated_at: "2026-07-26T12:00:00Z",
     };
-    const { live, wrapper } = mountDashboard({ canEdit: true, tableData: [row] });
+    const { live, wrapper } = mountDashboard({ canDelete: true, tableData: [row] });
 
     await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
     wrapper.getComponent(DropdownMenuItem).vm.$emit("select");

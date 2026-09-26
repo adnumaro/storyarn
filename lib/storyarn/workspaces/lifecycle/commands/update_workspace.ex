@@ -4,17 +4,19 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.UpdateWorkspace do
   import Ecto.Query
 
   alias Storyarn.Repo
+  alias Storyarn.Workspaces.Memberships
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
 
   @spec update(map(), pos_integer(), map()) ::
           {:ok, Workspace.t()}
-          | {:error, Ecto.Changeset.t() | :ownership_invariant_violation | :unauthorized}
+          | {:error, Ecto.Changeset.t() | :ownership_invariant_violation | :unauthorized | :read_only}
   def update(%{user: %{id: user_id}}, workspace_id, attrs)
       when is_integer(user_id) and user_id > 0 and is_integer(workspace_id) and workspace_id > 0 and is_map(attrs) do
     Repo.transact(fn ->
       with {:ok, workspace} <- lock_workspace(workspace_id),
-           :ok <- lock_and_authorize_owner(workspace, user_id) do
+           :ok <- lock_and_authorize_owner(workspace, user_id),
+           :ok <- Memberships.ensure_writable(workspace.id) do
         workspace
         |> Workspace.update_changeset(attrs)
         |> Repo.update()

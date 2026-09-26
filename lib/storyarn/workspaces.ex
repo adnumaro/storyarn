@@ -32,9 +32,12 @@ defmodule Storyarn.Workspaces do
   @type role :: String.t()
   @type action ::
           :manage_workspace
+          | :delete_workspace
           | :access_workspace_general_settings
           | :access_workspace_settings
+          | :view_workspace_usage
           | :manage_members
+          | :remove_members
           | :create_project
           | :use_ai
           | :run_bulk_ai
@@ -263,18 +266,25 @@ defmodule Storyarn.Workspaces do
 
   ## Actions
 
-  - `:manage_workspace` - update settings, delete workspace (owner only)
-  - `:manage_members` - invite and revoke invitations (owner, admin). Removing
-    members and changing roles are separate actor-aware commands restricted to
-    the canonical owner.
+  - `:manage_workspace` - update settings (owner only)
+  - `:delete_workspace` - delete the workspace (owner only)
+  - `:manage_members` - invite members (owner, admin). Changing roles is a
+    separate actor-aware command restricted to the canonical owner.
+  - `:remove_members` - revoke pending invitations (owner, admin). Removing
+    members is a separate actor-aware command restricted to the canonical
+    owner.
   - `:create_project` - create new projects (owner, admin, member)
   - `:use_ai` - run explicitly initiated single-item AI actions (owner, admin)
   - `:run_bulk_ai` - run bulk AI actions (canonical owner only)
   - `:view` - view workspace content (all roles)
+
+  While the owner's account is over its plan's limits the workspace is
+  read-only: only reading it, deleting it and the removal actions are
+  authorized, and every other action returns `{:error, :read_only}`.
   """
   @spec authorize(scope(), integer(), action()) ::
           {:ok, workspace(), membership()}
-          | {:error, :not_found | :unauthorized | :ownership_invariant_violation}
+          | {:error, :not_found | :unauthorized | :read_only | :ownership_invariant_violation}
   defdelegate authorize(scope, workspace_id, action), to: Memberships
 
   # =============================================================================

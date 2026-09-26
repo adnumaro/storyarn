@@ -6,6 +6,7 @@ defmodule Storyarn.Commercial.Billing do
   """
 
   alias Ecto.Changeset
+  alias Storyarn.Commercial.Billing.AccountLimits
   alias Storyarn.Commercial.Billing.EditorSeats
   alias Storyarn.Commercial.Billing.Limits
   alias Storyarn.Commercial.Billing.Plan
@@ -14,6 +15,7 @@ defmodule Storyarn.Commercial.Billing do
   alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Commercial.Billing.SubscriptionCrud
   alias Storyarn.Commercial.Queries.Subscriptions, as: SubscriptionQueries
+  alias Storyarn.Commercial.Queries.TrashRetention
 
   @typedoc "Scalar lock context passed to the Project snapshot restore prelock callback."
   @type snapshot_restore_prelock_context :: StorageAccounting.snapshot_restore_prelock_context()
@@ -24,6 +26,7 @@ defmodule Storyarn.Commercial.Billing do
   defdelegate default_plan(), to: Plan
   defdelegate plan_limit(plan_key, resource), to: Plan, as: :limit
   defdelegate plan_retention_hours(plan_key), to: Plan, as: :retention_hours
+  defdelegate trash_retention_hours(deletions), to: TrashRetention, as: :hours
 
   # Usage counting (internal, exposed for testing)
   defdelegate count_project_items(project_id), to: Limits
@@ -38,6 +41,9 @@ defmodule Storyarn.Commercial.Billing do
   defdelegate check_editor_seat_acceptance(workspace_or_project, email, role), to: EditorSeats, as: :check_acceptance
   defdelegate editor_seat_usage(user_id), to: EditorSeats, as: :usage
   defdelegate account_usage(user_id), to: Limits
+  defdelegate workspace_read_only_reasons(workspace_id), to: AccountLimits
+  defdelegate account_read_only_reasons(user_id), to: AccountLimits
+  defdelegate refresh_account_limits(user_id), to: AccountLimits, as: :refresh
   defdelegate can_upload_asset?(workspace, file_size), to: Limits
   defdelegate can_upload_asset_for_project?(project, file_size), to: Limits
   defdelegate can_create_item?(project), to: Limits

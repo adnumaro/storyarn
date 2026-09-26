@@ -16,6 +16,7 @@ import NotificationBell from "@components/notifications/NotificationBell.vue";
 import CommentsHubButton from "@components/comments/CommentsHubButton.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
+import ReadOnlyBanner, { type ReadOnlyNotice } from "@shell/ReadOnlyBanner.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
 import { registerPaletteCommands, type PaletteCommand } from "@shared/command-palette/registry";
 
@@ -41,6 +42,7 @@ const {
   urls,
   canvasMode = false,
   onboarding = null,
+  readOnly = null,
 } = defineProps<{
   chrome: ProjectChrome;
   currentUser: CurrentUser;
@@ -48,6 +50,8 @@ const {
   urls: ProjectLayoutUrls;
   canvasMode?: boolean;
   onboarding?: OnboardingConfig | null;
+  /** Set while the workspace is read-only, for those who could edit it. */
+  readOnly?: ReadOnlyNotice | null;
 }>();
 
 const sidebarOpen = ref(chrome.hasTree && chrome.mainSidebarOpen);
@@ -188,6 +192,8 @@ onUnmounted(() => {
           </div>
         </div>
       </header>
+
+      <ReadOnlyBanner v-if="readOnly" :notice="readOnly" />
 
       <main
         id="main-content"

@@ -93,7 +93,7 @@ msgid_plural "Synced %{count} text entries."
 msgstr[0] "Se sincronizó %{count} entrada de texto."
 msgstr[1] "Se sincronizaron %{count} entradas de texto."
 
-#: lib/storyarn_web/live/localization_toolbar_live.ex:183
+#: lib/storyarn_web/live/localization_toolbar_live.ex:187
 #, elixir-autogen, elixir-format
 msgid "Translated %{count} string."
 msgid_plural "Translated %{count} strings."
@@ -117,7 +117,7 @@ msgstr "Traducción fallida: %{reason}"
 msgid "Translation saved."
 msgstr "Traducción guardada."
 
-#: lib/storyarn_web/live/localization_live/index.ex:622
+#: lib/storyarn_web/live/localization_live/index.ex:624
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
@@ -151,7 +151,7 @@ msgstr "No se pudo actualizar el idioma de origen."
 msgid "Source language updated."
 msgstr "Idioma de origen actualizado."
 
-#: lib/storyarn_web/live/localization_toolbar_live.ex:92
+#: lib/storyarn_web/live/localization_toolbar_live.ex:96
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."

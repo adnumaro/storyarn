@@ -131,7 +131,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   def handle_event("add_target_language", %{"locale_code" => code}, socket) when is_binary(code) and code != "" do
     case Authorize.authorize(socket, :edit_content) do
       :ok -> add_target_language(socket, code)
-      {:error, :unauthorized} -> {:reply, %{ok: false, error: "unauthorized"}, socket}
+      {:error, _reason} -> {:reply, %{ok: false, error: "unauthorized"}, socket}
     end
   end
 

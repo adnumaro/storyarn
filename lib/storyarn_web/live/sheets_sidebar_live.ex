@@ -41,7 +41,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
       |> assign(:workspace_slug, session["workspace_slug"])
       |> assign(:project_slug, session["project_slug"])
       |> assign(:sheet_id, session["sheet_id"])
-      |> assign(:can_edit, session["can_edit"] || false)
+      |> TreeSidebarActions.assign_permissions(session)
       |> assign(:active_tool, session["active_tool"] || "sheets")
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:dashboard_mode, dashboard_mode)
@@ -73,6 +73,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
           %{
             sheetsTree: @sheets_tree,
             canEdit: @can_edit,
+            canDelete: @can_delete,
             workspaceSlug: @workspace_slug,
             projectSlug: @project_slug,
             selectedSheetId: @sheet_id
@@ -126,7 +127,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   end
 
   def handle_event("confirm_delete_sheet", _params, socket) do
-    with_edit(socket, &confirm_delete_sheet/1)
+    with_delete(socket, &confirm_delete_sheet/1)
   end
 
   def handle_event("move_to_parent", params, socket) do
@@ -158,7 +159,11 @@ defmodule StoryarnWeb.SheetsSidebarLive do
 
   # ── Helpers ───────────────────────────────────────────────────────────────
   defp with_edit(socket, fun) do
-    TreeSidebarActions.with_edit(socket, gettext("You don't have permission to edit."), fun)
+    TreeSidebarActions.with_permission(socket, :edit_content, gettext("You don't have permission to edit."), fun)
+  end
+
+  defp with_delete(socket, fun) do
+    TreeSidebarActions.with_permission(socket, :delete_content, gettext("You don't have permission to edit."), fun)
   end
 
   defp confirm_delete_sheet(socket) do

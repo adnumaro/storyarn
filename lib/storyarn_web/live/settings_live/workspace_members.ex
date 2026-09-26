@@ -6,6 +6,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   alias Storyarn.Workspaces
   alias StoryarnWeb.Live.Shared.PlanLimitFlash
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @workspace_invite_roles ~w(admin member viewer)
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -277,6 +278,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
     {:noreply, put_flash(socket, :error, seat_requires_owner_message())}
   end
 
+  defp handle_workspace_invitation_result({:error, :read_only}, socket),
+    do: {:noreply, ReadOnlyNotice.put_flash(socket)}
+
   defp handle_workspace_invitation_result({:error, :unauthorized}, socket) do
     workspace_settings_unavailable(socket)
   end
@@ -373,6 +377,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
       {:error, :limit_reached, %{resource: :editors_per_account}} ->
         {:noreply, editor_limit_flash(socket)}
+
+      {:error, :read_only} ->
+        {:noreply, ReadOnlyNotice.put_flash(socket)}
 
       {:error, :not_found} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Member not found."))}

@@ -16,6 +16,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LanguagePickerOption
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.Live.Shared.ReadOnlyNotice
 
   @page_size 50
   @empty_filters %{status: nil, source_type: nil, vo_status: nil, speaker: nil, stale: false, search: ""}
@@ -611,6 +612,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   defp with_auth(action, socket, fun) do
     case Authorize.authorize(socket, action) do
       :ok -> fun.()
+      {:error, :read_only} -> {:noreply, ReadOnlyNotice.put_flash(socket)}
       {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
     end
   end

@@ -293,7 +293,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
   end
 
   defp authorize_and_run(scope, project_id, fun) do
-    case Access.authorize_locked(scope, project_id, :edit_content) do
+    case Access.authorize_locked(scope, project_id, :comment) do
       {:ok, project, _membership} -> fun.(project, scope.user.id)
       {:error, :unauthorized} -> Repo.rollback(:unauthorized)
       {:error, _} -> Repo.rollback(:not_found)

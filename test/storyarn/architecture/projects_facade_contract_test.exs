@@ -345,9 +345,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     subscribe_sheet_comments: 3,
     unsubscribe_sheet_comments: 2
   ]
-  @docs_digest "50672f55896d60de6bf7d3a8dd88839fa5c1e0785096d8bf733fff549b17fce4"
-  @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
-  @specs_digest "2f51b91c794fb976f376ec8255aaa56933c9e227b3534f2e9d65076223423ff3"
+  @docs_digest "2bfb455344ed27b39a1261b967218b30fd91861ebac72343dd0922a14fda3bc3"
+  @types_digest "f7bab51ca4a2d7bd4725996005dec58222bc20aaef31ca1b2ee153612eec055a"
+  @specs_digest "de1d44aabe2c32c55784de5baa5f653286b922d9e083f08e765362c4a60f95e2"
 
   test "the root facade preserves every established function and arity" do
     expected = MapSet.new(@public_contract ++ @worker_contract ++ @comment_contract)

@@ -56,6 +56,7 @@ defmodule StoryarnWeb.SheetLive.Index do
           "project_slug" => @project.slug,
           "sheet_id" => nil,
           "can_edit" => @can_edit,
+          "can_delete" => @can_delete,
           "active_tool" => "sheets",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
           "current_scope" => @current_scope,
@@ -93,7 +94,7 @@ defmodule StoryarnWeb.SheetLive.Index do
         }
         issue-filters={@issue_filters}
         issue-filter-options={@issue_filter_options}
-        can-edit={@can_edit}
+        can-delete={@can_delete}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -354,7 +355,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   def handle_event("confirm_delete_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, &confirm_delete_sheet/1)
+    Authorize.with_authorization(socket, :delete_content, &confirm_delete_sheet/1)
   end
 
   def handle_event(event, _params, socket) do

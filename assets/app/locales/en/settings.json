@@ -140,7 +140,8 @@
         "save_changes": "Save Changes",
         "page_title": "General",
         "details": "Details",
-        "owner_only": "Only the workspace owner can change these settings"
+        "owner_only": "Only the workspace owner can change these settings",
+        "read_only": "Read-only while your account is over its plan's limits"
       },
       "storyarn_ai": {
         "title": "Storyarn AI",

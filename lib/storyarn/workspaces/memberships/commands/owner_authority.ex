@@ -4,6 +4,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.OwnerAuthority do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
+  alias Storyarn.Workspaces.Memberships.Queries.ReadOnly
   alias Storyarn.Workspaces.Memberships.Rules.OwnershipInvariant
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
@@ -19,18 +20,20 @@ defmodule Storyarn.Workspaces.Memberships.Commands.OwnerAuthority do
           owner_membership: WorkspaceMembership.t()
         }
 
-  @spec transact_as_owner(map(), pos_integer(), (locked_state() -> term())) :: term()
-  def transact_as_owner(%{user: %{id: actor_id}}, workspace_id, fun)
-      when valid_id(actor_id) and valid_id(workspace_id) and is_function(fun, 1) do
+  # `action` names what `fun` does, so a read-only workspace can refuse it.
+  @spec transact_as_owner(map(), pos_integer(), atom(), (locked_state() -> term())) :: term()
+  def transact_as_owner(%{user: %{id: actor_id}}, workspace_id, action, fun)
+      when valid_id(actor_id) and valid_id(workspace_id) and is_atom(action) and is_function(fun, 1) do
     Repo.transact(fn ->
       with {:ok, state} <- lock_and_validate(workspace_id),
-           :ok <- authorize_owner(state.owner_membership, actor_id) do
+           :ok <- authorize_owner(state.owner_membership, actor_id),
+           :ok <- ReadOnly.ensure_allowed(workspace_id, action) do
         fun.(state)
       end
     end)
   end
 
-  def transact_as_owner(_scope, _workspace_id, _fun), do: {:error, :unauthorized}
+  def transact_as_owner(_scope, _workspace_id, _action, _fun), do: {:error, :unauthorized}
 
   @spec lock_and_validate(pos_integer()) ::
           {:ok, locked_state()} | {:error, :not_found | :ownership_invariant_violation}

@@ -123,7 +123,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
           {:ok, SnapshotCleanupIntent.t()} | {:error, term()}
   def delete(%{user: %{id: user_id}} = scope, %Project{} = project, snapshot_id)
       when is_integer(user_id) and is_integer(snapshot_id) and snapshot_id > 0 do
-    case Memberships.authorize(scope, project.id, :manage_project) do
+    case Memberships.authorize(scope, project.id, :delete_snapshot) do
       {:ok, %Project{} = authorized_project, _membership} ->
         result =
           with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
@@ -794,7 +794,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   defp delete_user_snapshot_locked(scope, project, snapshot_id, user_id, provider_namespace_fingerprint) do
     with {:ok, %Project{} = locked_project, _membership} <-
-           Memberships.authorize_locked(scope, project.id, :manage_project, :update),
+           Memberships.authorize_locked(scope, project.id, :delete_snapshot, :update),
          :ok <- ensure_same_workspace(locked_project, project),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project.id, snapshot_id),
          true <- snapshot.lifecycle_state in @deletable_user_states,

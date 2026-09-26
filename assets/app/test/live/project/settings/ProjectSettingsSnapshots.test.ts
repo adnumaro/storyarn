@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ProjectSettingsSnapshots from "../../../../live/project/settings/ProjectSettingsSnapshots.vue";
 import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
+import SettingsSection from "../../../../components/settings/SettingsSection.vue";
 import type { LiveInterface } from "../../../../shared/composables/useLive";
 import type { WorkspaceStorageUsage } from "../../../../shared/utils/storage-accounting";
 import { createMockLive, createPromiseMockLive, setTestLocale } from "../../../setup";
@@ -142,6 +143,32 @@ function mountSnapshots(
 }
 
 afterEach(() => setTestLocale("en"));
+
+describe("ProjectSettingsSnapshots in a read-only workspace", () => {
+  it("locks creating a backup and never requests one", async () => {
+    const live = createMockLive();
+    const wrapper = mount(ProjectSettingsSnapshots, {
+      props: {
+        snapshots: [measuredSnapshot],
+        storageUsage,
+        snapshotLimit: { used: 2, limit: 10 },
+        readOnly: true,
+      },
+      global: { provide: { _live_vue: live } },
+    });
+
+    const create = wrapper
+      .findAllComponents(SettingsSection)
+      .find((section) => section.props("title") === "Create a backup");
+    expect(create?.props("locked")).toBe(true);
+    expect(create?.props("lockedLabel")).toBe(
+      "Read-only while your account is over its plan's limits",
+    );
+
+    await wrapper.get("form").trigger("submit");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+  });
+});
 
 describe("ProjectSettingsSnapshots storage accounting", () => {
   it("renders one plan-counted workspace storage meter and points to the workspace's Usage", () => {

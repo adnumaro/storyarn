@@ -21,12 +21,14 @@ const {
   sheetsTree = [],
   selectedSheetId = null,
   canEdit = false,
+  canDelete = false,
   workspaceSlug,
   projectSlug,
 } = defineProps<{
   sheetsTree?: SheetTreeNodeData[];
   selectedSheetId?: string | number | null;
   canEdit?: boolean;
+  canDelete?: boolean;
   workspaceSlug: string;
   projectSlug: string;
 }>();
@@ -287,6 +289,7 @@ function handleDrop(e: DndDropEvent): void {
           :siblings="filteredTree"
           :selected-sheet-id="selectedSheetId"
           :can-edit="canEdit"
+          :can-delete="canDelete"
           :depth="0"
           :search-active="!!searchQuery"
           :sheet-href="sheetHref"
