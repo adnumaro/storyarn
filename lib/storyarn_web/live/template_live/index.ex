@@ -5,8 +5,6 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.TemplateLive.Helpers
-
   alias Storyarn.Projects
 
   @section_per_page 9
@@ -36,136 +34,16 @@ defmodule StoryarnWeb.TemplateLive.Index do
       current_workspace={@current_workspace}
       workspaces={@workspaces}
     >
-      <main id="templates-index" class="min-h-dvh bg-base-100 px-6 py-8 lg:px-10">
-        <div class="mx-auto flex w-full max-w-6xl flex-col gap-8">
-          <header class="flex flex-col gap-3 border-b border-base-300 pb-6 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p class="text-sm font-medium text-base-content/60">
-                {dgettext("projects", "Project templates")}
-              </p>
-              <h1 class="text-3xl font-semibold tracking-normal text-base-content">
-                {dgettext("projects", "Templates")}
-              </h1>
-            </div>
-
-            <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
-              {dgettext("workspaces", "Workspaces")}
-            </.link>
-          </header>
-
-          <section class="rounded-box border border-base-300 bg-base-100 p-4">
-            <.form for={@search_form} id="template-search-form" phx-submit="search">
-              <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                <label class="form-control flex-1 gap-2">
-                  <span class="label-text">{dgettext("projects", "Search templates")}</span>
-                  <input
-                    id="template-search-input"
-                    name={@search_form[:q].name}
-                    value={@search_form[:q].value}
-                    type="search"
-                    class="input input-bordered w-full"
-                    placeholder={dgettext("projects", "Search by name or description")}
-                  />
-                </label>
-                <div class="flex gap-2">
-                  <button id="template-search-submit" type="submit" class="btn btn-primary">
-                    {dgettext("projects", "Search")}
-                  </button>
-                  <button
-                    :if={@search != ""}
-                    id="template-search-clear"
-                    type="button"
-                    class="btn btn-ghost"
-                    phx-click="clear_search"
-                  >
-                    {dgettext("projects", "Clear")}
-                  </button>
-                </div>
-              </div>
-            </.form>
-          </section>
-
-          <section id="my-templates-section" class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold text-base-content">
-                {dgettext("projects", "Private templates")}
-              </h2>
-              <span class="badge badge-neutral">{@private_page.total_count}</span>
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <%= for template <- @private_page.entries do %>
-                <.template_card
-                  template={template}
-                  can_manage={Projects.can_manage_project_template?(@current_scope, template)}
-                />
-              <% end %>
-              <div
-                :if={@private_page.entries == []}
-                id="my-templates-empty"
-                class="rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/60"
-              >
-                {dgettext("projects", "No private templates yet.")}
-              </div>
-            </div>
-
-            <.pagination page={@private_page} section="private" params={@template_query_params} />
-          </section>
-
-          <section id="public-templates-section" class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold text-base-content">
-                {dgettext("projects", "Storyarn demos")}
-              </h2>
-              <span class="badge badge-neutral">{@public_page.total_count}</span>
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <%= for template <- @public_page.entries do %>
-                <.template_card template={template} can_manage={false} />
-              <% end %>
-              <div
-                :if={@public_page.entries == []}
-                id="public-templates-empty"
-                class="rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/60"
-              >
-                {dgettext("projects", "No public demos available.")}
-              </div>
-            </div>
-
-            <.pagination page={@public_page} section="public" params={@template_query_params} />
-          </section>
-
-          <section id="archived-templates-section" class="flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold text-base-content">
-                {dgettext("projects", "Archived templates")}
-              </h2>
-              <span class="badge badge-neutral">{@archived_page.total_count}</span>
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <%= for template <- @archived_page.entries do %>
-                <.template_card
-                  template={template}
-                  can_manage={Projects.can_manage_project_template?(@current_scope, template)}
-                  archived
-                  pending_delete={@pending_delete_template_id == template.id}
-                />
-              <% end %>
-              <div
-                :if={@archived_page.entries == []}
-                id="archived-templates-empty"
-                class="rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/60"
-              >
-                {dgettext("projects", "No archived templates.")}
-              </div>
-            </div>
-
-            <.pagination page={@archived_page} section="archived" params={@template_query_params} />
-          </section>
-        </div>
-      </main>
+      <.vue
+        v-component="live/template/list/TemplateList"
+        v-socket={@socket}
+        v-inject="workspace-layout"
+        id="templates-index-page"
+        sections={serialize_sections(assigns)}
+        query={@search}
+        pending-delete-id={@pending_delete_template_id}
+        workspaces-href={~p"/workspaces"}
+      />
     </StoryarnWeb.Components.WorkspaceLayout.workspace>
     """
   end
@@ -241,137 +119,49 @@ defmodule StoryarnWeb.TemplateLive.Index do
     {:noreply, assign(socket, :pending_delete_template_id, nil)}
   end
 
-  attr :template, :map, required: true
-  attr :can_manage, :boolean, required: true
-  attr :archived, :boolean, default: false
-  attr :pending_delete, :boolean, default: false
+  defp serialize_sections(assigns) do
+    %{current_scope: scope, template_query_params: params} = assigns
 
-  defp template_card(assigns) do
-    ~H"""
-    <article
-      id={"template-card-#{@template.id}"}
-      class="card border border-base-300 bg-base-100 shadow-sm transition hover:border-base-content/20"
-    >
-      <div class="card-body gap-4 p-5">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <h3 class="truncate text-base font-semibold text-base-content">{@template.name}</h3>
-            <p class="mt-1 line-clamp-2 text-sm text-base-content/60">
-              {template_description(@template)}
-            </p>
-          </div>
-          <span class={["badge shrink-0", visibility_badge_class(@template.visibility)]}>
-            {visibility_label(@template.visibility)}
-          </span>
-        </div>
-
-        <div class="flex items-center justify-between text-xs text-base-content/60">
-          <span>{version_label(@template.current_version)}</span>
-          <span>{format_datetime(@template.updated_at)}</span>
-        </div>
-
-        <p :if={preview_summary(@template.current_version) != ""} class="text-xs text-base-content/55">
-          {preview_summary(@template.current_version)}
-        </p>
-
-        <div
-          :if={@pending_delete}
-          id={"delete-template-confirmation-#{@template.id}"}
-          class="rounded-box border border-error/30 bg-error/10 p-3 text-xs text-error"
-        >
-          {dgettext("projects", "Delete this template permanently? This cannot be undone.")}
-        </div>
-
-        <div class="card-actions justify-end">
-          <button
-            :if={@can_manage and not @archived}
-            id={"archive-template-#{@template.id}"}
-            type="button"
-            class="btn btn-ghost btn-sm text-error"
-            phx-click="archive_template"
-            phx-value-id={@template.id}
-          >
-            {dgettext("projects", "Archive")}
-          </button>
-          <button
-            :if={@can_manage and @archived}
-            id={"unarchive-template-#{@template.id}"}
-            type="button"
-            class="btn btn-outline btn-sm"
-            phx-click="unarchive_template"
-            phx-value-id={@template.id}
-          >
-            {dgettext("projects", "Restore")}
-          </button>
-          <button
-            :if={@can_manage and @archived and not @pending_delete}
-            id={"delete-template-#{@template.id}"}
-            type="button"
-            class="btn btn-ghost btn-sm text-error"
-            phx-click="prepare_delete_template"
-            phx-value-id={@template.id}
-          >
-            {dgettext("projects", "Delete")}
-          </button>
-          <button
-            :if={@can_manage and @archived and @pending_delete}
-            id={"cancel-delete-template-#{@template.id}"}
-            type="button"
-            class="btn btn-ghost btn-sm"
-            phx-click="cancel_delete_template"
-          >
-            {dgettext("projects", "Cancel")}
-          </button>
-          <button
-            :if={@can_manage and @archived and @pending_delete}
-            id={"confirm-delete-template-#{@template.id}"}
-            type="button"
-            class="btn btn-error btn-sm"
-            phx-click="delete_template"
-            phx-value-id={@template.id}
-          >
-            {dgettext("projects", "Delete permanently")}
-          </button>
-          <.link
-            :if={not @archived}
-            navigate={~p"/templates/#{@template.id}"}
-            class="btn btn-primary btn-sm"
-          >
-            {dgettext("projects", "Open")}
-          </.link>
-        </div>
-      </div>
-    </article>
-    """
+    Enum.map(
+      [
+        {"private", assigns.private_page},
+        {"public", assigns.public_page},
+        {"archived", assigns.archived_page}
+      ],
+      fn {key, page} ->
+        %{
+          key: key,
+          templates:
+            Enum.map(
+              page.entries,
+              &serialize_template(&1, key != "public" && Projects.can_manage_project_template?(scope, &1))
+            ),
+          totalCount: page.total_count,
+          page: page.page,
+          totalPages: page.total_pages,
+          prevHref: if(page.page > 1, do: page_patch(params, key, page.page - 1)),
+          nextHref: if(page.page < page.total_pages, do: page_patch(params, key, page.page + 1))
+        }
+      end
+    )
   end
 
-  attr :page, :map, required: true
-  attr :section, :string, required: true
-  attr :params, :map, required: true
-
-  defp pagination(assigns) do
-    ~H"""
-    <nav :if={@page.total_pages > 1} class="flex items-center justify-end gap-2">
-      <.link
-        id={"#{@section}-templates-prev-page"}
-        patch={page_patch(@params, @section, @page.page - 1)}
-        class={["btn btn-outline btn-sm", @page.page <= 1 && "btn-disabled"]}
-      >
-        {dgettext("projects", "Previous")}
-      </.link>
-      <span class="text-sm text-base-content/60">
-        {dgettext("projects", "Page %{page} of %{total}", page: @page.page, total: @page.total_pages)}
-      </span>
-      <.link
-        id={"#{@section}-templates-next-page"}
-        patch={page_patch(@params, @section, @page.page + 1)}
-        class={["btn btn-outline btn-sm", @page.page >= @page.total_pages && "btn-disabled"]}
-      >
-        {dgettext("projects", "Next")}
-      </.link>
-    </nav>
-    """
+  defp serialize_template(template, can_manage) do
+    %{
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      visibility: template.visibility,
+      versionNumber: version_number(template.current_version),
+      updatedAt: template.updated_at,
+      previewNames: preview_names(template.current_version),
+      canManage: can_manage,
+      href: ~p"/templates/#{template.id}"
+    }
   end
+
+  defp version_number(%{version_number: number}) when is_integer(number), do: number
+  defp version_number(_version), do: nil
 
   defp refresh_templates(socket) do
     assign_template_pages(socket, socket.assigns.template_query_params)
@@ -408,7 +198,6 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
     socket
     |> assign(:search, search)
-    |> assign(:search_form, to_form(%{"q" => search}, as: :search))
     |> assign(:private_page, private_page)
     |> assign(:public_page, public_page)
     |> assign(:archived_page, archived_page)
@@ -446,7 +235,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
     |> Map.new()
   end
 
-  defp preview_summary(%{preview: %{} = preview}) do
+  defp preview_names(%{preview: %{} = preview}) do
     ["sheets", "flows", "scenes"]
     |> Enum.flat_map(fn type ->
       preview
@@ -455,13 +244,9 @@ defmodule StoryarnWeb.TemplateLive.Index do
     end)
     |> Enum.reject(&is_nil/1)
     |> Enum.take(3)
-    |> case do
-      [] -> ""
-      names -> Enum.join(names, " / ")
-    end
   end
 
-  defp preview_summary(_version), do: ""
+  defp preview_names(_version), do: []
 
   defp normalize_search(search) when is_binary(search), do: String.trim(search)
   defp normalize_search(_search), do: ""

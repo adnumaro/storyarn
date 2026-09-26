@@ -124,7 +124,7 @@ msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/form.ex:75
-#: lib/storyarn_web/live/template_live/show.ex:463
+#: lib/storyarn_web/live/template_live/show.ex:92
 #: lib/storyarn_web/live/workspace_live/show.ex:121
 #: lib/storyarn_web/live/workspace_live/show.ex:165
 #, elixir-autogen, elixir-format
@@ -190,16 +190,6 @@ msgstr ""
 #: lib/storyarn_web/live/workspace_live/invitation.ex:146
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
-msgstr ""
-
-#: lib/storyarn_web/live/template_live/show.ex:343
-#, elixir-autogen, elixir-format
-msgid "Workspace"
-msgstr ""
-
-#: lib/storyarn_web/live/template_live/index.ex:52
-#, elixir-autogen, elixir-format
-msgid "Workspaces"
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/form.ex:85

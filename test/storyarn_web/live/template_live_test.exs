@@ -32,10 +32,11 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates")
 
-      assert has_element?(view, "#templates-index")
-      assert has_element?(view, "#template-card-#{own_template.id}")
-      assert has_element?(view, "#template-card-#{public_template.id}")
-      refute has_element?(view, "#template-card-#{other_private.id}")
+      assert [%{"id" => own_id, "canManage" => true}] = section_templates(view, "private")
+      assert own_id == own_template.id
+      assert [%{"id" => public_id, "canManage" => false}] = section_templates(view, "public")
+      assert public_id == public_template.id
+      refute other_private.id in listed_template_ids(view)
     end
 
     test "archives and restores a private template from the listing", %{conn: conn, user: user, scope: scope} do
@@ -43,16 +44,16 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates")
 
-      assert has_element?(view, "#archive-template-#{template.id}")
-      render_click(element(view, "#archive-template-#{template.id}"))
+      assert section_ids(view, "private") == [template.id]
+      render_hook(view, "archive_template", %{"id" => to_string(template.id)})
 
-      assert has_element?(view, "#unarchive-template-#{template.id}")
-      refute has_element?(view, "#template-card-#{template.id} a[href='/templates/#{template.id}']")
+      assert section_ids(view, "private") == []
+      assert section_ids(view, "archived") == [template.id]
 
-      render_click(element(view, "#unarchive-template-#{template.id}"))
+      render_hook(view, "unarchive_template", %{"id" => to_string(template.id)})
 
-      assert has_element?(view, "#archive-template-#{template.id}")
-      assert has_element?(view, "#template-card-#{template.id} a[href='/templates/#{template.id}']")
+      assert section_ids(view, "private") == [template.id]
+      assert section_ids(view, "archived") == []
     end
 
     test "permanently deletes an archived private template from the listing", %{conn: conn, user: user, scope: scope} do
@@ -63,15 +64,15 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates")
 
-      assert has_element?(view, "#delete-template-#{template.id}")
-      render_click(element(view, "#delete-template-#{template.id}"))
+      assert section_ids(view, "archived") == [template.id]
+      render_hook(view, "prepare_delete_template", %{"id" => to_string(template.id)})
 
-      assert has_element?(view, "#delete-template-confirmation-#{template.id}")
-      assert has_element?(view, "#confirm-delete-template-#{template.id}")
+      assert list_props(view)["pending-delete-id"] == template.id
 
-      html = render_click(element(view, "#confirm-delete-template-#{template.id}"))
+      html = render_hook(view, "delete_template", %{"id" => to_string(template.id)})
 
-      refute has_element?(view, "#template-card-#{template.id}")
+      assert section_ids(view, "archived") == []
+      assert list_props(view)["pending-delete-id"] == nil
       assert html =~ "Template permanently deleted"
       assert Repo.get(ProjectTemplate, template.id) == nil
 
@@ -79,6 +80,24 @@ defmodule StoryarnWeb.TemplateLiveTest do
         worker: DeleteProjectTemplateArtifactsWorker,
         args: %{"storage_keys" => storage_keys}
       )
+    end
+
+    test "searches through the URL and pages each section on its own", %{conn: conn, user: user, scope: scope} do
+      matching = template_fixture(user, scope, %{name: "Harbor Starter"})
+      _other = template_fixture(user, scope, %{name: "Forest Starter"})
+
+      {:ok, view, _html} = live(conn, ~p"/templates")
+
+      render_hook(view, "search", %{"search" => %{"q" => "  Harbor "}})
+
+      assert_patch(view, ~p"/templates?q=Harbor")
+      assert list_props(view)["query"] == "Harbor"
+      assert section_ids(view, "private") == [matching.id]
+
+      render_hook(view, "clear_search", %{})
+
+      assert_patch(view, ~p"/templates")
+      assert length(section_ids(view, "private")) == 2
     end
   end
 
@@ -95,20 +114,31 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert has_element?(view, "#template-install-form")
+      assert %{
+               "workspaces" => [%{"id" => workspace_id, "name" => "Install Studio"}],
+               "defaults" => %{"versionId" => version_id, "name" => "Installable Template"},
+               "activeInstallations" => []
+             } = show_props(view)["install"]
+
+      assert workspace_id == to_string(workspace.id)
+      assert version_id == to_string(template.current_version_id)
 
       html =
-        render_submit(element(view, "#template-install-form"), %{
+        render_hook(view, "install", %{
           "install" => %{
-            "workspace_id" => to_string(workspace.id),
-            "version_id" => to_string(template.current_version_id),
+            "workspace_id" => workspace_id,
+            "version_id" => version_id,
             "name" => "Installed From Template"
           }
         })
 
       installation = Repo.get_by!(ProjectTemplateInstall, workspace_id: workspace.id, status: "queued")
       assert html =~ "Template installation started"
-      assert has_element?(view, "#template-active-installation-#{installation.id}")
+
+      assert [%{"id" => active_id, "projectName" => "Installed From Template"}] =
+               show_props(view)["install"]["activeInstallations"]
+
+      assert active_id == installation.id
 
       assert :ok =
                perform_job(InstallProjectTemplateWorker, %{
@@ -144,7 +174,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
          }}
       )
 
-      refute render(view) =~ "Template installation failed"
+      assert installation_failure(view) == nil
     end
 
     test "rehydrates failure feedback on mount and stale events cannot restore it after dismissal", %{
@@ -173,15 +203,11 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert has_element?(view, "#template-installation-failure-toast")
-      assert has_element?(view, "#dismiss-template-installation-failure")
+      assert installation_failure(view) == %{"id" => failed_installation.id, "errorCode" => "checksum_mismatch"}
 
-      assert render(view) =~
-               "Template installation failed: The template failed its integrity check. Reference: #{failed_installation.id}"
+      dismiss_failure(view, failed_installation.id)
 
-      render_click(element(view, "#dismiss-template-installation-failure"))
-
-      refute has_element?(view, "#template-installation-failure-toast")
+      assert installation_failure(view) == nil
       assert Repo.get!(ProjectTemplateInstall, failed_installation.id).feedback_dismissed_at
 
       send(
@@ -189,10 +215,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
         {:project_template_installation_updated, failed_installation}
       )
 
-      refute has_element?(view, "#template-installation-failure-toast")
+      assert installation_failure(view) == nil
     end
 
-    test "translates allowlisted installation failure reasons", %{
+    test "names a failure by its code and never sends the stored message", %{
       conn: conn,
       user: user,
       scope: scope
@@ -216,13 +242,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
         ]
       )
 
-      conn = put_session(conn, :locale, "es")
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert render(view) =~
-               "La instalación de la template ha fallado: " <>
-                 "La template no superó la comprobación de integridad. " <>
-                 "Referencia: #{failed_installation.id}"
+      assert installation_failure(view) == %{"id" => failed_installation.id, "errorCode" => "checksum_mismatch"}
+      refute render(view) =~ "The template failed its integrity check."
     end
 
     test "queues concurrent failures and advances after dismissing the newest", %{
@@ -251,18 +274,16 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert render(view) =~ failure_feedback_text(second_failure.id)
-      refute render(view) =~ failure_feedback_text(first_failure.id)
+      assert failure_id(view) == second_failure.id
 
-      render_click(element(view, "#dismiss-template-installation-failure"))
+      dismiss_failure(view, second_failure.id)
 
       assert Repo.get!(ProjectTemplateInstall, second_failure.id).feedback_dismissed_at
-      assert render(view) =~ failure_feedback_text(first_failure.id)
+      assert failure_id(view) == first_failure.id
 
       send(view.pid, {:project_template_installation_updated, second_failure})
 
-      assert render(view) =~ failure_feedback_text(first_failure.id)
-      refute render(view) =~ failure_feedback_text(second_failure.id)
+      assert failure_id(view) == first_failure.id
     end
 
     test "does not expose an internal stored installation error", %{
@@ -290,8 +311,8 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert render(view) =~ failure_feedback_text(failed_installation.id)
-      refute render(view) =~ internal_error
+      assert installation_failure(view) == %{"id" => failed_installation.id, "errorCode" => "materialization_failed"}
+      refute render(view) =~ "materialization_failed, #Ecto.Changeset"
       refute render(view) =~ "token"
     end
 
@@ -327,8 +348,8 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert render(view) =~ failure_feedback_text(accessible_failure.id)
-      refute render(view) =~ failure_feedback_text(inaccessible_failure.id)
+      assert failure_id(view) == accessible_failure.id
+      refute failure_id(view) == inaccessible_failure.id
     end
 
     test "advances the queue when workspace access is revoked while feedback is open", %{
@@ -360,13 +381,13 @@ defmodule StoryarnWeb.TemplateLiveTest do
         )
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
-      assert render(view) =~ failure_feedback_text(revoked_failure.id)
+      assert failure_id(view) == revoked_failure.id
 
       Repo.delete!(membership)
-      render_click(element(view, "#dismiss-template-installation-failure"))
+      dismiss_failure(view, revoked_failure.id)
 
       refute Repo.get!(ProjectTemplateInstall, revoked_failure.id).feedback_dismissed_at
-      assert render(view) =~ failure_feedback_text(accessible_failure.id)
+      assert failure_id(view) == accessible_failure.id
     end
 
     test "dismiss feedback only clears the matching installation failure", %{
@@ -400,7 +421,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
         {:project_template_installation_updated, visible_failure}
       )
 
-      assert render(view) =~ failure_feedback_text(visible_failure.id)
+      assert failure_id(view) == visible_failure.id
 
       assert {:ok, _dismissed} =
                ProjectTemplates.dismiss_installation_failure(
@@ -409,7 +430,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
                  other_failure.id
                )
 
-      assert render(view) =~ failure_feedback_text(visible_failure.id)
+      assert failure_id(view) == visible_failure.id
     end
 
     test "dismissing a failure does not clear a newer unrelated error", %{
@@ -435,10 +456,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
         {:project_template_installation_updated, failed_installation}
       )
 
-      assert render(view) =~ failure_feedback_text(failed_installation.id)
+      assert failure_id(view) == failed_installation.id
 
       html =
-        render_submit(element(view, "#template-install-form"), %{
+        render_hook(view, "install", %{
           "install" => %{
             "workspace_id" => "not-an-id",
             "version_id" => to_string(template.current_version_id),
@@ -486,7 +507,7 @@ defmodule StoryarnWeb.TemplateLiveTest do
         {:project_template_installation_updated, stale_failure}
       )
 
-      refute render(view) =~ "Template installation failed"
+      assert installation_failure(view) == nil
     end
 
     test "installs a selected older template version", %{conn: conn, user: user, scope: scope} do
@@ -498,11 +519,12 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert has_element?(view, "#template-install-version")
-      assert has_element?(view, "#template-version-#{first_version_id}")
-      assert has_element?(view, "#template-version-#{template.current_version_id}")
+      assert [%{"id" => newest_id, "isCurrent" => true}, %{"id" => ^first_version_id, "isCurrent" => false}] =
+               show_props(view)["versions"]
 
-      render_submit(element(view, "#template-install-form"), %{
+      assert newest_id == template.current_version_id
+
+      render_hook(view, "install", %{
         "install" => %{
           "workspace_id" => to_string(workspace.id),
           "version_id" => to_string(first_version_id),
@@ -530,10 +552,11 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert has_element?(view, "#publish-template-version-button")
+      assert show_props(view)["template"]["canPublish"]
+      refute show_props(view)["has-active-publication"]
 
       html =
-        render_submit(element(view, "#publish-template-version-form"), %{
+        render_hook(view, "publish_new_version", %{
           "publication" => %{"version_notes" => "LiveView version notes"}
         })
 
@@ -546,7 +569,8 @@ defmodule StoryarnWeb.TemplateLiveTest do
       assert publication.version_notes == "LiveView version notes"
       assert template.current_version_id == first_version_id
       assert version_count(template.id) == 1
-      assert has_element?(view, "#template-publication-#{publication.id}")
+      assert show_props(view)["has-active-publication"]
+      assert publication.id in Enum.map(show_props(view)["publications"], & &1["id"])
 
       assert :ok = perform_job(PublishProjectTemplateWorker, %{"publication_id" => publication.id})
 
@@ -571,10 +595,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{template.id}")
 
-      assert has_element?(view, "#publish-template-version-button")
+      assert show_props(view)["template"]["canPublish"]
 
       html =
-        render_submit(element(view, "#publish-template-version-form"), %{
+        render_hook(view, "publish_new_version", %{
           "publication" => %{"version_notes" => "Blocked"}
         })
 
@@ -589,7 +613,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/templates/#{public_template.id}")
 
-      refute has_element?(view, "#publish-template-version-button")
+      refute show_props(view)["template"]["canPublish"]
+      assert show_props(view)["publications"] == []
+      assert show_props(view)["installs"] == []
+      assert Enum.all?(show_props(view)["versions"], &is_nil(&1["publishedByEmail"]))
       refute render(view) =~ owner.email
     end
 
@@ -639,8 +666,28 @@ defmodule StoryarnWeb.TemplateLiveTest do
     |> Repo.preload([:workspace, project_template_version: [:project_template]])
   end
 
-  defp failure_feedback_text(installation_id) do
-    "Template installation failed: The installation could not be completed. Reference: #{installation_id}"
+  defp list_props(view), do: LiveVue.Test.get_vue(view, name: "live/template/list/TemplateList").props
+
+  defp section_templates(view, key) do
+    view
+    |> list_props()
+    |> Map.fetch!("sections")
+    |> Enum.find(&(&1["key"] == key))
+    |> Map.fetch!("templates")
+  end
+
+  defp section_ids(view, key), do: view |> section_templates(key) |> Enum.map(& &1["id"])
+
+  defp listed_template_ids(view), do: Enum.flat_map(~w(private public archived), &section_ids(view, &1))
+
+  defp show_props(view), do: LiveVue.Test.get_vue(view, name: "live/template/show/TemplateShow").props
+
+  defp installation_failure(view), do: show_props(view)["installation-failure"]
+
+  defp failure_id(view), do: view |> installation_failure() |> Map.fetch!("id")
+
+  defp dismiss_failure(view, installation_id) do
+    render_hook(view, "dismiss_template_installation_failure", %{"installation_id" => to_string(installation_id)})
   end
 
   defp template_fixture(user, scope, attrs) do
