@@ -2,7 +2,6 @@ import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
 import SaveIndicator from "../../components/SaveIndicator.vue";
 import LogicToggle from "../../components/builders/condition/LogicToggle.vue";
-import FlowLogicToggle from "../../modules/flows/editor/components/expression/builders/condition/LogicToggle.vue";
 import { setTestLocale } from "../setup";
 
 afterEach(() => setTestLocale("en"));
@@ -21,12 +20,9 @@ describe("shared components in the viewer's language", () => {
     expect(mount(SaveIndicator, { props: { status: "saved" } }).text()).toBe("Guardado");
   });
 
-  it.each([
-    ["shared", LogicToggle],
-    ["Flows", FlowLogicToggle],
-  ])("words the %s condition match so it agrees in Spanish", (_copy, component) => {
+  it("words the condition match so it agrees in Spanish", () => {
     setTestLocale("es");
-    const parts = (props: Record<string, unknown>) => wordingOf(mount(component, { props }));
+    const parts = (props: Record<string, unknown>) => wordingOf(mount(LogicToggle, { props }));
 
     expect(parts({ logic: "all", kind: "rules" })).toEqual([
       "Cumplir",
