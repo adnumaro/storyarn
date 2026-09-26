@@ -14,7 +14,6 @@ interface HubNodeData {
 const {
   data,
   emit,
-  config,
   color,
   hubsMap = {},
   nodeDataOverride = null,
@@ -38,7 +37,7 @@ const jumpCount = computed(() => {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="LogIn" :label="config.label" />
+    <NodeHeader :color="color" :icon="LogIn" :label="$t('flows.node_types.hub')" />
     <div
       class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >

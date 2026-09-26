@@ -14,7 +14,6 @@ interface JumpNodeData {
 const {
   data,
   emit,
-  config,
   color,
   hubsMap = {},
   nodeDataOverride = null,
@@ -40,7 +39,7 @@ const hasError = computed(() => !nodeData.value.target_hub_id);
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="LogOut" :label="config.label">
+    <NodeHeader :color="color" :icon="LogOut" :label="$t('flows.node_types.jump')">
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

@@ -6,9 +6,23 @@ import {
   NO_VALUE_OPERATORS,
   ALL_OPERATORS,
   OPERATORS_BY_TYPE,
-  OPERATOR_VERBS,
-  OPERATOR_DROPDOWN_LABELS,
+  OPERATOR_VERB_KEYS,
+  OPERATOR_DROPDOWN_LABEL_KEYS,
 } from "@modules/flows/editor/expression/domain/instruction-operators";
+import enCommon from "../../../../locales/en/common.json";
+import esCommon from "../../../../locales/es/common.json";
+
+type Messages = { [key: string]: string | Messages };
+
+// Reads a translation straight from a locale file, so a missing key fails.
+function message(messages: Messages, key: string): string | undefined {
+  let node: string | Messages | undefined = messages;
+  for (const part of key.split(".")) node = typeof node === "object" ? node[part] : undefined;
+  return typeof node === "string" ? node : undefined;
+}
+
+const en = enCommon as Messages;
+const es = esCommon as Messages;
 
 describe("operatorsForType", () => {
   it("returns number operators", () => {
@@ -85,7 +99,7 @@ describe("typesForOperator", () => {
 describe("getTemplate", () => {
   it("returns the set template", () => {
     const template = getTemplate("set");
-    expect(template[0]).toEqual({ type: "verb", value: "Set" });
+    expect(template[0]).toEqual({ type: "verb" });
     expect(template.find((t) => t.key === "sheet")).toBeDefined();
     expect(template.find((t) => t.key === "variable")).toBeDefined();
     expect(template.find((t) => t.key === "value")).toBeDefined();
@@ -93,7 +107,7 @@ describe("getTemplate", () => {
 
   it("returns the add template with value before variable", () => {
     const template = getTemplate("add");
-    expect(template[0]).toEqual({ type: "verb", value: "Add" });
+    expect(template[0]).toEqual({ type: "verb" });
     const valueIdx = template.findIndex((t) => t.key === "value");
     const sheetIdx = template.findIndex((t) => t.key === "sheet");
     expect(valueIdx).toBeLessThan(sheetIdx);
@@ -101,31 +115,43 @@ describe("getTemplate", () => {
 
   it("returns the subtract template", () => {
     const template = getTemplate("subtract");
-    expect(template[0]).toEqual({ type: "verb", value: "Subtract" });
-    expect(template.some((t) => t.type === "text" && t.value === "from")).toBe(true);
+    expect(template[0]).toEqual({ type: "verb" });
+    expect(
+      template.some(
+        (t) => t.type === "text" && t.label === "common.instruction_operators.text.subtract_from",
+      ),
+    ).toBe(true);
   });
 
   it("returns set_true template without value slot", () => {
     const template = getTemplate("set_true");
     expect(template.find((t) => t.key === "value")).toBeUndefined();
-    expect(template.some((t) => t.type === "text" && t.value === "to true")).toBe(true);
+    expect(
+      template.some(
+        (t) => t.type === "text" && t.label === "common.instruction_operators.text.to_true",
+      ),
+    ).toBe(true);
   });
 
   it("returns set_false template without value slot", () => {
     const template = getTemplate("set_false");
     expect(template.find((t) => t.key === "value")).toBeUndefined();
-    expect(template.some((t) => t.type === "text" && t.value === "to false")).toBe(true);
+    expect(
+      template.some(
+        (t) => t.type === "text" && t.label === "common.instruction_operators.text.to_false",
+      ),
+    ).toBe(true);
   });
 
   it("returns toggle template without value slot", () => {
     const template = getTemplate("toggle");
-    expect(template[0]).toEqual({ type: "verb", value: "Toggle" });
+    expect(template[0]).toEqual({ type: "verb" });
     expect(template.find((t) => t.key === "value")).toBeUndefined();
   });
 
   it("returns clear template without value slot", () => {
     const template = getTemplate("clear");
-    expect(template[0]).toEqual({ type: "verb", value: "Clear" });
+    expect(template[0]).toEqual({ type: "verb" });
     expect(template.find((t) => t.key === "value")).toBeUndefined();
   });
 
@@ -141,11 +167,11 @@ describe("expandTemplateForVariableRef", () => {
 
     const valueSheetSlot = expanded.find((t) => t.key === "value_sheet");
     expect(valueSheetSlot).toBeDefined();
-    expect(valueSheetSlot!.placeholder).toBe("sheet");
+    expect(valueSheetSlot!.placeholder).toBe("common.condition_builder.placeholders.sheet");
 
     const valueSlot = expanded.find((t) => t.key === "value");
     expect(valueSlot).toBeDefined();
-    expect(valueSlot!.placeholder).toBe("variable");
+    expect(valueSlot!.placeholder).toBe("common.condition_builder.placeholders.variable");
   });
 
   it("inserts a middle-dot separator between value_sheet and value", () => {
@@ -213,36 +239,33 @@ describe("ALL_OPERATORS", () => {
   });
 });
 
-describe("OPERATOR_VERBS", () => {
-  it("has a verb for every operator in ALL_OPERATORS", () => {
+describe("OPERATOR_VERB_KEYS and OPERATOR_DROPDOWN_LABEL_KEYS", () => {
+  it("translate every operator in English and Spanish", () => {
     for (const op of ALL_OPERATORS) {
-      expect(OPERATOR_VERBS[op]).toBeDefined();
-      expect(typeof OPERATOR_VERBS[op]).toBe("string");
+      for (const messages of [en, es]) {
+        expect(message(messages, OPERATOR_VERB_KEYS[op])).toBeTruthy();
+        expect(message(messages, OPERATOR_DROPDOWN_LABEL_KEYS[op])).toBeTruthy();
+      }
     }
   });
 
-  it("has correct specific verbs", () => {
-    expect(OPERATOR_VERBS.set).toBe("Set");
-    expect(OPERATOR_VERBS.add).toBe("Add");
-    expect(OPERATOR_VERBS.subtract).toBe("Subtract");
-    expect(OPERATOR_VERBS.toggle).toBe("Toggle");
-    expect(OPERATOR_VERBS.clear).toBe("Clear");
+  it("read in the viewer's language", () => {
+    expect(message(en, OPERATOR_VERB_KEYS.add)).toBe("Add");
+    expect(message(es, OPERATOR_VERB_KEYS.add)).toBe("Sumar");
+    expect(message(en, OPERATOR_DROPDOWN_LABEL_KEYS.subtract)).toBe("Subtract \u2026 from");
+    expect(message(es, OPERATOR_DROPDOWN_LABEL_KEYS.subtract)).toBe("Restar \u2026 de");
   });
-});
 
-describe("OPERATOR_DROPDOWN_LABELS", () => {
-  it("has a label for every operator in ALL_OPERATORS", () => {
+  it("translate every text and placeholder of every sentence template", () => {
     for (const op of ALL_OPERATORS) {
-      expect(OPERATOR_DROPDOWN_LABELS[op]).toBeDefined();
-      expect(typeof OPERATOR_DROPDOWN_LABELS[op]).toBe("string");
+      const template = expandTemplateForVariableRef(getTemplate(op));
+      for (const item of template) {
+        for (const key of [item.label, item.placeholder]) {
+          if (!key) continue;
+          expect(message(en, key)).toBeTruthy();
+          expect(message(es, key)).toBeTruthy();
+        }
+      }
     }
-  });
-
-  it("has descriptive labels", () => {
-    expect(OPERATOR_DROPDOWN_LABELS.set).toBe("Set \u2026 to");
-    expect(OPERATOR_DROPDOWN_LABELS.add).toBe("Add \u2026 to");
-    expect(OPERATOR_DROPDOWN_LABELS.subtract).toBe("Subtract \u2026 from");
-    expect(OPERATOR_DROPDOWN_LABELS.toggle).toBe("Toggle");
-    expect(OPERATOR_DROPDOWN_LABELS.clear).toBe("Clear");
   });
 });

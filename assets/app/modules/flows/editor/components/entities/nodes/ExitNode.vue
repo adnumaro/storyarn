@@ -21,7 +21,6 @@ interface ExitNodeData {
 const {
   data,
   emit,
-  config,
   color,
   nodeDataOverride = null,
 } = defineProps<{
@@ -64,7 +63,7 @@ const tagsText = computed(() => {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="ArrowRightToLine" :label="config.label">
+    <NodeHeader :color="color" :icon="ArrowRightToLine" :label="$t('flows.node_types.exit')">
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

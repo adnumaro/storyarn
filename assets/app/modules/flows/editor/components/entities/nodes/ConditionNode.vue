@@ -29,7 +29,6 @@ interface OutputBadge {
 const {
   data,
   emit,
-  config,
   color,
   nodeDataOverride = null,
 } = defineProps<{
@@ -216,7 +215,7 @@ function getOutputBadges(key: string): OutputBadge[] {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="GitBranch" :label="config.label" />
+    <NodeHeader :color="color" :icon="GitBranch" :label="$t('flows.node_types.condition')" />
 
     <!-- Summary preview -->
     <div

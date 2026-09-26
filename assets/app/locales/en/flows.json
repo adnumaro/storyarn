@@ -483,7 +483,11 @@
         "and": "AND",
         "or": "OR"
       },
-      "hub_jumps": "{count} jump | {count} jumps"
+      "hub_jumps": "{count} jump | {count} jumps",
+      "sockets": {
+        "input": "input",
+        "output": "output"
+      }
     },
     "player": {
       "continue": "Continue",

@@ -11,8 +11,8 @@ import {
   expandTemplateForVariableRef,
   getTemplate,
   NO_VALUE_OPERATORS,
-  OPERATOR_DROPDOWN_LABELS,
-  OPERATOR_VERBS,
+  OPERATOR_DROPDOWN_LABEL_KEYS,
+  OPERATOR_VERB_KEYS,
   operatorsForType,
   typesForOperator,
 } from "../../../../expression/domain/instruction-operators";
@@ -230,7 +230,7 @@ function toggleValueType() {
                 class="operator-selector"
                 :title="$t('common.assignment_row.change_operator')"
               >
-                {{ OPERATOR_VERBS[assignment.operator] || item.value }}
+                {{ $t(OPERATOR_VERB_KEYS[assignment.operator] ?? OPERATOR_VERB_KEYS.set) }}
               </button>
             </PopoverTrigger>
             <PopoverContent class="w-40 p-0" align="start" :side-offset="4">
@@ -240,22 +240,24 @@ function toggleValueType() {
                 :class="['operator-option', { active: op === assignment.operator }]"
                 @mousedown.prevent.stop="changeOperator(op)"
               >
-                {{ OPERATOR_DROPDOWN_LABELS[op] || op }}
+                {{ $t(OPERATOR_DROPDOWN_LABEL_KEYS[op]) }}
               </div>
             </PopoverContent>
           </Popover>
           <span v-else class="sentence-text font-medium">{{
-            OPERATOR_VERBS[assignment.operator] || item.value
+            $t(OPERATOR_VERB_KEYS[assignment.operator] ?? OPERATOR_VERB_KEYS.set)
           }}</span>
         </template>
 
-        <span v-else-if="item.type === 'text'" class="sentence-text">{{ item.value }}</span>
+        <span v-else-if="item.type === 'text'" class="sentence-text">{{
+          item.label ? $t(item.label) : item.value
+        }}</span>
 
         <VariableCombobox
           v-else-if="item.type === 'slot' && item.key === 'sheet'"
           :model-value="assignment.sheet || ''"
           :options="sheetOptions"
-          :placeholder="item.placeholder"
+          :placeholder="item.placeholder && $t(item.placeholder)"
           :disabled="disabled"
           :empty-text="$t('common.condition_builder.empty_sheets')"
           @update:model-value="(v) => update('sheet', v)"
@@ -266,7 +268,7 @@ function toggleValueType() {
           :ref="bindSlotRef('variable')"
           :model-value="assignment.variable || ''"
           :groups="variableGroups"
-          :placeholder="item.placeholder"
+          :placeholder="item.placeholder && $t(item.placeholder)"
           :disabled="disabled || !assignment.sheet"
           :empty-text="$t('common.condition_builder.empty_variables')"
           @update:model-value="(v) => update('variable', v)"
@@ -277,7 +279,7 @@ function toggleValueType() {
           :ref="bindSlotRef('value_sheet')"
           :model-value="assignment.value_sheet || ''"
           :options="valueSheetOptions"
-          :placeholder="item.placeholder"
+          :placeholder="item.placeholder && $t(item.placeholder)"
           :disabled="disabled || !assignment.variable"
           :empty-text="$t('common.condition_builder.empty_sheets')"
           @update:model-value="(v) => update('value_sheet', v)"
@@ -289,7 +291,7 @@ function toggleValueType() {
             :ref="bindSlotRef('value')"
             :model-value="assignment.value || ''"
             :options="valueOptions"
-            :placeholder="item.placeholder"
+            :placeholder="item.placeholder && $t(item.placeholder)"
             :disabled="disabled || !assignment.value_sheet"
             :empty-text="$t('common.condition_builder.empty_variables')"
             @update:model-value="(v) => update('value', v)"
@@ -299,7 +301,7 @@ function toggleValueType() {
             :ref="bindSlotRef('value')"
             :model-value="assignment.value || ''"
             :options="valueOptions"
-            :placeholder="item.placeholder"
+            :placeholder="item.placeholder && $t(item.placeholder)"
             :disabled="disabled || !assignment.variable"
             :empty-text="$t('common.condition_builder.empty_values')"
             @update:model-value="(v) => update('value', v)"
@@ -308,7 +310,7 @@ function toggleValueType() {
             v-else
             :ref="bindSlotRef('value')"
             :model-value="assignment.value || ''"
-            :placeholder="item.placeholder"
+            :placeholder="item.placeholder && $t(item.placeholder)"
             :disabled="
               disabled ||
               (!assignment.variable &&

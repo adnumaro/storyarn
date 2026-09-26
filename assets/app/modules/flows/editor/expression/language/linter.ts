@@ -13,7 +13,7 @@ import type { Extension } from "@codemirror/state";
 import { i18n } from "@app/i18n";
 import {
   operatorsForType as instructionOpsForType,
-  OPERATOR_VERBS,
+  OPERATOR_VERB_KEYS,
 } from "../domain/instruction-operators";
 import { parseAssignments, parseCondition } from "./tree-parser";
 import type { Variable } from "../domain/variables";
@@ -122,8 +122,9 @@ function checkOperatorType(
 
   const validOps = instructionOpsForType(blockType);
   if (!validOps.includes(operator as never)) {
-    const opLabel = OPERATOR_VERBS[operator as keyof typeof OPERATOR_VERBS] || operator;
-    const validLabels = validOps.map((op) => OPERATOR_VERBS[op] || op).join(", ");
+    const verbKey = OPERATOR_VERB_KEYS[operator as keyof typeof OPERATOR_VERB_KEYS];
+    const opLabel = verbKey ? i18n.global.t(verbKey) : operator;
+    const validLabels = validOps.map((op) => i18n.global.t(OPERATOR_VERB_KEYS[op])).join(", ");
     diagnostics.push({
       from,
       to,

@@ -63,7 +63,6 @@ const SHEET_ENTITY_SEARCH_PAYLOAD = { resource: "entity", kind: "sheet" };
 const {
   data,
   emit,
-  config,
   color,
   sheetsMap = {},
   nodeDataOverride = null,
@@ -123,7 +122,7 @@ const speaker = computed(() => {
   return sheetsMap[String(sheetId)] || null;
 });
 
-const speakerName = computed(() => speaker.value?.name || config.label);
+const speakerName = computed(() => speaker.value?.name || t("flows.node_types.dialogue"));
 
 // Avatar resolution: specific override (from `avatarId`) > sheet default avatar > none.
 const overrideAvatarUrl = computed(() => {

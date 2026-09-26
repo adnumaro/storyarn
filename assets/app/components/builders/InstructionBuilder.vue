@@ -86,14 +86,14 @@ function removeAssignment(index: number) {
       @click="addAssignment"
     >
       <Plus class="size-3" />
-      Add assignment
+      {{ $t("common.instruction_builder.add_assignment") }}
     </button>
 
     <p
       v-if="internalAssignments.length === 0 && disabled"
       class="text-xs text-muted-foreground italic py-2"
     >
-      No assignments set
+      {{ $t("common.instruction_builder.no_assignments") }}
     </p>
   </div>
 </template>

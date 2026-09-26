@@ -170,7 +170,17 @@
           "suffix_all": "of the blocks in the group",
           "suffix_any": "of the blocks in the group"
         }
-      }
+      },
+      "placeholders": {
+        "sheet": "sheet",
+        "variable": "variable",
+        "operator": "op",
+        "value": "value"
+      },
+      "add_block": "Add block",
+      "group": "Group",
+      "ungroup": "Ungroup",
+      "group_selected": "Group selected ({count})"
     },
     "assignment_row": {
       "change_operator": "Change operator",
@@ -291,6 +301,55 @@
     "collab_toast": {
       "message": "{name} {action}",
       "made_a_change": "made a change"
+    },
+    "condition_operators": {
+      "equals": "equals",
+      "not_equals": "not equals",
+      "contains": "contains",
+      "starts_with": "starts with",
+      "ends_with": "ends with",
+      "is_empty": "is empty",
+      "greater_than": "greater than",
+      "greater_than_or_equal": "greater than or equal",
+      "less_than": "less than",
+      "less_than_or_equal": "less than or equal",
+      "is_true": "is true",
+      "is_false": "is false",
+      "is_nil": "is not set",
+      "not_contains": "does not contain",
+      "before": "before",
+      "after": "after"
+    },
+    "instruction_operators": {
+      "verbs": {
+        "set": "Set",
+        "add": "Add",
+        "subtract": "Subtract",
+        "set_true": "Set",
+        "set_false": "Set",
+        "toggle": "Toggle",
+        "clear": "Clear"
+      },
+      "dropdown": {
+        "set": "Set … to",
+        "add": "Add … to",
+        "subtract": "Subtract … from",
+        "set_true": "Set … to true",
+        "set_false": "Set … to false",
+        "toggle": "Toggle",
+        "clear": "Clear"
+      },
+      "text": {
+        "set_to": "to",
+        "add_to": "to",
+        "subtract_from": "from",
+        "to_true": "to true",
+        "to_false": "to false"
+      }
+    },
+    "instruction_builder": {
+      "add_assignment": "Add assignment",
+      "no_assignments": "No assignments set"
     }
   }
 }

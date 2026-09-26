@@ -19,7 +19,6 @@ interface SubflowNodeData {
 const {
   data,
   emit,
-  config,
   color,
   nodeDataOverride = null,
 } = defineProps<{
@@ -66,7 +65,7 @@ function outputLabel(key: string): string {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="Box" :label="config.label">
+    <NodeHeader :color="color" :icon="Box" :label="$t('flows.node_types.subflow')">
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

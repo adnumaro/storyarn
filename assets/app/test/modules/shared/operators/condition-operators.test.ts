@@ -1,13 +1,27 @@
 import {
   operatorsForType,
   CONDITION_OPERATORS_BY_TYPE,
-  OPERATOR_LABELS,
+  OPERATOR_LABEL_KEYS,
   NO_VALUE_OPERATORS,
 } from "../../../../shared/domain/operators/condition-operators";
 import type {
   ConditionOperator,
   VariableType,
 } from "../../../../shared/domain/operators/condition-operators";
+import enCommon from "../../../../locales/en/common.json";
+import esCommon from "../../../../locales/es/common.json";
+
+type Messages = { [key: string]: string | Messages };
+
+// Reads a translation straight from a locale file, so a missing key fails.
+function message(messages: Messages, key: string): string | undefined {
+  let node: string | Messages | undefined = messages;
+  for (const part of key.split(".")) node = typeof node === "object" ? node[part] : undefined;
+  return typeof node === "string" ? node : undefined;
+}
+
+const en = enCommon as Messages;
+const es = esCommon as Messages;
 
 describe("operatorsForType", () => {
   it("returns text operators for type 'text'", () => {
@@ -69,8 +83,8 @@ describe("operatorsForType", () => {
   });
 });
 
-describe("OPERATOR_LABELS", () => {
-  it("has a label for every operator used across all types", () => {
+describe("OPERATOR_LABEL_KEYS", () => {
+  it("has a label in English and Spanish for every operator used across all types", () => {
     const allOperators = new Set<ConditionOperator>();
     for (const ops of Object.values(CONDITION_OPERATORS_BY_TYPE)) {
       for (const op of ops) {
@@ -78,17 +92,16 @@ describe("OPERATOR_LABELS", () => {
       }
     }
     for (const op of allOperators) {
-      expect(OPERATOR_LABELS[op]).toBeDefined();
-      expect(typeof OPERATOR_LABELS[op]).toBe("string");
+      expect(message(en, OPERATOR_LABEL_KEYS[op])).toBeTruthy();
+      expect(message(es, OPERATOR_LABEL_KEYS[op])).toBeTruthy();
     }
   });
 
-  it("has specific expected labels", () => {
-    expect(OPERATOR_LABELS.equals).toBe("equals");
-    expect(OPERATOR_LABELS.not_equals).toBe("not equals");
-    expect(OPERATOR_LABELS.is_nil).toBe("is not set");
-    expect(OPERATOR_LABELS.not_contains).toBe("does not contain");
-    expect(OPERATOR_LABELS.greater_than_or_equal).toBe("greater than or equal");
+  it("labels operators in the viewer's language", () => {
+    expect(message(en, OPERATOR_LABEL_KEYS.not_equals)).toBe("not equals");
+    expect(message(en, OPERATOR_LABEL_KEYS.is_nil)).toBe("is not set");
+    expect(message(es, OPERATOR_LABEL_KEYS.not_equals)).toBe("no es igual a");
+    expect(message(es, OPERATOR_LABEL_KEYS.greater_than_or_equal)).toBe("mayor o igual que");
   });
 });
 

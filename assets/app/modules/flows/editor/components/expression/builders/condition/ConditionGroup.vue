@@ -74,7 +74,9 @@ function updateLogic(newLogic: "all" | "any") {
           :disabled="disabled"
           @update:logic="updateLogic"
         />
-        <span v-else class="text-xs text-muted-foreground font-medium">Group</span>
+        <span v-else class="text-xs text-muted-foreground font-medium">{{
+          $t("common.condition_builder.group")
+        }}</span>
       </div>
       <button
         v-if="!disabled"
@@ -83,7 +85,7 @@ function updateLogic(newLogic: "all" | "any") {
         @click="emit('ungroup')"
       >
         <Ungroup class="size-3" />
-        Ungroup
+        {{ $t("common.condition_builder.ungroup") }}
       </button>
     </div>
 
@@ -107,7 +109,7 @@ function updateLogic(newLogic: "all" | "any") {
       @click="addBlock"
     >
       <Plus class="size-3" />
-      Add block
+      {{ $t("common.condition_builder.add_block") }}
     </button>
   </div>
 </template>

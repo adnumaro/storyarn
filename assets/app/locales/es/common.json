@@ -170,7 +170,17 @@
           "suffix_all": "los bloques del grupo",
           "suffix_any": "de los bloques del grupo"
         }
-      }
+      },
+      "placeholders": {
+        "sheet": "ficha",
+        "variable": "variable",
+        "operator": "op",
+        "value": "valor"
+      },
+      "add_block": "Añadir bloque",
+      "group": "Grupo",
+      "ungroup": "Desagrupar",
+      "group_selected": "Agrupar seleccionados ({count})"
     },
     "assignment_row": {
       "change_operator": "Cambiar operador",
@@ -291,6 +301,55 @@
     "collab_toast": {
       "message": "{name} {action}",
       "made_a_change": "hizo un cambio"
+    },
+    "condition_operators": {
+      "equals": "es igual a",
+      "not_equals": "no es igual a",
+      "contains": "contiene",
+      "starts_with": "empieza por",
+      "ends_with": "termina en",
+      "is_empty": "está vacío",
+      "greater_than": "mayor que",
+      "greater_than_or_equal": "mayor o igual que",
+      "less_than": "menor que",
+      "less_than_or_equal": "menor o igual que",
+      "is_true": "es verdadero",
+      "is_false": "es falso",
+      "is_nil": "no está definido",
+      "not_contains": "no contiene",
+      "before": "antes de",
+      "after": "después de"
+    },
+    "instruction_operators": {
+      "verbs": {
+        "set": "Establecer",
+        "add": "Sumar",
+        "subtract": "Restar",
+        "set_true": "Establecer",
+        "set_false": "Establecer",
+        "toggle": "Alternar",
+        "clear": "Borrar"
+      },
+      "dropdown": {
+        "set": "Establecer … en",
+        "add": "Sumar … a",
+        "subtract": "Restar … de",
+        "set_true": "Establecer … en verdadero",
+        "set_false": "Establecer … en falso",
+        "toggle": "Alternar",
+        "clear": "Borrar"
+      },
+      "text": {
+        "set_to": "en",
+        "add_to": "a",
+        "subtract_from": "de",
+        "to_true": "en verdadero",
+        "to_false": "en falso"
+      }
+    },
+    "instruction_builder": {
+      "add_assignment": "Añadir asignación",
+      "no_assignments": "No hay asignaciones"
     }
   }
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 interface SocketPayload {
   socket: unknown;
@@ -18,9 +19,21 @@ const { data, emit: emitFn } = defineProps<{
   emit: (data: { type: string; data: unknown }) => void;
 }>();
 
+const { t } = useI18n();
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
 const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length <= 1);
+
+// Generic sockets read in the viewer's language; named ones (responses, exits) keep their key.
+const SOCKET_LABEL_KEYS: Record<string, string> = {
+  input: "flows.nodes.sockets.input",
+  output: "flows.nodes.sockets.output",
+};
+
+function socketLabel(key: string): string {
+  const labelKey = SOCKET_LABEL_KEYS[key];
+  return labelKey ? t(labelKey) : key;
+}
 </script>
 
 <template>
@@ -35,14 +48,14 @@ const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length
             :emit="emitFn"
             data-testid="input-socket"
           />
-          <span class="text-[11px] text-muted-foreground ml-2">{{ key }}</span>
+          <span class="text-[11px] text-muted-foreground ml-2">{{ socketLabel(key) }}</span>
         </template>
         <template v-if="inputs.length > 0 && outputs.length > 0">
           <span class="flex-1" />
         </template>
         <template v-for="[key, output] in outputs" :key="'o-' + key">
           <span v-if="inputs.length === 0" class="flex-1" />
-          <span class="text-[11px] text-muted-foreground mr-2">{{ key }}</span>
+          <span class="text-[11px] text-muted-foreground mr-2">{{ socketLabel(key) }}</span>
           <Ref
             class="output-socket absolute -right-1.5"
             :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
@@ -66,14 +79,14 @@ const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length
           :emit="emitFn"
           data-testid="input-socket"
         />
-        <span class="ml-2">{{ input.label || key }}</span>
+        <span class="ml-2">{{ input.label || socketLabel(key) }}</span>
       </div>
       <div
         v-for="[key, output] in outputs"
         :key="'o-' + key"
         class="relative flex items-center py-0.5 text-[11px] text-muted-foreground justify-end"
       >
-        <span class="mr-2">{{ output.label || key }}</span>
+        <span class="mr-2">{{ output.label || socketLabel(key) }}</span>
         <Ref
           class="output-socket absolute -right-1.5"
           :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"

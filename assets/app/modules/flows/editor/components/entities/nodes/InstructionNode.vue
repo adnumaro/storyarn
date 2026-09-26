@@ -17,7 +17,6 @@ interface InstructionNodeData {
 const {
   data,
   emit,
-  config,
   color,
   nodeDataOverride = null,
 } = defineProps<{
@@ -85,7 +84,7 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="Zap" :label="config.label">
+    <NodeHeader :color="color" :icon="Zap" :label="$t('flows.node_types.instruction')">
       <div
         v-if="hasWarnings"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"
