@@ -131,7 +131,7 @@ defineExpose({ reset });
         {{ $t("comments_hub.title") }}
       </h1>
       <span class="hidden h-5 w-px shrink-0 bg-border sm:block" aria-hidden="true" />
-      <div class="relative ml-auto min-w-0 max-w-56 sm:ml-0 sm:max-w-64">
+      <div class="relative min-w-0 max-w-56 sm:max-w-64">
         <Folder
           class="pointer-events-none absolute left-2.5 top-2 size-3.5 text-muted-foreground"
         />
@@ -160,7 +160,7 @@ defineExpose({ reset });
           class="pointer-events-none absolute right-2.5 top-2 size-3.5 text-muted-foreground"
         />
       </div>
-      <div class="flex shrink-0 items-center gap-1">
+      <div class="ml-auto flex shrink-0 items-center gap-1">
         <Button
           id="comments-hub-refresh"
           variant="ghost"
