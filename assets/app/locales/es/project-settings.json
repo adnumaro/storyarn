@@ -359,7 +359,6 @@
       "deleted_by_snapshot_restore": "Movido a la papelera por una restauración de snapshot",
       "deleted_by_system": "Eliminado automáticamente",
       "recoverable_until": "Recuperable hasta el {date}",
-      "just_now": "ahora mismo",
       "untitled": "Sin título",
       "filters": {
         "all": "Todos"

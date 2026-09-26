@@ -28,6 +28,7 @@ import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { useLive } from "@shared/composables/useLive";
 import ConnectKeyDialog from "./integrations/ConnectKeyDialog.vue";
+import { formatDate } from "@shared/utils/date-utils";
 
 export interface ProviderModelData {
   provider: string;
@@ -254,16 +255,10 @@ function formatCapability(capability: string): string {
   return capability.replaceAll("_", " ");
 }
 
-function formatDate(value: string | null): string {
+function formatSeenAt(value: string | null): string {
   if (!value) return t("integrations.detail.never");
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return t("integrations.detail.unknown_date");
-
-  return new Intl.DateTimeFormat(locale.value, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return formatDate(value, locale.value, "datetime") || t("integrations.detail.unknown_date");
 }
 
 function clearMessages(): void {
@@ -520,7 +515,7 @@ function cancelDisconnect(): void {
                 <Clock3 class="size-3.5" aria-hidden="true" />
                 {{
                   t("integrations.detail.connection.connected_at", {
-                    date: formatDate(card.connected_at),
+                    date: formatSeenAt(card.connected_at),
                   })
                 }}
               </span>
@@ -528,7 +523,7 @@ function cancelDisconnect(): void {
                 <ShieldCheck class="size-3.5" aria-hidden="true" />
                 {{
                   t("integrations.detail.connection.validated_at", {
-                    date: formatDate(card.last_validated_at),
+                    date: formatSeenAt(card.last_validated_at),
                   })
                 }}
               </span>

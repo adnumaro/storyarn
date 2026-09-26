@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useLive } from "./useLive";
+import { formatDate } from "../utils/date-utils";
 
 export function useMemberInvitations(defaultRole: string) {
   const live = useLive();
@@ -45,9 +46,7 @@ export function useMemberInvitations(defaultRole: string) {
   }
 
   function formatExpiry(expiresAt: string) {
-    return new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(
-      new Date(expiresAt),
-    );
+    return formatDate(expiresAt, locale.value);
   }
 
   return {

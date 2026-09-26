@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { useLive } from "@shared/composables/useLive";
 import { notificationAttachment } from "./attachments";
 import type { NotificationCenterState, NotificationFilter, NotificationItem } from "./types";
+import { formatRelativeTime } from "@shared/utils/date-utils";
 
 const { locale, t } = useI18n();
 const live = useLive();
@@ -288,29 +289,7 @@ function notificationText(notification: NotificationItem): string {
 }
 
 function relativeTime(isoDate: string): string {
-  const timestamp = Date.parse(isoDate);
-  if (Number.isNaN(timestamp)) return "";
-
-  const differenceSeconds = Math.round((timestamp - now.value) / 1000);
-  const absoluteSeconds = Math.abs(differenceSeconds);
-  const formatter = new Intl.RelativeTimeFormat(locale.value, { numeric: "auto" });
-
-  if (absoluteSeconds < 45) return formatter.format(0, "second");
-  if (absoluteSeconds < 3_600)
-    return formatter.format(Math.round(differenceSeconds / 60), "minute");
-  if (absoluteSeconds < 86_400)
-    return formatter.format(Math.round(differenceSeconds / 3_600), "hour");
-  if (absoluteSeconds < 604_800)
-    return formatter.format(Math.round(differenceSeconds / 86_400), "day");
-
-  return new Intl.DateTimeFormat(locale.value, {
-    day: "numeric",
-    month: "short",
-    year:
-      new Date(timestamp).getFullYear() === new Date(now.value).getFullYear()
-        ? undefined
-        : "numeric",
-  }).format(timestamp);
+  return formatRelativeTime(isoDate, locale.value, now.value);
 }
 </script>
 

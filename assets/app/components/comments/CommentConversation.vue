@@ -7,7 +7,7 @@ import { useLive } from "@shared/composables/useLive";
 import CommentComposer from "./CommentComposer.vue";
 import CommentMessageItem from "./CommentMessageItem.vue";
 import CommentThreadHeader from "./CommentThreadHeader.vue";
-import { formatCommentTime } from "./commentTime";
+import { formatRelativeTime } from "@shared/utils/date-utils";
 import type { CommentMessage, CommentsPanelState, CommentThread, CommentUiConfig } from "./types";
 import { currentPagePermalink, useCommentThreadActions } from "./useCommentThreadActions";
 
@@ -82,7 +82,7 @@ const resolvedLine = computed(() => {
     return null;
   return {
     name: current.resolved_by.display_name,
-    time: formatCommentTime(current.resolved_at, locale.value),
+    time: formatRelativeTime(current.resolved_at, locale.value),
   };
 });
 

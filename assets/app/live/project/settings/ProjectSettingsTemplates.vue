@@ -70,7 +70,7 @@ const {
 }>();
 
 const live = useLive();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const activeStatuses = new Set<PublicationStatus>(["queued", "running", "retrying"]);
 
@@ -165,7 +165,7 @@ function publicationDescription(publication: ProjectTemplatePublication): string
 
 function publicationDate(publication: ProjectTemplatePublication): string | null {
   const iso = publication.completed_at || publication.inserted_at;
-  return iso ? formatRelativeTime(iso) : null;
+  return formatRelativeTime(iso, locale.value) || null;
 }
 </script>
 

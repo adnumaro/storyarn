@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { withSetup } from "../setup";
 import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload";
+import { i18n } from "@app/i18n";
 
 describe("useAssetDecisionUpload", () => {
   it("keeps state isolated between consumers", () => {
@@ -103,5 +104,41 @@ describe("image preparation", () => {
     app.unmount();
     await expect(upload).resolves.toBeNull();
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("upload errors", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState({}, "", "/");
+    (i18n.global.locale as unknown as { value: string }).value = "en";
+  });
+
+  async function failInspection(code: string) {
+    window.history.replaceState({}, "", "/workspaces/w/projects/p/flows/1");
+    vi.stubGlobal("crypto", { subtle: { digest: vi.fn().mockResolvedValue(new ArrayBuffer(32)) } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 422, json: async () => ({ error: code }) }),
+    );
+    const file = new File(["txt"], "notes.txt", { type: "text/plain" });
+    Object.defineProperty(file, "arrayBuffer", { value: async () => new ArrayBuffer(3) });
+    const { result, app } = withSetup(() => useAssetDecisionUpload());
+    await result.uploadWithDecision(file, "scene_background");
+    const message = result.error.value;
+    app.unmount();
+    return message;
+  }
+
+  it("shows the message for the server's error code, not the code", async () => {
+    expect(await failInspection("too_large")).toBe("File too large (max 50MB).");
+
+    (i18n.global.locale as unknown as { value: string }).value = "es";
+    expect(await failInspection("too_large")).not.toContain("too_large");
+    expect(await failInspection("storage_limit_reached")).toContain("almacenamiento");
+  });
+
+  it("reads an internal error code as a generic failure", async () => {
+    expect(await failInspection("blob_hash_mismatch")).toBe("Upload failed. Please try again.");
   });
 });

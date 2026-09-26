@@ -15,8 +15,9 @@ import {
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive.ts";
 import PageContainer from "@shell/PageContainer.vue";
+import { formatDate } from "@shared/utils/date-utils";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 interface LocalizedText {
   source_type: string;
@@ -108,9 +109,7 @@ live.handleEvent("text_updated", (payload) => {
 });
 
 function formatDateTime(datetime: string | undefined) {
-  if (!datetime) return "";
-  const d = new Date(datetime);
-  return d.toISOString().slice(0, 16).replace("T", " ");
+  return formatDate(datetime, locale.value, "datetime");
 }
 </script>
 

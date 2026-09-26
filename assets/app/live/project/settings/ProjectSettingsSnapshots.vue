@@ -29,12 +29,11 @@ import { Input } from "@components/ui/input";
 import { Progress } from "@components/ui/progress";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive";
+import { formatBytes, type ByteCount } from "@shared/utils/format-bytes";
 import {
   formatBasisPoints,
-  formatBytes,
   positiveByteCount,
   storagePercentage,
-  type ByteCount,
   type WorkspaceStorageUsage,
 } from "@shared/utils/storage-accounting";
 

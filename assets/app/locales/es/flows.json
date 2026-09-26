@@ -639,7 +639,8 @@
       "upload_images": "Subir imágenes",
       "drop_in_library": "Suelta imágenes aquí para guardarlas en Assets",
       "drop_on_stage": "Suelta imágenes para guardarlas en Assets y colocarlas en el escenario",
-      "unsupported_image": "{name}: utiliza una imagen JPEG, PNG, GIF o WebP"
+      "unsupported_image": "{name}: utiliza una imagen JPEG, PNG, GIF o WebP",
+      "upload_failed": "{name}: {message}"
     },
     "sequence_workspace": {
       "title": "Composición",

@@ -9,8 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@components/ui/table";
-import { formatTemplateDate, publicationStatusVariant } from "../templateFormat";
+import { publicationStatusVariant } from "../templateFormat";
 import type { TemplateInstall, TemplatePublication, TemplateVersion } from "../types";
+import { formatDate } from "@shared/utils/date-utils";
 
 /**
  * The template's history as sections of its page: publications and installs
@@ -28,7 +29,7 @@ const {
   canPublish?: boolean;
 }>();
 const { t, te, locale } = useI18n();
-const date = (value: string | null) => formatTemplateDate(value, locale.value);
+const date = (value: string | null) => formatDate(value, locale.value);
 
 function statusLabel(status: string) {
   const key = `templates.show.publications.status.${status}`;

@@ -81,7 +81,7 @@ const {
   projectSlug: string;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const live = useLive();
 
 const projectPath = computed(() => `/workspaces/${workspaceSlug}/projects/${projectSlug}`);
@@ -408,7 +408,7 @@ function retryHealth(): void {
                 </span>
               </span>
               <span class="text-xs text-muted-foreground/40 shrink-0">
-                {{ formatRelativeTime(item.updated_at) }}
+                {{ formatRelativeTime(item.updated_at, locale) || "—" }}
               </span>
             </div>
           </div>

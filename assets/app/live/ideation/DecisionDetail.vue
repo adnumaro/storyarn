@@ -31,6 +31,7 @@ import type {
   DecisionRevision,
   DecisionTargetType,
 } from "./decisionTypes";
+import { formatDate } from "@shared/utils/date-utils";
 
 const {
   decision,
@@ -119,14 +120,7 @@ const responsible = computed(
   () => revision.value.responsibleName || t("brainstormingDecisions.formerMember"),
 );
 const tag = computed(() => roundTag(revision.value.round, roundCount));
-const recorded = computed(() => {
-  const parsed = new Date(revision.value.recordedAt);
-  return Number.isNaN(parsed.getTime())
-    ? ""
-    : new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(
-        parsed,
-      );
-});
+const recorded = computed(() => formatDate(revision.value.recordedAt, locale.value, "datetime"));
 const busy = computed(() => pending !== null);
 const hasActions = computed(
   () =>

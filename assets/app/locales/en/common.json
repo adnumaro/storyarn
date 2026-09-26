@@ -239,6 +239,7 @@
       "file_not_accepted": "File type not supported. Upload a JPEG, PNG, GIF, or WebP image.",
       "storage_limit_reached": "Project storage limit reached. Free up space or raise the project limit before uploading more files.",
       "upload_failed": "Upload failed. Please try again.",
+      "upload_forbidden": "You don't have permission to upload files to this project.",
       "uploading": "Uploading...",
       "upload": "Upload",
       "upload_decision": {

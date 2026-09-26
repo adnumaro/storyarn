@@ -359,7 +359,6 @@
       "deleted_by_snapshot_restore": "Moved to trash by snapshot restore",
       "deleted_by_system": "Deleted automatically",
       "recoverable_until": "Recoverable until {date}",
-      "just_now": "just now",
       "untitled": "Untitled",
       "filters": {
         "all": "All"

@@ -6,6 +6,7 @@ import { Button } from "@components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
 import type { BrainstormingReference } from "./referenceTypes";
+import { formatDate } from "@shared/utils/date-utils";
 
 const {
   reference,
@@ -49,10 +50,7 @@ watch(identity, reset);
 onUnmounted(reset);
 
 function capturedAt(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(parsed);
+  return formatDate(value, locale.value);
 }
 
 function request(action: "return" | "details") {

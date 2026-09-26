@@ -39,11 +39,18 @@ export function useSequenceImageImport(canUpload: () => boolean) {
     try {
       const asset = await uploadWithDecision(file, "scene_background");
       if (active && asset) await onUploaded({ ...asset, filename: file.name });
-      else if (active && error.value) errors.value.push(`${file.name}: ${error.value}`);
-    } catch (reason) {
+      else if (active && error.value)
+        errors.value.push(
+          t("flows.sequence_library.upload_failed", { name: file.name, message: error.value }),
+        );
+    } catch {
       if (!active) return;
-      const message = reason instanceof Error ? reason.message : t("common.assets.upload_failed");
-      errors.value.push(`${file.name}: ${message}`);
+      errors.value.push(
+        t("flows.sequence_library.upload_failed", {
+          name: file.name,
+          message: t("common.assets.upload_failed"),
+        }),
+      );
     }
   }
 

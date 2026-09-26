@@ -122,7 +122,7 @@ const {
 }>();
 
 const live = useLiveVue();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const projectTemplates = computed(() => templateCreation.templates);
 const templateInstallations = computed(() => templateCreation.installations);
 const templateInstallationFailures = computed(() => templateCreation.failures || []);
@@ -527,7 +527,7 @@ function templateCountLabel(template: ProjectTemplate) {
                 <div class="text-xs font-medium text-muted-foreground/70">
                   {{
                     $t("workspace.dashboard.updated_at", {
-                      time: formatRelativeTime(projectData.project.updated_at).toLowerCase(),
+                      time: formatRelativeTime(projectData.project.updated_at, locale),
                     })
                   }}
                 </div>

@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { ChevronRight } from "@lucide/vue";
 import type { DecisionHistoryEntry } from "./decisionTypes";
+import { formatDate } from "@shared/utils/date-utils";
 
 const { entries } = defineProps<{ entries: DecisionHistoryEntry[] }>();
 const { t, locale } = useI18n();
@@ -57,12 +58,7 @@ function recordSummary(entry: DecisionHistoryEntry) {
   return entry.title ?? "";
 }
 function date(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(
-        parsed,
-      );
+  return formatDate(value, locale.value, "datetime");
 }
 function toggle(id: string) {
   const next = new Set(expanded.value);

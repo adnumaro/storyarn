@@ -7,6 +7,8 @@ import { SettingsEmptyState, SettingsPage, SettingsSection } from "@components/s
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { useLive } from "@shared/composables/useLive";
+import { formatDate, formatRelativeTime } from "@shared/utils/date-utils";
+import { formatBytes } from "@shared/utils/format-bytes";
 
 type TrashItemType = "sheet" | "flow" | "scene" | "asset";
 type TrashFilter = "all" | TrashItemType;
@@ -139,39 +141,18 @@ function itemName(item: TrashedItem): string {
   return item.name || t("project_settings.trash.untitled");
 }
 
-function formatRelativeTime(datetime: string | null): string {
-  if (!datetime) return "";
-
-  const diffSeconds = Math.max(0, Math.floor((Date.now() - new Date(datetime).getTime()) / 1000));
-  const formatter = new Intl.RelativeTimeFormat(locale.value, { numeric: "auto" });
-
-  if (diffSeconds < 60) return t("project_settings.trash.just_now");
-  if (diffSeconds < 3600) return formatter.format(-Math.floor(diffSeconds / 60), "minute");
-  if (diffSeconds < 86400) return formatter.format(-Math.floor(diffSeconds / 3600), "hour");
-
-  return formatter.format(-Math.floor(diffSeconds / 86400), "day");
-}
-
 function deletedLabel(item: TrashedItem): string {
   return t("project_settings.trash.deleted_label", {
-    time: formatRelativeTime(item.deleted_at),
+    time: formatRelativeTime(item.deleted_at, locale.value),
   });
 }
 
 function formatSize(bytes: number | null): string {
-  if (bytes == null) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return bytes == null ? "" : formatBytes(bytes, locale.value);
 }
 
 function formatDateTime(datetime: string | null): string {
-  if (!datetime) return "";
-
-  return new Intl.DateTimeFormat(locale.value, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(datetime));
+  return formatDate(datetime, locale.value, "datetime");
 }
 
 function deletionActorLabel(item: TrashedItem): string {

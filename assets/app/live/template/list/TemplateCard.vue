@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import LiveLink from "@components/navigation/LiveLink.vue";
-import { formatTemplateDate } from "../templateFormat";
+import { formatDate } from "@shared/utils/date-utils";
 import type { TemplateCardItem } from "../types";
 
 const {
@@ -24,7 +24,7 @@ const emit = defineEmits<{
   delete: [];
 }>();
 const { locale } = useI18n();
-const updated = computed(() => formatTemplateDate(template.updatedAt, locale.value));
+const updated = computed(() => formatDate(template.updatedAt, locale.value));
 </script>
 <template>
   <article

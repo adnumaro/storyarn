@@ -19,7 +19,7 @@ import {
 } from "@components/ui/dropdown-menu/index.ts";
 import { TableCell } from "@components/ui/table/index.ts";
 import { useLive } from "@shared/composables/useLive.ts";
-import { formatRelativeTime } from "@shared/utils/date-utils.ts";
+import { formatRelativeTime } from "@shared/utils/date-utils";
 import { interpolatableDetails } from "@components/health/health-details";
 import { useI18n } from "vue-i18n";
 import DashboardContent from "@shell/DashboardContent.vue";
@@ -62,7 +62,7 @@ const {
 }>();
 
 const live = useLive();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const pendingDeleteSheet = ref<DashboardRow | null>(null);
 const deleteDialogOpen = computed({
   get: () => pendingDeleteSheet.value !== null,
@@ -254,7 +254,7 @@ const columns = computed<DashboardTableColumn[]>(() => [
           <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
           <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
           <TableCell class="text-right text-muted-foreground text-xs">
-            {{ formatRelativeTime(row.updated_at) }}
+            {{ formatRelativeTime(row.updated_at, locale) || "—" }}
           </TableCell>
         </template>
 

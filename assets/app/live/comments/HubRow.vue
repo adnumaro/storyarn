@@ -11,7 +11,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import UserAvatar from "@components/UserAvatar.vue";
 import { commentContextIcon, commentTool } from "@components/comments/commentTool";
-import { formatCommentDateTime, formatCommentTime } from "@components/comments/commentTime";
+import { formatDate, formatRelativeTime } from "@shared/utils/date-utils";
 import type { HubThread } from "./types";
 
 /** One conversation in the inbox list. */
@@ -29,8 +29,8 @@ const { locale } = useI18n();
 const tool = computed(() => commentTool(thread.source.type));
 const title = computed(() => (thread.preview || "").split("\n")[0]);
 const last = computed(() => thread.last_message ?? null);
-const time = computed(() => formatCommentTime(thread.last_activity_at, locale.value));
-const fullTime = computed(() => formatCommentDateTime(thread.last_activity_at, locale.value));
+const time = computed(() => formatRelativeTime(thread.last_activity_at, locale.value));
+const fullTime = computed(() => formatDate(thread.last_activity_at, locale.value, "datetime"));
 const contextIcon = computed(() =>
   thread.context ? commentContextIcon(thread.context.type, thread.context.preview?.kind) : null,
 );

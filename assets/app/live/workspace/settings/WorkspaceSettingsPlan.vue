@@ -11,12 +11,8 @@ import {
 } from "@components/settings";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
-import {
-  formatBytes,
-  storagePercentage,
-  type ByteCount,
-  type WorkspaceStorageUsage,
-} from "@shared/utils/storage-accounting";
+import { formatBytes, type ByteCount } from "@shared/utils/format-bytes";
+import { storagePercentage, type WorkspaceStorageUsage } from "@shared/utils/storage-accounting";
 
 interface CountBucket {
   used: number;

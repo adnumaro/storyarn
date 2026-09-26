@@ -15,7 +15,7 @@ import {
 import { TableCell } from "@components/ui/table";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive.ts";
-import { formatRelativeTime } from "@shared/utils/date-utils.ts";
+import { formatRelativeTime } from "@shared/utils/date-utils";
 import { interpolatableDetails } from "@components/health/health-details";
 import DashboardContent from "@shell/DashboardContent.vue";
 import PageContainer from "@shell/PageContainer.vue";
@@ -30,7 +30,7 @@ import {
   type DashboardTablePagination,
 } from "@components/dashboard/types";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 interface StatCard {
   icon: Component;
@@ -280,7 +280,7 @@ const columns = computed<DashboardTableColumn[]>(() => [
           <TableCell class="text-right tabular-nums">{{ row.pin_count }}</TableCell>
           <TableCell class="text-right tabular-nums">{{ row.connection_count }}</TableCell>
           <TableCell class="text-right text-muted-foreground text-xs">
-            {{ formatRelativeTime(row.updated_at) }}
+            {{ formatRelativeTime(row.updated_at, locale) || "—" }}
           </TableCell>
         </template>
 
