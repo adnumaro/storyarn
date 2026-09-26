@@ -1,0 +1,21 @@
+assets/app/modules/flows/editor/components/entities/nodes/ConditionNode.vue
+  s_a86b2b42f8ba47::t_64ff0c835ec328 16-19,54-56,58,155
+assets/app/test/modules/flows/editor/ConditionNodeSummary.test.ts
+  s_a86b2b42f8ba47::t_ca02e4f21f467f 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "96c6022310872f4e39a4c0094b1c12f867b94859",
+  "prompts": {},
+  "sessions": {
+    "s_a86b2b42f8ba47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c851ed2b-d8a5-43dc-8b5d-58bb2b267005",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
