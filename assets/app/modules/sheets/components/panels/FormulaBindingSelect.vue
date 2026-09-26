@@ -9,7 +9,7 @@
  * guard unlocked only after DOM settles (scroll position restored).
  */
 import type { ComponentPublicInstance } from "vue";
-import { computed, nextTick, onBeforeUnmount, onBeforeUpdate, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onBeforeUpdate, ref, watch, useId } from "vue";
 import {
   Command,
   CommandEmpty,
@@ -22,7 +22,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { useLive } from "@shared/composables/useLive.ts";
 import { useServerSearch } from "@shared/composables/useServerSearch.ts";
 import type { FormulaBindingOption, FormulaSearchGroup } from "../../types";
-import { generateId } from "@shared/domain/variables.ts";
+
+const triggerId = useId();
 
 const {
   modelValue = "",
@@ -133,7 +134,7 @@ function onSearchInput(q: string): void {
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <button
-        :id="`formula-binding-trigger-${generateId()}`"
+        :id="triggerId"
         type="button"
         :title="displayLabel || ''"
         class="flex-1 min-w-0 h-9 px-3 py-1 rounded-md border border-input bg-card text-sm text-left truncate font-mono focus:outline-none focus:ring-2 focus:ring-ring"

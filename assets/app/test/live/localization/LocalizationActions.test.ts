@@ -89,9 +89,14 @@ describe("localization action failures", () => {
       });
     });
 
+    // The summary lives in a teleported Popover; render it inline to read it.
+    const passthrough = { template: "<div><slot /></div>" };
     const wrapper = mount(LocalizationToolbar, {
       props: { canEdit: true },
-      global: liveGlobal(live),
+      global: {
+        ...liveGlobal(live),
+        stubs: { Popover: passthrough, PopoverTrigger: passthrough, PopoverContent: passthrough },
+      },
     });
     const input = wrapper.get('input[type="file"]');
     const file = { text: vi.fn().mockResolvedValue("csv-content") };

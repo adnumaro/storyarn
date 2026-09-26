@@ -6,6 +6,7 @@ import type { FlowNode } from "../lib/flow-node";
 import type { NodeData } from "../lib/node-configs";
 import type { FlowAreaExtra, FlowConnection, FlowSchemes } from "../lib/rete-schemes";
 import type { SheetMapEntry } from "@modules/flows/types.ts";
+import type { FlowNodeLock } from "../services/editorHandlers";
 
 export interface FlowCanvasOpts {
   pushEvent: (
@@ -115,6 +116,8 @@ export interface NodeBounds {
 
 export interface FlowCanvasReturn {
   setCommentCounts(counts: Record<string, number>, enabled: boolean): void;
+  /** Shows other collaborators' node locks; the current user's own locks are dropped. */
+  setNodeLocks(locks: Record<string, FlowNodeLock>, userId: number): void;
   focusCommentNode(nodeId: number): void;
   editor: ShallowRef<NodeEditor<FlowSchemes> | null>;
   area: ShallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>;

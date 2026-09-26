@@ -16,6 +16,8 @@ import JumpNode from "../nodes/JumpNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
 import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
+import FlowNodeLockBadge from "../node-shell/FlowNodeLockBadge.vue";
+import type { FlowNodeLock } from "../../../services/editorHandlers";
 
 interface FlowNodeData {
   id: string | number;
@@ -28,6 +30,7 @@ interface FlowNodeData {
 interface FlowContextValue {
   commentCounts?: Record<string, number>;
   commentsEnabled?: boolean;
+  nodeLocks?: Record<string, FlowNodeLock>;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
   lod: string;
@@ -92,14 +95,17 @@ const isSelected = computed(() => ctx.selectedReteIds.has(data?.id));
 // hide it — per-node inline editing doesn't make sense in bulk. Derived from
 // the reactive `selectedReteIds` set so it stays in sync across click + marquee
 // (unlike the legacy `selectedReteNodeId` which only tracks single click-selects).
-const showToolbar = computed(
-  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
-);
-
 const nodeId = computed(() => {
   const reteId = String(data?.id || "");
   return reteId.startsWith("node-") ? reteId.slice(5) : reteId;
 });
+
+// Another collaborator is editing this node; its toolbar stays hidden meanwhile.
+const lock = computed(() => ctx.nodeLocks?.[nodeId.value] ?? null);
+
+const showToolbar = computed(
+  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value && !lock.value,
+);
 </script>
 
 <template>
@@ -112,6 +118,7 @@ const nodeId = computed(() => {
     :class="{ 'ring-2 ring-primary ring-offset-2 ring-offset-background': isSelected }"
     style="overflow: visible"
   >
+    <FlowNodeLockBadge v-if="lock" :lock="lock" :node-id="nodeId" />
     <FlowNodeToolbar
       v-if="showToolbar"
       :node-type="nodeType"

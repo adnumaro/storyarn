@@ -29,10 +29,12 @@
 import { computed, inject } from "vue";
 
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
+import FlowNodeLockBadge from "../node-shell/FlowNodeLockBadge.vue";
 import type { FlowNode } from "../../../lib/flow-node";
 import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import { reparentGestureActive } from "../../../lib/flow-reparent-state";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH } from "../../../lib/sequence-layout";
+import type { FlowNodeLock } from "../../../services/editorHandlers";
 
 interface FlowContextValue {
   commentCounts?: Record<string, number>;
@@ -42,6 +44,7 @@ interface FlowContextValue {
   toolbarProps: Record<string, unknown>;
   nodeDataVersion: number;
   zoom: number;
+  nodeLocks?: Record<string, FlowNodeLock>;
 }
 
 const { data } = defineProps<{
@@ -78,19 +81,20 @@ const isDropTarget = computed(
   () => reparentGestureActive.value && !ctx.selectedReteIds.has(data?.id),
 );
 
-// Toolbar only for a single-sequence selection and only when the user can
-// edit. Same rule as `FlowNode.vue`.
-const showToolbar = computed(
-  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
-);
-const showResizeHandle = computed(
-  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
-);
-
 const nodeId = computed(() => {
   const reteId = String(data?.id || "");
   return reteId.startsWith("node-") ? reteId.slice(5) : reteId;
 });
+
+const lock = computed(() => ctx.nodeLocks?.[nodeId.value] ?? null);
+
+// Toolbar and resize handle only for a single-sequence selection that the
+// user can edit and nobody else is editing. Same rule as `FlowNode.vue`.
+const editable = computed(
+  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value && !lock.value,
+);
+const showToolbar = editable;
+const showResizeHandle = editable;
 
 function startResize(event: PointerEvent) {
   if (!showResizeHandle.value) return;
@@ -162,6 +166,7 @@ function startResize(event: PointerEvent) {
     }"
     data-testid="flow-sequence"
   >
+    <FlowNodeLockBadge v-if="lock" :lock="lock" :node-id="nodeId" />
     <FlowNodeToolbar
       v-if="showToolbar"
       node-type="sequence"

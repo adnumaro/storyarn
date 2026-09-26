@@ -282,10 +282,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   def handle_lock_change(socket) do
     entity_locks = Collaboration.list_locks(socket.assigns.collab_scope)
 
-    {:noreply,
-     socket
-     |> assign(:entity_locks, entity_locks)
-     |> push_event("locks_updated", %{locks: entity_locks})}
+    {:noreply, assign(socket, :entity_locks, entity_locks)}
   end
 
   # ===========================================================================

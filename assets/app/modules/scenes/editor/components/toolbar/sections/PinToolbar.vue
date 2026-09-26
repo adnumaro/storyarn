@@ -57,6 +57,11 @@ function updateLocalField(field: string, value: unknown): void {
   if (prop) updateOptimistically("pin", element.id, { [prop]: value });
 }
 
+// Range inputs preview locally while dragging and commit once on release.
+function previewField(field: string, value: string): void {
+  updateLocalField(field, value);
+}
+
 function updateField(field: string, value: string | number | null): void {
   updateLocalField(field, value);
 
@@ -122,7 +127,8 @@ function toggleElementPanel(): void {
             :value="element.opacity ?? 1"
             class="flex-1 h-1 accent-primary"
             :disabled="element.locked"
-            @input="(e) => updateField('opacity', (e.target as HTMLInputElement).value)"
+            @input="(e) => previewField('opacity', (e.target as HTMLInputElement).value)"
+            @change="(e) => updateField('opacity', (e.target as HTMLInputElement).value)"
           />
           <span class="text-xs font-mono w-8 text-right"
             >{{ Math.round((element.opacity ?? 1) * 100) }}%</span

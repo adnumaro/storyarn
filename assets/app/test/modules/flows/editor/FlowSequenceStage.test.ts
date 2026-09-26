@@ -229,7 +229,7 @@ describe("FlowSequenceStage", () => {
     workspace.append(wrapper.element);
     const pushEvent = vi.fn();
     const hook = { selectedNodeId: 42, pushEvent } as unknown as HookProxy;
-    const handler = keyboard(hook, null);
+    const handler = keyboard(hook);
     handler.init();
     try {
       const layer = wrapper.get('[data-layer-control="hero"]');

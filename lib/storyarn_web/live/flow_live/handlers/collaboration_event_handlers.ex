@@ -71,7 +71,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply,
      socket
      |> assign(:node_locks, node_locks)
-     |> push_event("locks_updated", %{locks: node_locks})
      |> CollaborationHelpers.show_collab_toast(action, payload)}
   end
 

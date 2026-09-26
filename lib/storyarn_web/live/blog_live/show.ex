@@ -108,7 +108,7 @@ defmodule StoryarnWeb.BlogLive.Show do
             </span>
             <span
               :for={tag <- @post.tags}
-              class="badge badge-outline border-border/80 text-muted-foreground"
+              class="inline-flex items-center rounded-full border border-border/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
             >
               {tag}
             </span>

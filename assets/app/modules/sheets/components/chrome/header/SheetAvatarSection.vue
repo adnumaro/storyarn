@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { LayoutGrid, Plus, X } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, useId } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import type { Sheet, SheetAvatar } from "../../../types";
-import { generateId } from "@shared/domain/variables.ts";
+
+const avatarTriggerId = useId();
 
 const { sheet, canEdit = false } = defineProps<{
   sheet: Sheet;
@@ -25,11 +26,7 @@ const defaultAvatar = computed<SheetAvatar | null>(
 <template>
   <Popover>
     <PopoverTrigger as-child>
-      <button
-        :id="`avatar-trigger-${generateId()}`"
-        class="shrink-0 group/avatar relative"
-        :disabled="!canEdit"
-      >
+      <button :id="avatarTriggerId" class="shrink-0 group/avatar relative" :disabled="!canEdit">
         <img
           v-if="defaultAvatar?.url"
           :src="defaultAvatar.url"

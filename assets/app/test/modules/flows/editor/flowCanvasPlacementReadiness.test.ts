@@ -52,6 +52,7 @@ beforeEach(() => {
   });
   mocks.createPlugins.mockImplementation((container: HTMLElement, hook: HookProxy) => {
     hook._flowContext = {
+      nodeLocks: {},
       sheetsMap: {},
       hubsMap: {},
       lod: "full",

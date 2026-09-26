@@ -150,14 +150,6 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   def status_label("final"), do: dgettext("localization", "Final")
   def status_label(other), do: other
 
-  @spec status_class(String.t()) :: String.t()
-  def status_class("pending"), do: "badge-ghost"
-  def status_class("draft"), do: "badge-warning"
-  def status_class("in_progress"), do: "badge-info"
-  def status_class("review"), do: "badge-secondary"
-  def status_class("final"), do: "badge-success"
-  def status_class(_), do: "badge-ghost"
-
   @spec source_type_label(String.t()) :: String.t()
   def source_type_label("flow_node"), do: dgettext("localization", "Node")
   def source_type_label("block"), do: dgettext("localization", "Block")

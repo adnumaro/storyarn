@@ -111,6 +111,12 @@ onMounted(() => {
   });
 });
 
+// Range inputs preview locally while dragging and commit once on release.
+function previewField(field: string, value: string): void {
+  const prop = FIELD_TO_PROP[field];
+  if (prop) updateOptimistically("zone", element.id, { [prop]: value });
+}
+
 function updateField(field: string, value: string | number | null): void {
   const prop = FIELD_TO_PROP[field];
   if (prop) updateOptimistically("zone", element.id, { [prop]: value });
@@ -227,7 +233,8 @@ function cancelNameEdit(event: KeyboardEvent): void {
             :value="element.opacity ?? 0.3"
             class="flex-1 h-1 accent-primary"
             :disabled="element.locked"
-            @input="(e) => updateField('opacity', (e.target as HTMLInputElement).value)"
+            @input="(e) => previewField('opacity', (e.target as HTMLInputElement).value)"
+            @change="(e) => updateField('opacity', (e.target as HTMLInputElement).value)"
           />
           <span class="text-xs font-mono w-8 text-right"
             >{{ Math.round((element.opacity ?? 0.3) * 100) }}%</span

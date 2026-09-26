@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import {
+  METER_WARNING_RATIO,
   SettingsMeterRow,
   SettingsPage,
   SettingsSection,
@@ -64,7 +65,7 @@ function meterStatus(bucket: CountUsageBucket): SettingsMeterStatus {
   if (bucket.limit === "unlimited") return "unlimited";
   if (bucket.limit === null) return "unknown";
   if (bucket.limit <= 0 || bucket.used >= bucket.limit) return "reached";
-  if (bucket.used / bucket.limit >= 0.8) return "warning";
+  if (bucket.used / bucket.limit >= METER_WARNING_RATIO) return "warning";
 
   return "available";
 }

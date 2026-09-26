@@ -5,7 +5,6 @@
  */
 
 import type { HookProxy } from "./editorHandlers";
-import type { LocksHandler } from "./locks";
 
 export interface KeyboardHandler {
   _keydownListener?: (e: KeyboardEvent) => void;
@@ -27,7 +26,7 @@ function isSequenceWorkspace(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest("[data-sequence-workspace]") !== null;
 }
 
-export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): KeyboardHandler {
+export function keyboard(hook: HookProxy): KeyboardHandler {
   function enterInlineEdit(reteNodeId: string): void {
     const node = hook.editor.getNode(reteNodeId);
     if (!node) {
@@ -86,12 +85,14 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
     return false;
   }
 
+  // Shift (and Caps Lock) upper-case the key on Windows and Linux.
   function isUndo(e: KeyboardEvent): boolean {
-    return (e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey;
+    return (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey;
   }
 
   function isRedo(e: KeyboardEvent): boolean {
-    return (e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey));
+    const key = e.key.toLowerCase();
+    return (e.ctrlKey || e.metaKey) && (key === "y" || (key === "z" && e.shiftKey));
   }
 
   function handleUndoRedo(e: KeyboardEvent): boolean {
@@ -138,7 +139,7 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
   function handleDelete(e: KeyboardEvent): boolean {
     if (e.key !== "Delete" && e.key !== "Backspace") return false;
     if (!hook.selectedNodeId) return false;
-    if (lockHandler?.isNodeLocked(hook.selectedNodeId)) return true;
+    if (hook._flowContext?.nodeLocks?.[String(hook.selectedNodeId)]) return true;
     e.preventDefault();
     hook.pushEvent("delete_node", { id: hook.selectedNodeId });
     hook.selectedNodeId = null;

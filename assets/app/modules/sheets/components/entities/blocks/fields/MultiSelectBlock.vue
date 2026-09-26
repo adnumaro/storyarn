@@ -11,7 +11,9 @@ import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
 import { useId } from "reka-ui";
-import { generateId } from "../../../../../../shared/domain/variables.ts";
+
+const placeholderId = useId();
+const triggerId = useId();
 
 const {
   block,
@@ -83,11 +85,11 @@ function toggle(key: string): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+          <label :for="placeholderId" class="text-xs font-medium">{{
             $t("sheets.multi_select_block.placeholder_label")
           }}</label>
           <Input
-            :id="`placeholder-${useId()}-${generateId()}`"
+            :id="placeholderId"
             :model-value="block.config?.placeholder || ''"
             :placeholder="$t('sheets.multi_select_block.placeholder')"
             size="xs"
@@ -121,7 +123,7 @@ function toggle(key: string): void {
     <Popover v-if="canEdit">
       <PopoverTrigger as-child>
         <button
-          :id="`multi-select-trigger-${block.id}-${generateId()}`"
+          :id="triggerId"
           class="flex justify-between flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm items-center"
         >
           <span>
@@ -165,7 +167,7 @@ function toggle(key: string): void {
         {{ opt.value }}
       </Badge>
       <span v-if="selectedOptions.length === 0" class="text-sm text-muted-foreground">
-        \u2014
+        {{ "\u2014" }}
       </span>
     </div>
   </div>

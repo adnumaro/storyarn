@@ -407,7 +407,7 @@ function selectDisplayVar(varRef: string | number | null) {
       <template v-if="typeTab === 'action'">
         <div
           v-if="actionIsEmpty"
-          class="rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5 text-xs text-warning-content"
+          class="rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5 text-xs text-warning"
         >
           {{ $t("scenes.zone_properties.empty_action") }}
         </div>

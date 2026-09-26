@@ -8,6 +8,11 @@ import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import { useId } from "reka-ui";
 
+const maxId = useId();
+const minId = useId();
+const placeholderId = useId();
+const stepId = useId();
+
 const {
   block,
   canEdit = false,
@@ -87,11 +92,11 @@ function onKeydown(e: KeyboardEvent): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+          <label :for="placeholderId" class="text-xs font-medium">{{
             $t("sheets.number_block.placeholder_label")
           }}</label>
           <Input
-            :id="`placeholder-${useId()}`"
+            :id="placeholderId"
             :model-value="block.config?.placeholder || ''"
             :placeholder="$t('sheets.number_block.default_placeholder')"
             size="xs"
@@ -108,11 +113,11 @@ function onKeydown(e: KeyboardEvent): void {
         </div>
         <div class="grid grid-cols-3 gap-2">
           <div class="space-y-1">
-            <label :for="`min-${useId()}`" class="text-xs font-medium">{{
+            <label :for="minId" class="text-xs font-medium">{{
               $t("sheets.number_block.min")
             }}</label>
             <Input
-              :id="`min-${useId()}`"
+              :id="minId"
               type="number"
               :model-value="block.config?.min ?? ''"
               size="xs"
@@ -130,11 +135,11 @@ function onKeydown(e: KeyboardEvent): void {
             />
           </div>
           <div class="space-y-1">
-            <label :for="`max-${useId()}`" class="text-xs font-medium">{{
+            <label :for="maxId" class="text-xs font-medium">{{
               $t("sheets.number_block.max")
             }}</label>
             <Input
-              :id="`max-${useId()}`"
+              :id="maxId"
               type="number"
               :model-value="block.config?.max ?? ''"
               size="xs"
@@ -152,11 +157,11 @@ function onKeydown(e: KeyboardEvent): void {
             />
           </div>
           <div class="space-y-1">
-            <label :for="`step-${useId()}`" class="text-xs font-medium">{{
+            <label :for="stepId" class="text-xs font-medium">{{
               $t("sheets.number_block.step")
             }}</label>
             <Input
-              :id="`step-${useId()}`"
+              :id="stepId"
               type="number"
               :model-value="block.config?.step ?? 1"
               size="xs"

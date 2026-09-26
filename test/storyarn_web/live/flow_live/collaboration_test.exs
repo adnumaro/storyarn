@@ -334,10 +334,19 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       }
 
       send(view.pid, {:lock_change, :locked, lock_payload})
-      html = render(view)
+      _html = render(view)
 
-      # Should show a collaboration toast for the other user
-      assert html
+      # The canvas receives the lock so the node shows who is editing it.
+      canvas =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+        |> then(& &1.props["surface"]["canvas"])
+
+      assert canvas["nodeLocks"][to_string(node.id)] == %{
+               "userId" => other_user.id,
+               "name" => other_user.email |> String.split("@") |> hd(),
+               "color" => Collaboration.user_color(other_user.id)
+             }
     end
 
     test "self-echo for lock_change is prevented by broadcast_from (not handler guard)", %{

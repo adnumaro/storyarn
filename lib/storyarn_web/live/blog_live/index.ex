@@ -124,7 +124,7 @@ defmodule StoryarnWeb.BlogLive.Index do
                 <div class="flex flex-wrap gap-2">
                   <span
                     :for={tag <- @featured_post.tags}
-                    class="badge badge-ghost border border-border/70"
+                    class="inline-flex items-center rounded-full border border-border/70 bg-muted/60 px-2.5 py-0.5 text-xs font-medium"
                   >
                     {tag}
                   </span>

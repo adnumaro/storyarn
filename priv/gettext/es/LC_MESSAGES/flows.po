@@ -161,7 +161,7 @@ msgstr "Atajo %{error}"
 msgid "Subflow"
 msgstr "Subflujo"
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1540
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1539
 #, elixir-autogen, elixir-format
 msgid "This node is being edited by %{user}"
 msgstr "Este nodo está siendo editado por %{user}"
@@ -188,7 +188,7 @@ msgstr "Numero invalido \"%{value}\", usando 0"
 msgid "Could not restore flow name."
 msgstr "No se pudo restaurar el nombre del flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1990
+#: lib/storyarn_web/live/flow_live/show.ex:2003
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "No se pudo crear el flujo enlazado."

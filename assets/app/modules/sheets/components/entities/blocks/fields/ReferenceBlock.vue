@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AlertCircle, FileText, GitBranch, Link, X, ChevronDown } from "@lucide/vue";
 import type { ComponentPublicInstance, FunctionalComponent } from "vue";
-import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUpdate, ref, watch, useId } from "vue";
 import {
   Command,
   CommandEmpty,
@@ -16,7 +16,8 @@ import { useBlockActions } from "../../../../composables/useBlockActions";
 import type { Block, ReferenceSearchResult } from "../../../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import { generateId } from "../../../../../../shared/domain/variables.ts";
+
+const triggerId = useId();
 
 const {
   block,
@@ -179,7 +180,7 @@ watch(searchResults, () => {
     <Popover v-if="canEdit" v-model:open="open">
       <PopoverTrigger as-child>
         <button
-          :id="`reference-trigger-${block.id}-${generateId()}`"
+          :id="triggerId"
           type="button"
           class="flex items-center gap-2 w-full min-h-9 rounded-md border border-input bg-card px-3 py-2 text-sm transition-colors"
         >
@@ -289,7 +290,7 @@ watch(searchResults, () => {
         <AlertCircle class="size-3.5" />
         {{ $t("sheets.reference_block.not_found") }}
       </div>
-      <span v-else class="text-sm text-muted-foreground">\u2014</span>
+      <span v-else class="text-sm text-muted-foreground">{{ "\u2014" }}</span>
     </div>
   </div>
 </template>

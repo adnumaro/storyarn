@@ -3,7 +3,7 @@ import { DnDProvider } from "@vue-dnd-kit/core";
 import { ArrowUpRight, Link2Off } from "@lucide/vue";
 import { onMounted, onUnmounted, provide, ref, watch } from "vue";
 import UserAvatar from "../../../../../components/UserAvatar.vue";
-import { useLive } from "../../../../../shared/composables/useLive";
+import { useLive } from "@shared/composables/useLive.ts";
 import type { BlockLock, FormulaEditing, InheritedBlockGroup, LayoutItem } from "../../../types";
 import AddBlockMenu from "./AddBlockMenu.vue";
 import BooleanBlock from "./fields/BooleanBlock.vue";
@@ -176,12 +176,15 @@ function onUndoRedo(e: KeyboardEvent): void {
     return;
   }
 
-  if (e.key === "z" && !e.shiftKey) {
+  // Shift (and Caps Lock) upper-case the key on Windows and Linux.
+  const key = e.key.toLowerCase();
+
+  if (key === "z" && !e.shiftKey) {
     e.preventDefault();
     live.pushEvent("undo", {});
   }
 
-  if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+  if ((key === "z" && e.shiftKey) || key === "y") {
     e.preventDefault();
     live.pushEvent("redo", {});
   }

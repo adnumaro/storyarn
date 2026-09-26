@@ -9,6 +9,8 @@ import RichTextEditor from "./RichTextEditor.vue";
 import { Input } from "@components/ui/input";
 import { useId } from "reka-ui";
 
+const placeholderId = useId();
+
 const {
   block,
   canEdit = false,
@@ -67,11 +69,11 @@ const content = computed(() => (block.value?.content as string) || "");
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+          <label :for="placeholderId" class="text-xs font-medium">{{
             $t("sheets.rich_text_block.placeholder_label")
           }}</label>
           <Input
-            :id="`placeholder-${useId()}`"
+            :id="placeholderId"
             :value="block.config?.placeholder || ''"
             :placeholder="$t('sheets.rich_text_block.default_placeholder')"
             size="xs"

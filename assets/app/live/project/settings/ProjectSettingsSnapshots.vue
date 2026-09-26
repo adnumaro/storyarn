@@ -15,6 +15,7 @@ import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import {
+  METER_WARNING_BASIS_POINTS,
   SettingsEmptyState,
   SettingsMeterRow,
   SettingsPage,
@@ -512,7 +513,8 @@ const storageMeterStatus = computed<SettingsMeterStatus>(() => {
   if (percentage.state === "unknown") return "unknown";
   if (percentage.state === "zero" || percentage.state === "over_limit") return "reached";
   if (percentage.basisPoints !== null && percentage.basisPoints >= 10_000n) return "reached";
-  if (percentage.basisPoints !== null && percentage.basisPoints >= 8_000n) return "warning";
+  if (percentage.basisPoints !== null && percentage.basisPoints >= METER_WARNING_BASIS_POINTS)
+    return "warning";
 
   return "available";
 });

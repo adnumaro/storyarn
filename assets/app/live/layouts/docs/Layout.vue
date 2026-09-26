@@ -223,7 +223,7 @@ function resultsLabel(count: number): string {
               :value="searchQuery"
               :placeholder="$t('docs.search_placeholder')"
               name="query"
-              class="h-8 rounded-md border border-input bg-background px-2 text-sm input-bordered w-full pl-9 pr-8"
+              class="h-8 rounded-md border border-input bg-background px-2 text-sm w-full pl-9 pr-8"
               autocomplete="off"
               @input="onSearch"
             />

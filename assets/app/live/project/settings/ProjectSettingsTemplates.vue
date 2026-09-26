@@ -30,6 +30,7 @@ import {
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
+import { publicationStatusVariant } from "@app/live/template/templateFormat";
 
 interface ProjectTemplate {
   id: number;
@@ -151,15 +152,6 @@ function publishTemplate(): void {
 // ---------------------------------------------------------------------------
 // History
 // ---------------------------------------------------------------------------
-type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
-
-const statusVariant: Record<PublicationStatus, BadgeVariant> = {
-  queued: "outline",
-  running: "outline",
-  retrying: "default",
-  published: "secondary",
-  failed: "destructive",
-};
 
 function publicationDescription(publication: ProjectTemplatePublication): string {
   if (publication.status === "failed" && publication.error_message) {
@@ -248,7 +240,7 @@ function publicationDate(publication: ProjectTemplatePublication): string | null
           </div>
         </div>
         <div class="flex items-center justify-end">
-          <Badge :variant="statusVariant[publication.status]">
+          <Badge :variant="publicationStatusVariant(publication.status)">
             {{ t(`project_settings.templates.status.${publication.status}`) }}
           </Badge>
         </div>
